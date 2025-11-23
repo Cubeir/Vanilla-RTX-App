@@ -399,9 +399,9 @@ public class Processor
                     var rounded = Math.Round(value, precision);
 
                     // Replace with rounded value
-                    if (token.Parent is JProperty prop)
+                    if (token.Parent is JProperty parentProp)
                     {
-                        prop.Value = rounded;
+                        parentProp.Value = rounded;
                     }
                     else if (token.Parent is JArray arr)
                     {
