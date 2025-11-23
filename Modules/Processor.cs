@@ -44,7 +44,10 @@ public class Processor
 
     public static void TuneSelectedPacks()
     {
-        MainWindow.Log("Options left at default will be skipped.", MainWindow.LogLevel.Informational);
+        if (RuntimeFlags.Set("Has_Told_Tuning_Options_Thingy"))
+        {
+            MainWindow.Log("Options left at default will be skipped.", MainWindow.LogLevel.Informational);
+        }
         MainWindow.Log("Tuning selected packages...", MainWindow.LogLevel.Lengthy);
 
         var packs = new[]
@@ -52,12 +55,11 @@ public class Processor
         new PackInfo("Vanilla RTX", VanillaRTXLocation, IsVanillaRTXEnabled),
         new PackInfo("Vanilla RTX Normals", VanillaRTXNormalsLocation, IsNormalsEnabled),
         new PackInfo("Vanilla RTX Opus", VanillaRTXOpusLocation, IsOpusEnabled),
-        new PackInfo(CustomPackDisplayName, CustomPackLocation, true)
+        new PackInfo(CustomPackDisplayName, CustomPackLocation, !string.IsNullOrEmpty(CustomPackLocation))
     };
 
 
-
-        // Removes custom pack from the array if its path duplicates an already selected pack
+        // Remove custom pack path if it points to the same location of an already selected pack
         string NormalizePath(string path)
         {
             if (string.IsNullOrEmpty(path)) return string.Empty;
@@ -70,15 +72,11 @@ public class Processor
             .Take(packs.Length - 1)
             .Where(p => p.Enabled)
             .Any(p => NormalizePath(p.Path).Equals(customPackNormalizedPath, StringComparison.OrdinalIgnoreCase));
-
-        // Remove custom pack path if it's a duplicate of an already selected pack
         if (isDuplicate)
         {
             MainWindow.Log($"{CustomPackDisplayName} was selected twice, but will only be processed once!", MainWindow.LogLevel.Warning);
             packs = packs.Take(packs.Length - 1).ToArray();
         }
-
-
 
 
         if (FogMultiplier != Defaults.FogMultiplier)
