@@ -48,7 +48,7 @@ The app might notify you of important updates on startup, Vanilla RTX is constan
 - `Preview (Toggle)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
 
-![vanilla-rtx-app-in-app-image](https://github.com/user-attachments/assets/00a40b3e-91dc-4e5b-a504-3c6bc426c927)
+![tuner-image-3](https://github.com/user-attachments/assets/ba9b62b5-6c7f-4fc7-86bd-eb8284083634)
 
 - `Export selection`  
   Exports selected packs. Useful for backing up your snapshot of the pack before making further changes, or to share your tuned version of Vanilla RTX (or another PBR resource pack) with friends!
