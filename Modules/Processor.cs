@@ -132,12 +132,12 @@ public class Processor
     // But the behavior is perfect for the average user who just gives a number and expects results
     private static void ProcessFog(PackInfo pack, bool processWaterOnly = false)
     {
-        const double MIN_VALUE_THRESHOLD = 0.00000001; // Below this becomes zero
+        const double MIN_VALUE_THRESHOLD = 0.00000001;
+        const int DECIMAL_PRECISION = 7; // Maximum 7 decimal places
 
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
             return;
 
-        // Find all directories named "fogs" within the pack path
         var fogDirectories = Directory
             .GetDirectories(pack.Path, "*", SearchOption.AllDirectories)
             .Where(d => string.Equals(Path.GetFileName(d), "fogs", StringComparison.OrdinalIgnoreCase))
@@ -151,7 +151,6 @@ public class Processor
 
         var files = new List<string>();
 
-        // Collect all JSON files from all "fogs" directories
         foreach (var fogDir in fogDirectories)
         {
             try
@@ -166,9 +165,7 @@ public class Processor
         }
 
         if (!files.Any())
-        {
             return;
-        }
 
         foreach (var file in files)
         {
@@ -181,31 +178,26 @@ public class Processor
                 var volumetric = fogSettings?.SelectToken("volumetric") as JObject;
 
                 if (volumetric == null)
-                {
                     continue;
-                }
 
                 var modified = false;
 
                 if (processWaterOnly)
                 {
-                    // Process water coefficients with density-based dampening
+                    // Process ONLY water coefficients
                     modified = ProcessWaterCoefficients(volumetric);
                 }
                 else
                 {
-                    // Process air densities and scattering (existing logic)
+                    // Process ONLY air densities and scattering
                     var density = volumetric.SelectToken("density") as JObject;
 
                     if (density != null)
                     {
-                        // Extract density sections
                         var airSection = density.SelectToken("air") as JObject;
                         var weatherSection = density.SelectToken("weather") as JObject;
 
                         var densityValues = new List<(string name, JObject section, double originalValue, double multipliedValue)>();
-
-                        // Track all density values for proximity calculation
                         var allDensityValues = new List<double>();
 
                         // Process air density
@@ -229,7 +221,6 @@ public class Processor
                                 }
                                 else
                                 {
-                                    // Normal multiplication - let it run free
                                     var multipliedValue = airDensity * FogMultiplier;
                                     densityValues.Add(("air", airSection, airDensity, multipliedValue));
                                     airDensityFinal = multipliedValue;
@@ -258,7 +249,6 @@ public class Processor
                                 }
                                 else
                                 {
-                                    // Normal multiplication - let it run free
                                     var multipliedValue = weatherDensity * FogMultiplier;
                                     densityValues.Add(("weather", weatherSection, weatherDensity, multipliedValue));
                                     weatherDensityFinal = multipliedValue;
@@ -271,7 +261,6 @@ public class Processor
                         {
                             var maxMultipliedValue = densityValues.Max(x => x.multipliedValue);
 
-                            // Scale down if any value exceeds 1.0
                             if (maxMultipliedValue > 1.0)
                             {
                                 var scaleFactor = 1.0 / maxMultipliedValue;
@@ -281,7 +270,6 @@ public class Processor
                                     section["max_density"] = scaledValue;
                                     modified = true;
 
-                                    // Update final values
                                     if (name == "air")
                                         airDensityFinal = scaledValue;
                                     else if (name == "weather")
@@ -290,7 +278,6 @@ public class Processor
                             }
                             else
                             {
-                                // No scaling needed, just apply the multiplied values
                                 foreach (var (name, section, originalValue, multipliedValue) in densityValues)
                                 {
                                     section["max_density"] = multipliedValue;
@@ -301,7 +288,6 @@ public class Processor
 
                         // Calculate average density for proximity calculation
                         var avgDensity = allDensityValues.Any() ? allDensityValues.Average() : 0.0;
-                        // Consider final processed values
                         if (airDensityFinal > 0 || weatherDensityFinal > 0)
                         {
                             var finalDensities = new List<double>();
@@ -310,16 +296,12 @@ public class Processor
                             avgDensity = finalDensities.Any() ? finalDensities.Average() : avgDensity;
                         }
 
-                        // Handle scattering adjustment based on average density proximity to 1.0
                         var proximityToMax = Math.Min(avgDensity, 1.0);
 
-                        // Always adjust scattering based on proximity (no threshold)
                         if (proximityToMax > 0.0)
                         {
-                            // Calculate dampened multiplier based on proximity
-                            // Dampen TOWARDS 1.0, not multiply by small number
                             var overage = FogMultiplier - 1.0;
-                            var dampenedOverage = overage * 0.25 * proximityToMax; // 75% dampening, scaled by proximity
+                            var dampenedOverage = overage * 0.25 * proximityToMax;
                             var scatteringMultiplier = 1.0 + dampenedOverage;
 
                             var mediaCoefficients = volumetric.SelectToken("media_coefficients") as JObject;
@@ -333,7 +315,6 @@ public class Processor
                                     var rgbValues = new double[3];
                                     var allValid = true;
 
-                                    // Get current RGB values and multiply
                                     for (var i = 0; i < 3; i++)
                                     {
                                         if (TryGetDensityValue(scatteringToken[i], out var value))
@@ -349,10 +330,8 @@ public class Processor
 
                                     if (allValid)
                                     {
-                                        // Find max value
                                         var maxRgb = rgbValues.Max();
 
-                                        // Scale down proportionally if any exceeds 1.0
                                         if (maxRgb > 1.0)
                                         {
                                             var scaleFactor = 1.0 / maxRgb;
@@ -362,7 +341,6 @@ public class Processor
                                             }
                                         }
 
-                                        // Apply the values
                                         for (var i = 0; i < 3; i++)
                                         {
                                             scatteringToken[i] = rgbValues[i];
@@ -381,11 +359,11 @@ public class Processor
 
                 if (modified)
                 {
-                    // Convert to JSON string
-                    var jsonString = root.ToString(Newtonsoft.Json.Formatting.Indented);
+                    // FINAL PASS: Round all numeric values to 7 decimal places
+                    RoundAllNumericValues(root, DECIMAL_PRECISION);
 
-                    // Final pass: sanitize scientific notation in the string
-                    jsonString = SanitizeScientificNotation(jsonString);
+                    var jsonString = root.ToString(Newtonsoft.Json.Formatting.Indented);
+                    jsonString = SanitizeScientificNotation(jsonString, DECIMAL_PRECISION);
 
                     File.WriteAllText(file, jsonString);
                 }
@@ -396,39 +374,66 @@ public class Processor
             }
         }
 
-        // Sanitize JSON string to remove scientific notation
-        string SanitizeScientificNotation(string jsonString)
+        // Recursively round all numeric values in the JSON tree
+        void RoundAllNumericValues(JToken token, int precision)
         {
-            // Regex to match scientific notation: optional minus, digits, optional decimal, optional digits, E/e, optional +/-, digits
-            // Examples: 1.5E-7, -2.3e+10, 8.5070592E-05
+            switch (token.Type)
+            {
+                case JTokenType.Object:
+                    foreach (var prop in ((JObject)token).Properties().ToList())
+                    {
+                        RoundAllNumericValues(prop.Value, precision);
+                    }
+                    break;
+
+                case JTokenType.Array:
+                    foreach (var item in ((JArray)token).ToList())
+                    {
+                        RoundAllNumericValues(item, precision);
+                    }
+                    break;
+
+                case JTokenType.Float:
+                case JTokenType.Integer:
+                    var value = token.Value<double>();
+                    var rounded = Math.Round(value, precision);
+
+                    // Replace with rounded value
+                    if (token.Parent is JProperty prop)
+                    {
+                        prop.Value = rounded;
+                    }
+                    else if (token.Parent is JArray arr)
+                    {
+                        var index = arr.IndexOf(token);
+                        arr[index] = rounded;
+                    }
+                    break;
+            }
+        }
+
+        string SanitizeScientificNotation(string jsonString, int precision)
+        {
             var scientificNotationPattern = @"-?\d+\.?\d*[eE][+-]?\d+";
 
             return System.Text.RegularExpressions.Regex.Replace(jsonString, scientificNotationPattern, match =>
             {
-                // Parse the scientific notation value
                 if (double.TryParse(match.Value, System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out var value))
                 {
-                    // If below threshold, return "0"
                     if (Math.Abs(value) < MIN_VALUE_THRESHOLD)
-                    {
                         return "0";
-                    }
 
-                    // Round to 12 decimal places and format as standard decimal
-                    var rounded = Math.Round(value, 12);
+                    var rounded = Math.Round(value, precision);
 
-                    // Check again after rounding
                     if (Math.Abs(rounded) < MIN_VALUE_THRESHOLD)
-                    {
                         return "0";
-                    }
 
-                    // Format with up to 12 decimal places, removing trailing zeros
-                    return rounded.ToString("0.############", System.Globalization.CultureInfo.InvariantCulture);
+                    // Format with dynamic decimal places up to precision, removing trailing zeros
+                    var formatString = "0." + new string('#', precision);
+                    return rounded.ToString(formatString, System.Globalization.CultureInfo.InvariantCulture);
                 }
 
-                // If parsing fails, return original (shouldn't happen)
                 return match.Value;
             });
         }
@@ -437,8 +442,7 @@ public class Processor
         {
             var modified = false;
 
-            // Get density values for proximity calculation
-            var density = volumetric.Parent?.Parent?.SelectToken("minecraft:fog_settings.volumetric.density") as JObject;
+            var density = volumetric.SelectToken("density") as JObject;
             var airDensity = 0.0;
             var weatherDensity = 0.0;
 
@@ -453,17 +457,15 @@ public class Processor
                     TryGetDensityValue(weatherSection, out weatherDensity);
             }
 
-            // Calculate average density proximity (inverse - lower density = more impact)
             var densities = new List<double>();
             if (airDensity > 0) densities.Add(Math.Min(airDensity, 1.0));
             if (weatherDensity > 0) densities.Add(Math.Min(weatherDensity, 1.0));
 
-            var avgDensity = densities.Any() ? densities.Average() : 0.5; // Default to 0.5 if no densities
-            var proximityToMin = 1.0 - avgDensity; // Inverted: 1.0 = low density, 0.0 = high density
+            var avgDensity = densities.Any() ? densities.Average() : 0.5;
+            var proximityToMin = 1.0 - avgDensity;
 
-            // Calculate 90% dampened multiplier TOWARDS 1.0, scaled by proximity to low density
             var overage = FogMultiplier - 1.0;
-            var dampenedOverage = overage * 0.1 * Math.Max(proximityToMin, 0.25); // At least 25% effect, up to 100%
+            var dampenedOverage = overage * 0.1 * Math.Max(proximityToMin, 0.25);
             var waterMultiplier = 1.0 + dampenedOverage;
 
             var mediaCoefficients = volumetric.SelectToken("media_coefficients") as JObject;
@@ -472,14 +474,12 @@ public class Processor
             if (waterCoefficients == null)
                 return false;
 
-            // Process water scattering
             var scatteringToken = waterCoefficients.SelectToken("scattering") as JArray;
             if (scatteringToken != null && scatteringToken.Count >= 3)
             {
                 modified |= ProcessRgbArray(scatteringToken, waterMultiplier);
             }
 
-            // Process water absorption
             var absorptionToken = waterCoefficients.SelectToken("absorption") as JArray;
             if (absorptionToken != null && absorptionToken.Count >= 3)
             {
@@ -494,7 +494,6 @@ public class Processor
             var rgbValues = new double[3];
             var allValid = true;
 
-            // Get current RGB values and multiply
             for (var i = 0; i < 3; i++)
             {
                 if (TryGetDensityValue(rgbArray[i], out var value))
@@ -511,10 +510,8 @@ public class Processor
             if (!allValid)
                 return false;
 
-            // Find max value
             var maxRgb = rgbValues.Max();
 
-            // Scale down proportionally if any exceeds 1.0
             if (maxRgb > 1.0)
             {
                 var scaleFactor = 1.0 / maxRgb;
@@ -524,7 +521,6 @@ public class Processor
                 }
             }
 
-            // Apply the values
             for (var i = 0; i < 3; i++)
             {
                 rgbArray[i] = rgbValues[i];
@@ -562,7 +558,6 @@ public class Processor
             return sectionModified;
         }
 
-        // Safely extract density values
         bool TryGetDensityValue(JToken token, out double value)
         {
             value = 0.0;
@@ -580,28 +575,23 @@ public class Processor
             }
         }
 
-        // Calculate new density with special handling for near-zero values
         double CalculateNewDensity(double currentDensity, double fogMultiplier)
         {
             const double tolerance = 0.0001;
 
-            // If current density is effectively zero
             if (Math.Abs(currentDensity) < tolerance)
             {
                 if (fogMultiplier <= 1.0)
                 {
-                    // Use multiplier as literal value (0.0 to 1.0)
                     return Math.Clamp(fogMultiplier, 0.0, 1.0);
                 }
                 else
                 {
-                    // Divide by 10 and use as literal value (1.0+ becomes 0.1+)
                     return Math.Clamp(fogMultiplier / 10.0, 0.0, 1.0);
                 }
             }
             else
             {
-                // Regular multiplication happens for non-zero values
                 return Math.Clamp(currentDensity * fogMultiplier, 0.0, 1.0);
             }
         }
