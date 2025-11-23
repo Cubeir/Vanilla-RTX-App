@@ -37,8 +37,11 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Add images to readme for Ambient Lighting and any other one that is easy to demo, maybe include more in-app images besides the render
-Especially for MS store
+- The fuck processor invalidates SOME fogs, investigate, could be due to long floats
+limit all floats to 7 digits, round the rest, update the final pass, do something
+
+It also processes it twice with water, lol, when did this get so wrecked? how did this slip?
+
 
 - Integerate BetterRTX if possible
 
@@ -1327,9 +1330,9 @@ public sealed partial class MainWindow : Window
         var shiftPressed = Microsoft.UI.Input.InputKeyboardSource
                                 .GetKeyStateForCurrentThread(VirtualKey.Shift)
                                 .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        _ = LocatePacksButton_Click(shiftPressed);
         if (shiftPressed)
         {
+            _ = LocatePacksButton_Click(shiftPressed);
             return;
         }
 
