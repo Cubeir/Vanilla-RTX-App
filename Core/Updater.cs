@@ -46,13 +46,8 @@ public class PackUpdater
     // If enabled, installs to development folder
     public bool InstallToDevelopmentFolder { get; set; } = false;
 
-    // If enabled, tries to find the opposite folder of where we're deploying to, and clean the folders there too
-    public bool CleanUpTheOtherFolder { get; set; } =
-#if DEBUG
-        false;
-#else
-        true;
-#endif
+    // If enabled, tries to find the opposite folder of where we're deploying to, and cleans the folders there too before and after installation
+    public bool CleanUpTheOtherFolder { get; set; } = true;
 
     // -------------------------------\           /------------------------------------ \\
     public async Task<(bool Success, List<string> Logs)> UpdatePacksAsync()
