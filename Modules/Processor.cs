@@ -129,7 +129,7 @@ public class Processor
     // Tested: it is not throwing colors off balance, but it the convoluted overflow logic makes it HELLA CONFUSING TO USE!
     // The behavior makes sense though! just watch the numbers as you press tune MANY times with different kinds of values
     // The behavior is not perfect if you know what you're doing
-    // But the behavior is perfect for the average user who just gives a number and expects results
+    // But the behavior is perfect for the average user who just gives a number and expects results and possibly spams the tune button
     private static void ProcessFog(PackInfo pack, bool processWaterOnly = false)
     {
         const double MIN_VALUE_THRESHOLD = 0.00000001;
@@ -176,12 +176,9 @@ public class Processor
 
                 if (modified)
                 {
-                    // Force all modified numeric values to use fixed-point notation
-                    SanitizeModifiedNumericFields(volumetric);
-
                     var jsonString = root.ToString(Newtonsoft.Json.Formatting.Indented);
 
-                    // Final pass: replace any remaining scientific notation
+                    // Only fix: convert any scientific notation to fixed-point
                     jsonString = RemoveScientificNotation(jsonString);
 
                     File.WriteAllText(file, jsonString);
@@ -217,7 +214,7 @@ public class Processor
                     airDensityFinal = CalculateNewDensity(airDensity, FogMultiplier);
                     if (Math.Abs(airDensityFinal - airDensity) >= MIN_VALUE_THRESHOLD)
                     {
-                        SetClampedValue(airSection, "max_density", airDensityFinal);
+                        airSection["max_density"] = ClampAndRound(airDensityFinal);
                         modified = true;
                     }
                 }
@@ -239,7 +236,7 @@ public class Processor
                     weatherDensityFinal = CalculateNewDensity(weatherDensity, FogMultiplier);
                     if (Math.Abs(weatherDensityFinal - weatherDensity) >= MIN_VALUE_THRESHOLD)
                     {
-                        SetClampedValue(weatherSection, "max_density", weatherDensityFinal);
+                        weatherSection["max_density"] = ClampAndRound(weatherDensityFinal);
                         modified = true;
                     }
                 }
@@ -260,7 +257,7 @@ public class Processor
                 foreach (var (name, section, original, multiplied) in densityValues)
                 {
                     var finalValue = multiplied * scaleFactor;
-                    SetClampedValue(section, "max_density", finalValue);
+                    section["max_density"] = ClampAndRound(finalValue);
                     modified = true;
 
                     if (name == "air")
@@ -413,22 +410,12 @@ public class Processor
             return TryGetNumericValue(token, out var value) ? value : 0.0;
         }
 
-        void SetClampedValue(JObject parent, string propertyName, double value)
-        {
-            parent[propertyName] = ClampAndRound(value);
-        }
-
         double ClampAndRound(double value)
         {
             var clamped = Math.Clamp(value, 0.0, 1.0);
-
-            // Zero out values below threshold
-            if (Math.Abs(clamped) < MIN_VALUE_THRESHOLD)
-                return 0.0;
-
             var rounded = Math.Round(clamped, DECIMAL_PRECISION);
 
-            // Zero out rounded values that fall below threshold
+            // Zero out values below threshold
             if (Math.Abs(rounded) < MIN_VALUE_THRESHOLD)
                 return 0.0;
 
@@ -445,90 +432,6 @@ public class Processor
             }
 
             return Math.Clamp(currentDensity * fogMultiplier, 0.0, 1.0);
-        }
-
-        // Sanitize only the fields we actually modify to prevent scientific notation
-        void SanitizeModifiedNumericFields(JObject volumetric)
-        {
-            // Process density fields
-            var density = volumetric.SelectToken("density") as JObject;
-            if (density != null)
-            {
-                ForceFixedPoint(density.SelectToken("air.max_density"));
-                ForceFixedPoint(density.SelectToken("weather.max_density"));
-            }
-
-            // Process media coefficients
-            var mediaCoefficients = volumetric.SelectToken("media_coefficients") as JObject;
-            if (mediaCoefficients != null)
-            {
-                // Air scattering
-                var airScattering = mediaCoefficients.SelectToken("air.scattering") as JArray;
-                if (airScattering != null)
-                {
-                    for (var i = 0; i < airScattering.Count; i++)
-                        ForceFixedPoint(airScattering[i]);
-                }
-
-                // Water scattering and absorption
-                var waterScattering = mediaCoefficients.SelectToken("water.scattering") as JArray;
-                if (waterScattering != null)
-                {
-                    for (var i = 0; i < waterScattering.Count; i++)
-                        ForceFixedPoint(waterScattering[i]);
-                }
-
-                var waterAbsorption = mediaCoefficients.SelectToken("water.absorption") as JArray;
-                if (waterAbsorption != null)
-                {
-                    for (var i = 0; i < waterAbsorption.Count; i++)
-                        ForceFixedPoint(waterAbsorption[i]);
-                }
-            }
-        }
-
-        void ForceFixedPoint(JToken token)
-        {
-            if (token == null)
-                return;
-
-            if (token.Type == JTokenType.Float || token.Type == JTokenType.Integer)
-            {
-                var value = token.Value<double>();
-
-                // Zero out values below threshold
-                if (Math.Abs(value) < MIN_VALUE_THRESHOLD)
-                {
-                    ReplaceTokenValue(token, 0.0);
-                    return;
-                }
-
-                // Ensure proper rounding
-                var rounded = Math.Round(value, DECIMAL_PRECISION);
-
-                if (Math.Abs(rounded) < MIN_VALUE_THRESHOLD)
-                {
-                    ReplaceTokenValue(token, 0.0);
-                    return;
-                }
-
-                // Force the value to be stored in a way that prevents scientific notation
-                ReplaceTokenValue(token, rounded);
-            }
-        }
-
-        void ReplaceTokenValue(JToken token, double value)
-        {
-            if (token.Parent is JProperty prop)
-            {
-                // Use decimal for precise representation that avoids scientific notation
-                prop.Value = value == 0.0 ? 0.0 : (decimal)value;
-            }
-            else if (token.Parent is JArray arr)
-            {
-                var index = arr.IndexOf(token);
-                arr[index] = value == 0.0 ? 0.0 : (decimal)value;
-            }
         }
 
         string RemoveScientificNotation(string jsonString)
@@ -551,13 +454,9 @@ public class Processor
                     if (Math.Abs(rounded) < MIN_VALUE_THRESHOLD)
                         return "0.0";
 
-                    // Format with up to DECIMAL_PRECISION decimals, no trailing zeros
+                    // Format with up to DECIMAL_PRECISION decimals, removing trailing zeros
                     var formatted = rounded.ToString($"0.{new string('#', DECIMAL_PRECISION)}",
                         System.Globalization.CultureInfo.InvariantCulture);
-
-                    // Ensure at least one decimal place for floats
-                    if (!formatted.Contains("."))
-                        formatted += ".0";
 
                     return formatted;
                 }
