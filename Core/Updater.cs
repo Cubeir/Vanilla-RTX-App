@@ -100,7 +100,7 @@ public class PackUpdater
 
         if (needsUpdate)
         {
-            LogMessage("📦 Update available!");
+            LogMessage("📦 Package Update available!");
             var (downloadSuccess, downloadPath) = await DownloadLatestPackage();
 
             if (downloadSuccess && !string.IsNullOrEmpty(downloadPath))
@@ -214,7 +214,7 @@ public class PackUpdater
                 }
                 else if (IsRemoteVersionNewer(rtxManifest, remoteManifests.rtx))
                 {
-                    LogMessage("📦 Vanilla RTX has a newer version available");
+                    LogMessage("📦 Vanilla RTX has a newer version available!");
                     needsUpdate = true;
                 }
             }
@@ -229,7 +229,7 @@ public class PackUpdater
                 }
                 else if (IsRemoteVersionNewer(normalsManifest, remoteManifests.normals))
                 {
-                    LogMessage("📦 Vanilla RTX Normals has a newer version available");
+                    LogMessage("📦 Vanilla RTX Normals has a newer version available!");
                     needsUpdate = true;
                 }
             }
@@ -244,7 +244,7 @@ public class PackUpdater
                 }
                 else if (IsRemoteVersionNewer(opusManifest, remoteManifests.opus))
                 {
-                    LogMessage("📦 Vanilla RTX Opus has a newer version available");
+                    LogMessage("📦 Vanilla RTX Opus has a newer version available!");
                     needsUpdate = true;
                 }
             }
