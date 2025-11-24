@@ -37,12 +37,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- The fuck processor invalidates SOME fogs, investigate, could be due to long floats
-limit all floats to 7 digits, round the rest, update the final pass, do something
-
-It also processes it twice with water, lol, when did this get so wrecked? how did this slip?
-
-
 - Integerate BetterRTX if possible
 
 - Add a proper, non-intrusive leave a review prompt
