@@ -125,11 +125,7 @@ public class Processor
     // Also make them log any oddities in Vanilla RTX (whether it be size, opacity, etc...) as warnings, serves dual purpose that way
     #region ------------------- Processors
 
-    // TODO: Further test this, it might be throwing colors off-balance in Vanilla RTX
-    // Tested: it is not throwing colors off balance, but it the convoluted overflow logic makes it HELLA CONFUSING TO USE!
-    // The behavior makes sense though! just watch the numbers as you press tune MANY times with different kinds of values
-    // The behavior is not perfect if you know what you're doing
-    // But the behavior is perfect for the average user who just gives a number and expects results and possibly spams the tune button
+
     private static void ProcessFog(PackInfo pack, bool processWaterOnly = false)
     {
         const double MIN_VALUE_THRESHOLD = 0.00000001;
