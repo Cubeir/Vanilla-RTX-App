@@ -480,7 +480,7 @@ public class PackUpdater
                 {
                     ForceWritable(tempExtractionDir);
                     Directory.Delete(tempExtractionDir, true);
-                    LogMessage(anyPackDeployed ? "✅ Cleaned up" : "🧹 Cleaned up after fail");
+                    LogMessage(anyPackDeployed ? "🧹 Cleaned up" : "🧹 Cleaned up after fail");
                 }
                 catch (Exception ex)
                 {
@@ -695,8 +695,8 @@ public class PackUpdater
         if (processed + failed > 0)
         {
             var msg = failed == 0
-                ? $"✅ Enabled Enhancements"
-                : $"✅ Processing {processed} failed {failed}. Delete failures: {deleteIssues}";
+                ? $"✨ Enabled Enhancements"
+                : $"⚠️ Processing {processed} failed {failed}. Delete failures: {deleteIssues}";
 
             LogMessage(msg);
         }

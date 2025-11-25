@@ -72,6 +72,8 @@ It's a mess but it works perfectly, so, only fix it once you have an abundance o
 
 Maybe grasp and clean the logic but leave it be honestly, the smooth transitions are worth it
 
+- Hook pack updater to CurseForge api instead?
+
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging
 A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
