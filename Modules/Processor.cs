@@ -436,8 +436,10 @@ public class Processor
 
         string RemoveScientificNotation(string jsonString)
         {
-            // Match scientific notation: -?\d+\.?\d*[eE][+-]?\d+
-            var pattern = @"-?\d+\.?\d*[eE][+-]?\d+";
+            // ONLY match scientific notation that appears as a JSON number value
+            // NOT inside strings (like hex colors #10E2 etc)
+            // Pattern: number with e/E notation that's preceded by : or [ and followed by , ] or newline
+            var pattern = @"(?<=:\s*|,\s*|\[\s*)(-?\d+\.?\d*[eE][+-]?\d+)(?=\s*[,\]\}]|\s*$)";
 
             return System.Text.RegularExpressions.Regex.Replace(jsonString, pattern, match =>
             {
@@ -465,6 +467,7 @@ public class Processor
             });
         }
     }
+
 
 
 

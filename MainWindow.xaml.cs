@@ -37,6 +37,12 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Hook pack updater to CurseForge api instead?
+IF YOU DO make this happen:
+Make it have some benefits too: reinstall and update ONLY PACKS THAT ARE SELECTED.
+
+Possibly even expand the software to update OTHER projects as well with certain requirements
+
 - Integerate BetterRTX if possible
 
 - Add a proper, non-intrusive leave a review prompt
@@ -59,6 +65,8 @@ Additionally, while going through params,
 Check your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github
 
+
+
 - Do the TODO and ISSUES scattered in the code
 Finish all that you had postponed
 
@@ -71,8 +79,6 @@ It is too integerated, previewer class has some funky behavior tied to it, circu
 It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
 
 Maybe grasp and clean the logic but leave it be honestly, the smooth transitions are worth it
-
-- Hook pack updater to CurseForge api instead?
 
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging
