@@ -10,8 +10,8 @@ using Windows.Storage;
 namespace Vanilla_RTX_App.Modules;
 public static class MojankMessages
 {
-    public static readonly string[] JokeMessages = new[]
-    {
+    public static readonly string[] JokeMessages =
+    [
     "Easy there pal, I'm about to void your Minecraft warranty.",
     "Careful now...",
     "I'm about to vandalize your {Insert Minecraft Edition} splash screen",
@@ -34,7 +34,7 @@ public static class MojankMessages
     "?!?!!?!?!?!?!?!??!?!?!!?!??!?!",
     "Achievement Unlocked: Button Masher",
     "Error 404: Common Sense Not Found"
-    };
+    ];
 }
 
 public static class MojankEasterEgg
