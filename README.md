@@ -57,7 +57,7 @@ The app might notify you of important updates on startup, Vanilla RTX is constan
 
 The Vanilla RTX App includes tools to tune Vanilla RTX or any other RTX or Vibrant Visuals resource pack according to your preferences. Tuning options use algorithms designed to protect the artist's original work with PBR textures, making it difficult to accidentally destroy the pack's intended look. The whole tuning process works together with the app's other features to keep the experience streamlined.
 
-![vanilla-rtx-app-ui-in-game-images_2](https://github.com/user-attachments/assets/b56c6c67-cfa6-47a0-8c62-bc9220299981)
+![vanilla-rtx-app-pack-selection-menu](https://github.com/user-attachments/assets/0b2dadce-a7ac-4d08-b44c-5c93618bcd02)
 
 Upon launch, the app automatically scans for already-installed Vanilla RTX packs, available packs become selectable for tuning or export, you can also select up to one additional custom pack at a time.
 >  If Vanilla RTX packs are installed or reinstalled through the app, or if Preview button is toggled, checkboxes refresh. If multiple versions of the same Vanilla RTX variant are present, the newest will be picked, you can still select older versions manually from the list of local packs.
@@ -85,8 +85,8 @@ This option works in conjunction with the Emissivity Multiplier — higher initi
 Because changes stack on each tuning attempt, only use this once on freshly installed packs, and avoid setting higher emissivity multipliers than `1.0` on further consecutive tuning attempts.  
 > For this reason, `Emissivity Multiplier` is automatically reset to default (1.0) if previous tuning attempt has had this option enabled, making it harder to break packs.
 
-![ambient-lighting](https://github.com/user-attachments/assets/07f1e65b-be7a-40d1-95de-79eb70a3f3ac)
-  ![vanilla-rtx-app-ui-in-game-images](https://github.com/user-attachments/assets/1cca7e22-dd6d-42e7-8059-b6481aef6685)
+![ambient-lighting](https://github.com/user-attachments/assets/e44fe5f8-06d0-4d43-978c-fc954f5d83e8)
+![vanilla-rtx-app-ui-in-game-images](https://github.com/user-attachments/assets/1cca7e22-dd6d-42e7-8059-b6481aef6685)
 
 - `Normal intensity adjustment`  
   Adjusts normal map and heightmap intensities.
