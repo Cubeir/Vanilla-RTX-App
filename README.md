@@ -142,9 +142,9 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 
 Join [Vanilla RTX server on Discord](https://discord.gg/A4wv4wwYud) & ask away!
 
-### DISCLAIMER
+### Disclaimer
 
-NOT AN OFFICIAL MINECRAFT PRODUCT — NOT AFFILIATED WITH MOJANG STUDIOS OR NVIDIA.
+The Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia
 
 ### PSA
-Bye Bye Tuner! The Vanilla RTX App has arrived with a fresh coat of paint and more capable than ever! Get the update from the Microsoft Store!
+Vanilla RTX 1.21.206 is out! Make sure the app is updated then reinstall the packages to get the latest enhancements!
