@@ -1,16 +1,21 @@
 # Vanilla-RTX-App
 
-All-in-one Vanilla RTX app to tune various aspects of Vanilla RTX to your preferences, easily enable Minecraft's ray tracing, automatically update ray tracing packages for the latest versions of the game, and more...  
-Ensuring ray tracing is accessible to newcomers, and frictionless for existing users — despite years of neglect from Mojang.
-
 <!-- Microsoft Store badge -->
 <p align="center">
   <a href="https://apps.microsoft.com/detail/9N6PCRZ5V9DJ?referrer=appbadge&mode=direct">
-    <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="310"/>
+    <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="400"/>
   </a>
 </p>
 
 <!-- Cover image -->
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/aa0ec495-40b1-44f9-b075-32e4a26f7468" alt="vanilla-rtx-app-cover-render-2"/>
+</p>
+
+All-in-one Vanilla RTX app to tune various aspects of Vanilla RTX to your preferences, easily enable Minecraft's ray tracing, automatically update ray tracing packages for the latest versions of the game, and more...   
+
+Ensuring ray tracing is accessible to new players, and frictionless for existing users — despite years of neglect from Mojang.
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/5b95f170-a683-4c51-b175-4abd4c401a19" alt="vanilla-rtx-app-cover-render"/>
 </p>
@@ -44,11 +49,10 @@ Below you'll find an up-to-date list of features & documentation of functionalit
   
 The app might notify you of important updates on startup, Vanilla RTX is constantly evolving and adapting to the latest release version of Minecraft, however for the most reliable and up-to-date information, check the news channel on the [VANILLA RTX Discord server](https://discord.gg/A4wv4wwYud).
   
+![vanilla-rtx-app-ui-in-game-images (2)](https://github.com/user-attachments/assets/c83f1da5-d4ec-407d-ae7e-91a3f936e2d7)
 
 - `Preview (Toggle)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
-
-![tuner-image-3](https://github.com/user-attachments/assets/ba9b62b5-6c7f-4fc7-86bd-eb8284083634)
 
 - `Export selection`  
   Exports selected packs. Useful for backing up your snapshot of the pack before making further changes, or to share your tuned version of Vanilla RTX (or another PBR resource pack) with friends!
