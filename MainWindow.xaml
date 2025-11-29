@@ -71,9 +71,6 @@
             </Border.Background>
         </Border>
 
-
-
-
         <!-- Titlebar background -->
         <Grid Grid.ColumnSpan="2"
               HorizontalAlignment="Stretch"
@@ -97,8 +94,6 @@
                 </Border.Shadow>
             </Border>
         </Grid>
-
-
 
         <!-- Titlebar Center Content -->
         <Grid Grid.ColumnSpan="2"
@@ -459,6 +454,7 @@
 
 
 
+        
         <!-- RIGHT CONTENT AREA -->
         <Grid Grid.Column="1">
             <!-- Shadow receiver for right column -->
@@ -1293,9 +1289,11 @@
                             IsHitTestVisible="False" />
 
                 </Grid>
-
             </Grid>
-            <!-- End of main layout grid -->
         </Grid>
+        
+        
+        
+        
     </Grid>
 </Window>
