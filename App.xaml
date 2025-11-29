@@ -18,18 +18,21 @@
             </Style>
             <Style TargetType="FontIcon">
                 <Setter Property="FontFamily"
-                        Value="Segoe Fluent Icons" />
+                        Value="ms-appx:///Assets/fonts/segoeicons.ttf#Segoe Fluent Icons" />
             </Style>
+
             <Style x:Key="TextBlockSegIcons"
                    TargetType="TextBlock">
                 <Setter Property="FontFamily"
-                        Value="Segoe Fluent Icons" />
+                        Value="ms-appx:///Assets/fonts/segoeicons.ttf#Segoe Fluent Icons" />
             </Style>
+
             <Style x:Key="ButtonSegIcons"
                    TargetType="Button">
                 <Setter Property="FontFamily"
-                        Value="Segoe Fluent Icons" />
+                        Value="ms-appx:///Assets/fonts/segoeicons.ttf#Segoe Fluent Icons" />
             </Style>
+
             <ResourceDictionary.ThemeDictionaries>
 
                 <!-- Dark theme -->
