@@ -1155,7 +1155,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Launch Minecraft with RTX"
+                            <TextBlock Text="Launch Minecraft RTX"
                                        VerticalAlignment="Center"
                                        x:Name="LaunchButtonText" />
                         </StackPanel>
@@ -1175,11 +1175,11 @@
                             ToolTipService.ToolTip="Install BetterRTX">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE8A7;"
+                            <FontIcon Glyph="&#xE794;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="BetterRTX Installer"
+                            <TextBlock Text="BetterRTX Preset Manager"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
