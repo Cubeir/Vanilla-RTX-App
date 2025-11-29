@@ -1,15 +1,12 @@
-<Window x:Class="Vanilla_RTX_App.PackBrowser.PackBrowserWindow"
+<Window x:Class="Vanilla_RTX_App.DLSSBrowser.DLSSSwitcherWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.PackBrowser"
-        Title="Browse Packs">
-
+        xmlns:local="using:Vanilla_RTX_App.DLSSBrowser"
+        Title="DLSS Switcher">
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
-
     <Grid>
-
         <Border x:Name="LightThemeOverlay"
                 Grid.ColumnSpan="2"
                 HorizontalAlignment="Stretch"
@@ -31,8 +28,8 @@
                           Height="100" />
         </Grid>
 
-        <!-- Pack Selection UI -->
-        <Grid x:Name="PackSelectionPanel"
+        <!-- DLL Selection UI -->
+        <Grid x:Name="DllSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="35" />
@@ -43,7 +40,6 @@
             <Grid Grid.Row="0"
                   x:Name="TitleBarArea"
                   Background="Transparent">
-
                 <!-- Centered Title -->
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
@@ -52,7 +48,7 @@
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"
-                               x:Name="WindowTitle"/>
+                               x:Name="WindowTitle" />
                 </Grid>
 
                 <!-- Close Button -->
@@ -74,23 +70,22 @@
                     <FontIcon Glyph="&#xF78A;"
                               FontSize="16"
                               HorizontalAlignment="Center"
-                              VerticalAlignment="Center" 
+                              VerticalAlignment="Center"
                               Margin="0, -3, 0, 0"
-                              IsTextScaleFactorEnabled="False"/>
+                              IsTextScaleFactorEnabled="False" />
                 </Button>
             </Grid>
 
-            <!-- Pack List -->
+            <!-- DLL List -->
             <Grid Grid.Row="1">
-                <!-- Shadow receiver grid, should be behind the scrollviewer -->
+                <!-- Shadow receiver grid -->
                 <Grid x:Name="ShadowReceiverGrid" />
-
                 <ScrollViewer Padding="20, 20, 20, 0"
                               Margin="0,-5,0,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="PackListContainer"
+                    <StackPanel x:Name="DllListContainer"
                                 Spacing="8" />
                 </ScrollViewer>
             </Grid>
@@ -102,12 +97,12 @@
                         HorizontalAlignment="Center"
                         Visibility="Collapsed"
                         Spacing="12">
-                <FontIcon Glyph="&#xE7C3;"
+                <FontIcon Glyph="&#xF158;"
                           FontSize="48"
                           IsTextScaleFactorEnabled="False"
                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                 <TextBlock x:Name="EmptyStateText"
-                           Text="No compatible packs found"
+                           Text="No DLSS versions cached"
                            FontSize="14"
                            IsTextScaleFactorEnabled="False"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

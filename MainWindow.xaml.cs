@@ -1787,7 +1787,38 @@ public sealed partial class MainWindow : Window
 
     private void DLSSVersionSwitcherButton_Click(object sender, RoutedEventArgs e)
     {
+        ToggleControls(this, false, true, []);
 
+        var dlssSwitcherWindow = new Vanilla_RTX_App.DLSSBrowser.DLSSSwitcherWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        dlssSwitcherWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        dlssSwitcherWindow.AppWindow.Move(mainAppWindow.Position);
+
+        dlssSwitcherWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true, true, []);
+
+            // Log status after window closes
+            if (dlssSwitcherWindow.OperationSuccessful)
+            {
+                Log(dlssSwitcherWindow.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(dlssSwitcherWindow.StatusMessage))
+            {
+                Log(dlssSwitcherWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        dlssSwitcherWindow.Activate();
     }
 
 
