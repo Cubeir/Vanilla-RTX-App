@@ -37,11 +37,11 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Hook pack updater to CurseForge api instead?
-IF YOU DO make this happen:
-Make it have some benefits too: reinstall and update ONLY PACKS THAT ARE SELECTED.
+- Bunblde the glyph's fonts with the app to let icons appear on minimal win11 and old win10 devices
 
-Possibly even expand the software to update OTHER projects as well with certain requirements
+^ test this on the laptop with old win 10
+also, test the openlink button if no browser or association exists
+
 
 - Integerate BetterRTX if possible
 
@@ -231,7 +231,7 @@ public sealed partial class MainWindow : Window
 
         Instance = this;
 
-        var defaultSize = new SizeInt32(950, 550);
+        var defaultSize = new SizeInt32(964, 555);
         _windowStateManager.ApplySavedStateOrDefaults();
 
         // Version, title and initial logs
@@ -294,8 +294,8 @@ public sealed partial class MainWindow : Window
         await FadeOutSplash();
 
 
-        // Slightly slower UI update override for a smoother startup
-        UpdateUI(0.2);
+        // Slower UI update override for a smoother startup
+        UpdateUI(0.5);
 
         // Locate packs, if Preview is enabled, TargetPreview triggers another pack location, avoid redundant operation
         if (!IsTargetingPreview)
@@ -368,8 +368,8 @@ public sealed partial class MainWindow : Window
 
             var dpi = GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(925 * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(525 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(950 * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(555 * scaleFactor);
         }
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");
@@ -1776,6 +1776,29 @@ public sealed partial class MainWindow : Window
 
 
 
+
+
+
+
+    private void BetterRTXInstallerButton_Click(object sender, RoutedEventArgs e)
+    {
+
+    }
+
+    private void DLSSVersionSwitcherButton_Click(object sender, RoutedEventArgs e)
+    {
+
+    }
+
+
+
+
+
+
+
+
+
+
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
         _progressManager.ShowProgress();
@@ -1840,7 +1863,7 @@ public sealed partial class MainWindow : Window
                 (string.IsNullOrEmpty(CustomPackLocation) || string.IsNullOrEmpty(CustomPackDisplayName))
                 )
             {
-                Log("Locate or select at least one package to export.", LogLevel.Warning);
+                Log("Select at least one package to export.", LogLevel.Warning);
             }
             else
             {
@@ -1863,7 +1886,7 @@ public sealed partial class MainWindow : Window
                 (string.IsNullOrEmpty(CustomPackLocation) || string.IsNullOrEmpty(CustomPackDisplayName))
                 )
             {
-                Log("Locate or select at least one package to tune.", LogLevel.Warning);
+                Log("Select at least one package to tune.", LogLevel.Warning);
                 return;
             }
             else
