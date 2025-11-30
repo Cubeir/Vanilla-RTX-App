@@ -1731,9 +1731,8 @@ public sealed partial class MainWindow : Window
 
             var cacheFolderChecks = new[]
             {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), CacheFolderName),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), CacheFolderName),
             Path.Combine(Path.GetTempPath(), CacheFolderName),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), CacheFolderName),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), CacheFolderName),
             };
 

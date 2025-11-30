@@ -219,13 +219,12 @@ public static class Helpers
                 fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
                 if (fileName.Length > 128) fileName = fileName.Substring(0, 128);
 
-                // === LOCATION RESOLUTION WITH FALLBACK === Temp dir, user dl folder, app's data dir, app's dir, desktop as last resort
+                // === LOCATION RESOLUTION WITH FALLBACK ===
                 string? savingLocation = null;
                 var fallbackLocations = new Func<string>[]
                 {
-                () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), TunerVariables.CacheFolderName, fileName),
-                () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), TunerVariables.CacheFolderName, fileName),
                 () => Path.Combine(Path.GetTempPath(), TunerVariables.CacheFolderName, fileName),
+                () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), TunerVariables.CacheFolderName, fileName),
                 () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), TunerVariables.CacheFolderName, fileName),
                 };
 
