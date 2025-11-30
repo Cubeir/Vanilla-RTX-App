@@ -1127,7 +1127,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="BetterRTX Manager"
+                            <TextBlock Text="BetterRTX preset manager"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -1179,7 +1179,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="DLSS Swapper"
+                            <TextBlock Text="DLSS version swapper"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
