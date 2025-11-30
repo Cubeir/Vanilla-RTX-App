@@ -26,6 +26,8 @@ namespace Vanilla_RTX_App.BetterRTXBrowser;
 
 // ISSUE: THE DELETE BUTTON DOESN'T UPDATE based on what's selected
 
+// the delete button also looks weird both here and in dll swapper, there's something behind it, fix it
+
 public sealed partial class BetterRTXManagerWindow : Window
 {
     private readonly AppWindow _appWindow;

@@ -332,7 +332,7 @@ public static class Helpers
         }
         catch
         {
-            return "vanilla_rtx_app_cache";
+            return "vanilla_rtx_app";
         }
     }
 

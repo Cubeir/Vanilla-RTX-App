@@ -107,9 +107,6 @@ public static class TunerVariables
 {
     public static string? appVersion = null;
 
-    // Used for unique name generation (Mutex, Downloads + Hard Reset Cleaner)
-    public static string CacheFolderName = Helpers.GetCacheFolderName();
-
     public static string VanillaRTXLocation = string.Empty;
     public static string VanillaRTXNormalsLocation = string.Empty;
     public static string VanillaRTXOpusLocation = string.Empty;
@@ -605,6 +602,14 @@ public sealed partial class MainWindow : Window
 
         Previewer.Instance.InitializeButton(ClearButton,
             "ms-appx:///Assets/previews/table.reset.png"
+        );
+
+        Previewer.Instance.InitializeButton(BetterRTXPresetManagerButton,
+            "ms-appx:///Assets/previews/brtx.png"
+        );
+
+        Previewer.Instance.InitializeButton(DLSSVersionSwitcherButton,
+            "ms-appx:///Assets/previews/dlss.png"
         );
 
     }
