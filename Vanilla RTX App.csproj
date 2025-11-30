@@ -70,6 +70,7 @@
     <Content Remove="Assets\Wide310x150Logo.scale-400.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Modules\BetterRTXManagerWindow.xaml" />
     <None Remove="Modules\DLSSSwitcherWindow.xaml" />
   </ItemGroup>
 
@@ -728,6 +729,9 @@
     <None Update="Assets\Wide310x150Logo.scale-400.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Page Update="Modules\BetterRTXManagerWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Update="Modules\DLSSSwitcherWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

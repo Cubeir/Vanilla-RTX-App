@@ -1791,7 +1791,38 @@ public sealed partial class MainWindow : Window
 
     private void BetterRTXPresetManagerButton_Click(object sender, RoutedEventArgs e)
     {
+        ToggleControls(this, false, true, []);
 
+        var betterRTXWindow = new Vanilla_RTX_App.BetterRTXBrowser.BetterRTXManagerWindow(this);
+
+        var mainAppWindow = this.AppWindow;
+        betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        betterRTXWindow.AppWindow.Move(mainAppWindow.Position);
+
+        betterRTXWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true, true, []);
+
+            // Log status after window closes
+            if (betterRTXWindow.OperationSuccessful)
+            {
+                Log(betterRTXWindow.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(betterRTXWindow.StatusMessage))
+            {
+                Log(betterRTXWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        betterRTXWindow.Activate();
     }
 
     private void DLSSVersionSwitcherButton_Click(object sender, RoutedEventArgs e)
