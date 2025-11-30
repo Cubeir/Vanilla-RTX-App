@@ -1731,9 +1731,9 @@ public sealed partial class MainWindow : Window
 
             var cacheFolderChecks = new[]
             {
-            Path.Combine(Path.GetTempPath(), CacheFolderName),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), CacheFolderName),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), CacheFolderName),
+            Path.Combine(Path.GetTempPath(), CacheFolderName),
             };
 
             int deletedFolders = 0;
@@ -1782,7 +1782,7 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void BetterRTXInstallerButton_Click(object sender, RoutedEventArgs e)
+    private void BetterRTXPresetManagerButton_Click(object sender, RoutedEventArgs e)
     {
 
     }

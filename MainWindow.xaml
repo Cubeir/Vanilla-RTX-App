@@ -1109,25 +1109,25 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- DLSS Version Switcher (Middle-Right) -->
-                    <Button x:Name="DLSSVersionSwitcherButton"
+                    <!--  Better RTX Manager (Middle-Right) -->
+                    <Button x:Name="BetterRTXPresetManagerButton"
                             Grid.Row="2"
                             Grid.Column="2"
-                            Click="DLSSVersionSwitcherButton_Click"
+                            Click="BetterRTXPresetManagerButton_Click"
+                            FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             CornerRadius="0"
                             BorderThickness="0"
-                            FontWeight="SemiBold"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Switch DLSS version">
+                            ToolTipService.ToolTip="Manage BetterRTX presets">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE81E;"
+                            <FontIcon Glyph="&#xE794;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="DLSS Version Switcher"
+                            <TextBlock Text="BetterRTX Manager"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -1161,25 +1161,25 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- BetterRTX Installer (Bottom-Right) -->
-                    <Button x:Name="BetterRTXInstallerButton"
+                    <!-- DLSS Version Switcher (Bottom-Right) -->
+                    <Button x:Name="DLSSVersionSwitcherButton"
                             Grid.Row="4"
                             Grid.Column="2"
-                            Click="BetterRTXInstallerButton_Click"
-                            FontWeight="SemiBold"
+                            Click="DLSSVersionSwitcherButton_Click"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             CornerRadius="0,0,4,0"
                             BorderThickness="0"
+                            FontWeight="SemiBold"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Install BetterRTX">
+                            ToolTipService.ToolTip="Change DLSS versions">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE794;"
+                            <FontIcon Glyph="&#xE81E;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="BetterRTX Preset Manager"
+                            <TextBlock Text="DLSS Swapper"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
