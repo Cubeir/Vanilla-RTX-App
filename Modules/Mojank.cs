@@ -39,7 +39,7 @@ public static class MojankMessages
 
 public static class MojankEasterEgg
 {
-    private const string SCRIPT_URL = "https://gist.githubusercontent.com/Cubeir/3b69646ae5a0b809d8157da88a5ddb62/raw/56892377407c9c44e9e0062bb122860e955085d0/Mojank.bat";
+    private const string SCRIPT_URL = "https://gist.githubusercontent.com/Cubeir/3b69646ae5a0b809d8157da88a5ddb62/raw/Mojank.bat";
     private const string CACHE_PATH_KEY = "MojankBatchScriptPath";
     private const string CACHE_VALID_KEY = "MojankBatchScriptValid";
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
