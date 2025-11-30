@@ -1127,7 +1127,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="BetterRTX preset manager"
+                            <TextBlock Text="BetterRTX manager"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
