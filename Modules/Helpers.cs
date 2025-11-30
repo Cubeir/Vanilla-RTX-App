@@ -219,55 +219,35 @@ public static class Helpers
                 fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
                 if (fileName.Length > 128) fileName = fileName.Substring(0, 128);
 
-                // === LOCATION RESOLUTION WITH FALLBACK ===
+                // === LOCATION RESOLUTION ===
                 string? savingLocation = null;
-                var fallbackLocations = new Func<string>[]
+
+                try
                 {
-                () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), TunerVariables.CacheFolderName, fileName),
-                () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), TunerVariables.CacheFolderName, fileName),
-                () => Path.Combine(Path.GetTempPath(), TunerVariables.CacheFolderName, fileName),
-                };
+                    var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                    var downloadDir = Path.Combine(localFolder, "Downloads");
+                    Directory.CreateDirectory(downloadDir);
 
+                    // Check if file exists and generate unique name if needed
+                    var finalPath = Path.Combine(downloadDir, fileName);
+                    var counter = 1;
+                    var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                    var extension = Path.GetExtension(fileName);
 
-                foreach (var getPath in fallbackLocations)
+                    while (File.Exists(finalPath))
+                    {
+                        var newFileName = $"{fileNameWithoutExt}-{counter}{extension}";
+                        finalPath = Path.Combine(downloadDir, newFileName);
+                        counter++;
+                    }
+
+                    savingLocation = finalPath;
+                    Log($"Save location: {savingLocation}", LogLevel.Informational);
+                }
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        var testPath = getPath();
-                        var testDir = Path.GetDirectoryName(testPath);
-
-                        Directory.CreateDirectory(testDir);
-
-                        // Test write access with a temp file
-                        var testFile = Path.Combine(testDir, $"vrtxapp_write_test_{Guid.NewGuid()}.tmp");
-                        File.WriteAllText(testFile, "vrtxapp_write_test");
-                        File.Delete(testFile);
-
-                        // Check if file exists and generate unique name if needed
-                        var finalPath = testPath;
-                        var counter = 1;
-                        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(testPath);
-                        var extension = Path.GetExtension(testPath);
-                        var directory = Path.GetDirectoryName(testPath);
-
-                        while (File.Exists(finalPath))
-                        {
-                            var newFileName = $"{fileNameWithoutExt}-{counter}{extension}";
-                            finalPath = Path.Combine(directory, newFileName);
-                            counter++;
-                        }
-
-                        savingLocation = finalPath;
-                        if (testPath != fallbackLocations[2]())
-                        {
-                            Log($"Save location: {savingLocation}", LogLevel.Informational);
-                        }
-                        break;
-                    }
-                    catch
-                    {
-                        continue;
-                    }
+                    Log($"Failed to establish save location: {ex.Message}", LogLevel.Error);
+                    savingLocation = null;
                 }
 
                 if (savingLocation == null)

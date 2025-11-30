@@ -1702,7 +1702,6 @@ public sealed partial class MainWindow : Window
         {
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
-
             Log("Wiping all of app's storage data...", LogLevel.Warning);
             await Task.Delay(200);
 
@@ -1723,46 +1722,54 @@ public sealed partial class MainWindow : Window
                 Log($"Deleted: {key}", LogLevel.Informational);
                 await Task.Delay(20);
             }
+
             Log($"Wiped {localKeys.Count + roamingKeys.Count} keys.", LogLevel.Success);
 
+            // Delete LocalState folders (Downloads and DLSS_Cache)
+            Log("Checking for app data folders...", LogLevel.Informational);
 
-            // Temp folder locations, TODO: This must be updated IF Helpers' Download method fallbacks are updated!
-            Log("Checking for temporary cache folders...", LogLevel.Informational);
-
-            var cacheFolderChecks = new[]
+            try
             {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), CacheFolderName),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), CacheFolderName),
-            Path.Combine(Path.GetTempPath(), CacheFolderName),
+                var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                var foldersToDelete = new[]
+                {
+                Path.Combine(localFolder, "Downloads"),
+                Path.Combine(localFolder, "DLSS_Cache"),
+                Path.Combine(localFolder, "BetterRTX_Cache")
             };
 
-            int deletedFolders = 0;
-            foreach (var cacheFolder in cacheFolderChecks)
-            {
-                try
+                int deletedFolders = 0;
+                foreach (var folder in foldersToDelete)
                 {
-                    if (Directory.Exists(cacheFolder))
+                    try
                     {
-                        Directory.Delete(cacheFolder, true);
-                        Log($"Deleted cache folder: {cacheFolder}", LogLevel.Informational);
-                        deletedFolders++;
+                        if (Directory.Exists(folder))
+                        {
+                            Directory.Delete(folder, true);
+                            Log($"Deleted folder: {folder}", LogLevel.Informational);
+                            deletedFolders++;
+                            await Task.Delay(15);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Could not delete {folder}: {ex.Message}", LogLevel.Warning);
                         await Task.Delay(15);
                     }
                 }
-                catch (Exception ex)
+
+                if (deletedFolders > 0)
                 {
-                    Log($"Could not delete {cacheFolder}: {ex.Message}", LogLevel.Warning);
-                    await Task.Delay(15);
+                    Log($"Deleted {deletedFolders} folder(s).", LogLevel.Success);
+                }
+                else
+                {
+                    Log("No data folders found.", LogLevel.Informational);
                 }
             }
-
-            if (deletedFolders > 0)
+            catch (Exception ex)
             {
-                Log($"Deleted {deletedFolders} cache folder(s).", LogLevel.Success);
-            }
-            else
-            {
-                Log("No cache folders found.", LogLevel.Informational);
+                Log($"Error deleting app data folders: {ex.Message}", LogLevel.Warning);
             }
 
             await Task.Delay(500);

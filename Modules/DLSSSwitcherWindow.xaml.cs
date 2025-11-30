@@ -95,7 +95,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             });
 
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Switch DLSS version for {text}";
+            WindowTitle.Text = $"Swap DLSS version for {text}";
 
             await InitializeAsync();
         }
@@ -209,8 +209,8 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var commonLocations = new[]
         {
-         Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName),
-         Path.Combine(@"C:\XboxGames", targetFolderName)
+         Path.Combine(@"C:\XboxGames", targetFolderName),
+         Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName)
         };
 
         foreach (var location in commonLocations)
@@ -474,26 +474,22 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private string EstablishCacheFolder()
     {
-        var fallbackLocations = new Func<string>[]
+        try
         {
-            () => Path.Combine(Path.GetTempPath(), TunerVariables.CacheFolderName, "DLSS"),
-        };
+            var localFolder = ApplicationData.Current.LocalFolder.Path;
+            var cacheLocation = Path.Combine(localFolder, "DLSS_Cache");
 
-        foreach (var locationFunc in fallbackLocations)
-        {
-            try
-            {
-                var location = locationFunc();
-                Directory.CreateDirectory(location);
-                return location;
-            }
-            catch
-            {
-                continue;
-            }
+            System.Diagnostics.Debug.WriteLine($"Creating DLSS cache at: {cacheLocation}");
+            Directory.CreateDirectory(cacheLocation);
+            System.Diagnostics.Debug.WriteLine($"✓ DLSS cache established at: {cacheLocation}");
+
+            return cacheLocation;
         }
-
-        return null;
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"✗ Failed to create DLSS cache: {ex.Message}");
+            return null;
+        }
     }
 
     private async Task CopyCurrentDllToCache()
@@ -575,7 +571,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 37, 20),
+            Padding = new Thickness(16, 20, 38, 20),
             Margin = new Thickness(0, 5, 0, 5),
             CornerRadius = new CornerRadius(5),
             Tag = dll,
@@ -740,7 +736,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 16, 20),
+            Padding = new Thickness(16, 20, 38, 20),
             Margin = new Thickness(0, 5, 0, 5),
             CornerRadius = new CornerRadius(5),
             IsTextScaleFactorEnabled = false,
@@ -901,7 +897,8 @@ public sealed partial class DLSSSwitcherWindow : Window
                 if (success)
                 {
                     OperationSuccessful = true;
-                    StatusMessage = $"Switched to DLSS {dllData.Version}";
+                    var displayVersion = dllData.Version.Replace(",", ".");
+                    StatusMessage = $"Swapped to DLSS {displayVersion}";
 
                     // Refresh to update UI and cache
                     await CopyCurrentDllToCache();
