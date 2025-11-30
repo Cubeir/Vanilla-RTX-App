@@ -742,8 +742,15 @@ public sealed partial class DLSSSwitcherWindow : Window
             Margin = new Thickness(0, 5, 0, 5),
             CornerRadius = new CornerRadius(5),
             IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32)
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            AllowDrop = true  // Enable drop
         };
+
+        // Add drag-drop event handlers
+        button.DragOver += AddDllButton_DragOver;
+        button.Drop += AddDllButton_Drop;
+        button.DragEnter += AddDllButton_DragEnter;
+        button.DragLeave += AddDllButton_DragLeave;
 
         var buttonShadow = new ThemeShadow();
         button.Shadow = buttonShadow;
@@ -801,7 +808,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var descText = new TextBlock
         {
-            Text = "Browse for a DLSS DLL file to add",
+            Text = "Drag and drop or browse for a DLSS DLL file to add",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -842,6 +849,86 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         return button;
     }
+    private void AddDllButton_DragEnter(object sender, DragEventArgs e)
+    {
+        // Visual feedback when dragging over
+        if (sender is Button button)
+        {
+            button.Opacity = 0.7;
+        }
+    }
+
+    private void AddDllButton_DragLeave(object sender, DragEventArgs e)
+    {
+        // Restore opacity when leaving
+        if (sender is Button button)
+        {
+            button.Opacity = 1.0;
+        }
+    }
+
+    private void AddDllButton_DragOver(object sender, DragEventArgs e)
+    {
+        // Check if the dragged items contain files
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = "Drop to add DLSS files";
+            e.DragUIOverride.IsCaptionVisible = true;
+            e.DragUIOverride.IsContentVisible = true;
+        }
+        else
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+        }
+    }
+
+    private async void AddDllButton_Drop(object sender, DragEventArgs e)
+    {
+        // Restore opacity
+        if (sender is Button button)
+        {
+            button.Opacity = 1.0;
+        }
+
+        try
+        {
+            if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+            {
+                var items = await e.DataView.GetStorageItemsAsync();
+
+                foreach (var item in items)
+                {
+                    if (item is Windows.Storage.StorageFile file)
+                    {
+                        var extension = file.FileType.ToLower();
+
+                        if (extension == ".dll")
+                        {
+                            await ProcessDllFileAsync(file.Path);
+                        }
+                        else if (extension == ".zip")
+                        {
+                            await ProcessZipFileAsync(file.Path);
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Skipped unsupported file type: {extension}");
+                        }
+                    }
+                }
+
+                // Refresh list after processing all dropped files
+                await LoadDllsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error processing dropped files: {ex.Message}");
+        }
+    }
+
+
 
     private async void AddDllButton_Click(object sender, RoutedEventArgs e)
     {
