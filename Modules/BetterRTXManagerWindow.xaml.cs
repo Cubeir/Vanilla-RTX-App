@@ -21,6 +21,11 @@ using WinRT.Interop;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
 
+// ISSUE: WITH BOTH DLSS SWAPPER AND THIS, THE SYSTEM-WIDE SEARCH RUNS INDEFINITELY
+// CAUSING A LAG WHEN TRYING TO CLOSE THE WINDOW
+
+// ISSUE: THE DELETE BUTTON DOESN'T UPDATE based on what's selected
+
 public sealed partial class BetterRTXManagerWindow : Window
 {
     private readonly AppWindow _appWindow;
@@ -99,7 +104,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             });
 
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Better RTX Manager (Changing {text})";
+            WindowTitle.Text = $"Better RTX Preset Manager (Targeting {text})";
 
             await InitializeAsync();
         }
@@ -127,10 +132,12 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             // Find Minecraft installation
             var minecraftPath = await FindMinecraftInstallationAsync();
+
+            // If null is returned, it means the delay completed and we're waiting for manual selection
+            // The manual selection button will handle initialization when clicked
             if (minecraftPath == null)
             {
-                StatusMessage = "Minecraft installation not found";
-                this.Close();
+                System.Diagnostics.Debug.WriteLine("Waiting for manual Minecraft location selection");
                 return;
             }
 
@@ -199,9 +206,6 @@ public sealed partial class BetterRTXManagerWindow : Window
 
 
 
-
-    // PART 2: Helper Methods - Add these to the BetterRTXManagerWindow class
-
     private async Task<string> FindMinecraftInstallationAsync()
     {
         bool isPreview = TunerVariables.Persistent.IsTargetingPreview;
@@ -235,9 +239,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Try common locations first
         var commonLocations = new[]
         {
-            Path.Combine(@"C:\XboxGames", targetFolderName),
-            Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName)
-        };
+        Path.Combine(@"C:\XboxGames", targetFolderName),
+        Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName)
+    };
 
         foreach (var location in commonLocations)
         {
@@ -266,13 +270,15 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         if (completedTask == scanTask)
         {
+            // Scan completed first
             var result = await scanTask;
             _scanCancellationTokenSource?.Cancel();
             return result;
         }
 
-        var result2 = await scanTask;
-        return result2;
+        // wait for either user action or scan completion
+        // But DON'T await the scan unconditionally - let it be cancelled by user action
+        return null; // Will be handled by manual selection or scan completion
     }
 
     private async Task ShowManualSelectionButtonAfterDelay()
@@ -291,7 +297,10 @@ public sealed partial class BetterRTXManagerWindow : Window
         foreach (var drive in drives)
         {
             if (cancellationToken.IsCancellationRequested)
+            {
+                System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled");
                 return null;
+            }
 
             try
             {
@@ -308,6 +317,12 @@ public sealed partial class BetterRTXManagerWindow : Window
                             TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
                         return programFilesPath;
                     }
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled");
+                    return null;
                 }
 
                 var xboxGamesPath = Path.Combine(drive.Name, "XboxGames", targetFolderName);
@@ -331,13 +346,21 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
         }
 
+        if (cancellationToken.IsCancellationRequested)
+        {
+            System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled before manual selection");
+            return null;
+        }
+
         var manualPath = await LocateMinecraftManually();
         return manualPath;
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine("Manual selection button clicked - cancelling scan");
         _scanCancellationTokenSource?.Cancel();
+
         var path = await LocateMinecraftManually();
 
         if (path != null)
@@ -431,11 +454,20 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             PresetListContainer.Children.Clear();
 
+            // Get hash of currently installed RTXStub.material.bin
+            string currentHash = GetCurrentlyInstalledPresetHash();
+            System.Diagnostics.Debug.WriteLine($"Current installed hash: {currentHash ?? "NULL"}");
+
             // Always add Default preset first
             var defaultPreset = CreateDefaultPreset();
             if (defaultPreset != null)
             {
-                var defaultButton = CreatePresetButton(defaultPreset);
+                // Check if default matches current
+                if (!string.IsNullOrEmpty(currentHash) && defaultPreset.StubHash == currentHash)
+                {
+                    System.Diagnostics.Debug.WriteLine("Current installation matches Default preset");
+                }
+                var defaultButton = CreatePresetButton(defaultPreset, currentHash);
                 PresetListContainer.Children.Add(defaultButton);
             }
 
@@ -459,7 +491,11 @@ public sealed partial class BetterRTXManagerWindow : Window
                     var presetData = await ParsePresetAsync(presetFolder);
                     if (presetData != null)
                     {
-                        var presetButton = CreatePresetButton(presetData);
+                        if (!string.IsNullOrEmpty(currentHash) && presetData.StubHash == currentHash)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Current installation matches preset: {presetData.PresetName}");
+                        }
+                        var presetButton = CreatePresetButton(presetData, currentHash);
                         PresetListContainer.Children.Add(presetButton);
                     }
                 }
@@ -489,6 +525,15 @@ public sealed partial class BetterRTXManagerWindow : Window
         if (binFiles.Count == 0)
             return null;
 
+        // Compute hash of RTXStub.material.bin if it exists
+        string stubHash = null;
+        var stubPath = binFiles.FirstOrDefault(f =>
+            Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
+        if (stubPath != null)
+        {
+            stubHash = ComputeFileHash(stubPath);
+        }
+
         return new PresetData
         {
             PresetName = "Default RTX",
@@ -496,7 +541,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             PresetPath = _defaultFolder,
             Icon = null,
             BinFiles = binFiles,
-            IsDefault = true
+            IsDefault = true,
+            StubHash = stubHash
         };
     }
 
@@ -508,10 +554,9 @@ public sealed partial class BetterRTXManagerWindow : Window
             var manifestFiles = Directory.GetFiles(presetFolder, "manifest.json", SearchOption.AllDirectories);
 
             string presetName = Path.GetFileName(presetFolder);
-            string presetDescription = presetFolder;
             BitmapImage icon = null;
 
-            // Try to parse manifest if found
+            // Try to parse manifest if found (only for name)
             if (manifestFiles.Length > 0)
             {
                 var manifestPath = manifestFiles[0];
@@ -535,13 +580,6 @@ public sealed partial class BetterRTXManagerWindow : Window
                             var name = nameElement.GetString();
                             if (!string.IsNullOrWhiteSpace(name))
                                 presetName = name;
-                        }
-
-                        if (header.TryGetProperty("description", out var descElement))
-                        {
-                            var desc = descElement.GetString();
-                            if (!string.IsNullOrWhiteSpace(desc))
-                                presetDescription = desc;
                         }
                     }
                 }
@@ -569,14 +607,26 @@ public sealed partial class BetterRTXManagerWindow : Window
                 return null;
             }
 
+            // Compute hash of RTXStub.material.bin if it exists
+            string stubHash = null;
+            var stubPath = binFiles.FirstOrDefault(f =>
+                Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
+            if (stubPath != null)
+            {
+                stubHash = ComputeFileHash(stubPath);
+                System.Diagnostics.Debug.WriteLine($"Preset {presetName} stub hash: {stubHash}");
+            }
+
+            // Description is always the file path
             return new PresetData
             {
                 PresetName = presetName,
-                PresetDescription = presetDescription,
+                PresetDescription = presetFolder,
                 PresetPath = presetFolder,
                 Icon = icon,
                 BinFiles = binFiles,
-                IsDefault = false
+                IsDefault = false,
+                StubHash = stubHash
             };
         }
         catch (Exception ex)
@@ -638,8 +688,12 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     // PART 3: UI Creation Methods - Add these to the BetterRTXManagerWindow class
 
-    private Button CreatePresetButton(PresetData preset)
+    private Button CreatePresetButton(PresetData preset, string currentInstalledHash)
     {
+        bool isCurrent = !string.IsNullOrEmpty(currentInstalledHash) &&
+                         !string.IsNullOrEmpty(preset.StubHash) &&
+                         preset.StubHash == currentInstalledHash;
+
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -652,7 +706,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             Translation = new System.Numerics.Vector3(0, 0, 32)
         };
 
-        if (preset.IsDefault)
+        // Highlight ONLY the currently installed preset
+        if (isCurrent)
         {
             button.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
         }
@@ -681,7 +736,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             Height = 75,
             CornerRadius = new CornerRadius(5),
             Background = new SolidColorBrush(Colors.Transparent),
-            Translation = new System.Numerics.Vector3(0, 0, 48)
+            Translation = new System.Numerics.Vector3(0, 0, 32)
         };
 
         var iconShadow = new ThemeShadow();
@@ -1045,7 +1100,8 @@ public sealed partial class BetterRTXManagerWindow : Window
                     OperationSuccessful = true;
                     StatusMessage = $"Selected {presetData.PresetName} successfully";
                     System.Diagnostics.Debug.WriteLine(StatusMessage);
-                    this.Close();
+                    // refresh the preset list
+                    await LoadPresetsAsync();
                 }
                 else
                 {
@@ -1059,6 +1115,32 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
+
+    private string ComputeFileHash(string filePath)
+    {
+        try
+        {
+            if (!File.Exists(filePath))
+                return null;
+
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            using (var stream = File.OpenRead(filePath))
+            {
+                var hash = sha256.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error computing hash for {filePath}: {ex.Message}");
+            return null;
+        }
+    }
+    private string GetCurrentlyInstalledPresetHash()
+    {
+        var stubPath = Path.Combine(_gameMaterialsPath, "RTXStub.material.bin");
+        return ComputeFileHash(stubPath);
+    }
 
 
 
@@ -1273,5 +1355,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             get; set;
         }
+        public string StubHash // Hash of RTXStub.material.bin
+        {
+            get; set;
+        } 
     }
 }

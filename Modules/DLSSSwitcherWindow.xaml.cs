@@ -119,16 +119,19 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
     }
 
+
     private async Task InitializeAsync()
     {
         try
         {
             // Find Minecraft installation
             var minecraftPath = await FindMinecraftInstallationAsync();
+
+            // If null is returned, it means the delay completed and we're waiting for manual selection
+            // The manual selection button will handle initialization when clicked
             if (minecraftPath == null)
             {
-                StatusMessage = "Minecraft installation not found";
-                this.Close();
+                System.Diagnostics.Debug.WriteLine("Waiting for manual Minecraft location selection");
                 return;
             }
 
@@ -211,9 +214,9 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var commonLocations = new[]
         {
-         Path.Combine(@"C:\XboxGames", targetFolderName),
-         Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName)
-        };
+     Path.Combine(@"C:\XboxGames", targetFolderName),
+     Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName)
+    };
 
         foreach (var location in commonLocations)
         {
@@ -257,9 +260,9 @@ public sealed partial class DLSSSwitcherWindow : Window
             return result;
         }
 
-        // Delay completed, wait for user action or scan completion
-        var result2 = await scanTask;
-        return result2;
+        // return null and let manual selection handle it
+        // DON'T await the scan unconditionally
+        return null;
     }
 
 
@@ -317,6 +320,12 @@ public sealed partial class DLSSSwitcherWindow : Window
                     }
                 }
 
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    System.Diagnostics.Debug.WriteLine("Drive scan cancelled by user");
+                    return null;
+                }
+
                 // Check XboxGames
                 var xboxGamesPath = Path.Combine(drive.Name, "XboxGames", targetFolderName);
                 System.Diagnostics.Debug.WriteLine($"  Checking: {xboxGamesPath}");
@@ -348,6 +357,12 @@ public sealed partial class DLSSSwitcherWindow : Window
             }
         }
 
+        if (cancellationToken.IsCancellationRequested)
+        {
+            System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled before manual selection");
+            return null;
+        }
+
         // If scan failed, prompt user to locate manually
         System.Diagnostics.Debug.WriteLine("=== MANUAL LOCATION REQUIRED ===");
         var manualPath = await LocateMinecraftManually();
@@ -358,7 +373,9 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine("Manual selection button clicked - cancelling scan");
         _scanCancellationTokenSource?.Cancel();
+
         var path = await LocateMinecraftManually();
 
         if (path != null)
