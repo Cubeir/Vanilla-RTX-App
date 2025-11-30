@@ -23,9 +23,34 @@
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
               Background="Transparent">
-            <ProgressRing IsActive="True"
-                          Width="100"
-                          Height="100" />
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="20">
+                <ProgressRing IsActive="True"
+                              Width="100"
+                              Height="100" />
+
+                <Button x:Name="ManualSelectionButton"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Center"
+                        Padding="20,12,20,12"
+                        Click="ManualSelectionButton_Click">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="System-wide scan is in progress"
+                                   FontSize="14"
+                                   HorizontalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                        <TextBlock x:Name="ManualSelectionText"
+                                   Text="If it is taking too long, click to manually select game folder"
+                                   FontSize="12"
+                                   Opacity="0.75"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="400"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- DLL Selection UI -->

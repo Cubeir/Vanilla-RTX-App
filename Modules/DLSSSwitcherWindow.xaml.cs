@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management.Automation;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -23,6 +25,7 @@ public sealed partial class DLSSSwitcherWindow : Window
     private string _gameDllPath;
     private string _cacheFolder;
     private string _currentInstalledVersion;
+    private CancellationTokenSource _scanCancellationTokenSource;
 
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
@@ -74,6 +77,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
+        _scanCancellationTokenSource?.Cancel();
         _mainWindow.Closed -= MainWindow_Closed;
         this.Close();
     }
@@ -205,8 +209,8 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var commonLocations = new[]
         {
-            @"C:\Program Files\Microsoft Games\" + targetFolderName,
-            @"C:\XboxGames\" + targetFolderName
+         Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName),
+         Path.Combine(@"C:\XboxGames", targetFolderName)
         };
 
         foreach (var location in commonLocations)
@@ -237,7 +241,38 @@ public sealed partial class DLSSSwitcherWindow : Window
             }
         }
 
-        // Scan all drives for Minecraft installation
+        // System-wide scan with cancellation support
+        _scanCancellationTokenSource = new CancellationTokenSource();
+        var scanTask = ScanAllDrivesAsync(targetFolderName, _scanCancellationTokenSource.Token);
+        var delayTask = ShowManualSelectionButtonAfterDelay();
+
+        var completedTask = await Task.WhenAny(scanTask, delayTask);
+
+        if (completedTask == scanTask)
+        {
+            var result = await scanTask;
+            _scanCancellationTokenSource?.Cancel();
+            return result;
+        }
+
+        // Delay completed, wait for user action or scan completion
+        var result2 = await scanTask;
+        return result2;
+    }
+
+
+    private async Task ShowManualSelectionButtonAfterDelay()
+    {
+        await Task.Delay(5000);
+
+        _ = this.DispatcherQueue.TryEnqueue(() =>
+        {
+            ManualSelectionButton.Visibility = Visibility.Visible;
+        });
+    }
+
+    private async Task<string> ScanAllDrivesAsync(string targetFolderName, CancellationToken cancellationToken)
+    {
         System.Diagnostics.Debug.WriteLine($"=== FULL DRIVE SCAN ===");
 
         var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed).ToList();
@@ -245,6 +280,12 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         foreach (var drive in drives)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                System.Diagnostics.Debug.WriteLine("Drive scan cancelled by user");
+                return null;
+            }
+
             System.Diagnostics.Debug.WriteLine($"Scanning drive: {drive.Name}");
 
             try
@@ -265,7 +306,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
                         // Cache the path
                         var dirInfo = new DirectoryInfo(programFilesPath);
-                        if (isPreview)
+                        if (TunerVariables.Persistent.IsTargetingPreview)
                             TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
                         else
                             TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
@@ -290,7 +331,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
                         // Cache the path
                         var dirInfo = new DirectoryInfo(xboxGamesPath);
-                        if (isPreview)
+                        if (TunerVariables.Persistent.IsTargetingPreview)
                             TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
                         else
                             TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
@@ -313,6 +354,44 @@ public sealed partial class DLSSSwitcherWindow : Window
         return manualPath;
     }
 
+    private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
+    {
+        _scanCancellationTokenSource?.Cancel();
+        var path = await LocateMinecraftManually();
+
+        if (path != null)
+        {
+            // Close loading and reinitialize with found path
+            _gameDllPath = Path.Combine(path, "Content", "nvngx_dlss.dll");
+
+            if (!File.Exists(_gameDllPath))
+            {
+                StatusMessage = "DLSS file not found in selected Minecraft installation";
+                this.Close();
+                return;
+            }
+
+            _cacheFolder = EstablishCacheFolder();
+            if (_cacheFolder == null)
+            {
+                StatusMessage = "Could not establish cache folder";
+                this.Close();
+                return;
+            }
+
+            await CopyCurrentDllToCache();
+            await LoadDllsAsync();
+
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            DllSelectionPanel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            StatusMessage = "No valid Minecraft installation selected";
+            this.Close();
+        }
+    }
+
     private async Task<string> LocateMinecraftManually()
     {
         System.Diagnostics.Debug.WriteLine("Opening folder picker...");
@@ -333,7 +412,32 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         if (folder != null)
         {
+            // Check if they selected the root folder or Content folder
             var exePath = Path.Combine(folder.Path, "Content", "Minecraft.Windows.exe");
+            var isContentFolder = folder.Path.EndsWith("Content", StringComparison.OrdinalIgnoreCase);
+
+            if (isContentFolder)
+            {
+                // User selected Content folder, go up one level
+                var parentPath = Directory.GetParent(folder.Path)?.FullName;
+                if (parentPath != null)
+                {
+                    exePath = Path.Combine(parentPath, "Content", "Minecraft.Windows.exe");
+                    if (File.Exists(exePath))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"✓ Valid Minecraft folder selected (from Content): {parentPath}");
+
+                        var dirInfo = new DirectoryInfo(parentPath);
+                        if (TunerVariables.Persistent.IsTargetingPreview)
+                            TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
+                        else
+                            TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
+
+                        return parentPath;
+                    }
+                }
+            }
+
             System.Diagnostics.Debug.WriteLine($"Checking for exe at: {exePath}");
             System.Diagnostics.Debug.WriteLine($"Exe exists: {File.Exists(exePath)}");
 
@@ -341,7 +445,6 @@ public sealed partial class DLSSSwitcherWindow : Window
             {
                 System.Diagnostics.Debug.WriteLine($"✓ Valid Minecraft folder selected: {folder.Path}");
 
-                // Cache the path
                 var dirInfo = new DirectoryInfo(folder.Path);
                 if (TunerVariables.Persistent.IsTargetingPreview)
                 {
@@ -373,10 +476,7 @@ public sealed partial class DLSSSwitcherWindow : Window
     {
         var fallbackLocations = new Func<string>[]
         {
-            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), TunerVariables.CacheFolderName, "DLSS"),
-            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), TunerVariables.CacheFolderName, "DLSS"),
             () => Path.Combine(Path.GetTempPath(), TunerVariables.CacheFolderName, "DLSS"),
-            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), TunerVariables.CacheFolderName, "DLSS"),
         };
 
         foreach (var locationFunc in fallbackLocations)
@@ -403,9 +503,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             var versionInfo = FileVersionInfo.GetVersionInfo(_gameDllPath);
             _currentInstalledVersion = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
 
-            // Sanitize version for filename
-            var sanitizedVersion = SanitizeVersion(_currentInstalledVersion);
-            var cacheFileName = $"nvngx_dlss_{sanitizedVersion}.dll";
+            var cacheFileName = $"{_currentInstalledVersion}.dll";
             var cachePath = Path.Combine(_cacheFolder, cacheFileName);
 
             // Always overwrite to ensure cache is up-to-date
@@ -418,24 +516,6 @@ public sealed partial class DLSSSwitcherWindow : Window
             System.Diagnostics.Debug.WriteLine($"Error copying current DLL to cache: {ex.Message}");
             _currentInstalledVersion = "Unknown";
         }
-    }
-
-    private string SanitizeVersion(string version)
-    {
-        // Normalize version string: replace common separators with dots, then remove invalid chars
-        var normalized = version.Replace(",", ".").Replace(" ", ".").Replace("_", ".");
-
-        // Remove invalid filename characters
-        var invalid = Path.GetInvalidFileNameChars();
-        var cleaned = string.Join("", normalized.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
-
-        return cleaned.Trim('.');
-    }
-
-    private string FormatVersionForDisplay(string version)
-    {
-        // Display version with dots (should already be normalized from SanitizeVersion)
-        return version.Replace("_", ".").Replace(",", ".").Trim('.');
     }
 
     private async Task LoadDllsAsync()
@@ -458,11 +538,15 @@ public sealed partial class DLSSSwitcherWindow : Window
             {
                 EmptyStatePanel.Visibility = Visibility.Collapsed;
 
+                // Use HashSet to track versions we've already added
+                var addedVersions = new HashSet<string>();
+
                 foreach (var dllPath in dllFiles)
                 {
                     var dllData = await ParseDllAsync(dllPath);
-                    if (dllData != null)
+                    if (dllData != null && !addedVersions.Contains(dllData.Version))
                     {
+                        addedVersions.Add(dllData.Version);
                         var dllButton = CreateDllButton(dllData);
                         DllListContainer.Children.Add(dllButton);
                     }
@@ -480,6 +564,173 @@ public sealed partial class DLSSSwitcherWindow : Window
             System.Diagnostics.Debug.WriteLine($"EXCEPTION in LoadDllsAsync: {ex}");
             EmptyStatePanel.Visibility = Visibility.Visible;
             EmptyStateText.Text = $"Error loading DLLs: {ex.Message}";
+        }
+    }
+
+    private Button CreateDllButton(DllData dll)
+    {
+        bool isCurrentVersion = dll.Version == _currentInstalledVersion;
+
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(16, 20, 37, 20),
+            Margin = new Thickness(0, 5, 0, 5),
+            CornerRadius = new CornerRadius(5),
+            Tag = dll,
+            IsTextScaleFactorEnabled = false,
+            Translation = new System.Numerics.Vector3(0, 0, 32)
+        };
+
+        if (isCurrentVersion)
+        {
+            button.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
+        }
+
+        var buttonShadow = new ThemeShadow();
+        button.Shadow = buttonShadow;
+        button.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+            {
+                buttonShadow.Receivers.Add(ShadowReceiverGrid);
+            }
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        // Icon
+        var iconBorder = new Border
+        {
+            Width = 75,
+            Height = 75,
+            CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(Colors.Transparent)
+        };
+
+        var icon = new FontIcon
+        {
+            Glyph = "\uF156",
+            FontSize = 48,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTextScaleFactorEnabled = false
+        };
+
+        iconBorder.Child = icon;
+        Grid.SetColumn(iconBorder, 0);
+        grid.Children.Add(iconBorder);
+
+        // DLL info
+        var infoPanel = new StackPanel
+        {
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        // Sanitize version for display: replace commas with dots
+        var displayVersion = dll.Version.Replace(",", ".");
+
+        var versionText = new TextBlock
+        {
+            Text = $"DLSS {displayVersion}",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            IsTextScaleFactorEnabled = false
+        };
+
+        var pathText = new TextBlock
+        {
+            Text = dll.FilePath,
+            FontSize = 12,
+            Opacity = 0.75,
+            Margin = new Thickness(0, 2, 0, 0),
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            IsTextScaleFactorEnabled = false
+        };
+
+        infoPanel.Children.Add(versionText);
+        infoPanel.Children.Add(pathText);
+        Grid.SetColumn(infoPanel, 2);
+        grid.Children.Add(infoPanel);
+
+        // Delete button - only show if NOT current version
+        if (!isCurrentVersion)
+        {
+            var deleteButton = new Button
+            {
+                Width = 36,
+                Height = 36,
+                VerticalAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(0),
+                Margin = new Thickness(16, 0, 0, 0),
+                IsTextScaleFactorEnabled = false,
+                Tag = dll
+            };
+
+            var deleteIcon = new FontIcon
+            {
+                Glyph = "\uE74D",
+                FontSize = 16,
+                IsTextScaleFactorEnabled = false
+            };
+
+            deleteButton.Content = deleteIcon;
+            deleteButton.Click += DeleteDllButton_Click;
+
+            var deleteBadge = new Border
+            {
+                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(120, 60, 60, 60)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = deleteButton
+            };
+
+            Grid.SetColumn(deleteBadge, 4);
+            grid.Children.Add(deleteBadge);
+        }
+
+        button.Content = grid;
+        button.Click += DllButton_Click;
+
+        return button;
+    }
+
+    private async void DeleteDllButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is DllData dllData)
+        {
+            try
+            {
+                // Don't allow deleting the currently installed version
+                if (dllData.Version == _currentInstalledVersion)
+                {
+                    System.Diagnostics.Debug.WriteLine("Cannot delete currently installed DLSS version");
+                    return;
+                }
+
+                // Delete the file
+                if (File.Exists(dllData.FilePath))
+                {
+                    File.Delete(dllData.FilePath);
+                    System.Diagnostics.Debug.WriteLine($"Deleted DLSS version {dllData.Version} from cache");
+
+                    // Refresh list
+                    await LoadDllsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting DLL: {ex.Message}");
+            }
         }
     }
 
@@ -614,8 +865,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 // Get version from selected DLL
                 var versionInfo = FileVersionInfo.GetVersionInfo(file.Path);
                 var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
-                var sanitizedVersion = SanitizeVersion(version);
-                var cacheFileName = $"nvngx_dlss_{sanitizedVersion}.dll";
+                var cacheFileName = $"{version}.dll";
                 var cachePath = Path.Combine(_cacheFolder, cacheFileName);
 
                 // Copy to cache (overwrite if exists)
@@ -631,102 +881,6 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             System.Diagnostics.Debug.WriteLine($"Error adding DLL: {ex.Message}");
         }
-    }
-
-    private Button CreateDllButton(DllData dll)
-    {
-        bool isCurrentVersion = dll.Version == _currentInstalledVersion;
-
-        var button = new Button
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 16, 20),
-            Margin = new Thickness(0, 5, 0, 5),
-            CornerRadius = new CornerRadius(5),
-            Tag = dll,
-            IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32)
-        };
-
-        // Apply accent color style if this is the current version
-        if (isCurrentVersion)
-        {
-            button.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
-        }
-
-        var buttonShadow = new ThemeShadow();
-        button.Shadow = buttonShadow;
-        button.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-            {
-                buttonShadow.Receivers.Add(ShadowReceiverGrid);
-            }
-        };
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        // Icon
-        var iconBorder = new Border
-        {
-            Width = 75,
-            Height = 75,
-            CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(Colors.Transparent)
-        };
-
-        var icon = new FontIcon
-        {
-            Glyph = "\uF156",
-            FontSize = 48,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        };
-
-        iconBorder.Child = icon;
-        Grid.SetColumn(iconBorder, 0);
-        grid.Children.Add(iconBorder);
-
-        // DLL info
-        var infoPanel = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        var versionText = new TextBlock
-        {
-            Text = $"DLSS {FormatVersionForDisplay(dll.Version)}",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        var pathText = new TextBlock
-        {
-            Text = dll.FilePath,
-            FontSize = 12,
-            Opacity = 0.75,
-            Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        infoPanel.Children.Add(versionText);
-        infoPanel.Children.Add(pathText);
-        Grid.SetColumn(infoPanel, 2);
-        grid.Children.Add(infoPanel);
-
-        button.Content = grid;
-        button.Click += DllButton_Click;
-
-        return button;
     }
 
     private async void DllButton_Click(object sender, RoutedEventArgs e)
@@ -747,7 +901,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 if (success)
                 {
                     OperationSuccessful = true;
-                    StatusMessage = $"Switched to DLSS {FormatVersionForDisplay(dllData.Version)}";
+                    StatusMessage = $"Switched to DLSS {dllData.Version}";
 
                     // Refresh to update UI and cache
                     await CopyCurrentDllToCache();
@@ -765,43 +919,36 @@ public sealed partial class DLSSSwitcherWindow : Window
     {
         try
         {
-            // Create a temporary PowerShell script
-            var scriptPath = Path.Combine(Path.GetTempPath(), $"dlss_replace_{Guid.NewGuid()}.ps1");
-
-            var scriptContent = $@"
-try {{
-    Copy-Item -Path '{sourceDllPath}' -Destination '{_gameDllPath}' -Force
-    exit 0
-}} catch {{
-    exit 1
-}}
-";
-            await File.WriteAllTextAsync(scriptPath, scriptContent);
-
-            // Execute with elevation
-            var psi = new ProcessStartInfo
+            return await Task.Run(() =>
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"{scriptPath}\"",
-                Verb = "runas",
-                UseShellExecute = true,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            };
+                using (var powerShell = PowerShell.Create())
+                {
+                    // Add the copy command
+                    var script = $"Copy-Item -Path '{sourceDllPath}' -Destination '{_gameDllPath}' -Force";
+                    powerShell.AddScript(script);
 
-            var process = Process.Start(psi);
-            if (process != null)
-            {
-                await process.WaitForExitAsync();
+                    // Configure to run elevated
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"{script}\"",
+                        Verb = "runas",
+                        UseShellExecute = true,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    };
 
-                // Clean up script
-                try { File.Delete(scriptPath); } catch { }
+                    var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        process.WaitForExit();
+                        System.Diagnostics.Debug.WriteLine($"DLL replacement completed with exit code: {process.ExitCode}");
+                        return process.ExitCode == 0;
+                    }
 
-                System.Diagnostics.Debug.WriteLine($"DLL replacement completed with exit code: {process.ExitCode}");
-                return process.ExitCode == 0;
-            }
-
-            return false;
+                    return false;
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -832,6 +979,7 @@ try {{
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
+        _scanCancellationTokenSource?.Cancel();
         this.Close();
     }
 

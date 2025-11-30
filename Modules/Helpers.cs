@@ -223,9 +223,9 @@ public static class Helpers
                 string? savingLocation = null;
                 var fallbackLocations = new Func<string>[]
                 {
-                () => Path.Combine(Path.GetTempPath(), TunerVariables.CacheFolderName, fileName),
                 () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), TunerVariables.CacheFolderName, fileName),
                 () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), TunerVariables.CacheFolderName, fileName),
+                () => Path.Combine(Path.GetTempPath(), TunerVariables.CacheFolderName, fileName),
                 };
 
 
