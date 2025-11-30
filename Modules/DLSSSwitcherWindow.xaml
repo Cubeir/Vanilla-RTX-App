@@ -87,7 +87,7 @@
                         CornerRadius="0, 0, 6, 6"
                         Click="CloseButton_Click"
                         ToolTipService.ToolTip="Close"
-                        Translation="0,0,20"
+                        Translation="0,0,16"
                         IsTextScaleFactorEnabled="False">
                     <Button.Shadow>
                         <ThemeShadow />

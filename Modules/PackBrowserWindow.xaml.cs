@@ -46,8 +46,8 @@ public sealed partial class PackBrowserWindow : Window
         _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.IsResizable = false;
-            presenter.IsMaximizable = false;
+            presenter.IsResizable = true;
+            presenter.IsMaximizable = true;
             presenter.IsAlwaysOnTop = true;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;

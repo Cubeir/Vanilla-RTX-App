@@ -308,7 +308,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Select a local pack"
+                            <TextBlock Text="Select another pack"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
