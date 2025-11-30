@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Management.Automation;
 using System.Threading;
@@ -851,6 +852,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 ViewMode = PickerViewMode.List
             };
             picker.FileTypeFilter.Add(".dll");
+            picker.FileTypeFilter.Add(".zip");
 
             var hWnd = WindowNative.GetWindowHandle(this);
             InitializeWithWindow.Initialize(picker, hWnd);
@@ -858,24 +860,86 @@ public sealed partial class DLSSSwitcherWindow : Window
             var file = await picker.PickSingleFileAsync();
             if (file != null)
             {
-                // Get version from selected DLL
-                var versionInfo = FileVersionInfo.GetVersionInfo(file.Path);
-                var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
-                var cacheFileName = $"{version}.dll";
-                var cachePath = Path.Combine(_cacheFolder, cacheFileName);
+                if (file.FileType.Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    await ProcessZipFileAsync(file.Path);
+                }
+                else if (file.FileType.Equals(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    await ProcessDllFileAsync(file.Path);
+                }
 
-                // Copy to cache (overwrite if exists)
-                await Task.Run(() => File.Copy(file.Path, cachePath, true));
-
-                System.Diagnostics.Debug.WriteLine($"Added DLSS {version} to cache");
-
-                // Refresh list
+                // Refresh list after processing
                 await LoadDllsAsync();
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error adding DLL: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Error adding file: {ex.Message}");
+        }
+    }
+
+    private async Task ProcessDllFileAsync(string dllPath)
+    {
+        try
+        {
+            var versionInfo = FileVersionInfo.GetVersionInfo(dllPath);
+            var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
+            var cacheFileName = $"{version}.dll";
+            var cachePath = Path.Combine(_cacheFolder, cacheFileName);
+
+            await Task.Run(() => File.Copy(dllPath, cachePath, true));
+            System.Diagnostics.Debug.WriteLine($"Added DLSS {version} to cache");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error processing DLL {dllPath}: {ex.Message}");
+        }
+    }
+
+    private async Task ProcessZipFileAsync(string zipPath)
+    {
+        try
+        {
+            await Task.Run(() =>
+            {
+                using (var archive = System.IO.Compression.ZipFile.OpenRead(zipPath))
+                {
+                    foreach (var entry in archive.Entries)
+                    {
+                        // Check if it's a DLL file (at any depth)
+                        if (entry.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                // Extract to temp location first
+                                var tempPath = Path.Combine(Path.GetTempPath(), entry.Name);
+                                entry.ExtractToFile(tempPath, true);
+
+                                // Get version info
+                                var versionInfo = FileVersionInfo.GetVersionInfo(tempPath);
+                                var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
+                                var cacheFileName = $"{version}.dll";
+                                var cachePath = Path.Combine(_cacheFolder, cacheFileName);
+
+                                // Move to cache
+                                File.Copy(tempPath, cachePath, true);
+                                File.Delete(tempPath);
+
+                                System.Diagnostics.Debug.WriteLine($"Extracted and added DLSS {version} from ZIP");
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error processing {entry.FullName} from ZIP: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error processing ZIP file: {ex.Message}");
         }
     }
 
