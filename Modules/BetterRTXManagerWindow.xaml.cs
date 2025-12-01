@@ -22,12 +22,6 @@ using WinRT.Interop;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
 
-// ISSUE: WITH BOTH DLSS SWAPPER AND THIS, THE SYSTEM-WIDE SEARCH RUNS INDEFINITELY
-// CAUSING A LAG WHEN TRYING TO CLOSE THE WINDOW
-
-// ISSUE: THE DELETE BUTTON DOESN'T UPDATE based on what's selected
-
-// the delete button also looks weird both here and in dll swapper, there's something behind it, fix it
 
 public sealed partial class BetterRTXManagerWindow : Window
 {
