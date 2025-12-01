@@ -9,7 +9,7 @@
 
 <!-- Cover image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/aa0ec495-40b1-44f9-b075-32e4a26f7468" alt="vanilla-rtx-app-cover-render-2"/>
+  <img src="https://github.com/user-attachments/assets/807b1aed-74a0-470b-856b-effd90915d34" alt="vanilla-rtx-app-cover"/>
 </p>
 
 All-in-one Vanilla RTX app to tune various aspects of Vanilla RTX to your preferences, easily enable Minecraft's ray tracing, automatically update ray tracing packages for the latest versions of the game, and more...   
@@ -143,17 +143,18 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - The app may occasionally displays announcements from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important Vanilla RTX or App updates, known issues, etc... and sometimes for entertainment!
 
 ## Known Issues
-- Missing Icons on Older Windows 10  
+- Missing icons on some older Windows installations
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
 
 ### Need help?
 
-Join [Vanilla RTX server on Discord](https://discord.gg/A4wv4wwYud) & ask away!
+Post suggestions/issues to forum channel of [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud) or if you have questions, ask away.
+You can also alert me on [Minecraft RTX Community Discord](https://discord.gg/eKVKD3c), I regularly check and reply as soon as I can.
 
 ### Disclaimer
 
-The Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia
+Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
 Vanilla RTX 1.21.206 is out! Make sure the app is updated then reinstall the packages to get the latest enhancements!
