@@ -1,5 +1,8 @@
 # Vanilla-RTX-App
+Everything you'll ever need to easily acesss Minecraft RTX and unlock its full potential brought together in one place.  
 
+All-in-one Vanilla RTX app lets you automatically update ray tracing packages for the latest Minecraft releases, tune various aspects of Vanilla RTX resource packs to your preferences, easily enable Minecraft's ray tracing, manage and install BetterRTX presets, swap or upgrade DLSS, and more...   
+Ensuring ray tracing is accessible to new players, and frictionless for existing users—despite years of neglect from Mojang.
 <!-- Microsoft Store badge -->
 <p align="center">
   <a href="https://apps.microsoft.com/detail/9N6PCRZ5V9DJ?referrer=appbadge&mode=direct">
@@ -11,15 +14,6 @@
 <p align="center">
   <img src="https://github.com/user-attachments/assets/807b1aed-74a0-470b-856b-effd90915d34" alt="vanilla-rtx-app-cover"/>
 </p>
-
-All-in-one Vanilla RTX app to tune various aspects of Vanilla RTX to your preferences, easily enable Minecraft's ray tracing, automatically update ray tracing packages for the latest versions of the game, and more...   
-
-Ensuring ray tracing is accessible to new players, and frictionless for existing users — despite years of neglect from Mojang.
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/5b95f170-a683-4c51-b175-4abd4c401a19" alt="vanilla-rtx-app-cover-render"/>
-</p>
-
 <!-- Badges -->
 <p align="center">
   <a href="https://discord.gg/A4wv4wwYud">
@@ -32,8 +26,11 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
   <img src="https://img.shields.io/github/last-commit/Cubeir/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Last%20Commit&cacheSeconds=1800"/>
 </p>
 
-
 # Overview
+<!-- Second Cover Image -->
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7c7d4071-bf9f-4185-a693-795be6ad03e6" alt="vanilla-rtx-app-cover-render"/>
+</p>
 
 Below you'll find an up-to-date list of features & documentation of functionalities included in the app.   
 
@@ -47,9 +44,19 @@ Below you'll find an up-to-date list of features & documentation of functionalit
   Downloads and (re)installs the latest Vanilla RTX & Vanilla RTX Normals packages directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
   Files are then cached, making pack reinstalls instant unless a new update is available. This serves two main purposes: first to give a quick way reset the packs back to original state, allowing you to rapidly experiment and learn in practice what the tuning options do, and second to ensure you're always getting the latest version of Vanilla RTX, acting like an auto-updater. The updater also ensures you will only ever have one instance of each Vanilla RTX pack installed across both resource packs and development resource packs folders.  
   
-The app might notify you of important updates on startup, Vanilla RTX is constantly evolving and adapting to the latest release version of Minecraft, however for the most reliable and up-to-date information, check the news channel on the [VANILLA RTX Discord server](https://discord.gg/A4wv4wwYud).
+The app might notify you of important updates on startup, Vanilla RTX is constantly evolving and adapting to the latest release version of Minecraft, however for the most reliable and up-to-date information, check the news channel on the [Vanilla RTX Discord server](https://discord.gg/A4wv4wwYud).
   
 ![vanilla-rtx-app-ui-in-game-images (2)](https://github.com/user-attachments/assets/c83f1da5-d4ec-407d-ae7e-91a3f936e2d7)
+
+- `DLSS version swapper`
+Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically highlighted and preserved in your catalogue, so you won't lose the original dll when replacing it—allowing you to revert without reinstalling the game. Aaccepts both raw dll files and zip archives containing any number of dlls. You can also remove DLLs from your catalogue that you no longer need, and your currently-installed version of DLSS is always highlighted.
+> The app does not validate DLL files to be DLSS—it is your responsibility to provide valid DLSS dlls. This feature may be particularly essential to RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs.
+
+- `BetterRTX manager`
+Installs and manages BetterRTX's presets which you can download and import from the BetterRTX website. Supports .rtpack and .zip files containing the material.bin files.  
+You can create your own catalogue of presets to switch between instantly. On first use, the app automatically creates a "Default" preset by backing up the game's original bin files—this preset cannot be deleted as it preserves your ability to restore default RTX. Your currently-selected preset is highlighted.
+
+> Notes: This only supports Minecraft GDK (1.21.120 and higher), and given the install paths can now vary greatly, the app first scans for the most common install locations, if that fails, a system-wide search begins, but you're also prompted to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app should cache and reuse the game's location after initial detection, making subsequent preset changes or DLSS swapping faster.
 
 - `Preview (Toggle)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
@@ -143,9 +150,13 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - The app may occasionally displays announcements from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important Vanilla RTX or App updates, known issues, etc... and sometimes for entertainment!
 
 ## Known Issues
-- Missing icons on some older Windows installations
+- Missing icons on some older Windows installations (non-critical)   
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
+
+- Brief white flash on app startup (non-critical) 
+
+- Potentially disgraceful app closure under some conditions (non-critical) 
 
 ### Need help?
 
