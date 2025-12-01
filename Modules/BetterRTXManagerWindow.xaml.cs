@@ -1077,7 +1077,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (success)
                 {
                     OperationSuccessful = true;
-                    StatusMessage = $"Selected {presetData.PresetName} successfully";
+                    StatusMessage = $"Installed {presetData.PresetName} successfully";
                     System.Diagnostics.Debug.WriteLine(StatusMessage);
                     // refresh the preset list
                     await LoadPresetsAsync();
