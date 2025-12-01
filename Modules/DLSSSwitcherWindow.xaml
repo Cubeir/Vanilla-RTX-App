@@ -41,7 +41,7 @@
                                    HorizontalAlignment="Center"
                                    IsTextScaleFactorEnabled="False" />
                         <TextBlock x:Name="ManualSelectionText"
-                                   Text="If it is taking too long, click to manually select game folder"
+                                   Text="If this is taking too long, click to manually locate the game folder (Minecraft for Windows / Minecraft Preview for Windows)"
                                    FontSize="12"
                                    Opacity="0.75"
                                    HorizontalAlignment="Center"
