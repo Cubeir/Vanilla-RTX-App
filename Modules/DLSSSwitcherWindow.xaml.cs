@@ -12,7 +12,9 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Vanilla_RTX_App.BetterRTXBrowser;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -547,7 +549,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             if (dllFiles.Count == 0)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
-                EmptyStateText.Text = "No DLSS versions cached yet. Click the button below to add one.";
+                EmptyStateText.Text = "No DLSS versions imported yet. Download nvngx_dlss.dll files and import them here.";
             }
             else
             {
@@ -662,7 +664,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var pathText = new TextBlock
         {
-            Text = dll.FilePath,
+            Text = Helpers.SanitizePathForDisplay(dll.FilePath),
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -700,17 +702,8 @@ public sealed partial class DLSSSwitcherWindow : Window
             deleteButton.Content = deleteIcon;
             deleteButton.Click += DeleteDllButton_Click;
 
-            var deleteBadge = new Border
-            {
-                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(120, 60, 60, 60)),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = deleteButton
-            };
-
-            Grid.SetColumn(deleteBadge, 4);
-            grid.Children.Add(deleteBadge);
+            Grid.SetColumn(deleteButton, 4);
+            grid.Children.Add(deleteButton);
         }
 
         button.Content = grid;
@@ -825,7 +818,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var descText = new TextBlock
         {
-            Text = "Drag and drop or browse for a DLSS DLL file to add",
+            Text = "Drag and drop or browse for a DLSS DLL file to add (.dll or .zip with the dlls)",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -849,17 +842,8 @@ public sealed partial class DLSSSwitcherWindow : Window
             IsTextScaleFactorEnabled = false
         };
 
-        var badge = new Border
-        {
-            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(120, 60, 60, 60)),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        badge.Child = hyperlinkButton;
-        Grid.SetColumn(badge, 4);
-        grid.Children.Add(badge);
+        Grid.SetColumn(hyperlinkButton, 4);
+        grid.Children.Add(hyperlinkButton);
 
         button.Content = grid;
         button.Click += AddDllButton_Click;

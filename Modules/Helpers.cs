@@ -337,6 +337,44 @@ public static class Helpers
     }
 
 
+    public static string SanitizePathForDisplay(string fullPath)
+    {
+        if (string.IsNullOrEmpty(fullPath))
+            return fullPath;
+
+        try
+        {
+            // Find LocalState in the path
+            int localStateIndex = fullPath.IndexOf("LocalState", StringComparison.OrdinalIgnoreCase);
+
+            if (localStateIndex > 0)
+            {
+                // Get everything after "LocalState"
+                string afterLocalState = fullPath.Substring(localStateIndex);
+                return $"AppData\\{afterLocalState}";
+            }
+
+            // If LocalState not found, just return the filename and parent folder
+            var fileName = Path.GetFileName(fullPath);
+            var parentFolder = Path.GetFileName(Path.GetDirectoryName(fullPath));
+            return $"...\\{parentFolder}\\{fileName}";
+        }
+        catch
+        {
+            // Fallback to just showing the last two segments
+            try
+            {
+                var fileName = Path.GetFileName(fullPath);
+                var parentFolder = Path.GetFileName(Path.GetDirectoryName(fullPath));
+                return $"...\\{parentFolder}\\{fileName}";
+            }
+            catch
+            {
+                return fullPath;
+            }
+        }
+    }
+
 
     public static void GenerateTexturesLists(string rootDirectory)
     {

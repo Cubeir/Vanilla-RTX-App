@@ -15,6 +15,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -482,7 +483,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             if (presetFolders.Count == 0 && defaultPreset == null)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
-                EmptyStateText.Text = "No BetterRTX presets cached yet. Click the button below to add one.";
+                EmptyStateText.Text = "No BetterRTX presets have been imported yet. Click download presets, download .rtpacks from BetterRTX's website and import them here.";
             }
             else
             {
@@ -791,7 +792,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var descText = new TextBlock
         {
-            Text = preset.PresetDescription,
+            Text = Helpers.SanitizePathForDisplay(preset.PresetDescription),
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -806,7 +807,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         grid.Children.Add(infoPanel);
 
         // Delete button - only show if NOT default preset
-        if (!preset.IsDefault)
+        if (!preset.IsDefault && !isCurrent)
         {
             var deleteButton = new Button
             {
@@ -829,17 +830,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             deleteButton.Content = deleteIcon;
             deleteButton.Click += DeletePresetButton_Click;
 
-            var deleteBadge = new Border
-            {
-                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(120, 60, 60, 60)),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = deleteButton
-            };
-
-            Grid.SetColumn(deleteBadge, 4);
-            grid.Children.Add(deleteBadge);
+            Grid.SetColumn(deleteButton, 4);
+            grid.Children.Add(deleteButton);
         }
 
         button.Content = grid;
@@ -947,17 +939,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             IsTextScaleFactorEnabled = false
         };
 
-        var badge = new Border
-        {
-            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(120, 60, 60, 60)),
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Child = hyperlinkButton
-        };
-
-        Grid.SetColumn(badge, 4);
-        grid.Children.Add(badge);
+        Grid.SetColumn(hyperlinkButton, 4);
+        grid.Children.Add(hyperlinkButton);
 
         button.Content = grid;
         button.Click += AddPresetButton_Click;
@@ -1318,16 +1301,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             return false;
         }
     }
-
-
-
-
-
-
-
-
-
-
 
 
 

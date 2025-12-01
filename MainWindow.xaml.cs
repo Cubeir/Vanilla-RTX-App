@@ -37,13 +37,20 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Bunblde the glyph's fonts with the app to let icons appear on minimal win11 and old win10 devices
+- REFACTOR GAME FINDING LOGIC into a HELPER
+Can significantly shorten DLSS Swapper and BetterRTX Manager that way
+A global helper and set of tools/class dedicated to finding the game instead of copy pasting it onto each window
+[This may VERY WELL open way to fix the lag caused by search for the game]
+
+- Bundle the glyph's fonts with the app to let icons appear on minimal win11 and old win10 devices
 
 ^ test this on the laptop with old win 10
 also, test the openlink button if no browser or association exists
 
 
-- Integerate BetterRTX if possible
+- Further integerate BetterRTX if possible
+Download presets and cache them for everyone, automatically keep an updated catalogue
+It is good as it is, further integeration may require cooperation 
 
 - Add a proper, non-intrusive leave a review prompt
 
@@ -200,8 +207,11 @@ public static class TunerVariables
 public sealed partial class MainWindow : Window
 {
     public static MainWindow? Instance { get; private set; }
+
     private readonly WindowStateManager _windowStateManager;
+
     private readonly ProgressBarManager _progressManager;
+
     private readonly PackUpdater _updater = new();
 
     private static CancellationTokenSource? _lampBlinkCts;
@@ -231,7 +241,7 @@ public sealed partial class MainWindow : Window
 
         Instance = this;
 
-        var defaultSize = new SizeInt32(964, 555);
+        var defaultSize = new SizeInt32(1055, 555);
         _windowStateManager.ApplySavedStateOrDefaults();
 
         // Version, title and initial logs
@@ -239,7 +249,7 @@ public sealed partial class MainWindow : Window
         var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
         appVersion = versionString;
         Log($"App Version: {versionString}" + new string('\n', 2) +
-             "Not affiliated with Mojang Studios or NVIDIA;\nby continuing, you consent to modifications to your Minecraft data folder.");
+             "Not affiliated with Mojang Studios or NVIDIA;\nby continuing, you consent to modifications to your Minecraft data folders.");
 
         // Do upon app closure
         this.Closed += (s, e) =>
@@ -368,7 +378,7 @@ public sealed partial class MainWindow : Window
 
             var dpi = GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(950 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(970 * scaleFactor);
             presenter.PreferredMinimumHeight = (int)(555 * scaleFactor);
         }
 

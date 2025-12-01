@@ -247,10 +247,11 @@ public static class WindowControlsManagerExtensions
     }
 }
 
-
+// TODO: Just marking it, come here and check this out
 /// <summary>
 /// This shouldn't really be here, a utility class for managing a simple progress bar on/off while preventing race conditions
 /// Update it later to use a more robust solution like IProgress<T> or async/await patterns, show real time progress, etc.
+/// In fact, remove the thing entirely, you've already got the lamp to show "something is going on" this is just VISUAL CLUTTER
 /// </summary>
 public class ProgressBarManager
 {
