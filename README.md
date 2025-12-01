@@ -142,6 +142,11 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 
 - The app may occasionally displays announcements from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important Vanilla RTX or App updates, known issues, etc... and sometimes for entertainment!
 
+## Known Issues
+- Missing Icons on Older Windows 10  
+If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
+https://aka.ms/SegoeFluentIcons
+
 ### Need help?
 
 Join [Vanilla RTX server on Discord](https://discord.gg/A4wv4wwYud) & ask away!
