@@ -101,7 +101,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             });
 
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Better RTX Preset Manager (Targeting {text})";
+            WindowTitle.Text = $"BetterRTX Preset Manager (Targeting {text})";
 
             await InitializeAsync();
         }
