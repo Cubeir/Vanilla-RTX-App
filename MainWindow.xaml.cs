@@ -37,11 +37,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- DLSS swapper has a problem, it won't even let the user start if it can't find the existing DLL to copy
-It's like, the first step which should've been optional is a requirement, fix it:
-Here's the actual behavior, if ANY other DLL is present in the cache, INSTALL THE NEWEST ONE if user's dll is missing
-sure we can't cache it but at least we install something to fix the mess.
-
 - REFACTOR GAME FINDING LOGIC into a HELPER
 Can significantly shorten DLSS Swapper and BetterRTX Manager that way
 A global helper and set of tools/class dedicated to finding the game instead of copy pasting it onto each window
