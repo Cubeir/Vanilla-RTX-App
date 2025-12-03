@@ -695,6 +695,9 @@ public static class MinecraftGDKLocator
 
     #region Private Helper Methods
 
+    /// <summary>
+    /// Validates a single installation (stable or preview) and updates cache.
+    /// </summary>
     private static void ValidateAndUpdateSingleInstallation(
         bool isPreview,
         string? cachedPath,
@@ -827,6 +830,10 @@ public static class MinecraftGDKLocator
         return File.Exists(exePath);
     }
 
+    /// <summary>
+    /// Returns array of common installation locations.
+    /// Scalable - add more locations as needed.
+    /// </summary>
     private static string[] GetCommonLocations(bool isPreview)
     {
         var folderName = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
@@ -838,6 +845,10 @@ public static class MinecraftGDKLocator
         };
     }
 
+    /// <summary>
+    /// Recursively searches a directory tree for Minecraft installation.
+    /// Limited to MaxSearchDepth levels to prevent excessive scanning.
+    /// </summary>
     private static async Task<string?> RecursiveSearchAsync(
         string searchPath,
         string targetFolderName,
@@ -891,6 +902,10 @@ public static class MinecraftGDKLocator
         }
     }
 
+    /// <summary>
+    /// Opportunistically checks for the other Minecraft version nearby when one is found.
+    /// If stable Minecraft found, checks for Preview nearby and vice versa.
+    /// </summary>
     private static void CheckForOtherVersionNearby(string driveName, bool foundVersionIsPreview)
     {
         var otherFolderName = foundVersionIsPreview ? MinecraftFolderName : MinecraftPreviewFolderName;
@@ -919,6 +934,9 @@ public static class MinecraftGDKLocator
         Debug.WriteLine($"  Other version not found nearby");
     }
 
+    /// <summary>
+    /// Caches a discovered installation path to persistent storage. ppppppppppppppp (this was contributed by my 11 months old niece Della, keeping it)
+    /// </summary>
     private static void CacheInstallation(bool isPreview, string path)
     {
         if (isPreview)
