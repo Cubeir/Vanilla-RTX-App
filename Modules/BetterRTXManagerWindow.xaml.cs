@@ -136,11 +136,15 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             string minecraftPath = null;
 
-            if (cachedPath != null && cachedPath.Exists)
+            if (!string.IsNullOrEmpty(cachedPath))
             {
-                // Cache is valid, use it immediately
-                Debug.WriteLine($"✓ Using cached path: {cachedPath.FullName}");
-                minecraftPath = cachedPath.FullName;
+                var dir = new DirectoryInfo(cachedPath);
+
+                if (dir.Exists)
+                {
+                    Debug.WriteLine($"✓ Using cached path: {dir.FullName}");
+                    minecraftPath = dir.FullName;
+                }
             }
             else
             {

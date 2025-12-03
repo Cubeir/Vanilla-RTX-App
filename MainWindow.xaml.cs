@@ -129,8 +129,8 @@ public static class TunerVariables
     {
         public static bool IsTargetingPreview = Defaults.IsTargetingPreview;
 
-        public static DirectoryInfo? MinecraftInstallPath = null;
-        public static DirectoryInfo? MinecraftPreviewInstallPath = null;
+        public static string? MinecraftInstallPath = null;
+        public static string? MinecraftPreviewInstallPath = null;
 
         public static double FogMultiplier = Defaults.FogMultiplier;
         public static double EmissivityMultiplier = Defaults.EmissivityMultiplier;
