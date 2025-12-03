@@ -326,6 +326,9 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app, when finished, launch the game using {buttonName} button.", LogLevel.Warning);
         }
 
+        // Calling it last since it might add a bit of delay
+        MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
+
         async Task FadeOutSplash()
         {
             if (SplashOverlay == null) return;
