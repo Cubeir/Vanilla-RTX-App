@@ -520,6 +520,7 @@ public static class MinecraftGDKLocator
     /// <summary>
     /// PHASE 1: Quick validation of cached paths and common locations.
     /// Called on app startup. Self-contained and fast.
+    /// Validates both Minecraft stable and Preview installations.
     /// </summary>
     public static void ValidateAndUpdateCachedLocations()
     {
@@ -544,6 +545,8 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// PHASE 2: Deep system-wide search for Minecraft installation.
+    /// Only searches for the version the user is targeting.
+    /// Can be cancelled by user initiating manual selection.
     /// </summary>
     public static async Task<string?> SearchForMinecraftAsync(bool searchForPreview, CancellationToken cancellationToken)
     {
@@ -585,7 +588,6 @@ public static class MinecraftGDKLocator
                     {
                         Debug.WriteLine($"✓ Found target at priority location: {priorityPath}");
                         CacheInstallation(searchForPreview, priorityPath);
-                        CheckForOtherVersionNearby(drive.Name, searchForPreview);
                         return priorityPath;
                     }
                 }
@@ -602,7 +604,6 @@ public static class MinecraftGDKLocator
                 {
                     Debug.WriteLine($"✓ Found target via deep search: {foundPath}");
                     CacheInstallation(searchForPreview, foundPath);
-                    CheckForOtherVersionNearby(drive.Name, searchForPreview);
                     return foundPath;
                 }
             }
@@ -619,6 +620,7 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// PHASE 3: Manual folder selection with validation.
+    /// User must select the correct Minecraft root folder (where Content/Minecraft.Windows.exe exists).
     /// </summary>
     public static async Task<string?> LocateMinecraftManuallyAsync(bool isPreview, IntPtr windowHandle)
     {
@@ -649,14 +651,16 @@ public static class MinecraftGDKLocator
             var unexpectedFolderName = isPreview ? MinecraftFolderName : MinecraftPreviewFolderName;
             var selectedFolderName = Path.GetFileName(folder.Path);
 
+            // Check if user selected the wrong version
             if (selectedFolderName.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
             {
-                Debug.WriteLine($"✗ User selected wrong version");
+                Debug.WriteLine($"✗ User selected wrong version: {selectedFolderName}");
                 return null;
             }
 
             string pathToValidate = folder.Path;
 
+            // Handle if user selected the "Content" subfolder instead of root
             if (selectedFolderName.Equals("Content", StringComparison.OrdinalIgnoreCase))
             {
                 var parentPath = Directory.GetParent(folder.Path)?.FullName;
@@ -667,6 +671,7 @@ public static class MinecraftGDKLocator
                 }
             }
 
+            // Validate the path
             if (IsValidMinecraftPath(pathToValidate))
             {
                 var finalFolderName = Path.GetFileName(pathToValidate);
@@ -683,7 +688,7 @@ public static class MinecraftGDKLocator
                 return pathToValidate;
             }
 
-            Debug.WriteLine($"✗ Selected folder is not valid");
+            Debug.WriteLine($"✗ Selected folder is not valid Minecraft installation");
             return null;
         }
         catch (Exception ex)
@@ -697,6 +702,7 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Validates a single installation (stable or preview) and updates cache.
+    /// Follows search priority: cached path -> common locations -> WindowsApps symlinks.
     /// </summary>
     private static void ValidateAndUpdateSingleInstallation(
         bool isPreview,
@@ -706,7 +712,7 @@ public static class MinecraftGDKLocator
         var versionName = isPreview ? "Preview" : "Stable";
         Debug.WriteLine($"Validating {versionName} Minecraft...");
 
-        // Check cached path
+        // Check cached path first
         if (!string.IsNullOrEmpty(cachedPath))
         {
             Debug.WriteLine($"  Cached path: {cachedPath}");
@@ -725,16 +731,7 @@ public static class MinecraftGDKLocator
             Debug.WriteLine($"  No cached path for {versionName}");
         }
 
-        // STAGE 0: Try WindowsApps symlinks FIRST (99.9999% success rate)
-        var symlinkPath = TryResolveWindowsAppsSymlink(isPreview);
-        if (symlinkPath != null)
-        {
-            Debug.WriteLine($"  ✓ Found {versionName} via WindowsApps symlink: {symlinkPath}");
-            updateCache(symlinkPath);
-            return;
-        }
-
-        // STAGE 1: Try common locations
+        // STAGE 1: Try common locations (highest success rate)
         var commonLocations = GetCommonLocations(isPreview);
         foreach (var location in commonLocations)
         {
@@ -748,12 +745,22 @@ public static class MinecraftGDKLocator
             }
         }
 
-        Debug.WriteLine($"  ✗ {versionName} not found");
+        // STAGE 2: Try WindowsApps symlinks as last resort (may fail due to permissions)
+        Debug.WriteLine($"  Common locations failed, trying WindowsApps symlinks...");
+        var symlinkPath = TryResolveWindowsAppsSymlink(isPreview);
+        if (symlinkPath != null)
+        {
+            Debug.WriteLine($"  ✓ Found {versionName} via WindowsApps symlink: {symlinkPath}");
+            updateCache(symlinkPath);
+            return;
+        }
+
+        Debug.WriteLine($"  ✗ {versionName} not found in Phase 1");
     }
 
     /// <summary>
-    /// STAGE 0: Resolve WindowsApps symlinks to get actual installation path.
-    /// This works 99.9999% of the time as symlinks are updated with each Minecraft update.
+    /// STAGE 2: Resolve WindowsApps symlinks to get actual installation path.
+    /// This is a last resort as the folder requires elevated permissions.
     /// </summary>
     private static string? TryResolveWindowsAppsSymlink(bool isPreview)
     {
@@ -811,7 +818,7 @@ public static class MinecraftGDKLocator
         }
         catch (UnauthorizedAccessException)
         {
-            Debug.WriteLine($"  ✗ Access denied to WindowsApps (this is normal)");
+            Debug.WriteLine($"  ✗ Access denied to WindowsApps (expected on most systems)");
             return null;
         }
         catch (Exception ex)
@@ -821,6 +828,10 @@ public static class MinecraftGDKLocator
         }
     }
 
+    /// <summary>
+    /// Validates if a path contains a valid Minecraft installation.
+    /// Checks for Content/Minecraft.Windows.exe
+    /// </summary>
     private static bool IsValidMinecraftPath(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
@@ -832,7 +843,7 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Returns array of common installation locations.
-    /// Scalable - add more locations as needed.
+    /// STAGE 1 search targets - highest probability locations.
     /// </summary>
     private static string[] GetCommonLocations(bool isPreview)
     {
@@ -848,6 +859,7 @@ public static class MinecraftGDKLocator
     /// <summary>
     /// Recursively searches a directory tree for Minecraft installation.
     /// Limited to MaxSearchDepth levels to prevent excessive scanning.
+    /// Can be cancelled via CancellationToken.
     /// </summary>
     private static async Task<string?> RecursiveSearchAsync(
         string searchPath,
@@ -903,39 +915,8 @@ public static class MinecraftGDKLocator
     }
 
     /// <summary>
-    /// Opportunistically checks for the other Minecraft version nearby when one is found.
-    /// If stable Minecraft found, checks for Preview nearby and vice versa.
-    /// </summary>
-    private static void CheckForOtherVersionNearby(string driveName, bool foundVersionIsPreview)
-    {
-        var otherFolderName = foundVersionIsPreview ? MinecraftFolderName : MinecraftPreviewFolderName;
-        var otherVersionName = foundVersionIsPreview ? "Stable" : "Preview";
-
-        Debug.WriteLine($"Opportunistic check: Looking for {otherVersionName} version nearby...");
-
-        var commonParents = new[]
-        {
-            Path.Combine(driveName, "XboxGames"),
-            Path.Combine(driveName, "Program Files", "Microsoft Games")
-        };
-
-        foreach (var parent in commonParents)
-        {
-            var otherPath = Path.Combine(parent, otherFolderName);
-
-            if (IsValidMinecraftPath(otherPath))
-            {
-                Debug.WriteLine($"  ✓ Found {otherVersionName} nearby: {otherPath}");
-                CacheInstallation(!foundVersionIsPreview, otherPath);
-                return;
-            }
-        }
-
-        Debug.WriteLine($"  Other version not found nearby");
-    }
-
-    /// <summary>
-    /// Caches a discovered installation path to persistent storage. ppppppppppppppp (this was contributed by my 11 months old niece Della, keeping it)
+    /// Caches a discovered installation path to persistent storage.
+    /// Stores as string for serialization compatibility.
     /// </summary>
     private static void CacheInstallation(bool isPreview, string path)
     {
