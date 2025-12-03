@@ -12,8 +12,6 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Vanilla_RTX_App.BetterRTXBrowser;
-using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -129,8 +127,6 @@ public sealed partial class DLSSSwitcherWindow : Window
             // Find Minecraft installation
             var minecraftPath = await FindMinecraftInstallationAsync();
 
-            // If null is returned, it means the delay completed and we're waiting for manual selection
-            // The manual selection button will handle initialization when clicked
             if (minecraftPath == null)
             {
                 System.Diagnostics.Debug.WriteLine("Waiting for manual Minecraft location selection");
@@ -139,15 +135,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
             _gameDllPath = Path.Combine(minecraftPath, "Content", "nvngx_dlss.dll");
 
-            // Verify DLL exists
-            if (!File.Exists(_gameDllPath))
-            {
-                StatusMessage = "DLSS file not found in Minecraft installation";
-                this.Close();
-                return;
-            }
-
-            // Establish cache folder
+            // Establish cache folder BEFORE checking if DLL exists
             _cacheFolder = EstablishCacheFolder();
             if (_cacheFolder == null)
             {
@@ -156,8 +144,50 @@ public sealed partial class DLSSSwitcherWindow : Window
                 return;
             }
 
-            // Copy current game DLL to cache
-            await CopyCurrentDllToCache();
+            // Check if game DLL exists
+            bool gameDllExists = File.Exists(_gameDllPath);
+
+            if (!gameDllExists)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠ DLSS file not found at: {_gameDllPath}");
+
+                // Look for cached DLLs to repair the game
+                var cachedDlls = Directory.GetFiles(_cacheFolder, "*.dll")
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .ToList();
+
+                if (cachedDlls.Count > 0)
+                {
+                    // Pick the newest cached DLL
+                    var repairDll = cachedDlls.First();
+                    System.Diagnostics.Debug.WriteLine($"🔧 Attempting to mend with: {repairDll}");
+
+                    // Attempt to install the cached DLL
+                    var repairSuccess = await ReplaceDllWithElevation(repairDll);
+
+                    if (repairSuccess)
+                    {
+                        System.Diagnostics.Debug.WriteLine("✓ Game mended successfully");
+                        gameDllExists = true; // Continue normal flow
+                        await CopyCurrentDllToCache(); // Back it up now
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("⚠ User cancelled UAC or repair failed - continuing anyway");
+                        // Don't close! Let them add DLLs manually
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠ No cached DLLs available - user must import one");
+                    // Don't close! Let them import and install DLLs manually
+                }
+            }
+            else
+            {
+                // Game DLL exists, back it up to cache
+                await CopyCurrentDllToCache();
+            }
 
             // Load and display all cached DLLs
             await LoadDllsAsync();
@@ -172,6 +202,9 @@ public sealed partial class DLSSSwitcherWindow : Window
             this.Close();
         }
     }
+
+
+
 
     private async Task<string> FindMinecraftInstallationAsync()
     {
@@ -382,15 +415,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         if (path != null)
         {
-            // Close loading and reinitialize with found path
             _gameDllPath = Path.Combine(path, "Content", "nvngx_dlss.dll");
-
-            if (!File.Exists(_gameDllPath))
-            {
-                StatusMessage = "DLSS file not found in selected Minecraft installation";
-                this.Close();
-                return;
-            }
 
             _cacheFolder = EstablishCacheFolder();
             if (_cacheFolder == null)
@@ -400,8 +425,46 @@ public sealed partial class DLSSSwitcherWindow : Window
                 return;
             }
 
-            await CopyCurrentDllToCache();
-            await LoadDllsAsync();
+            // Check if game DLL exists
+            bool gameDllExists = File.Exists(_gameDllPath);
+
+            if (!gameDllExists)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠ DLSS file not found at: {_gameDllPath}");
+
+                // Look for cached DLLs to repair
+                var cachedDlls = Directory.GetFiles(_cacheFolder, "*.dll")
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .ToList();
+
+                if (cachedDlls.Count > 0)
+                {
+                    var repairDll = cachedDlls.First();
+                    System.Diagnostics.Debug.WriteLine($"🔧 Attempting to repair game with: {repairDll}");
+
+                    var repairSuccess = await ReplaceDllWithElevation(repairDll);
+
+                    if (repairSuccess)
+                    {
+                        System.Diagnostics.Debug.WriteLine("✓ Game repaired successfully");
+                        gameDllExists = true;
+                        await CopyCurrentDllToCache(); // Back it up now
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("⚠ User cancelled UAC or repair failed - continuing anyway");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠ No cached DLLs available - user must import one");
+                }
+            }
+            else
+            {
+                // Game DLL exists, back it up to cache
+                await CopyCurrentDllToCache();
+            }
 
             LoadingPanel.Visibility = Visibility.Collapsed;
             DllSelectionPanel.Visibility = Visibility.Visible;
@@ -1107,7 +1170,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
     }
 
-    private async Task<DllData> ParseDllAsync(string dllPath)
+    private static async Task<DllData> ParseDllAsync(string dllPath)
     {
         try
         {

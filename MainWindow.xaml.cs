@@ -49,12 +49,6 @@ A global helper and set of tools/class dedicated to finding the game instead of 
 
 Need a clever to search this, or.. what does something like Everything do?
 
-- Bundle the glyph's fonts with the app to let icons appear on minimal win11 and old win10 devices
-
-^ test this on the laptop with old win 10
-also, test the openlink button if no browser or association exists
-
-
 - Further integerate BetterRTX if possible
 Download presets and cache them for everyone, automatically keep an updated catalogue
 It is good as it is, further integeration may require cooperation 
