@@ -75,7 +75,7 @@ Upon launch, the app automatically scans for already-installed Vanilla RTX packs
 
 - `Select a local pack`  
   Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select one pack to be tuned alongside any of the 3 primary Vanilla RTX variants.
-  Holding shift while pressing this button will instead trigger a Vanilla RTX version check which will be written in the sidebar.
+  Holding shift while pressing this button will instead trigger a Vanilla RTX version check which will appear in the sidebar.
 
 - `Fog multiplier`  
   Updates all fog densities by a given factor — e.g., `0.5` to halve, `3.0` to triple, or `0` to effectively disable air fog. If a fog density is already at 0, the multiplier is instead converted into an acceptable literal number between `0.0-1.0`.
@@ -137,8 +137,9 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 
 - Hovering any control in the app displays a unique Minecraft-inspired artwork communicating its function in the bottom left side of the app, for instance, sliders show how they should impact the textures in-game as you change them, toggles show before/after, and buttons display an artistic interpretation of what the they do!
   In combination with tooltips, this is meant to help make the app less intimidating and more beginner-friendly!  
+- Double-clicking the art artwork area will copy the logs for debugging, it may also be helpful to attach these when reporting issues.
 
-- The following settings persist between sesssions: tuning options/slider values, Preview toggle, and theme choice.
+- The following settings persist between sessions: tuning options/slider values, Preview toggle, and theme choice, and game install locations.
   Allowing you to keep your personal favorite values and quickly re-tune newer versions without having to remember everything.
 
 - Top-left titlebar buttons in order:
@@ -156,7 +157,7 @@ https://aka.ms/SegoeFluentIcons
 
 - Brief white flash on app startup (non-critical) 
 
-- Potentially disgraceful app closure under some conditions (non-critical) 
+- Potentially ungraceful app closure under some conditions (non-critical) 
 
 ### Need help?
 
