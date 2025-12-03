@@ -1132,12 +1132,13 @@ public sealed partial class BetterRTXManagerWindow : Window
         try
         {
             var fileName = Path.GetFileNameWithoutExtension(archivePath);
-            var destinationFolder = Path.Combine(_cacheFolder, fileName);
+            var sanitizedName = SanitizePresetName(fileName);
+            var destinationFolder = Path.Combine(_cacheFolder, sanitizedName);
 
             // If folder already exists, delete it to allow overwrite
             if (Directory.Exists(destinationFolder))
             {
-                System.Diagnostics.Debug.WriteLine($"Overwriting existing preset: {fileName}");
+                System.Diagnostics.Debug.WriteLine($"Overwriting existing preset: {sanitizedName}");
                 Directory.Delete(destinationFolder, true);
             }
 
@@ -1151,9 +1152,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                     {
                         try
                         {
-                            // Skip directory entries
-                            if (string.IsNullOrEmpty(entry.Name))
-                                continue;
+                            if (string.IsNullOrEmpty(entry.Name)) continue;
 
                             var destinationPath = Path.Combine(destinationFolder, entry.FullName);
                             var destinationDir = Path.GetDirectoryName(destinationPath);
@@ -1258,12 +1257,15 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             return await Task.Run(() =>
             {
-                // Build PowerShell script to copy all files
                 var scriptLines = new List<string>();
 
                 foreach (var (sourcePath, destPath) in filesToReplace)
                 {
-                    scriptLines.Add($"Copy-Item -Path '{sourcePath}' -Destination '{destPath}' -Force");
+                    // Escape single quotes
+                    var escapedSource = sourcePath.Replace("'", "''");
+                    var escapedDest = destPath.Replace("'", "''");
+
+                    scriptLines.Add($"Copy-Item -Path '{escapedSource}' -Destination '{escapedDest}' -Force");
                 }
 
                 var script = string.Join("; ", scriptLines);
@@ -1295,6 +1297,71 @@ public sealed partial class BetterRTXManagerWindow : Window
             return false;
         }
     }
+
+    // REUSABLE
+    public static string SanitizePresetName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Unnamed_Preset";
+
+        // original name
+        var sanitized = name;
+
+        // These are all problematic characters (filesystem + PowerShell or command line)
+        var badChars = new HashSet<char>(Path.GetInvalidFileNameChars())
+    {
+        '\'', '`', '$', ';', '&', '|', '<', '>', '(', ')', '{', '}', '[', ']',
+        '"', '~', '!', '@', '#', '%', '^'
+    };
+
+        // Replace bad characters and control characters with underscores
+        var chars = sanitized.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (badChars.Contains(chars[i]) || char.IsControl(chars[i]))
+            {
+                chars[i] = '_';
+            }
+        }
+        sanitized = new string(chars);
+
+        // Collapse multiple consecutive underscores into one
+        while (sanitized.Contains("__"))
+        {
+            sanitized = sanitized.Replace("__", "_");
+        }
+
+        // Collapse multiple consecutive spaces into one
+        while (sanitized.Contains("  "))
+        {
+            sanitized = sanitized.Replace("  ", " ");
+        }
+
+        // Remove leading/trailing underscores, spaces, and dots
+        sanitized = sanitized.Trim('_', ' ', '.');
+
+        // reserved Windows names
+        var reserved = new[] { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5",
+                       "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4",
+                       "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" };
+
+        var upperName = sanitized.ToUpperInvariant();
+        if (reserved.Contains(upperName) || reserved.Any(r => upperName.StartsWith(r + ".")))
+        {
+            sanitized = "_" + sanitized;
+        }
+
+        // Ensure not empty after sanitization
+        if (string.IsNullOrWhiteSpace(sanitized))
+            return "Unnamed_Preset";
+
+        // Limit length, leave room for full path (recommend 150-200 max)
+        if (sanitized.Length > 200)
+            sanitized = sanitized.Substring(0, 150).TrimEnd('_', ' ', '.');
+
+        return sanitized;
+    }
+
 
 
 
