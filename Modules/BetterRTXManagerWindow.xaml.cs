@@ -84,6 +84,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
+        _scanCancellationTokenSource?.Dispose();
         _mainWindow.Closed -= MainWindow_Closed;
         this.Close();
     }
@@ -127,49 +128,52 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            // Find Minecraft installation
-            var minecraftPath = await FindMinecraftInstallationAsync();
+            // Check if we have a cached path from Phase 1 (app startup)
+            var isPreview = TunerVariables.Persistent.IsTargetingPreview;
+            var cachedPath = isPreview
+                ? TunerVariables.Persistent.MinecraftPreviewInstallPath
+                : TunerVariables.Persistent.MinecraftInstallPath;
 
-            // If null is returned, it means the delay completed and we're waiting for manual selection
-            // The manual selection button will handle initialization when clicked
-            if (minecraftPath == null)
+            string minecraftPath = null;
+
+            if (cachedPath != null && cachedPath.Exists)
             {
-                System.Diagnostics.Debug.WriteLine("Waiting for manual Minecraft location selection");
-                return;
+                // Cache is valid, use it immediately
+                Debug.WriteLine($"✓ Using cached path: {cachedPath.FullName}");
+                minecraftPath = cachedPath.FullName;
+            }
+            else
+            {
+                // Cache is null - Phase 1 couldn't find it
+                // Show manual selection button immediately
+                _ = this.DispatcherQueue.TryEnqueue(() =>
+                {
+                    ManualSelectionButton.Visibility = Visibility.Visible;
+                });
+
+                // Start Phase 2: System-wide search in background
+                Debug.WriteLine("Cache is null - starting system-wide search...");
+                _scanCancellationTokenSource = new CancellationTokenSource();
+
+                minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
+                    isPreview,
+                    _scanCancellationTokenSource.Token
+                );
+
+                if (minecraftPath == null)
+                {
+                    // Search was cancelled or failed - wait for manual selection
+                    Debug.WriteLine("System search cancelled or failed - waiting for manual selection");
+                    return;
+                }
             }
 
-            _gameMaterialsPath = Path.Combine(minecraftPath, "Content", "data", "renderer", "materials");
-
-            // Verify materials folder exists
-            if (!Directory.Exists(_gameMaterialsPath))
-            {
-                StatusMessage = "Materials folder not found in Minecraft installation";
-                this.Close();
-                return;
-            }
-
-            // Establish cache folder
-            _cacheFolder = EstablishCacheFolder();
-            if (_cacheFolder == null)
-            {
-                StatusMessage = "Could not establish cache folder";
-                this.Close();
-                return;
-            }
-
-            // Establish default folder
-            _defaultFolder = Path.Combine(_cacheFolder, "__DEFAULT");
-            Directory.CreateDirectory(_defaultFolder);
-
-            // Load and display all cached presets
-            await LoadPresetsAsync();
-
-            LoadingPanel.Visibility = Visibility.Collapsed;
-            PresetSelectionPanel.Visibility = Visibility.Visible;
+            // At this point we have a valid path - continue initialization
+            await ContinueInitializationWithPath(minecraftPath);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"EXCEPTION in InitializeAsync: {ex}");
+            Debug.WriteLine($"EXCEPTION in InitializeAsync: {ex}");
             StatusMessage = $"Initialization error: {ex.Message}";
             this.Close();
         }
@@ -198,251 +202,66 @@ public sealed partial class BetterRTXManagerWindow : Window
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
+        _scanCancellationTokenSource?.Dispose();
         this.Close();
     }
 
 
 
-    private async Task<string> FindMinecraftInstallationAsync()
+    private async Task ContinueInitializationWithPath(string minecraftPath)
     {
-        bool isPreview = TunerVariables.Persistent.IsTargetingPreview;
-        string targetFolderName = isPreview ? "Minecraft Preview for Windows" : "Minecraft for Windows";
+        _gameMaterialsPath = Path.Combine(minecraftPath, "Content", "data", "renderer", "materials");
 
-        System.Diagnostics.Debug.WriteLine($"=== STARTING MINECRAFT SEARCH ===");
-        System.Diagnostics.Debug.WriteLine($"IsPreview: {isPreview}");
-        System.Diagnostics.Debug.WriteLine($"Target folder: {targetFolderName}");
-
-        // Check if we have a cached path
-        var cachedPath = isPreview ? TunerVariables.Persistent.MinecraftPreviewInstallPath : TunerVariables.Persistent.MinecraftInstallPath;
-
-        System.Diagnostics.Debug.WriteLine($"Cached path: {cachedPath?.FullName ?? "NULL"}");
-
-        if (cachedPath != null && cachedPath.Exists)
+        // Verify materials folder exists
+        if (!Directory.Exists(_gameMaterialsPath))
         {
-            var cachedExePath = Path.Combine(cachedPath.FullName, "Content", "Minecraft.Windows.exe");
-            if (File.Exists(cachedExePath))
-            {
-                System.Diagnostics.Debug.WriteLine($"✓ Using cached Minecraft path: {cachedPath.FullName}");
-                return cachedPath.FullName;
-            }
-
-            System.Diagnostics.Debug.WriteLine("✗ Cached path invalid, clearing");
-            if (isPreview)
-                TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
-            else
-                TunerVariables.Persistent.MinecraftInstallPath = null;
+            StatusMessage = "Materials folder not found in Minecraft installation";
+            this.Close();
+            return;
         }
 
-        // Try common locations first
-        var commonLocations = new[]
+        // Establish cache folder
+        _cacheFolder = EstablishCacheFolder();
+        if (_cacheFolder == null)
         {
-        Path.Combine(@"C:\XboxGames", targetFolderName),
-        Path.Combine(@"C:\Program Files\Microsoft Games", targetFolderName)
-    };
-
-        foreach (var location in commonLocations)
-        {
-            if (Directory.Exists(location))
-            {
-                var exePath = Path.Combine(location, "Content", "Minecraft.Windows.exe");
-                if (File.Exists(exePath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"✓ Found Minecraft at: {location}");
-                    var dirInfo = new DirectoryInfo(location);
-                    if (isPreview)
-                        TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
-                    else
-                        TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
-                    return location;
-                }
-            }
+            StatusMessage = "Could not establish cache folder";
+            this.Close();
+            return;
         }
 
-        // System-wide scan with cancellation support
-        _scanCancellationTokenSource = new CancellationTokenSource();
-        var scanTask = ScanAllDrivesAsync(targetFolderName, _scanCancellationTokenSource.Token);
-        var delayTask = ShowManualSelectionButtonAfterDelay();
+        // Establish default folder
+        _defaultFolder = Path.Combine(_cacheFolder, "__DEFAULT");
+        Directory.CreateDirectory(_defaultFolder);
 
-        var completedTask = await Task.WhenAny(scanTask, delayTask);
+        // Load and display all cached presets
+        await LoadPresetsAsync();
 
-        if (completedTask == scanTask)
-        {
-            // Scan completed first
-            var result = await scanTask;
-            _scanCancellationTokenSource?.Cancel();
-            return result;
-        }
-
-        // wait for either user action or scan completion
-        // But DON'T await the scan unconditionally - let it be cancelled by user action
-        return null; // Will be handled by manual selection or scan completion
+        LoadingPanel.Visibility = Visibility.Collapsed;
+        PresetSelectionPanel.Visibility = Visibility.Visible;
     }
-
-    private async Task ShowManualSelectionButtonAfterDelay()
-    {
-        await Task.Delay(5000);
-        _ = this.DispatcherQueue.TryEnqueue(() =>
-        {
-            ManualSelectionButton.Visibility = Visibility.Visible;
-        });
-    }
-
-    private async Task<string> ScanAllDrivesAsync(string targetFolderName, CancellationToken cancellationToken)
-    {
-        var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed).ToList();
-
-        foreach (var drive in drives)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled");
-                return null;
-            }
-
-            try
-            {
-                var programFilesPath = Path.Combine(drive.Name, "Program Files", "Microsoft Games", targetFolderName);
-                if (Directory.Exists(programFilesPath))
-                {
-                    var exePath = Path.Combine(programFilesPath, "Content", "Minecraft.Windows.exe");
-                    if (File.Exists(exePath))
-                    {
-                        var dirInfo = new DirectoryInfo(programFilesPath);
-                        if (TunerVariables.Persistent.IsTargetingPreview)
-                            TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
-                        else
-                            TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
-                        return programFilesPath;
-                    }
-                }
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled");
-                    return null;
-                }
-
-                var xboxGamesPath = Path.Combine(drive.Name, "XboxGames", targetFolderName);
-                if (Directory.Exists(xboxGamesPath))
-                {
-                    var exePath = Path.Combine(xboxGamesPath, "Content", "Minecraft.Windows.exe");
-                    if (File.Exists(exePath))
-                    {
-                        var dirInfo = new DirectoryInfo(xboxGamesPath);
-                        if (TunerVariables.Persistent.IsTargetingPreview)
-                            TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
-                        else
-                            TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
-                        return xboxGamesPath;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"✗ Error scanning drive {drive.Name}: {ex.Message}");
-            }
-        }
-
-        if (cancellationToken.IsCancellationRequested)
-        {
-            System.Diagnostics.Debug.WriteLine("✗ Drive scan cancelled before manual selection");
-            return null;
-        }
-
-        var manualPath = await LocateMinecraftManually();
-        return manualPath;
-    }
-
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("Manual selection button clicked - cancelling scan");
+        Debug.WriteLine("Manual selection button clicked - cancelling system search");
+
+        // Cancel any ongoing system search
         _scanCancellationTokenSource?.Cancel();
 
-        var path = await LocateMinecraftManually();
+        var hWnd = WindowNative.GetWindowHandle(this);
+        var isPreview = TunerVariables.Persistent.IsTargetingPreview;
+
+        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
 
         if (path != null)
         {
-            _gameMaterialsPath = Path.Combine(path, "Content", "data", "renderer", "materials");
-
-            if (!Directory.Exists(_gameMaterialsPath))
-            {
-                StatusMessage = "Materials folder not found in selected Minecraft installation";
-                this.Close();
-                return;
-            }
-
-            _cacheFolder = EstablishCacheFolder();
-            if (_cacheFolder == null)
-            {
-                StatusMessage = "Could not establish cache folder";
-                this.Close();
-                return;
-            }
-
-            _defaultFolder = Path.Combine(_cacheFolder, "__DEFAULT");
-            Directory.CreateDirectory(_defaultFolder);
-
-            await LoadPresetsAsync();
-
-            LoadingPanel.Visibility = Visibility.Collapsed;
-            PresetSelectionPanel.Visibility = Visibility.Visible;
+            Debug.WriteLine($"✓ User selected valid path: {path}");
+            await ContinueInitializationWithPath(path);
         }
         else
         {
+            Debug.WriteLine("✗ User cancelled or selected invalid path");
             StatusMessage = "No valid Minecraft installation selected";
             this.Close();
         }
-    }
-
-    private async Task<string> LocateMinecraftManually()
-    {
-        var picker = new FolderPicker
-        {
-            SuggestedStartLocation = PickerLocationId.ComputerFolder,
-            ViewMode = PickerViewMode.List
-        };
-        picker.FileTypeFilter.Add("*");
-
-        var hWnd = WindowNative.GetWindowHandle(this);
-        InitializeWithWindow.Initialize(picker, hWnd);
-
-        var folder = await picker.PickSingleFolderAsync();
-
-        if (folder != null)
-        {
-            var exePath = Path.Combine(folder.Path, "Content", "Minecraft.Windows.exe");
-            var isContentFolder = folder.Path.EndsWith("Content", StringComparison.OrdinalIgnoreCase);
-
-            if (isContentFolder)
-            {
-                var parentPath = Directory.GetParent(folder.Path)?.FullName;
-                if (parentPath != null)
-                {
-                    exePath = Path.Combine(parentPath, "Content", "Minecraft.Windows.exe");
-                    if (File.Exists(exePath))
-                    {
-                        var dirInfo = new DirectoryInfo(parentPath);
-                        if (TunerVariables.Persistent.IsTargetingPreview)
-                            TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
-                        else
-                            TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
-                        return parentPath;
-                    }
-                }
-            }
-
-            if (File.Exists(exePath))
-            {
-                var dirInfo = new DirectoryInfo(folder.Path);
-                if (TunerVariables.Persistent.IsTargetingPreview)
-                    TunerVariables.Persistent.MinecraftPreviewInstallPath = dirInfo;
-                else
-                    TunerVariables.Persistent.MinecraftInstallPath = dirInfo;
-                return folder.Path;
-            }
-        }
-
-        return null;
     }
 
     private async Task LoadPresetsAsync()

@@ -856,7 +856,7 @@
                         <TextBlock Text="Material grain offset (0-25)"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Creates grainy materials by adding a layer of noise in a manner that keeps the pack's intended look intact, your input determines the maximum deviation.." />
+                                   ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise in a manner that keeps the pack's intended look intact, your input determines the maximum deviation." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"

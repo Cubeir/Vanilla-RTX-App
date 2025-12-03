@@ -37,16 +37,11 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- REFACTOR GAME FINDING LOGIC into a HELPER
-Can significantly shorten DLSS Swapper and BetterRTX Manager that way
-A global helper and set of tools/class dedicated to finding the game instead of copy pasting it onto each window
-[This may VERY WELL open way to fix the lag caused by search for the game]
-
-Need a clever to search this, or.. what does something like Everything do?
-
-- Further integerate BetterRTX if possible
-Download presets and cache them for everyone, automatically keep an updated catalogue
-It is good as it is, further integeration may require cooperation 
+- NEW INFORMATION SURFACED, THERE ARE SYMLINKS POINTING TO WHERE THE GAME IS INSTALLED INSIDE 
+"C:\Program Files\WindowsApps\MICROSOFT.MINECRAFTUWP_1.21.12402.0_x64__8wekyb3d8bbwe"
+"C:\Program Files\WindowsApps\Microsoft.MinecraftWindowsBeta_1.21.13028.0_x64__8wekyb3d8bbwe"
+MAKE THESE THE FIRST STAGE OF SEARCH ACTUALLY! 
+This is going to work 99.9999% of the time, the rest is bullshit
 
 - Add a proper, non-intrusive leave a review prompt
 
