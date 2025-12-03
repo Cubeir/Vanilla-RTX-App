@@ -128,7 +128,6 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            // Check if we have a cached path from Phase 1 (app startup)
             var isPreview = TunerVariables.Persistent.IsTargetingPreview;
             var cachedPath = isPreview
                 ? TunerVariables.Persistent.MinecraftPreviewInstallPath
@@ -136,19 +135,25 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             string minecraftPath = null;
 
-            if (!string.IsNullOrEmpty(cachedPath))
+            // SAFETY: Re-validate cache before trusting it
+            // Handles edge case where user moved/deleted folder between startup and window opening
+            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
             {
-                var dir = new DirectoryInfo(cachedPath);
-
-                if (dir.Exists)
-                {
-                    Debug.WriteLine($"✓ Using cached path: {dir.FullName}");
-                    minecraftPath = dir.FullName;
-                }
+                Debug.WriteLine($"✓ Using cached path: {cachedPath}");
+                minecraftPath = cachedPath;
             }
             else
             {
-                // Cache is null - Phase 1 couldn't find it
+                // Cache invalid - clear it and search
+                if (!string.IsNullOrEmpty(cachedPath))
+                {
+                    Debug.WriteLine($"⚠ Cache became invalid, clearing");
+                    if (isPreview)
+                        TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
+                    else
+                        TunerVariables.Persistent.MinecraftInstallPath = null;
+                }
+
                 // Show manual selection button immediately
                 _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
@@ -156,7 +161,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 });
 
                 // Start Phase 2: System-wide search in background
-                Debug.WriteLine("Cache is null - starting system-wide search...");
+                Debug.WriteLine("Starting system-wide search...");
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(

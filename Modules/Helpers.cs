@@ -494,6 +494,10 @@ public static class RuntimeFlags
     public static bool Unset(string key) => _flags.Remove(key);
 }
 
+
+
+
+
 /// <summary>
 /// Provides tools for locating Minecraft (Bedrock) and Minecraft Preview installations.
 /// Handles caching, validation, system-wide searching, and manual selection.
@@ -541,6 +545,30 @@ public static class MinecraftGDKLocator
         );
 
         Debug.WriteLine("=== PHASE 1 Complete ===");
+    }
+
+    /// <summary>
+    /// Quick re-validation of a cached path before use.
+    /// Called by windows before trusting the cache.
+    /// </summary>
+    public static bool RevalidateCachedPath(string? cachedPath)
+    {
+        if (string.IsNullOrEmpty(cachedPath))
+            return false;
+
+        if (!Directory.Exists(cachedPath))
+        {
+            Debug.WriteLine($"⚠ Cached path no longer exists: {cachedPath}");
+            return false;
+        }
+
+        if (!IsValidMinecraftPath(cachedPath))
+        {
+            Debug.WriteLine($"⚠ Cached path no longer valid: {cachedPath}");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
