@@ -507,10 +507,10 @@ public static class MinecraftGDKLocator
     private const string MinecraftFolderName = "Minecraft for Windows";
     private const string MinecraftPreviewFolderName = "Minecraft Preview for Windows";
     private const string MinecraftExecutableName = "Minecraft.Windows.exe";
-    private const int MaxSearchDepth = 5;
+    private const int MaxSearchDepth = 9;
 
-    // WindowsApps symlink prefixes
-    private const string WindowsAppsPath = @"C:\Program Files\WindowsApps";
+    // WindowsApps symlink prefixes, points to GDK Minecraft's actual location
+    private static readonly string WindowsAppsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "WindowsApps");
     private const string MinecraftStablePrefix = "MICROSOFT.MINECRAFTUWP_";
     private const string MinecraftPreviewPrefix = "Microsoft.MinecraftWindowsBeta_";
 
