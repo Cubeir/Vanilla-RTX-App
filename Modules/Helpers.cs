@@ -873,16 +873,22 @@ public static class MinecraftGDKLocator
     /// Returns array of common installation locations.
     /// STAGE 1 search targets - highest probability locations.
     /// </summary>
-    private static string[] GetCommonLocations(bool isPreview)
+    public static string[] GetCommonLocations(bool isPreview)
     {
-        var folderName = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
+        var root = Path.GetPathRoot(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)
+        ) ?? "C:\\";
+
+        var folder = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
 
         return new[]
         {
-            Path.Combine(@"C:\XboxGames", folderName),
-            Path.Combine(@"C:\Program Files\Microsoft Games", folderName),
+        Path.Combine(root, "XboxGames", folder),
+        Path.Combine(root, "Program Files", "Microsoft Games", folder),
         };
     }
+
+
 
     /// <summary>
     /// Recursively searches a directory tree for Minecraft installation.
