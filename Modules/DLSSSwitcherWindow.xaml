@@ -41,7 +41,7 @@
                                    HorizontalAlignment="Center"
                                    IsTextScaleFactorEnabled="False" />
                         <TextBlock x:Name="ManualSelectionText"
-                                   Text="If this is taking too long, click to manually locate the game folder (Minecraft for Windows / Minecraft Preview for Windows)"
+                                   Text="If this is taking too long, click to manually locate the game folder."
                                    FontSize="12"
                                    Opacity="0.75"
                                    HorizontalAlignment="Center"
@@ -73,6 +73,7 @@
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"
+                               Canvas.ZIndex="998"
                                x:Name="WindowTitle" />
                 </Grid>
 
@@ -97,6 +98,7 @@
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center"
                               Margin="0, -3, 0, 0"
+                              Canvas.ZIndex="999"
                               IsTextScaleFactorEnabled="False" />
                 </Button>
             </Grid>

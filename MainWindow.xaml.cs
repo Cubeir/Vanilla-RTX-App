@@ -37,12 +37,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- NEW INFORMATION SURFACED, THERE ARE SYMLINKS POINTING TO WHERE THE GAME IS INSTALLED INSIDE 
-"C:\Program Files\WindowsApps\MICROSOFT.MINECRAFTUWP_1.21.12402.0_x64__8wekyb3d8bbwe"
-"C:\Program Files\WindowsApps\Microsoft.MinecraftWindowsBeta_1.21.13028.0_x64__8wekyb3d8bbwe"
-MAKE THESE THE FIRST STAGE OF SEARCH ACTUALLY! 
-This is going to work 99.9999% of the time, the rest is bullshit
-
 - Add a proper, non-intrusive leave a review prompt
 
 - Get copilot to examine the entire codebase for raw string path manipulation where better methods could've been used
@@ -54,7 +48,7 @@ This is going to work 99.9999% of the time, the rest is bullshit
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
 - Expose as many params as you can to a json in app's root
-the hard URLs the app sends requests to + the hardcoded Minecraft paths
+the URLs the app sends requests to + the hardcoded Minecraft paths
 * Resource packs only end up in shared
 * Options file is in both shared and non-shared, but non-shared is presumably the one that takes priority, still, we take care of both
 * PackLocator, PackUpdater (deployer), Browse Packs, and LaunchMinecraftRTX's options.txt updater are the only things that rely on hardcoded paths on the system
@@ -62,7 +56,6 @@ the hard URLs the app sends requests to + the hardcoded Minecraft paths
 Additionally, while going through params, 
 Check your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github
-
 
 
 - Do the TODO and ISSUES scattered in the code
@@ -76,7 +69,13 @@ That way all sliders can affect all packs in some shape or form, which is good.
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
 It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
 
-Maybe grasp and clean the logic but leave it be honestly, the smooth transitions are worth it
+In fact, manually calling UpdateUI is NECESSERY, thank GOD you're not using bindings
+UpdateUI is VERY NEEDED for Previewer class, it is already implemented everywhere and freezes vessel updates as necessery
+You would've had to manually done this anyway
+
+And the smooth transitions are worth it.
+
+
 
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging
@@ -87,6 +86,8 @@ only concern is performance with large logs
 This idea can be a public static method and it won't ever ever block Ui thread
 A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
 
+^ yeah lets dedicate more code clutter to visual things
+
 - Set random preview arts on startup, featuring locations from Vanilla RTX's history
 Or simple pixel arts you'd like to make in the same style
 Have 5-10 made
@@ -96,7 +97,6 @@ e.g. you can preserve their tuning histories there, embed it into the manifest, 
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
-
 
 
 */
