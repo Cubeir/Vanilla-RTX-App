@@ -1744,8 +1744,8 @@ public sealed partial class MainWindow : Window
                 {
                 Path.Combine(localFolder, "Downloads"),
                 Path.Combine(localFolder, "DLSS_Cache"),
-                Path.Combine(localFolder, "BetterRTX_Cache")
-            };
+                Path.Combine(localFolder, "RTX_Cache")
+                };
 
                 int deletedFolders = 0;
                 foreach (var folder in foldersToDelete)

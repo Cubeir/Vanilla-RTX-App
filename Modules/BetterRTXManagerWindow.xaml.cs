@@ -37,12 +37,12 @@ public sealed partial class BetterRTXManagerWindow : Window
 
 
     private static readonly string[] CoreRTXFiles = new[]
-{
-    "RTXPostFX.Bloom.material.bin",
-    "RTXPostFX.material.bin",
-    "RTXPostFX.Tonemapping.material.bin",
-    "RTXStub.material.bin"
-};
+    {
+       "RTXPostFX.Bloom.material.bin",
+       "RTXPostFX.material.bin",
+       "RTXPostFX.Tonemapping.material.bin",
+       "RTXStub.material.bin"
+    };
 
 
 
@@ -206,7 +206,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         try
         {
             var localFolder = ApplicationData.Current.LocalFolder.Path;
-            var cacheLocation = Path.Combine(localFolder, "BetterRTX_Cache");
+            var cacheLocation = Path.Combine(localFolder, "RTX_Cache");
 
             System.Diagnostics.Debug.WriteLine($"Creating BetterRTX cache at: {cacheLocation}");
             Directory.CreateDirectory(cacheLocation);
