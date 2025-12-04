@@ -864,31 +864,30 @@ public class Processor
     }
 
 
-    // TODO: Do additions unbound, then scale back to RGB range?
-    // Thing is, the compositing is already flawless
-    // Just be mindful of what you put in alpha channel of textures in Vanilla RTX -- they get reused for generating the lazy heightmap here
+
     private static void ProcessHeightmaps(PackInfo pack)
     {
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
             return;
 
         // Get paired color and heightmap textures from texture sets
-        var texturePairs = TextureSetHelper.RetrieveTextureSetPairs(pack.Path, TextureSetHelper.TextureType.Color, TextureSetHelper.TextureType.Heightmap);
+        var heightmapPairs = TextureSetHelper.RetrieveTextureSetPairs(pack.Path, TextureSetHelper.TextureType.Color, TextureSetHelper.TextureType.Heightmap);
+        var normalmapPairs = TextureSetHelper.RetrieveTextureSetPairs(pack.Path, TextureSetHelper.TextureType.Color, TextureSetHelper.TextureType.Normal);
 
-        if (!texturePairs.Any())
+        if (!heightmapPairs.Any() && !normalmapPairs.Any())
         {
-            MainWindow.Log($"{pack.Name}: no texture sets with color and heightmap found.", MainWindow.LogLevel.Warning);
+            MainWindow.Log($"{pack.Name}: no texture sets with color and heightmap/normal found.", MainWindow.LogLevel.Warning);
             return;
         }
 
         var alpha = ButcheredHeightmapAlpha;
 
-        foreach (var (colormapFile, heightmapFile) in texturePairs)
+        // Process heightmaps
+        foreach (var (colormapFile, heightmapFile) in heightmapPairs)
         {
-            // Skip if heightmap is missing (we need both for this process)
             if (string.IsNullOrEmpty(heightmapFile))
             {
-                MainWindow.Log($"{pack.Name}: heightmap not found for {Path.GetFileName(colormapFile)}; skipped.", MainWindow.LogLevel.Warning);
+                Debug.WriteLine($"{pack.Name}: heightmap not found for {Path.GetFileName(colormapFile)}; skipped.");
                 continue;
             }
 
@@ -900,14 +899,16 @@ public class Processor
                 var width = heightmapBmp.Width;
                 var height = heightmapBmp.Height;
 
-                // Ensure dimensions match
                 if (colormapBmp.Width != width || colormapBmp.Height != height)
                 {
-                    MainWindow.Log($"{pack.Name}: dimension mismatch between heightmap and colormap for {Path.GetFileName(heightmapFile)}; skipped.", MainWindow.LogLevel.Warning);
+                    Debug.WriteLine($"{pack.Name}: dimension mismatch between heightmap and colormap for {Path.GetFileName(heightmapFile)}; skipped.");
                     continue;
                 }
 
-                // 1: Convert colormap to greyscale and find min/max values
+                // Apply edge padding to transparent pixels
+                var paddedColormap = ApplyEdgePadding(colormapBmp);
+
+                // Convert to greyscale and find min/max
                 var greyscaleValues = new byte[width, height];
                 byte minValue = 255;
                 byte maxValue = 0;
@@ -916,8 +917,7 @@ public class Processor
                 {
                     for (var x = 0; x < width; x++)
                     {
-                        var color = colormapBmp.GetPixel(x, y);
-                        // Standard greyscale conversion
+                        var color = paddedColormap[x, y];
                         var greyValue = (byte)(0.299 * color.R + 0.587 * color.G + 0.114 * color.B);
                         greyscaleValues[x, y] = greyValue;
 
@@ -926,13 +926,12 @@ public class Processor
                     }
                 }
 
-                // 2: Stretch/Maximize
+                // Stretch/Maximize
                 var stretchedValues = new byte[width, height];
                 double range = maxValue - minValue;
 
                 if (range == 0)
                 {
-                    // All pixels are the same value
                     for (var y = 0; y < height; y++)
                     {
                         for (var x = 0; x < width; x++)
@@ -953,7 +952,7 @@ public class Processor
                     }
                 }
 
-                // Step 3: Overlay stretched heightmap on original heightmap
+                // Overlay stretched heightmap on original heightmap
                 var wroteBack = false;
                 for (var y = 0; y < height; y++)
                 {
@@ -962,7 +961,6 @@ public class Processor
                         var origColor = heightmapBmp.GetPixel(x, y);
                         var newHeightValue = stretchedValues[x, y];
 
-                        // Alpha blend
                         var blendedValue = (alpha * newHeightValue + (255 - alpha) * origColor.R) / 255;
                         var finalValue = (byte)Math.Clamp(blendedValue, 0, 255);
 
@@ -990,6 +988,249 @@ public class Processor
                 Debug.WriteLine($"{pack.Name}: error processing {Path.GetFileName(heightmapFile)} — {ex.Message}");
             }
         }
+
+        // Process normal maps
+        foreach (var (colormapFile, normalmapFile) in normalmapPairs)
+        {
+            if (string.IsNullOrEmpty(normalmapFile))
+            {
+                Debug.WriteLine($"{pack.Name}: normal map not found for {Path.GetFileName(colormapFile)}; skipped.");
+                continue;
+            }
+
+            try
+            {
+                using var normalmapBmp = ReadImage(normalmapFile, false);
+                using var colormapBmp = ReadImage(colormapFile, false);
+
+                var width = normalmapBmp.Width;
+                var height = normalmapBmp.Height;
+
+                if (colormapBmp.Width != width || colormapBmp.Height != height)
+                {
+                    Debug.WriteLine($"{pack.Name}: dimension mismatch between normal map and colormap for {Path.GetFileName(normalmapFile)}; skipped.");
+                    continue;
+                }
+
+                // Apply edge padding to transparent pixels
+                var paddedColormap = ApplyEdgePadding(colormapBmp);
+
+                // Convert to greyscale and find min/max
+                var greyscaleValues = new byte[width, height];
+                byte minValue = 255;
+                byte maxValue = 0;
+
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var color = paddedColormap[x, y];
+                        var greyValue = (byte)(0.299 * color.R + 0.587 * color.G + 0.114 * color.B);
+                        greyscaleValues[x, y] = greyValue;
+
+                        if (greyValue < minValue) minValue = greyValue;
+                        if (greyValue > maxValue) maxValue = greyValue;
+                    }
+                }
+
+                // Stretch/Maximize
+                var stretchedValues = new byte[width, height];
+                double range = maxValue - minValue;
+
+                if (range == 0)
+                {
+                    for (var y = 0; y < height; y++)
+                    {
+                        for (var x = 0; x < width; x++)
+                        {
+                            stretchedValues[x, y] = 128;
+                        }
+                    }
+                }
+                else
+                {
+                    for (var y = 0; y < height; y++)
+                    {
+                        for (var x = 0; x < width; x++)
+                        {
+                            var normalized = (greyscaleValues[x, y] - minValue) / range;
+                            stretchedValues[x, y] = (byte)(normalized * 255);
+                        }
+                    }
+                }
+
+                // Create expanded heightmap with mirrored edges (25% larger in each direction)
+                var expandedWidth = (int)(width * 1.25);
+                var expandedHeight = (int)(height * 1.25);
+                var offsetX = (expandedWidth - width) / 2;
+                var offsetY = (expandedHeight - height) / 2;
+                var expandedHeightmap = new byte[expandedWidth, expandedHeight];
+
+                // Fill expanded heightmap with mirrored edges
+                for (var y = 0; y < expandedHeight; y++)
+                {
+                    for (var x = 0; x < expandedWidth; x++)
+                    {
+                        int srcX, srcY;
+
+                        if (x < offsetX)
+                            srcX = offsetX - x - 1;
+                        else if (x >= offsetX + width)
+                            srcX = 2 * width - (x - offsetX) - 1;
+                        else
+                            srcX = x - offsetX;
+
+                        if (y < offsetY)
+                            srcY = offsetY - y - 1;
+                        else if (y >= offsetY + height)
+                            srcY = 2 * height - (y - offsetY) - 1;
+                        else
+                            srcY = y - offsetY;
+
+                        srcX = Math.Clamp(srcX, 0, width - 1);
+                        srcY = Math.Clamp(srcY, 0, height - 1);
+
+                        expandedHeightmap[x, y] = stretchedValues[srcX, srcY];
+                    }
+                }
+
+                // Generate normal map using Sobel operator (DirectX format)
+                var generatedNormals = new (byte r, byte g)[width, height];
+
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var ex = x + offsetX;
+                        var ey = y + offsetY;
+
+                        // Sobel kernels for X and Y gradients
+                        var gx =
+                            -1 * expandedHeightmap[ex - 1, ey - 1] + 1 * expandedHeightmap[ex + 1, ey - 1] +
+                            -2 * expandedHeightmap[ex - 1, ey] + 2 * expandedHeightmap[ex + 1, ey] +
+                            -1 * expandedHeightmap[ex - 1, ey + 1] + 1 * expandedHeightmap[ex + 1, ey + 1];
+
+                        var gy =
+                            -1 * expandedHeightmap[ex - 1, ey - 1] - 2 * expandedHeightmap[ex, ey - 1] - 1 * expandedHeightmap[ex + 1, ey - 1] +
+                             1 * expandedHeightmap[ex - 1, ey + 1] + 2 * expandedHeightmap[ex, ey + 1] + 1 * expandedHeightmap[ex + 1, ey + 1];
+
+                        // Normalize gradients to 0-255 range for DirectX format
+                        var normalX = gx / (8.0 * 255.0);
+                        var normalY = -gy / (8.0 * 255.0);
+
+                        // Map from [-1, 1] to [0, 255]
+                        var r = (byte)Math.Clamp((normalX * 0.5 + 0.5) * 255, 0, 255);
+                        var g = (byte)Math.Clamp((normalY * 0.5 + 0.5) * 255, 0, 255);
+
+                        generatedNormals[x, y] = (r, g);
+                    }
+                }
+
+                // Blend generated normal map with original
+                var wroteBack = false;
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var origColor = normalmapBmp.GetPixel(x, y);
+                        var (newR, newG) = generatedNormals[x, y];
+
+                        var blendedR = (alpha * newR + (255 - alpha) * origColor.R) / 255;
+                        var blendedG = (alpha * newG + (255 - alpha) * origColor.G) / 255;
+                        var finalR = (byte)Math.Clamp(blendedR, 0, 255);
+                        var finalG = (byte)Math.Clamp(blendedG, 0, 255);
+
+                        if (finalR != origColor.R || finalG != origColor.G)
+                        {
+                            wroteBack = true;
+                            var newColor = Color.FromArgb(origColor.A, finalR, finalG, 255);
+                            normalmapBmp.SetPixel(x, y, newColor);
+                        }
+                    }
+                }
+
+                if (wroteBack)
+                {
+                    WriteImageAsTGA(normalmapBmp, normalmapFile);
+                    Debug.WriteLine($"{pack.Name}: updated normal map in {Path.GetFileName(normalmapFile)}.");
+                }
+                else
+                {
+                    Debug.WriteLine($"{pack.Name}: no normal map changes in {Path.GetFileName(normalmapFile)}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{pack.Name}: error processing {Path.GetFileName(normalmapFile)} — {ex.Message}");
+            }
+        }
+    }
+
+    private static Color[,] ApplyEdgePadding(Bitmap bitmap)
+    {
+        var width = bitmap.Width;
+        var height = bitmap.Height;
+        var result = new Color[width, height];
+
+        // First pass: copy all pixels and mark opaque ones
+        var isOpaque = new bool[width, height];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var pixel = bitmap.GetPixel(x, y);
+                result[x, y] = pixel;
+                isOpaque[x, y] = pixel.A > 0;
+            }
+        }
+
+        // Multi-pass flood fill: continue until no more transparent pixels are filled
+        bool anyChanged;
+        int maxPasses = width * height; // theoretical limit not sure if it is factual but at least there is something to prevent endless loops
+
+        for (int pass = 0; pass < maxPasses; pass++)
+        {
+            anyChanged = false;
+            var newOpaque = new bool[width, height];
+            Array.Copy(isOpaque, newOpaque, isOpaque.Length);
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    if (isOpaque[x, y]) continue; // Already opaque
+
+                    // Check all 4 directions for nearest opaque neighbor
+                    Color? nearestColor = null;
+
+                    // Check left
+                    if (x > 0 && isOpaque[x - 1, y])
+                        nearestColor = result[x - 1, y];
+                    // Check right
+                    else if (x < width - 1 && isOpaque[x + 1, y])
+                        nearestColor = result[x + 1, y];
+                    // Check top
+                    else if (y > 0 && isOpaque[x, y - 1])
+                        nearestColor = result[x, y - 1];
+                    // Check bottom
+                    else if (y < height - 1 && isOpaque[x, y + 1])
+                        nearestColor = result[x, y + 1];
+
+                    if (nearestColor.HasValue)
+                    {
+                        result[x, y] = Color.FromArgb(255, nearestColor.Value.R, nearestColor.Value.G, nearestColor.Value.B);
+                        newOpaque[x, y] = true;
+                        anyChanged = true;
+                    }
+                }
+            }
+
+            isOpaque = newOpaque;
+
+            if (!anyChanged) break; // All reachable transparent pixels have been filled
+        }
+
+        return result;
     }
 
 

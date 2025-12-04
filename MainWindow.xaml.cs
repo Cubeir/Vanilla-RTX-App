@@ -42,6 +42,10 @@ BUT, some parts could be "loosened" a little, like, it STRICTLY needs a Minecraf
 How about ANY case insensitive Minecraft.Windows.exe in the Minecraft for Windows folder recursively
 You know be less strict and more flexible for the future in case Mojang decides to change some things up
 
+Then test the whole thing again in various ways too, both code review and real world
+the locator class, and fucntions of dlss/brtx installers, the behavior
+sometimes you're nonsensically strict, some times some things aren't seen through to the end well enough, imagine more scenarios
+
 - Expand on Butcher heightmaps and roughen up
 
 - Update libs
