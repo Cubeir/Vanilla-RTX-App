@@ -633,6 +633,7 @@ public sealed partial class MainWindow : Window
         SlidersGridShadow.Receivers.Add(RightShadowReceiver);
         ClearResetShadow.Receivers.Add(RightShadowReceiver);
         BottomButtonsShadow.Receivers.Add(RightShadowReceiver);
+        TopButtonsShadow.Receivers.Add(RightShadowReceiver);
 
         // Individual textbox shadows
         FogMultiplierBoxShadow.Receivers.Add(RightShadowReceiver);
@@ -1702,7 +1703,7 @@ public sealed partial class MainWindow : Window
 
         // Lamp single off flash
         _ = BlinkingLamp(true, true, 0.0);
-        Log("Cleared All Pack Selections.", LogLevel.Success);
+        Log("Cleared all pack selections.", LogLevel.Success);
 
     }
     private async Task WipeAllStorageData()
