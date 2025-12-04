@@ -630,8 +630,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // Delete button - only show if NOT default preset
-        if (!preset.IsDefault && !isCurrent)
+        // Delete button - only show if not current preset
+        if (!isCurrent)
         {
             var deleteButton = new Button
             {
