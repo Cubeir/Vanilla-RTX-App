@@ -1059,60 +1059,44 @@ public class Processor
                     }
                 }
 
-                // Create expanded heightmap with mirrored edges (25% larger in each direction)
-                var expandedWidth = (int)(width * 1.25);
-                var expandedHeight = (int)(height * 1.25);
-                var offsetX = (expandedWidth - width) / 2;
-                var offsetY = (expandedHeight - height) / 2;
+                // Create 3x3 tiled heightmap for seamless normal generation
+                var expandedWidth = width * 3;
+                var expandedHeight = height * 3;
                 var expandedHeightmap = new byte[expandedWidth, expandedHeight];
 
-                // Fill expanded heightmap with mirrored edges
-                for (var y = 0; y < expandedHeight; y++)
+                // Fill with 9 tiles (3x3 grid)
+                for (var tileY = 0; tileY < 3; tileY++)
                 {
-                    for (var x = 0; x < expandedWidth; x++)
+                    for (var tileX = 0; tileX < 3; tileX++)
                     {
-                        int srcX, srcY;
-
-                        if (x < offsetX)
-                            srcX = offsetX - x - 1;
-                        else if (x >= offsetX + width)
-                            srcX = 2 * width - (x - offsetX) - 1;
-                        else
-                            srcX = x - offsetX;
-
-                        if (y < offsetY)
-                            srcY = offsetY - y - 1;
-                        else if (y >= offsetY + height)
-                            srcY = 2 * height - (y - offsetY) - 1;
-                        else
-                            srcY = y - offsetY;
-
-                        srcX = Math.Clamp(srcX, 0, width - 1);
-                        srcY = Math.Clamp(srcY, 0, height - 1);
-
-                        expandedHeightmap[x, y] = stretchedValues[srcX, srcY];
+                        for (var y = 0; y < height; y++)
+                        {
+                            for (var x = 0; x < width; x++)
+                            {
+                                var destX = tileX * width + x;
+                                var destY = tileY * height + y;
+                                expandedHeightmap[destX, destY] = stretchedValues[x, y];
+                            }
+                        }
                     }
                 }
 
-                // Generate normal map using Sobel operator (DirectX format)
-                var generatedNormals = new (byte r, byte g)[width, height];
+                // Generate normal map for the ENTIRE 3x3 tiled image
+                var expandedNormals = new (byte r, byte g)[expandedWidth, expandedHeight];
 
-                for (var y = 0; y < height; y++)
+                for (var y = 1; y < expandedHeight - 1; y++) // Skip outer edges (can't do 3x3 kernel there)
                 {
-                    for (var x = 0; x < width; x++)
+                    for (var x = 1; x < expandedWidth - 1; x++)
                     {
-                        var ex = x + offsetX;
-                        var ey = y + offsetY;
-
                         // Sobel kernels for X and Y gradients
                         var gx =
-                            -1 * expandedHeightmap[ex - 1, ey - 1] + 1 * expandedHeightmap[ex + 1, ey - 1] +
-                            -2 * expandedHeightmap[ex - 1, ey] + 2 * expandedHeightmap[ex + 1, ey] +
-                            -1 * expandedHeightmap[ex - 1, ey + 1] + 1 * expandedHeightmap[ex + 1, ey + 1];
+                            -1 * expandedHeightmap[x - 1, y - 1] + 1 * expandedHeightmap[x + 1, y - 1] +
+                            -2 * expandedHeightmap[x - 1, y] + 2 * expandedHeightmap[x + 1, y] +
+                            -1 * expandedHeightmap[x - 1, y + 1] + 1 * expandedHeightmap[x + 1, y + 1];
 
                         var gy =
-                            -1 * expandedHeightmap[ex - 1, ey - 1] - 2 * expandedHeightmap[ex, ey - 1] - 1 * expandedHeightmap[ex + 1, ey - 1] +
-                             1 * expandedHeightmap[ex - 1, ey + 1] + 2 * expandedHeightmap[ex, ey + 1] + 1 * expandedHeightmap[ex + 1, ey + 1];
+                            -1 * expandedHeightmap[x - 1, y - 1] - 2 * expandedHeightmap[x, y - 1] - 1 * expandedHeightmap[x + 1, y - 1] +
+                             1 * expandedHeightmap[x - 1, y + 1] + 2 * expandedHeightmap[x, y + 1] + 1 * expandedHeightmap[x + 1, y + 1];
 
                         // Normalize gradients to 0-255 range for DirectX format
                         var normalX = gx / (8.0 * 255.0);
@@ -1122,12 +1106,38 @@ public class Processor
                         var r = (byte)Math.Clamp((normalX * 0.5 + 0.5) * 255, 0, 255);
                         var g = (byte)Math.Clamp((normalY * 0.5 + 0.5) * 255, 0, 255);
 
-                        generatedNormals[x, y] = (r, g);
+                        expandedNormals[x, y] = (r, g);
                     }
                 }
 
-                // Blend generated normal map with original
-                var wroteBack = false;
+                // NOW crop out the center tile
+                var generatedNormals = new (byte r, byte g)[width, height];
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var srcX = width + x;  // Center tile X
+                        var srcY = height + y; // Center tile Y
+                        generatedNormals[x, y] = expandedNormals[srcX, srcY];
+                    }
+                }
+
+                // Calculate original normal map intensity (average deviation from 128)
+                double originalIntensitySum = 0;
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var pixel = normalmapBmp.GetPixel(x, y);
+                        var deviationR = Math.Abs(pixel.R - 128);
+                        var deviationG = Math.Abs(pixel.G - 128);
+                        originalIntensitySum += (deviationR + deviationG) / 2.0;
+                    }
+                }
+                double originalIntensity = originalIntensitySum / (width * height);
+
+                // Blend generated normal map with original using Overlay blend mode
+                var blendedNormals = new (byte r, byte g)[width, height];
                 for (var y = 0; y < height; y++)
                 {
                     for (var x = 0; x < width; x++)
@@ -1135,10 +1145,61 @@ public class Processor
                         var origColor = normalmapBmp.GetPixel(x, y);
                         var (newR, newG) = generatedNormals[x, y];
 
-                        var blendedR = (alpha * newR + (255 - alpha) * origColor.R) / 255;
-                        var blendedG = (alpha * newG + (255 - alpha) * origColor.G) / 255;
-                        var finalR = (byte)Math.Clamp(blendedR, 0, 255);
-                        var finalG = (byte)Math.Clamp(blendedG, 0, 255);
+                        // Apply alpha blend first to the detail layer
+                        var detailR = (alpha * newR + (255 - alpha) * 128) / 255.0;
+                        var detailG = (alpha * newG + (255 - alpha) * 128) / 255.0;
+
+                        // Overlay blend mode
+                        double finalR, finalG;
+
+                        // R
+                        if (origColor.R < 128)
+                            finalR = (2.0 * origColor.R * detailR) / 255.0;
+                        else
+                            finalR = 255.0 - (2.0 * (255.0 - origColor.R) * (255.0 - detailR)) / 255.0;
+
+                        // G
+                        if (origColor.G < 128)
+                            finalG = (2.0 * origColor.G * detailG) / 255.0;
+                        else
+                            finalG = 255.0 - (2.0 * (255.0 - origColor.G) * (255.0 - detailG)) / 255.0;
+
+                        blendedNormals[x, y] = ((byte)Math.Clamp(finalR, 0, 255), (byte)Math.Clamp(finalG, 0, 255));
+                    }
+                }
+
+                // Calculate blended normal map intensity
+                double blendedIntensitySum = 0;
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var (r, g) = blendedNormals[x, y];
+                        var deviationR = Math.Abs(r - 128);
+                        var deviationG = Math.Abs(g - 128);
+                        blendedIntensitySum += (deviationR + deviationG) / 2.0;
+                    }
+                }
+                double blendedIntensity = blendedIntensitySum / (width * height);
+
+                // Calculate intensity change ratio
+                double intensityRatio = originalIntensity > 0 ? originalIntensity / blendedIntensity : 1.0;
+
+                // Normalize back to original intensity
+                var wroteBack = false;
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var origColor = normalmapBmp.GetPixel(x, y);
+                        var (blendedR, blendedG) = blendedNormals[x, y];
+
+                        // Scale back to original intensity
+                        var adjustedR = 128 + (blendedR - 128) * intensityRatio;
+                        var adjustedG = 128 + (blendedG - 128) * intensityRatio;
+
+                        var finalR = (byte)Math.Clamp(adjustedR, 0, 255);
+                        var finalG = (byte)Math.Clamp(adjustedG, 0, 255);
 
                         if (finalR != origColor.R || finalG != origColor.G)
                         {
@@ -1164,74 +1225,77 @@ public class Processor
                 Debug.WriteLine($"{pack.Name}: error processing {Path.GetFileName(normalmapFile)} — {ex.Message}");
             }
         }
-    }
 
-    private static Color[,] ApplyEdgePadding(Bitmap bitmap)
-    {
-        var width = bitmap.Width;
-        var height = bitmap.Height;
-        var result = new Color[width, height];
 
-        // First pass: copy all pixels and mark opaque ones
-        var isOpaque = new bool[width, height];
-        for (var y = 0; y < height; y++)
+        // helpers
+        Color[,] ApplyEdgePadding(Bitmap bitmap)
         {
-            for (var x = 0; x < width; x++)
-            {
-                var pixel = bitmap.GetPixel(x, y);
-                result[x, y] = pixel;
-                isOpaque[x, y] = pixel.A > 0;
-            }
-        }
+            var width = bitmap.Width;
+            var height = bitmap.Height;
+            var result = new Color[width, height];
 
-        // Multi-pass flood fill: continue until no more transparent pixels are filled
-        bool anyChanged;
-        int maxPasses = width * height; // theoretical limit not sure if it is factual but at least there is something to prevent endless loops
-
-        for (int pass = 0; pass < maxPasses; pass++)
-        {
-            anyChanged = false;
-            var newOpaque = new bool[width, height];
-            Array.Copy(isOpaque, newOpaque, isOpaque.Length);
-
+            // First pass: copy all pixels and mark opaque ones
+            var isOpaque = new bool[width, height];
             for (var y = 0; y < height; y++)
             {
                 for (var x = 0; x < width; x++)
                 {
-                    if (isOpaque[x, y]) continue; // Already opaque
-
-                    // Check all 4 directions for nearest opaque neighbor
-                    Color? nearestColor = null;
-
-                    // Check left
-                    if (x > 0 && isOpaque[x - 1, y])
-                        nearestColor = result[x - 1, y];
-                    // Check right
-                    else if (x < width - 1 && isOpaque[x + 1, y])
-                        nearestColor = result[x + 1, y];
-                    // Check top
-                    else if (y > 0 && isOpaque[x, y - 1])
-                        nearestColor = result[x, y - 1];
-                    // Check bottom
-                    else if (y < height - 1 && isOpaque[x, y + 1])
-                        nearestColor = result[x, y + 1];
-
-                    if (nearestColor.HasValue)
-                    {
-                        result[x, y] = Color.FromArgb(255, nearestColor.Value.R, nearestColor.Value.G, nearestColor.Value.B);
-                        newOpaque[x, y] = true;
-                        anyChanged = true;
-                    }
+                    var pixel = bitmap.GetPixel(x, y);
+                    result[x, y] = pixel;
+                    isOpaque[x, y] = pixel.A > 0;
                 }
             }
 
-            isOpaque = newOpaque;
+            // Multi-pass flood fill: continue until no more transparent pixels are filled
+            bool anyChanged;
+            int maxPasses = width * height; // theoretical limit not sure if it is factual but at least there is something to prevent endless loops
 
-            if (!anyChanged) break; // All reachable transparent pixels have been filled
+            for (int pass = 0; pass < maxPasses; pass++)
+            {
+                anyChanged = false;
+                var newOpaque = new bool[width, height];
+                Array.Copy(isOpaque, newOpaque, isOpaque.Length);
+
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        if (isOpaque[x, y]) continue; // Already opaque
+
+                        // Check all 4 directions for nearest opaque neighbor
+                        Color? nearestColor = null;
+
+                        // Check left
+                        if (x > 0 && isOpaque[x - 1, y])
+                            nearestColor = result[x - 1, y];
+                        // Check right
+                        else if (x < width - 1 && isOpaque[x + 1, y])
+                            nearestColor = result[x + 1, y];
+                        // Check top
+                        else if (y > 0 && isOpaque[x, y - 1])
+                            nearestColor = result[x, y - 1];
+                        // Check bottom
+                        else if (y < height - 1 && isOpaque[x, y + 1])
+                            nearestColor = result[x, y + 1];
+
+                        if (nearestColor.HasValue)
+                        {
+                            result[x, y] = Color.FromArgb(255, nearestColor.Value.R, nearestColor.Value.G, nearestColor.Value.B);
+                            newOpaque[x, y] = true;
+                            anyChanged = true;
+                        }
+                    }
+                }
+
+                isOpaque = newOpaque;
+
+                if (!anyChanged) break; // All reachable transparent pixels have been filled
+            }
+
+            return result;
         }
-
-        return result;
     }
+
 
 
     // TODO: Make it lower metalness in proportion to the increase in roughness -- that way it can truly align with VV's style (will it ruin anything? keep it subtle)
