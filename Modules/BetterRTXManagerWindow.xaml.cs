@@ -35,6 +35,17 @@ public sealed partial class BetterRTXManagerWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
+
+    private static readonly string[] CoreRTXFiles = new[]
+{
+    "RTXPostFX.Bloom.material.bin",
+    "RTXPostFX.material.bin",
+    "RTXPostFX.Tonemapping.material.bin",
+    "RTXStub.material.bin"
+};
+
+
+
     public BetterRTXManagerWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
@@ -104,7 +115,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
             WindowTitle.Text = $"BetterRTX Preset Manager (Targeting {text})";
 
-            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm once you've selected the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview for Windows" : "Minecraft for Windows")}";
+            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview for Windows" : "Minecraft for Windows")}";
 
             await InitializeAsync();
         }
@@ -876,11 +887,13 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             try
             {
+                /* Prevents deletion of default preset
                 if (presetData.IsDefault)
                 {
                     System.Diagnostics.Debug.WriteLine("Cannot delete default preset");
                     return;
                 }
+                */
 
                 if (Directory.Exists(presetData.PresetPath))
                 {
@@ -1017,9 +1030,26 @@ public sealed partial class BetterRTXManagerWindow : Window
             System.Diagnostics.Debug.WriteLine($"=== APPLYING PRESET: {preset.PresetName} ===");
 
             var filesToApply = new List<(string sourcePath, string destPath)>();
-            var filesExistingInGame = new List<string>(); // Track which files exist for Default caching
+            var filesToCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // Use HashSet to avoid duplicates
 
-            // PHASE 1: Check which files exist and build operation list
+            // PHASE 1: Always try to cache the 4 core RTX files if they exist
+            System.Diagnostics.Debug.WriteLine("PHASE 1: Checking core RTX files for Default preset...");
+            foreach (var coreFileName in CoreRTXFiles)
+            {
+                var coreFilePath = Path.Combine(_gameMaterialsPath, coreFileName);
+                if (File.Exists(coreFilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"  Core file exists: {coreFileName}");
+                    filesToCache.Add(coreFilePath);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"  Core file missing: {coreFileName}");
+                }
+            }
+
+            // PHASE 2: Check which files the preset will replace and add them to cache list
+            System.Diagnostics.Debug.WriteLine("PHASE 2: Checking preset files...");
             foreach (var binFilePath in preset.BinFiles)
             {
                 var binFileName = Path.GetFileName(binFilePath);
@@ -1027,12 +1057,12 @@ public sealed partial class BetterRTXManagerWindow : Window
 
                 if (File.Exists(destBinPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"File exists in game: {binFileName}");
-                    filesExistingInGame.Add(destBinPath);
+                    System.Diagnostics.Debug.WriteLine($"  Preset file exists in game: {binFileName}");
+                    filesToCache.Add(destBinPath); // HashSet prevents duplicates
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"File missing in game: {binFileName}");
+                    System.Diagnostics.Debug.WriteLine($"  Preset file missing in game: {binFileName}");
                 }
 
                 // Add to operation list regardless of existence
@@ -1045,15 +1075,12 @@ public sealed partial class BetterRTXManagerWindow : Window
                 return false;
             }
 
-            // PHASE 2: Decide if we should create Default preset
-            bool allFilesExist = filesExistingInGame.Count == preset.BinFiles.Count;
-
-            if (allFilesExist)
+            // PHASE 3: Cache all collected files to Default preset
+            if (filesToCache.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"✓ All {preset.BinFiles.Count} files exist - caching to Default preset");
+                System.Diagnostics.Debug.WriteLine($"PHASE 3: Caching {filesToCache.Count} files to Default preset...");
 
-                // Cache all existing files to Default
-                foreach (var existingFilePath in filesExistingInGame)
+                foreach (var existingFilePath in filesToCache)
                 {
                     var fileName = Path.GetFileName(existingFilePath);
                     var defaultBinPath = Path.Combine(_defaultFolder, fileName);
@@ -1063,11 +1090,11 @@ public sealed partial class BetterRTXManagerWindow : Window
                         try
                         {
                             File.Copy(existingFilePath, defaultBinPath, false);
-                            System.Diagnostics.Debug.WriteLine($"  Cached to Default: {fileName}");
+                            System.Diagnostics.Debug.WriteLine($"  ✓ Cached to Default: {fileName}");
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"  Error caching {fileName}: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"  ✗ Error caching {fileName}: {ex.Message}");
                         }
                     }
                     else
@@ -1078,12 +1105,11 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"⚠ Only {filesExistingInGame.Count}/{preset.BinFiles.Count} files exist - skipping Default preset creation");
-                System.Diagnostics.Debug.WriteLine("  Proceeding with preset installation anyway");
+                System.Diagnostics.Debug.WriteLine("⚠ No files to cache - Default preset will remain empty");
             }
 
-            // PHASE 3: Apply the preset (replace OR create files)
-            System.Diagnostics.Debug.WriteLine($"Applying {filesToApply.Count} files with elevation...");
+            // PHASE 4: Apply the preset (replace OR create files)
+            System.Diagnostics.Debug.WriteLine($"PHASE 4: Applying {filesToApply.Count} files with elevation...");
             var success = await ReplaceFilesWithElevation(filesToApply);
 
             if (success)

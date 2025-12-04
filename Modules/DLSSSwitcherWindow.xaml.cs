@@ -100,7 +100,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
             WindowTitle.Text = $"Swap DLSS version for {text}";
 
-            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm once you've selected the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview for Windows" : "Minecraft for Windows")}";
+            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview for Windows" : "Minecraft for Windows")}";
 
             await InitializeAsync();
         }
