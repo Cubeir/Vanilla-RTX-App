@@ -50,13 +50,13 @@ The app might notify you of important updates on startup, Vanilla RTX is constan
 
 - `DLSS version swapper`
 Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically highlighted and preserved in your catalogue, so you won't lose the original dll when replacing it—allowing you to revert without reinstalling the game. Aaccepts both raw dll files and zip archives containing any number of dlls. You can also remove DLLs from your catalogue that you no longer need, and your currently-installed version of DLSS is always highlighted.
-> The app does not validate DLL files to be DLSS—it is your responsibility to provide valid DLSS dlls. This feature may be particularly essential to RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs.
+> The app does not validate DLL files to be DLSS, it is your responsibility to provide valid DLSS dlls. This feature is particularly essential to RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image as Minecraft's is heavily outdated.
 
 - `BetterRTX manager`
-Installs and manages BetterRTX's presets which you can download and import from the BetterRTX website. Supports .rtpack and .zip files containing the material.bin files.  
+Installs and manages BetterRTX presets which you can download and import from BetterRTX's website. Supports `.rtpack` and `.zip` files containing the material.bin files.  
 You can create your own catalogue of presets to switch between instantly. On first use, the app automatically creates a "Default" preset by backing up the game's original bin files—this preset cannot be deleted as it preserves your ability to restore default RTX. Your currently-selected preset is highlighted.
 
-> Notes: This only supports Minecraft GDK (1.21.120 and higher), and given the install paths can now vary greatly, the app first scans for the most common install locations, if that fails, a system-wide search begins, but you're also prompted to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app should cache and reuse the game's location after initial detection, making subsequent preset changes or DLSS swapping faster.
+> Notes: This only supports Minecraft GDK (1.21.120 and higher), and given the install paths can now vary greatly, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work given enough time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster.
 
 - `Preview (Toggle)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
@@ -169,4 +169,4 @@ You can also alert me on [Minecraft RTX Community Discord](https://discord.gg/eK
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Vanilla RTX 1.21.206 is out! Make sure the app is updated then reinstall the packages to get the latest enhancements!
+Be sure to update to 2.4.0.0 from the Microsoft Store to easily upgrade your version of DLSS and install BetterRTX presets!
