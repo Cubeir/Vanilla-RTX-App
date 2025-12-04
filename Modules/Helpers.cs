@@ -875,19 +875,17 @@ public static class MinecraftGDKLocator
     /// </summary>
     public static string[] GetCommonLocations(bool isPreview)
     {
-        var root = Path.GetPathRoot(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)
-        ) ?? "C:\\";
-
         var folder = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
+        var programFilesRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)) ?? "C:\\";
 
-        return new[]
-        {
-        Path.Combine(root, "XboxGames", folder),
-        Path.Combine(root, "Program Files", "Microsoft Games", folder),
-        };
+        var list = DriveInfo.GetDrives()
+            .Where(d => d.DriveType == DriveType.Fixed)
+            .Select(d => Path.Combine(d.RootDirectory.FullName, "XboxGames", folder))
+            .ToList();
+
+        list.Add(Path.Combine(programFilesRoot, "Program Files", "Microsoft Games", folder));
+        return list.ToArray();
     }
-
 
 
     /// <summary>
