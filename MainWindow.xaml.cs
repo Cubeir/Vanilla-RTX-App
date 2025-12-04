@@ -633,7 +633,6 @@ public sealed partial class MainWindow : Window
         SlidersGridShadow.Receivers.Add(RightShadowReceiver);
         ClearResetShadow.Receivers.Add(RightShadowReceiver);
         BottomButtonsShadow.Receivers.Add(RightShadowReceiver);
-        TopButtonsShadow.Receivers.Add(RightShadowReceiver);
 
         // Individual textbox shadows
         FogMultiplierBoxShadow.Receivers.Add(RightShadowReceiver);
