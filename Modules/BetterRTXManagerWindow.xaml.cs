@@ -1016,52 +1016,75 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             System.Diagnostics.Debug.WriteLine($"=== APPLYING PRESET: {preset.PresetName} ===");
 
-            var filesToReplace = new List<(string sourcePath, string destPath)>();
+            var filesToApply = new List<(string sourcePath, string destPath)>();
+            var filesExistingInGame = new List<string>(); // Track which files exist for Default caching
 
-            // For each bin file in the preset
+            // PHASE 1: Check which files exist and build operation list
             foreach (var binFilePath in preset.BinFiles)
             {
                 var binFileName = Path.GetFileName(binFilePath);
                 var destBinPath = Path.Combine(_gameMaterialsPath, binFileName);
 
-                // Check if this bin file exists in game
                 if (File.Exists(destBinPath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Found matching file: {binFileName}");
+                    System.Diagnostics.Debug.WriteLine($"File exists in game: {binFileName}");
+                    filesExistingInGame.Add(destBinPath);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"File missing in game: {binFileName}");
+                }
 
-                    // Before replacing, cache to __DEFAULT if not already there
-                    var defaultBinPath = Path.Combine(_defaultFolder, binFileName);
+                // Add to operation list regardless of existence
+                filesToApply.Add((binFilePath, destBinPath));
+            }
+
+            if (filesToApply.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("⚠ No files to apply (preset might be empty)");
+                return false;
+            }
+
+            // PHASE 2: Decide if we should create Default preset
+            bool allFilesExist = filesExistingInGame.Count == preset.BinFiles.Count;
+
+            if (allFilesExist)
+            {
+                System.Diagnostics.Debug.WriteLine($"✓ All {preset.BinFiles.Count} files exist - caching to Default preset");
+
+                // Cache all existing files to Default
+                foreach (var existingFilePath in filesExistingInGame)
+                {
+                    var fileName = Path.GetFileName(existingFilePath);
+                    var defaultBinPath = Path.Combine(_defaultFolder, fileName);
+
                     if (!File.Exists(defaultBinPath))
                     {
                         try
                         {
-                            File.Copy(destBinPath, defaultBinPath, false);
-                            System.Diagnostics.Debug.WriteLine($"Cached default: {binFileName}");
+                            File.Copy(existingFilePath, defaultBinPath, false);
+                            System.Diagnostics.Debug.WriteLine($"  Cached to Default: {fileName}");
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error caching default {binFileName}: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"  Error caching {fileName}: {ex.Message}");
                         }
                     }
-
-                    filesToReplace.Add((binFilePath, destBinPath));
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"Bin file not found in game: {binFileName}");
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  Already in Default: {fileName}");
+                    }
                 }
             }
-
-            if (filesToReplace.Count == 0)
+            else
             {
-                System.Diagnostics.Debug.WriteLine("No matching bin files found to replace");
-                return false;
+                System.Diagnostics.Debug.WriteLine($"⚠ Only {filesExistingInGame.Count}/{preset.BinFiles.Count} files exist - skipping Default preset creation");
+                System.Diagnostics.Debug.WriteLine("  Proceeding with preset installation anyway");
             }
 
-            // Replace all files using elevated PowerShell
-            System.Diagnostics.Debug.WriteLine($"Replacing {filesToReplace.Count} files...");
-
-            var success = await ReplaceFilesWithElevation(filesToReplace);
+            // PHASE 3: Apply the preset (replace OR create files)
+            System.Diagnostics.Debug.WriteLine($"Applying {filesToApply.Count} files with elevation...");
+            var success = await ReplaceFilesWithElevation(filesToApply);
 
             if (success)
             {
@@ -1114,7 +1137,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (process != null)
                 {
                     process.WaitForExit();
-                    System.Diagnostics.Debug.WriteLine($"File replacement completed with exit code: {process.ExitCode}");
+                    System.Diagnostics.Debug.WriteLine($"File operations completed with exit code: {process.ExitCode}");
                     return process.ExitCode == 0;
                 }
 
