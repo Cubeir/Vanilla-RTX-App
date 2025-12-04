@@ -948,10 +948,10 @@
                                 Grid.Row="6"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Butcher heightmaps (0-255)"
+                        <TextBlock Text="Lazify Normals (0-255)"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Lazifies heightmaps and reduces refinedness (0 = no change, 255 = fully lazy heightmaps)." />
+                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see some benfit or no change, high quality packs can be made less clean/more organic, a small value of 1-10 is recommended" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -960,7 +960,7 @@
                                 <ColumnDefinition Width="65" />
                             </Grid.ColumnDefinitions>
 
-                            <Slider x:Name="ButcherHeightmapsSlider"
+                            <Slider x:Name="LazifyNormalsSlider"
                                     TickFrequency="25"
                                     TickPlacement="Inline"
                                     SnapsTo="StepValues"
@@ -970,21 +970,21 @@
                                     StepFrequency="1"
                                     SmallChange="1"
                                     Value="0"
-                                    ValueChanged="ButcherHeightmaps_ValueChanged" />
+                                    ValueChanged="LazifyNormals_ValueChanged" />
 
                             <Border Grid.Column="2"
                                     Translation="0,0,0"
                                     CornerRadius="4">
                                 <Border.Shadow>
-                                    <ThemeShadow x:Name="ButcherHeightmapsBoxShadow" />
+                                    <ThemeShadow x:Name="LazifyNormalsBoxShadow" />
                                 </Border.Shadow>
                             </Border>
 
-                            <TextBox x:Name="ButcherHeightmapsBox"
+                            <TextBox x:Name="LazifyNormalsBox"
                                      Grid.Column="2"
                                      Width="60"
                                      Text="0"
-                                     LostFocus="ButcherHeightmaps_LostFocus"
+                                     LostFocus="LazifyNormals_LostFocus"
                                      IsTextScaleFactorEnabled="False"
                                      BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
                         </Grid>

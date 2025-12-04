@@ -353,7 +353,7 @@ public sealed partial class PackBrowserWindow : Window
         {
         Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "resource_packs"),
         Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "development_resource_packs")
-    };
+        };
 
         foreach (var scanPath in scanPaths)
         {

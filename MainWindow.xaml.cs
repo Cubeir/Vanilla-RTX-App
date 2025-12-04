@@ -37,6 +37,15 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- The search for Minecraft's directory works very well and is extremely fast even on a system with 10 drives and thousands of folders
+BUT, some parts could be "loosened" a little, like, it STRICTLY needs a Minecraft.Windows.exe in CONTENTS folder
+How about ANY case insensitive Minecraft.Windows.exe in the Minecraft for Windows folder recursively
+You know be less strict and more flexible for the future in case Mojang decides to change some things up
+
+- Expand on Butcher heightmaps and roughen up
+
+- Update libs
+
 - Add a proper, non-intrusive leave a review prompt
 
 - Get copilot to examine the entire codebase for raw string path manipulation where better methods could've been used
@@ -60,10 +69,6 @@ All settled there? ensure there isn't a way the app can ddos github
 
 - Do the TODO and ISSUES scattered in the code
 Finish all that you had postponed
-
-- What if, you expanded Butcher heightmaps into Butcher Normals
-Then had it generate simple seamless normal maps as well and blend them?
-That way all sliders can affect all packs in some shape or form, which is good.
 
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
@@ -538,7 +543,7 @@ public sealed partial class MainWindow : Window
              Defaults.MaterialNoiseOffset
         );
 
-        Previewer.Instance.InitializeSlider(ButcherHeightmapsSlider,
+        Previewer.Instance.InitializeSlider(LazifyNormalsSlider,
             "ms-appx:///Assets/previews/heightmaps.default.png",
             "ms-appx:///Assets/previews/heightmaps.default.png",
             "ms-appx:///Assets/previews/heightmaps.butchered.png",
@@ -640,7 +645,7 @@ public sealed partial class MainWindow : Window
         NormalIntensityBoxShadow.Receivers.Add(RightShadowReceiver);
         MaterialNoiseBoxShadow.Receivers.Add(RightShadowReceiver);
         RoughenUpBoxShadow.Receivers.Add(RightShadowReceiver);
-        ButcherHeightmapsBoxShadow.Receivers.Add(RightShadowReceiver);
+        LazifyNormalsBoxShadow.Receivers.Add(RightShadowReceiver);
     }
 
 
@@ -1149,7 +1154,7 @@ public sealed partial class MainWindow : Window
         (NormalIntensitySlider, NormalIntensityBox, (double)Persistent.NormalIntensity, true),
         (MaterialNoiseSlider, MaterialNoiseBox, (double)Persistent.MaterialNoiseOffset, true),
         (RoughenUpSlider, RoughenUpBox, (double)Persistent.RoughenUpIntensity, true),
-        (ButcherHeightmapsSlider, ButcherHeightmapsBox, (double)Persistent.ButcheredHeightmapAlpha, true)
+        (LazifyNormalsSlider, LazifyNormalsBox, (double)Persistent.ButcheredHeightmapAlpha, true)
         };
 
         // Match bool-based UI elements to their current bools
@@ -1598,25 +1603,25 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ButcherHeightmaps_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+    private void LazifyNormals_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
         ButcheredHeightmapAlpha = (int)Math.Round(e.NewValue);
-        if (ButcherHeightmapsBox != null && ButcherHeightmapsBox.FocusState == FocusState.Unfocused)
-            ButcherHeightmapsBox.Text = ButcheredHeightmapAlpha.ToString();
+        if (LazifyNormalsBox != null && LazifyNormalsBox.FocusState == FocusState.Unfocused)
+            LazifyNormalsBox.Text = ButcheredHeightmapAlpha.ToString();
     }
 
-    private void ButcherHeightmaps_LostFocus(object sender, RoutedEventArgs e)
+    private void LazifyNormals_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (int.TryParse(ButcherHeightmapsBox.Text, out int val))
+        if (int.TryParse(LazifyNormalsBox.Text, out int val))
         {
             val = Math.Clamp(val, 0, 255);
             ButcheredHeightmapAlpha = val;
-            ButcherHeightmapsSlider.Value = val;
-            ButcherHeightmapsBox.Text = val.ToString();
+            LazifyNormalsSlider.Value = val;
+            LazifyNormalsBox.Text = val.ToString();
         }
         else
         {
-            ButcherHeightmapsBox.Text = ButcheredHeightmapAlpha.ToString();
+            LazifyNormalsBox.Text = ButcheredHeightmapAlpha.ToString();
         }
     }
 

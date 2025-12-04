@@ -504,8 +504,8 @@ public static class RuntimeFlags
 /// </summary>
 public static class MinecraftGDKLocator
 {
-    private const string MinecraftFolderName = "Minecraft for Windows";
-    private const string MinecraftPreviewFolderName = "Minecraft Preview for Windows";
+    public const string MinecraftFolderName = "Minecraft for Windows";
+    public const string MinecraftPreviewFolderName = "Minecraft Preview for Windows";
     private const string MinecraftExecutableName = "Minecraft.Windows.exe";
     private const int MaxSearchDepth = 9;
 
