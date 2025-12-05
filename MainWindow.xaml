@@ -1040,7 +1040,7 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="4,0,0,0"
+                            CornerRadius="6,0,0,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Begins the tuning process based on selected packs and given parameters. Make sure Minecraft is closed while tuning or restart the game after tuning is complete.">
@@ -1063,7 +1063,7 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0,4,0,0"
+                            CornerRadius="0,6,0,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Exports selected packages.">
@@ -1146,7 +1146,7 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0,0,0,4"
+                            CornerRadius="0,0,0,6"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.">
                         <StackPanel Orientation="Horizontal"
@@ -1168,7 +1168,7 @@
                             Click="DLSSVersionSwitcherButton_Click"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0,0,4,0"
+                            CornerRadius="0,0,6,0"
                             BorderThickness="0"
                             FontWeight="SemiBold"
                             IsTextScaleFactorEnabled="False"
