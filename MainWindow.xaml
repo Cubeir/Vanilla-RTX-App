@@ -806,10 +806,10 @@
                                 Grid.Row="6"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Normal/heightmap intensity (0-900%)"
+                        <TextBlock Text="Surface normal intensity (0-900%)"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Increases normal map Intensity. 0% = flatten, 100% = default, higher values = more pronounced depth on blocks, impacts heightmaps in similarly." />
+                                   ToolTipService.ToolTip="Adjust normal and heightmaps' Intensity. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -948,7 +948,7 @@
                                 Grid.Row="6"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Lazify normals/heightmaps (0-255)"
+                        <TextBlock Text="Lazify surface normals (0-255)"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see some benfit or no change, high quality packs can be made less clean/more organic, a small value of 1-10 is recommended" />
