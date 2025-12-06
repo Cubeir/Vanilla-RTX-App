@@ -148,16 +148,12 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   - Donate: Opens the developer's Ko-Fi page.  
     When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain my projects thanks to them. Consider becoming a supporter to have your name up there? (or I have to resort to ads, dead serious!)
 
-- The app may occasionally displays announcements from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important Vanilla RTX or App updates, known issues, etc... and sometimes for entertainment!
+- The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc... and sometimes for entertainment!
 
 ## Known Issues
 - Missing icons on some older Windows installations (non-critical)   
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
-
-- Brief white flash on app startup (non-critical) 
-
-- Potentially ungraceful app closure under some conditions (non-critical) 
 
 ### Need help?
 
