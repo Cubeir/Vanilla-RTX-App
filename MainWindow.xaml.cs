@@ -46,10 +46,6 @@ Then test the whole thing again in various ways too, both code review and real w
 the locator class, and fucntions of dlss/brtx installers, the behavior
 sometimes you're nonsensically strict, some times some things aren't seen through to the end well enough, imagine more scenarios
 
-- Expand on Butcher heightmaps and roughen up
-
-- Update libs
-
 - Add a proper, non-intrusive leave a review prompt
 
 - Get copilot to examine the entire codebase for raw string path manipulation where better methods could've been used
@@ -60,16 +56,19 @@ sometimes you're nonsensically strict, some times some things aren't seen throug
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
+For finding the game, GDKLocator kit handles it system-wide, all good
+**For Minecraft's USER DATA however, you better expose those, apparently some third party launchers use different paths!!!**
+
 - Expose as many params as you can to a json in app's root
 the URLs the app sends requests to + the hardcoded Minecraft paths
 * Resource packs only end up in shared
 * Options file is in both shared and non-shared, but non-shared is presumably the one that takes priority, still, we take care of both
 * PackLocator, PackUpdater (deployer), Browse Packs, and LaunchMinecraftRTX's options.txt updater are the only things that rely on hardcoded paths on the system
+* EXPOSE ALL hardcoded URLs and Tuning parameters
 
 Additionally, while going through params, 
-Check your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
+Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github
-
 
 - Do the TODO and ISSUES scattered in the code
 Finish all that you had postponed
@@ -83,8 +82,6 @@ UpdateUI is VERY NEEDED for Previewer class, it is already implemented everywher
 You would've had to manually done this anyway
 
 And the smooth transitions are worth it.
-
-
 
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging
@@ -101,7 +98,7 @@ A variable is getting constantly updated with new logs, a worker in main UI thre
 Or simple pixel arts you'd like to make in the same style
 Have 5-10 made
 
-- Tuner could, in theory, use the MANIFEST.JSON's metadata (i.e. TOOLS USED) to MARK packs
+- Tuner could, in theory, use the MANIFEST.JSON's metadata (i.e. TOOLS USED param) to MARK packs
 e.g. you can preserve their tuning histories there, embed it into the manifest, like for ambient lighting toggle
 
 - Account for different font scalings, windows accessibility settings, etc...
@@ -145,8 +142,8 @@ public static class TunerVariables
         public static double EmissivityMultiplier = Defaults.EmissivityMultiplier;
         public static int NormalIntensity = Defaults.NormalIntensity;
         public static int MaterialNoiseOffset = Defaults.MaterialNoiseOffset;
-        public static int RoughenUpIntensity = Defaults.RoughenUpIntensity;
-        public static int ButcheredHeightmapAlpha = Defaults.ButcheredHeightmapAlpha;
+        public static int RoughnessControlValue = Defaults.RoughnessControlValue;
+        public static int LazifyNormalAlpha = Defaults.LazifyNormalAlpha;
         public static bool AddEmissivityAmbientLight = Defaults.AddEmissivityAmbientLight;
 
         public static string AppThemeMode = "Dark";
@@ -160,8 +157,8 @@ public static class TunerVariables
         public const double EmissivityMultiplier = 1.0;
         public const int NormalIntensity = 100;
         public const int MaterialNoiseOffset = 0;
-        public const int RoughenUpIntensity = 0;
-        public const int ButcheredHeightmapAlpha = 0;
+        public const int RoughnessControlValue = 0;
+        public const int LazifyNormalAlpha = 0;
         public const bool AddEmissivityAmbientLight = false;
     }
 
@@ -537,7 +534,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/roughenup.default.png",
             "ms-appx:///Assets/previews/roughenup.default.png",
             "ms-appx:///Assets/previews/roughenup.rough.png",
-            Defaults.RoughenUpIntensity
+            Defaults.RoughnessControlValue
         );
 
         Previewer.Instance.InitializeSlider(MaterialNoiseSlider,
@@ -551,7 +548,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/heightmaps.default.png",
             "ms-appx:///Assets/previews/heightmaps.default.png",
             "ms-appx:///Assets/previews/heightmaps.butchered.png",
-            Defaults.ButcheredHeightmapAlpha
+            Defaults.LazifyNormalAlpha
         );
 
         Previewer.Instance.InitializeToggleSwitch(EmissivityAmbientLightToggle,
@@ -1157,8 +1154,8 @@ public sealed partial class MainWindow : Window
         (EmissivityMultiplierSlider, EmissivityMultiplierBox, Persistent.EmissivityMultiplier, false),
         (NormalIntensitySlider, NormalIntensityBox, (double)Persistent.NormalIntensity, true),
         (MaterialNoiseSlider, MaterialNoiseBox, (double)Persistent.MaterialNoiseOffset, true),
-        (RoughenUpSlider, RoughenUpBox, (double)Persistent.RoughenUpIntensity, true),
-        (LazifyNormalsSlider, LazifyNormalsBox, (double)Persistent.ButcheredHeightmapAlpha, true)
+        (RoughenUpSlider, RoughenUpBox, (double)Persistent.RoughnessControlValue, true),
+        (LazifyNormalsSlider, LazifyNormalsBox, (double)Persistent.LazifyNormalAlpha, true)
         };
 
         // Match bool-based UI elements to their current bools
@@ -1587,9 +1584,9 @@ public sealed partial class MainWindow : Window
 
     private void RoughenUp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
-        RoughenUpIntensity = (int)Math.Round(e.NewValue);
+        RoughnessControlValue = (int)Math.Round(e.NewValue);
         if (RoughenUpBox != null && RoughenUpBox.FocusState == FocusState.Unfocused)
-            RoughenUpBox.Text = RoughenUpIntensity.ToString();
+            RoughenUpBox.Text = RoughnessControlValue.ToString();
     }
 
     private void RoughenUp_LostFocus(object sender, RoutedEventArgs e)
@@ -1597,21 +1594,21 @@ public sealed partial class MainWindow : Window
         if (int.TryParse(RoughenUpBox.Text, out int val))
         {
             val = Math.Clamp(val, 0, 25);
-            RoughenUpIntensity = val;
+            RoughnessControlValue = val;
             RoughenUpSlider.Value = val;
             RoughenUpBox.Text = val.ToString();
         }
         else
         {
-            RoughenUpBox.Text = RoughenUpIntensity.ToString();
+            RoughenUpBox.Text = RoughnessControlValue.ToString();
         }
     }
 
     private void LazifyNormals_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
-        ButcheredHeightmapAlpha = (int)Math.Round(e.NewValue);
+        LazifyNormalAlpha = (int)Math.Round(e.NewValue);
         if (LazifyNormalsBox != null && LazifyNormalsBox.FocusState == FocusState.Unfocused)
-            LazifyNormalsBox.Text = ButcheredHeightmapAlpha.ToString();
+            LazifyNormalsBox.Text = LazifyNormalAlpha.ToString();
     }
 
     private void LazifyNormals_LostFocus(object sender, RoutedEventArgs e)
@@ -1619,13 +1616,13 @@ public sealed partial class MainWindow : Window
         if (int.TryParse(LazifyNormalsBox.Text, out int val))
         {
             val = Math.Clamp(val, 0, 255);
-            ButcheredHeightmapAlpha = val;
+            LazifyNormalAlpha = val;
             LazifyNormalsSlider.Value = val;
             LazifyNormalsBox.Text = val.ToString();
         }
         else
         {
-            LazifyNormalsBox.Text = ButcheredHeightmapAlpha.ToString();
+            LazifyNormalsBox.Text = LazifyNormalAlpha.ToString();
         }
     }
 
@@ -1673,8 +1670,8 @@ public sealed partial class MainWindow : Window
         EmissivityMultiplier = Defaults.EmissivityMultiplier;
         NormalIntensity = Defaults.NormalIntensity;
         MaterialNoiseOffset = Defaults.MaterialNoiseOffset;
-        RoughenUpIntensity = Defaults.RoughenUpIntensity;
-        ButcheredHeightmapAlpha = Defaults.ButcheredHeightmapAlpha;
+        RoughnessControlValue = Defaults.RoughnessControlValue;
+        LazifyNormalAlpha = Defaults.LazifyNormalAlpha;
         AddEmissivityAmbientLight = Defaults.AddEmissivityAmbientLight;
 
         // Manually updates UI based on new values

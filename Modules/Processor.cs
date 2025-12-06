@@ -94,28 +94,28 @@ public class Processor
                 ProcessEmissivity(p);
         }
 
+        if (LazifyNormalAlpha != Defaults.LazifyNormalAlpha)
+        {
+            foreach (var p in packs)
+                ProcessLazify(p);
+        }
+
         if (NormalIntensity != Defaults.NormalIntensity)
         {
             foreach (var p in packs)
                 ProcessNormalIntensity(p);
         }
 
+        if (RoughnessControlValue != Defaults.RoughnessControlValue)
+        {
+            foreach (var p in packs)
+                ProcessRoughness(p);
+        }
+
         if (MaterialNoiseOffset != Defaults.MaterialNoiseOffset)
         {
             foreach (var p in packs)
                 ProcessMaterialGrain(p);
-        }
-
-        if (RoughenUpIntensity != Defaults.RoughenUpIntensity)
-        {
-            foreach (var p in packs)
-                ProcessRoughingUp(p);
-        }
-
-        if (ButcheredHeightmapAlpha != Defaults.ButcheredHeightmapAlpha)
-        {
-            foreach (var p in packs)
-                ProcessHeightmaps(p);
         }
     }
 
@@ -463,7 +463,6 @@ public class Processor
             });
         }
     }
-
 
 
 
@@ -865,7 +864,7 @@ public class Processor
 
 
 
-    private static void ProcessHeightmaps(PackInfo pack)
+    private static void ProcessLazify(PackInfo pack)
     {
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
             return;
@@ -880,7 +879,7 @@ public class Processor
             return;
         }
 
-        var alpha = ButcheredHeightmapAlpha;
+        var alpha = LazifyNormalAlpha;
 
         // Process heightmaps
         foreach (var (colormapFile, heightmapFile) in heightmapPairs)
@@ -1300,7 +1299,7 @@ public class Processor
 
     // TODO: Make it lower metalness in proportion to the increase in roughness -- that way it can truly align with VV's style (will it ruin anything? keep it subtle)
     // TODO: Make the decaying curve's effect much stronger, expect 20-30 boost for 0-50 values, above that decaying to 15-10, then towards 255, 0, roundown for that
-    private static void ProcessRoughingUp(PackInfo pack)
+    private static void ProcessRoughness(PackInfo pack)
     {
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
             return;
@@ -1313,7 +1312,7 @@ public class Processor
             return;
         }
 
-        var amount = RoughenUpIntensity;
+        var amount = RoughnessControlValue;
         if (amount <= 0)
             return;
 
