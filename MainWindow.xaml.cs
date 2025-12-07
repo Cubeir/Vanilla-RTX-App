@@ -272,7 +272,7 @@ public sealed partial class MainWindow : Window
         InitializeShadows();
 
         // Splash Blinking Animation
-        _ = AnimateSplash(450);
+        _ = AnimateSplash(375);
 
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
         LoadSettings();
@@ -295,14 +295,8 @@ public sealed partial class MainWindow : Window
             HaveDeployableCache = "Installation";
         }
 
-        // Brief delay to ensure everything is fully rendered, then fade out splash screen
-        await Task.Delay(1000);
-        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and what you want seen AFTER ======================= 
-        await FadeOutSplash();
-
-
         // Slower UI update override for a smoother startup
-        UpdateUI(0.5);
+        UpdateUI(0.001);
 
         // Locate packs, if Preview is enabled, TargetPreview triggers another pack location, avoid redundant operation
         if (!IsTargetingPreview)
@@ -320,6 +314,12 @@ public sealed partial class MainWindow : Window
                 Log(psa, LogLevel.Informational);
             }
         });
+
+        // Brief delay to ensure everything is fully rendered, then fade out splash screen
+        await Task.Delay(750);
+        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and what you want seen AFTER ======================= 
+        await FadeOutSplash();
+
         // Warning if MC is running
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
@@ -327,7 +327,7 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app, when finished, launch the game using {buttonName} button.", LogLevel.Warning);
         }
 
-        // Calling it last since it might add a bit of delay
+        // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
 
         async Task FadeOutSplash()
