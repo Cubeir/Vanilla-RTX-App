@@ -1029,7 +1029,10 @@ public sealed partial class BetterRTXManagerWindow : Window
             System.Diagnostics.Debug.WriteLine($"=== APPLYING PRESET: {preset.PresetName} ===");
 
             var filesToApply = new List<(string sourcePath, string destPath)>();
-            var filesToCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // Use HashSet to avoid duplicates
+            var filesToCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var existingDefaultFiles = Directory.GetFiles(_defaultFolder, "*.bin", SearchOption.TopDirectoryOnly);
+            bool isDefaultEmpty = existingDefaultFiles.Length == 0;
+            System.Diagnostics.Debug.WriteLine($"__DEFAULT folder status: {(isDefaultEmpty ? "EMPTY" : $"HAS {existingDefaultFiles.Length} FILES")}");
 
             // PHASE 1: Always try to cache the 4 core RTX files if they exist
             System.Diagnostics.Debug.WriteLine("PHASE 1: Checking core RTX files for Default preset...");
@@ -1057,7 +1060,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (File.Exists(destBinPath))
                 {
                     System.Diagnostics.Debug.WriteLine($"  Preset file exists in game: {binFileName}");
-                    filesToCache.Add(destBinPath); // HashSet prevents duplicates
+                    filesToCache.Add(destBinPath);
                 }
                 else
                 {
@@ -1075,7 +1078,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
 
             // PHASE 3: Cache all collected files to Default preset
-            if (filesToCache.Count > 0)
+            if (isDefaultEmpty && filesToCache.Count > 0)
             {
                 System.Diagnostics.Debug.WriteLine($"PHASE 3: Caching {filesToCache.Count} files to Default preset...");
 
@@ -1083,31 +1086,27 @@ public sealed partial class BetterRTXManagerWindow : Window
                 {
                     var fileName = Path.GetFileName(existingFilePath);
                     var defaultBinPath = Path.Combine(_defaultFolder, fileName);
-
-                    if (!File.Exists(defaultBinPath))
+                    try
                     {
-                        try
-                        {
-                            File.Copy(existingFilePath, defaultBinPath, false);
-                            System.Diagnostics.Debug.WriteLine($"  ✓ Cached to Default: {fileName}");
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"  ✗ Error caching {fileName}: {ex.Message}");
-                        }
+                        File.Copy(existingFilePath, defaultBinPath, false);
+                        System.Diagnostics.Debug.WriteLine($"  ✓ Cached to Default: {fileName}");
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"  Already in Default: {fileName}");
+                        System.Diagnostics.Debug.WriteLine($"  ✗ Error caching {fileName}: {ex.Message}");
                     }
                 }
+            }
+            else if (!isDefaultEmpty)
+            {
+                System.Diagnostics.Debug.WriteLine("PHASE 3: Skipped - Default preset already populated");
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine("⚠ No files to cache - Default preset will remain empty");
             }
 
-            // PHASE 4: Apply the preset (replace OR create files)
+            // PHASE 4: Apply the preset
             System.Diagnostics.Debug.WriteLine($"PHASE 4: Applying {filesToApply.Count} files with elevation...");
             var success = await ReplaceFilesWithElevation(filesToApply);
 
