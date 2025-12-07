@@ -1593,7 +1593,7 @@ public sealed partial class MainWindow : Window
     {
         if (int.TryParse(RoughenUpBox.Text, out int val))
         {
-            val = Math.Clamp(val, 0, 25);
+            val = Math.Clamp(val, -5, 25);
             RoughnessControlValue = val;
             RoughenUpSlider.Value = val;
             RoughenUpBox.Text = val.ToString();
@@ -1629,8 +1629,8 @@ public sealed partial class MainWindow : Window
     // Input validation helpers to prevent invalid characters
     private void IntegerTextBox_BeforeTextChanging(TextBox sender, TextBoxBeforeTextChangingEventArgs args)
     {
-        // Allow only digits
-        args.Cancel = !System.Text.RegularExpressions.Regex.IsMatch(args.NewText, @"^[0-9]*$");
+        // Allow only digits and negatives
+        args.Cancel = !System.Text.RegularExpressions.Regex.IsMatch(args.NewText, @"^-?[0-9]*$");
     }
     private void DoubleTextBox_BeforeTextChanging(TextBox sender, TextBoxBeforeTextChangingEventArgs args)
     {

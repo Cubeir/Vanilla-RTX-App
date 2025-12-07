@@ -1295,26 +1295,28 @@ public class Processor
         }
     }
 
+ 
 
-
-    // TODO: Make it lower metalness in proportion to the increase in roughness -- that way it can truly align with VV's style (will it ruin anything? keep it subtle)
-    // TODO: Make the decaying curve's effect much stronger, expect 20-30 boost for 0-50 values, above that decaying to 15-10, then towards 255, 0, roundown for that
     private static void ProcessRoughness(PackInfo pack)
     {
+        var MetalnessModificationFraction = 0.5;
+
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
             return;
 
         var files = TextureSetHelper.RetrieveFilesFromTextureSets(pack.Path, TextureSetHelper.TextureType.Mer);
-
         if (!files.Any())
         {
             MainWindow.Log($"{pack.Name}: no MERS texture files found from texture sets.");
             return;
         }
 
-        var amount = RoughnessControlValue;
-        if (amount <= 0)
+        var controlValue = RoughnessControlValue;
+        if (controlValue == 0)
             return;
+
+        bool isIncreasingRoughness = controlValue > 0;
+        int absControl = Math.Abs(controlValue);
 
         foreach (var file in files)
         {
@@ -1323,32 +1325,83 @@ public class Processor
                 using var bmp = ReadImage(file, false);
                 var width = bmp.Width;
                 var height = bmp.Height;
-
                 var wroteBack = false;
+
                 for (var y = 0; y < height; y++)
                 {
                     for (var x = 0; x < width; x++)
                     {
                         var origColor = bmp.GetPixel(x, y);
-                        int origB = origColor.B;
+                        int origRoughness = origColor.B;
+                        int origMetalness = origColor.R;
 
-                        // a curve where low values get high boost, high values get minimal boost
-                        var normalized = origB / 255.0; // 0 to 1
-                        var power = 3.0; // Higher power = a more aggressive curve
-                        var inverseFactor = 1.0 - Math.Pow(normalized, power);
+                        int newRoughness, newMetalness;
 
-                        // At intensity 10: value 1 gets ~+20, value 40 gets ~+18, value 128 gets ~+5, value 190 gets ~+1
-                        var maxBoost = 20.0;
-                        var boost = amount / 10.0 * maxBoost * inverseFactor;
+                        if (isIncreasingRoughness)
+                        {
+                            // Increasing roughness: strong boost for low values, weak for high values
+                            var normalized = origRoughness / 255.0;
 
-                        var newB = origB + boost;
-                        var finalB = (int)Math.Round(newB);
-                        finalB = Math.Clamp(finalB, 0, 255);
+                            // Curve power increases with control value for more aggression
+                            var basePower = 2.2;
+                            var curveAggression = basePower + (absControl / 25.0) * 1.5;
 
-                        if (finalB != origB)
+                            var inverseFactor = 1.0 - Math.Pow(normalized, curveAggression);
+
+                            var maxBoost = absControl * 2.3 + (absControl / 12.0) * 8.0;
+                            var boost = maxBoost * inverseFactor;
+
+                            newRoughness = (int)Math.Floor(origRoughness + boost);
+                            newRoughness = Math.Clamp(newRoughness, 0, 255);
+
+                            // Reduce metalness if pixel has metalness
+                            if (origMetalness > 0)
+                            {
+                                var roughnessChange = newRoughness - origRoughness;
+                                var metalnessReduction = roughnessChange * MetalnessModificationFraction;
+                                newMetalness = (int)Math.Floor(origMetalness - metalnessReduction);
+                                newMetalness = Math.Clamp(newMetalness, 0, 255);
+                            }
+                            else
+                            {
+                                newMetalness = origMetalness;
+                            }
+                        }
+                        else // Decreasing roughness
+                        {
+                            var normalized = origRoughness / 255.0;
+
+                            // Same curve aggression logic but applied inversely
+                            var basePower = 2.2;
+                            var curveAggression = basePower + (absControl / 5.0) * 1.5;
+
+                            //  high values get hit hard, low values barely move
+                            var factor = Math.Pow(normalized, curveAggression);
+
+                            var maxReduction = absControl * 2.3 + (absControl / 5.0) * 8.0;
+                            var reduction = maxReduction * factor;
+
+                            newRoughness = (int)Math.Ceiling(origRoughness - reduction);
+                            newRoughness = Math.Clamp(newRoughness, 0, 255);
+
+                            // Increase metalness if pixel has metalness
+                            if (origMetalness > 0)
+                            {
+                                var roughnessChange = origRoughness - newRoughness; // Positive value
+                                var metalnessIncrease = roughnessChange * MetalnessModificationFraction;
+                                newMetalness = (int)Math.Ceiling(origMetalness + metalnessIncrease);
+                                newMetalness = Math.Clamp(newMetalness, 0, 255);
+                            }
+                            else
+                            {
+                                newMetalness = origMetalness;
+                            }
+                        }
+
+                        if (newRoughness != origRoughness || newMetalness != origMetalness)
                         {
                             wroteBack = true;
-                            var newColor = Color.FromArgb(origColor.A, origColor.R, origColor.G, finalB);
+                            var newColor = Color.FromArgb(origColor.A, newMetalness, origColor.G, newRoughness);
                             bmp.SetPixel(x, y, newColor);
                         }
                     }
@@ -1357,17 +1410,11 @@ public class Processor
                 if (wroteBack)
                 {
                     WriteImageAsTGA(bmp, file);
-                    // MainWindow.Log($"{packName}: updated roughness in {Path.GetFileName(file)}.");
-                }
-                else
-                {
-                    // MainWindow.Log($"{packName}: no roughness changes in {Path.GetFileName(file)}.");
                 }
             }
             catch (Exception ex)
             {
                 MainWindow.Log($"{pack.Name}: error processing {Path.GetFileName(file)} — {ex.Message}", MainWindow.LogLevel.Error);
-                // Updates UI which can cause freezing if too many files give error, but it is worth it as logs will appear in the end
             }
         }
     }
