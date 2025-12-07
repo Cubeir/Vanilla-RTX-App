@@ -640,8 +640,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // Delete button - only show if not current preset
-        if (!isCurrent)
+        // Delete button - only show if not current preset or default preset
+        if (!preset.IsDefault && !isCurrent)
         {
             var deleteButton = new Button
             {
@@ -886,13 +886,11 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             try
             {
-                /* Prevents deletion of default preset
                 if (presetData.IsDefault)
                 {
                     System.Diagnostics.Debug.WriteLine("Cannot delete default preset");
                     return;
                 }
-                */
 
                 if (Directory.Exists(presetData.PresetPath))
                 {
