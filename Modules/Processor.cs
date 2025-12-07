@@ -1650,7 +1650,7 @@ public class Processor
 
                                 // Calculate effectiveness based on current color values
                                 var redEffectiveness = CalculateEffectiveness(r);
-                                var greenEffectiveness = CalculateEffectiveness(g) * 0.25; // Keep green at 1/4 effectiveness
+                                var greenEffectiveness = CalculateEffectiveness(g) * 0.2; // Keep green at 1/5 effectiveness
                                 var blueEffectiveness = CalculateEffectiveness(b);
 
                                 // Apply effectiveness to final noise offsets, rounded
