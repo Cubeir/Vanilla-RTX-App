@@ -863,7 +863,7 @@ public class Processor
     }
 
 
-
+    
     private static void ProcessLazify(PackInfo pack)
     {
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
@@ -1295,11 +1295,15 @@ public class Processor
         }
     }
 
- 
+
 
     private static void ProcessRoughness(PackInfo pack)
     {
-        var MetalnessModificationFraction = 0.5;
+        const double MetalnessModificationFraction = 0.33;
+        const double MetalnessInfluenceOnRoughnessReduction = 0.33;
+        const double BasePower = 2.2;
+        const double ImpactMultiplier = 2.4;
+        const double HighControlScaling = 8.0;
 
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
             return;
@@ -1343,12 +1347,11 @@ public class Processor
                             var normalized = origRoughness / 255.0;
 
                             // Curve power increases with control value for more aggression
-                            var basePower = 2.2;
-                            var curveAggression = basePower + (absControl / 25.0) * 1.5;
+                            var curveAggression = BasePower + (absControl / 25.0) * 1.5;
 
                             var inverseFactor = 1.0 - Math.Pow(normalized, curveAggression);
 
-                            var maxBoost = absControl * 2.3 + (absControl / 12.0) * 8.0;
+                            var maxBoost = absControl * ImpactMultiplier + (absControl / 12.0) * HighControlScaling;
                             var boost = maxBoost * inverseFactor;
 
                             newRoughness = (int)Math.Floor(origRoughness + boost);
@@ -1369,26 +1372,37 @@ public class Processor
                         }
                         else // Decreasing roughness
                         {
-                            var normalized = origRoughness / 255.0;
+                            // For high-metalness pixels, we want to reduce roughness more aggressively
+                            // Use metalness as a multiplier for the reduction strength
+                            var metalnessInfluence = origMetalness > 0 ? (origMetalness / 255.0) : 0.0;
 
-                            // Same curve aggression logic but applied inversely
-                            var basePower = 2.2;
-                            var curveAggression = basePower + (absControl / 5.0) * 1.5;
+                            // Base reduction using roughness curve
+                            var roughnessNormalized = origRoughness / 255.0;
+                            var curveAggression = BasePower + (absControl / 5.0) * 1.5;
+                            var factor = Math.Pow(roughnessNormalized, curveAggression);
 
-                            //  high values get hit hard, low values barely move
-                            var factor = Math.Pow(normalized, curveAggression);
+                            var maxReduction = absControl * ImpactMultiplier + (absControl / 5.0) * HighControlScaling;
 
-                            var maxReduction = absControl * 2.3 + (absControl / 5.0) * 8.0;
-                            var reduction = maxReduction * factor;
+                            // Blend between base reduction and metalness-influenced reduction
+                            // High metalness = more aggressive reduction even for low roughness values
+                            var baseReduction = maxReduction * factor;
+                            var metalnessBonus = maxReduction * metalnessInfluence * MetalnessInfluenceOnRoughnessReduction;
+                            var reduction = baseReduction + metalnessBonus;
 
                             newRoughness = (int)Math.Ceiling(origRoughness - reduction);
                             newRoughness = Math.Clamp(newRoughness, 0, 255);
 
-                            // Increase metalness if pixel has metalness
+                            // Increase metalness based on what roughness WOULD have gained if control was positive
                             if (origMetalness > 0)
                             {
-                                var roughnessChange = origRoughness - newRoughness; // Positive value
-                                var metalnessIncrease = roughnessChange * MetalnessModificationFraction;
+                                // Calculate hypothetical boost using the POSITIVE curve logic
+                                var positiveCurveAggression = BasePower + (absControl / 25.0) * 1.5;
+                                var inverseFactor = 1.0 - Math.Pow(roughnessNormalized, positiveCurveAggression);
+                                var hypotheticalMaxBoost = absControl * ImpactMultiplier + (absControl / 12.0) * HighControlScaling;
+                                var hypotheticalBoost = hypotheticalMaxBoost * inverseFactor;
+
+                                // Use that to boost metalness
+                                var metalnessIncrease = hypotheticalBoost * MetalnessModificationFraction;
                                 newMetalness = (int)Math.Ceiling(origMetalness + metalnessIncrease);
                                 newMetalness = Math.Clamp(newMetalness, 0, 255);
                             }

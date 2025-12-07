@@ -951,7 +951,7 @@
                         <TextBlock Text="Lazify surface normals"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see some benfit or no change, higher quality packs can receive a layer of detail, a small value of 1-10 is recommended" />
+                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see no change or slight improvements, higher quality packs can receive an additional layer of detail, for which a small value of 3-30 is recommended" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
