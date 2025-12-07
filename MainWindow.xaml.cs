@@ -37,8 +37,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Add a proper, non-intrusive leave a review prompt
-
 - Get copilot to examine the entire codebase for raw string path manipulation where better methods could've been used
 (note: it crashes, feed it file by file)
 
@@ -320,6 +318,9 @@ public sealed partial class MainWindow : Window
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
+
+        // Show Leave a Review prompt, has a 10 sec cd built in
+        _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
         async Task FadeOutSplash()
         {
