@@ -680,7 +680,7 @@
                                 Grid.Row="0"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Fog multiplier (0.0-10.0)"
+                        <TextBlock Text="Fog multiplier"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Scales all fog densities. Recommended ranges: 0.2–0.8 for lighter fog, 1.5-3.0 for dense fog. 0 to disable air fog. Tip: Multiplier value will be used as a literal density value if fog density is already zero." />
@@ -727,7 +727,7 @@
                                 Grid.Row="2"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Emissivity multiplier (0.5-10.0)"
+                        <TextBlock Text="Emissivity multiplier"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Scales emissivity of all emissive blocks. 1 = default, 0.5 = half brightness, higher values = stronger glow." />
@@ -806,10 +806,10 @@
                                 Grid.Row="6"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Surface normal intensity (0-900%)"
+                        <TextBlock Text="Surface normal intensity"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust normal and heightmaps' Intensity. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
+                                   ToolTipService.ToolTip="Adjust intensity normal maps and heightmaps. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -853,7 +853,7 @@
                                 Grid.Row="2"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Material grain offset (0-25)"
+                        <TextBlock Text="Material grain offset"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise in a manner that keeps the pack's intended look intact, your input determines the maximum deviation." />
@@ -901,10 +901,10 @@
                                 Grid.Row="4"
                                 Spacing="2"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="Roughen up (0-25)"
+                        <TextBlock Text="Rougheness Control"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Increases surface roughness on materials to better match Vibrant Visuals' artstyle. Uses an inverse curve function to impact glossy surfaces the most.." />
+                                   ToolTipService.ToolTip="Adjust roughness of materials, higher values result in overall fewer glossy surfaces and metallic metals, negative values strengthen glossy or metallic surfaces, uses a decaying curve to impact values that are relevant." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -918,7 +918,7 @@
                                     TickPlacement="BottomRight"
                                     SnapsTo="StepValues"
                                     Grid.Column="0"
-                                    Minimum="0"
+                                    Minimum="-5"
                                     Maximum="25"
                                     StepFrequency="1"
                                     SmallChange="1"
@@ -948,10 +948,10 @@
                                 Grid.Row="6"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Lazify surface normals (0-255)"
+                        <TextBlock Text="Lazify surface normals"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see some benfit or no change, high quality packs can be made less clean/more organic, a small value of 1-10 is recommended" />
+                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see some benfit or no change, higher quality packs can receive a layer of detail, a small value of 1-10 is recommended" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
