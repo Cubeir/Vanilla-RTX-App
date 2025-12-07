@@ -865,8 +865,77 @@ public static class MinecraftGDKLocator
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             return false;
 
-        var exePath = Path.Combine(path, "Content", MinecraftExecutableName);
-        return File.Exists(exePath);
+        return FindMinecraftExecutable(path) != null;
+    }
+    /// <summary>
+    /// Recursively searches for Minecraft.Windows.exe (case-insensitive).
+    /// Searches top-level folders first for speed.
+    /// </summary>
+    private static string? FindMinecraftExecutable(string rootPath, int maxDepth = 3)
+    {
+        try
+        {
+            // Check root first
+            var files = Directory.GetFiles(rootPath, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
+            if (files.Length > 0)
+                return files[0];
+
+            // BFS approach: check all immediate subdirectories first (Content folder priority)
+            var immediateSubdirs = Directory.GetDirectories(rootPath);
+            foreach (var subdir in immediateSubdirs)
+            {
+                var subdirName = Path.GetFileName(subdir);
+                if (subdirName.Equals("Content", StringComparison.OrdinalIgnoreCase))
+                {
+                    files = Directory.GetFiles(subdir, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
+                    if (files.Length > 0)
+                        return files[0];
+                }
+            }
+
+            // Then check other immediate subdirectories
+            foreach (var subdir in immediateSubdirs)
+            {
+                var subdirName = Path.GetFileName(subdir);
+                if (!subdirName.Equals("Content", StringComparison.OrdinalIgnoreCase))
+                {
+                    files = Directory.GetFiles(subdir, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
+                    if (files.Length > 0)
+                        return files[0];
+                }
+            }
+
+            // Finally, deeper recursive search (limited depth)
+            return RecursiveFindExecutable(rootPath, 0, maxDepth);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? RecursiveFindExecutable(string path, int currentDepth, int maxDepth)
+    {
+        if (currentDepth >= maxDepth)
+            return null;
+
+        try
+        {
+            var subdirs = Directory.GetDirectories(path);
+            foreach (var subdir in subdirs)
+            {
+                var files = Directory.GetFiles(subdir, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
+                if (files.Length > 0)
+                    return files[0];
+
+                var found = RecursiveFindExecutable(subdir, currentDepth + 1, maxDepth);
+                if (found != null)
+                    return found;
+            }
+        }
+        catch { }
+
+        return null;
     }
 
     /// <summary>
