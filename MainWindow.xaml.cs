@@ -227,7 +227,7 @@ public sealed partial class MainWindow : Window
 
         Instance = this;
 
-        var defaultSize = new SizeInt32(1055, 555);
+        var defaultSize = new SizeInt32(1105, 555);
         _windowStateManager.ApplySavedStateOrDefaults();
 
         // Version, title and initial logs
@@ -445,57 +445,6 @@ public sealed partial class MainWindow : Window
         {
             HookThemeChangeListener();
         };
-    }
-
-
-    public void CycleThemeButton_Click(object? sender, RoutedEventArgs? e)
-    {
-        bool invokedByClick = sender is Button;
-        string mode = TunerVariables.Persistent.AppThemeMode;
-
-        if (invokedByClick)
-        {
-            mode = mode switch
-            {
-                "System" => "Light",
-                "Light" => "Dark",
-                _ => "System"
-            };
-            TunerVariables.Persistent.AppThemeMode = mode;
-        }
-
-        var root = MainWindow.Instance.Content as FrameworkElement;
-        root.RequestedTheme = mode switch
-        {
-            "Light" => ElementTheme.Light,
-            "Dark" => ElementTheme.Dark,
-            _ => ElementTheme.Default
-        };
-
-        Button btn = (sender as Button) ?? CycleThemeButton;
-
-        // Visual Feedback
-        if (mode == "System")
-        {
-            btn.Content = new TextBlock
-            {
-                Text = "A",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 15
-            };
-        }
-        else
-        {
-            btn.Content = mode switch
-            {
-                "Light" => "\uE793",
-                "Dark" => "\uE706",
-                _ => "A",
-            };
-        }
-
-        ToolTipService.SetToolTip(btn, "Theme: " + mode);
     }
 
 
@@ -1215,16 +1164,6 @@ public sealed partial class MainWindow : Window
 
     #endregion -------------------------------
 
-
-
-    private void HelpButton_Click(object sender, RoutedEventArgs e)
-    {
-        Log("Find helpful resources in the README file, launching in your browser shortly.", LogLevel.Informational);
-        OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/master/README.md");
-    }
-
-
-
     private async void MojankEasterEggButton_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true);
@@ -1251,6 +1190,24 @@ public sealed partial class MainWindow : Window
         }
     }
 
+
+    private void HelpButton_Click(object sender, RoutedEventArgs e)
+    {
+        Log("Find helpful resources in the README file, launching in your default browser shortly.", LogLevel.Informational);
+        OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/master/README.md");
+    }
+    private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        HelpButton.Content = "\uF167";
+        if (RuntimeFlags.Set("Wrote_Info_Thingy"))
+        {
+            Log("Open a page with full documentation of the app and a how-to guide.", LogLevel.Informational);
+        }
+    }
+    private void HelpButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        HelpButton.Content = "\uE946";
+    }
 
 
     private void DonateButton_Click(object sender, RoutedEventArgs e)
@@ -1284,7 +1241,55 @@ public sealed partial class MainWindow : Window
     }
 
 
+    public void CycleThemeButton_Click(object? sender, RoutedEventArgs? e)
+    {
+        bool invokedByClick = sender is Button;
+        string mode = TunerVariables.Persistent.AppThemeMode;
 
+        if (invokedByClick)
+        {
+            mode = mode switch
+            {
+                "System" => "Light",
+                "Light" => "Dark",
+                _ => "System"
+            };
+            TunerVariables.Persistent.AppThemeMode = mode;
+        }
+
+        var root = MainWindow.Instance.Content as FrameworkElement;
+        root.RequestedTheme = mode switch
+        {
+            "Light" => ElementTheme.Light,
+            "Dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default
+        };
+
+        Button btn = (sender as Button) ?? CycleThemeButton;
+
+        // Visual Feedback
+        if (mode == "System")
+        {
+            btn.Content = new TextBlock
+            {
+                Text = "A",
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontSize = 15
+            };
+        }
+        else
+        {
+            btn.Content = mode switch
+            {
+                "Light" => "\uE793",
+                "Dark" => "\uE706",
+                _ => "A",
+            };
+        }
+
+        ToolTipService.SetToolTip(btn, "Theme: " + mode);
+    }
 
 
 

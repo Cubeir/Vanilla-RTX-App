@@ -81,7 +81,7 @@ public static class ReviewPromptManager
     private const string DONT_SHOW_KEY = "DontShowReviewPrompt";
     private const string LAST_PROMPT_KEY = "LastPromptTime";
     private const double MINUTES_BEFORE_PROMPT = 360.0; // how many hours to wait before showing for the first time, or showing again
-    private const int SHOW_DELAY_SECONDS = 2; // delay to show it after app launch
+    private const int SHOW_DELAY_SECONDS = 1; // delay to show it after app launch
 
     private static ReviewPromptControl _currentPrompt;
     private static Panel _rootPanel;

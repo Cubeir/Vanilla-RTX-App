@@ -217,13 +217,15 @@
                             Grid.Column="0"
                             FontFamily="Segoe Fluent Icons"
                             Style="{StaticResource SubtleButtonStyle}"
-                            Content="&#xE8C9;"
+                            Content="&#xE946;"
                             Width="43"
                             Height="35"
                             CornerRadius="0"
-                            FontSize="15"
+                            FontSize="16"
                             Click="HelpButton_Click"
-                            ToolTipService.ToolTip="Get help!"
+                            PointerEntered="HelpButton_PointerEntered"
+                            PointerExited="HelpButton_PointerExited"
+                            ToolTipService.ToolTip="Documentation"
                             IsTextScaleFactorEnabled="False" />
 
                     <!-- Separator -->
@@ -247,7 +249,7 @@
                             Click="DonateButton_Click"
                             PointerEntered="DonateButton_PointerEntered"
                             PointerExited="DonateButton_PointerExited"
-                            ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free, help keep it that way!"
+                            ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it this way!"
                             IsTextScaleFactorEnabled="False" />
 
                     <!-- Separator -->
