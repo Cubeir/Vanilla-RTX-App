@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -97,7 +97,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 SetTitleBarDragRegion();
             });
 
-            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
             WindowTitle.Text = $"Swap DLSS version for {text}";
 
             ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? MinecraftGDKLocator.MinecraftPreviewFolderName : MinecraftGDKLocator.MinecraftFolderName)}";
