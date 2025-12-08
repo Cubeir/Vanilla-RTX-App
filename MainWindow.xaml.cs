@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -37,9 +37,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Get copilot to examine the entire codebase for raw string path manipulation where better methods could've been used
-(note: it crashes, feed it file by file)
-
 - Somehow fix window maximizing when clicking titlebar buttons, they should absorb it but they dont.. window gets it too
 
 - Unify the 4 places hardcoded paths are used into a class
@@ -61,6 +58,9 @@ All settled there? ensure there isn't a way the app can ddos github
 
 - Do the TODO and ISSUES scattered in the code
 Finish all that you had postponed
+
+- Rework the Windows of DLSS/BRTX/PACKSELECTION into UserControls with a modal blocker beneath
+It's cleaner and allows the window to be moved
 
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
