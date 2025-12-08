@@ -12,7 +12,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 <!-- Cover image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/807b1aed-74a0-470b-856b-effd90915d34" alt="vanilla-rtx-app-cover"/>
+  <img src="https://github.com/user-attachments/assets/8a7a07b3-f241-4e20-9cfb-c5355c310b80" alt="vanilla-rtx-app-cover"/>
 </p>
 <!-- Badges -->
 <p align="center">
@@ -29,7 +29,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 # Overview
 <!-- Second Cover Image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/7c7d4071-bf9f-4185-a693-795be6ad03e6" alt="vanilla-rtx-app-cover-render"/>
+  <img src="https://github.com/user-attachments/assets/b24ba844-f752-42a9-9e01-08d3ad376ce0" alt="vanilla-rtx-app-cover-render"/>
 </p>
 
 Below you'll find an up-to-date list of features & documentation of functionalities included in the app.   
