@@ -1026,7 +1026,7 @@ public class CreditsUpdater
 
 public class PSAUpdater
 {
-    private const string README_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/master/README.md";
+    private const string README_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/README.md";
     private const string CACHE_KEY = "PSAContentCache";
     private const string TIMESTAMP_KEY = "PSALastCheckedTimestamp";
     private const string LAST_SHOWN_KEY = "PSALastShownTimestamp";
