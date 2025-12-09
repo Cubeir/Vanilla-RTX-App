@@ -12,13 +12,13 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 <!-- Cover image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8a7a07b3-f241-4e20-9cfb-c5355c310b80" alt="vanilla-rtx-app-cover"/>
+  <img src="https://github.com/user-attachments/assets/b24ba844-f752-42a9-9e01-08d3ad376ce0" alt="vanilla-rtx-app-cover-render"/>
 </p>
 
 # Overview
 <!-- Second Cover Image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/b24ba844-f752-42a9-9e01-08d3ad376ce0" alt="vanilla-rtx-app-cover-render"/>
+   <img src="https://github.com/user-attachments/assets/8a7a07b3-f241-4e20-9cfb-c5355c310b80" alt="vanilla-rtx-app-cover"/>
 </p>
 <!-- Badges -->
 <p align="center">
@@ -94,7 +94,7 @@ Upon launch, the app automatically scans for already-installed Vanilla RTX packs
 
 - `Select a local pack`  
   Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select one pack to be tuned alongside any of the 3 primary Vanilla RTX variants.
-  Holding shift while pressing this button will instead trigger a Vanilla RTX version check which will appear in the sidebar.
+ > Holding `SHIFT` while pressing this button will instead trigger a Vanilla RTX version check which will appear in the logs.
 
 - `Fog multiplier`  
   Updates all fog densities by a given factor — e.g., `0.5` to halve, `3.0` to triple, or `0` to effectively disable air fog. If a fog density is already at 0, the multiplier is instead converted into an acceptable literal number between `0.0-1.0`.
@@ -117,25 +117,25 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 
 ![ambient-lighting](https://github.com/user-attachments/assets/e44fe5f8-06d0-4d43-978c-fc954f5d83e8)
 
-- `Normal intensity adjustment`  
-  Adjusts normal map and heightmap intensities.
-  A value of 0 will flatten the textures in any given PBR resource pack. Larger values will increase the intensity of normal maps on blocks  This is done through a special algorithm that makes it impossible to lose relative intensity data even with extreme values.
+- `Surface normal intensity`  
+  Adjusts normal map and heightmap intensities. For instance, a value of 0 will flatten the textures in any given PBR resource pack. Larger values will increase the intensity of normal maps on blocks  This is done through a special algorithm that makes it impossible to lose relative intensity data even with extreme values.
 
-- `Material grain offset`  
-  Creates grainy materials by adding a layer of noise, input value determines the maximum allowed deviation.
-  This is done safely with an algorithm that preserves pack's intended appearance while adding a layer of detail - emissives are affected minimally, and noise patterns persist across animated textures or texture variations (e.g. a redstone lamp off and redstone lamp on retain the same PBR noise)
-  The noise is random with a subtle checkerboard pattern that mimics the noise on PBR textures seen in Vibrant Visuals, giving the pack a slightly fresh look each time the noise is applied!
-  
 - `Roughness control`  
   Increases roughness on materials using a decaying curve function to impact glossy surfaces more than already-rough surfaces, for example, high positive values allow alignment with Vibrant Visuals' PBR artstyle.
+  Metalness is slightly reduced in relation to how much roughness is boosted. For negative values, extremely rough surfaces are instead made less rough, and metalness is amplified in relation to how much roughness boost would've taken place if the given value was a positive.
   
 - `Lazify surface normals`  
   Uses a modified color texture to make heightmaps/normal maps less refined. The given number determines effectiveness `(0 = no change, 255 = fully lazy)`.
   > Note: Assuming the pack isn't already shoddy, a value of 1-10 can add a subtle layer of organic detailing to the textures.
 
+- `Material grain offset`  
+  Creates grainy materials by adding a layer of noise, input value determines the maximum allowed deviation.
+  This is done safely with an algorithm that preserves pack's intended appearance while adding a layer of detail, emissives are affected minimally, additionally, noise patterns persist across animated textures or texture variations (e.g. a redstone lamp off and redstone lamp on retain the same noise pattern)
+  The noise has a subtle checkerboard pattern that mimics the noise on PBR textures seen in Vibrant Visuals while still giving the pack a slightly fresh look each time the noise is applied!
+
 - `Tune selection`  
-  Begins the tuning process with your current settings and pack selections (Checked Vanilla RTX packages + one other local pack, if any was selected)
-  Packages are then processed locally, as such changes you made are permanent, unless the pack is updated or freshly reinstalled.
+  Begins the tuning process with your current settings and pack selections (Checked Vanilla RTX packages + one other local pack, if any was selected, if the same Vanilla RTX pack is selected twice, it won't be tuned)
+  Packages are then processed locally, changes are permanent and stack on top of each other, unless the pack is updated or freshly reinstalled.
 
 > These tools can be extraordinarily powerful when used correctly on the right pack, for instance, PBR textures in Vanilla RTX can be processed to fully match the "style" of Mojang's Vibrant Visuals or most other vanilla PBR resource packs, however this statement won't be true the other way around!  
 
@@ -143,15 +143,15 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   Clears the Vanilla RTX and custom pack selections, as if you just booted up the app!
 
 - `Reset`  
-  Resets tuning values and options to their defaults — this does not reset the pack back to its default state, to do that, you must reinstall the packages via the `(Re)install latest RTX packs` or if it is a custom pack, manually reimport it to Minecraft.
+  Resets tuning values and options to their defaults — this does not reset the pack back to its default state, to do that, you must reinstall the packages via the `(Re)install latest RTX packs` or if it is a custom pack, manually reimport the original pack to Minecraft.
 
-- `Hard Reset (Shift Key + Reset)`  
-  Wipes all of app's storage, as well as any temporary data, including: cache timestamps (update check cooldowns), tuning options, app window state, cached pack location, cached app update files, and more..., then restarts the app.
-  Effectively making it as if the app was just freshly installed on your system!
+- `Hard Reset (Hold Shift + Reset)`  
+  Wipes all of app's storage, as well as any temporary data, including: cache timestamps (update check cooldowns), tuning options, app window state, cached pack locations or game locations, and more..., then restarts the app.
+  Effectively making it as if the app was just freshly installed on your system, removing all previous traces.
 
 ## Miscellaneous
 
-![vanilla-rtx-app-ui-in-game-images (3)](https://github.com/user-attachments/assets/15863ba8-f796-432f-90f9-aeaa0584e760)
+![in-app-image](https://github.com/user-attachments/assets/2a37b0b5-cbfb-42a2-976d-03f309fa3b1d)
 
 - Hovering any control in the app displays a unique pixel art communicating its function in the bottom left side of the app, for instance, sliders show how they should impact the textures in-game as you change them, toggles show before/after, and buttons display an artistic interpretation of what the they do!
   In combination with tooltips, this is meant to help make the app less intimidating and more beginner-friendly!  
@@ -164,9 +164,9 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   - Cycle themes: Change between dark, light, or system theme.
   - Help: Opens this page, which will hold up-to-date information about the app.
   - Donate: Opens the developer's Ko-Fi page.  
-    When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain my projects thanks to them. Consider becoming a supporter to have your name up there? (or I have to resort to ads, dead serious!)
+    > When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain Vanilla RTX projects thanks to them. Consider becoming a supporter and have your name up there?
 
-- The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc... and sometimes for entertainment!
+- The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc...
 
 ### Known Issues
 - Missing icons on some older Windows installations (non-critical)   
@@ -185,4 +185,4 @@ You can also alert me on [Minecraft RTX Community Discord](https://discord.gg/eK
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Be sure to update to 2.4.0.0 from the Microsoft Store to easily upgrade your version of DLSS and install BetterRTX presets!
+Be sure to update to 2.4.5.0 from the Microsoft Store to easily upgrade your version of DLSS and install BetterRTX presets!
