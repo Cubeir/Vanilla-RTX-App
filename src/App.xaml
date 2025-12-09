@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application x:Class="Vanilla_RTX_App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:Vanilla_RTX_App">
+    <Application.Resources>
+        <ResourceDictionary>
+            
+            
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Other merged dictionaries here -->
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Other app resources here -->
+            <Style TargetType="TextBlock">
+                <Setter Property="FontFamily"
+                        Value="Segoe UI" />
+            </Style>
+            <Style TargetType="FontIcon">
+                <Setter Property="FontFamily"
+                        Value="Segoe Fluent Icons" />
+            </Style>
+            <Style x:Key="TextBlockSegIcons"
+                   TargetType="TextBlock">
+                <Setter Property="FontFamily"
+                        Value="Segoe Fluent Icons" />
+            </Style>
+            <Style x:Key="ButtonSegIcons"
+                   TargetType="Button">
+                <Setter Property="FontFamily"
+                        Value="Segoe Fluent Icons" />
+            </Style>
+
+            <ResourceDictionary.ThemeDictionaries>
+
+                <!-- Dark theme -->
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="FakeSplitButtonDarkBorderColor">#3A454545</Color>
+                    <Color x:Key="FakeSplitButtonBrightBorderColor">#4A6E6E6E</Color>
+                    <Visibility x:Key="LightThemeBackgroundVisibility">Collapsed</Visibility>
+                    <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
+                                     Color="#20000000" />
+
+                </ResourceDictionary>
+
+                <!-- Light theme -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="FakeSplitButtonDarkBorderColor">#4AFAFAFA</Color>
+                    <Color x:Key="FakeSplitButtonBrightBorderColor">#FAFEFEFE</Color>
+                    <Visibility x:Key="LightThemeBackgroundVisibility">Visible</Visibility>
+                    <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
+                                     Color="#37FFFFFF" />
+                </ResourceDictionary>
+
+            </ResourceDictionary.ThemeDictionaries>
+            
+            
+            
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

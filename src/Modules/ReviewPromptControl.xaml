@@ -1,0 +1,79 @@
+<UserControl x:Class="Vanilla_RTX_App.Modules.ReviewPromptControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             IsTextScaleFactorEnabled="False"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch">
+
+    <!-- Semi-transparent overlay that blocks all interaction - clicking dismisses (show later) -->
+    <Grid x:Name="RootGrid"
+          Background="#66000000"
+          Visibility="Collapsed"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          Tapped="RootGrid_Tapped">
+
+        <!-- Dialog Card -->
+        <Border x:Name="DialogBorder"
+                MaxWidth="480"
+                Padding="24"
+                Margin="24"
+                CornerRadius="8"
+                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Tapped="DialogBorder_Tapped">
+
+            <!-- Drop shadow effect -->
+            <Border.Shadow>
+                <ThemeShadow />
+            </Border.Shadow>
+
+            <!-- Elevation for shadow to work -->
+            <Border.Translation>0,0,32</Border.Translation>
+
+            <StackPanel Spacing="16">
+                <!-- Header Text -->
+                <TextBlock FontSize="14"
+                           TextWrapping="Wrap"
+                           LineHeight="20"
+                           TextAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorPrimaryBrush}">
+                    <Run Text="Has the app been useful? Help keep it going with a " />
+                    <Hyperlink x:Name="DonationLink"
+                               UnderlineStyle="None">
+                        <Run Text="donation"
+                             FontWeight="SemiBold" />
+                    </Hyperlink>
+                    <Run Text=" or by leaving an honest review!" />
+                </TextBlock>
+
+                <!-- Button Row -->
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            HorizontalAlignment="Center"
+                            Margin="0,8,0,0">
+                    <Button x:Name="ReviewButton"
+                            Content="⭐ Leave a Review"
+                            Padding="16,8"
+                            MinWidth="130" />
+
+                    <Button x:Name="LaterButton"
+                            Content="Show later"
+                            Padding="16,8"
+                            MinWidth="100" />
+
+                    <Button x:Name="NeverButton"
+                            Content="Don't show again"
+                            Padding="16,8"
+                            MinWidth="140" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,117 @@
+<Window x:Class="Vanilla_RTX_App.PackBrowser.PackBrowserWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Vanilla_RTX_App.PackBrowser"
+        Title="Browse Packs">
+
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid>
+
+        <Border x:Name="LightThemeOverlay"
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
+                Canvas.ZIndex="-1">
+            <Border.Background>
+                <SolidColorBrush Color="#17373737" />
+            </Border.Background>
+        </Border>
+
+        <!-- Loading Screen -->
+        <Grid x:Name="LoadingPanel"
+              Visibility="Visible"
+              Background="Transparent">
+            <ProgressRing IsActive="True"
+                          Width="100"
+                          Height="100" />
+        </Grid>
+
+        <!-- Pack Selection UI -->
+        <Grid x:Name="PackSelectionPanel"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="35" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar Area -->
+            <Grid Grid.Row="0"
+                  x:Name="TitleBarArea"
+                  Background="Transparent">
+
+                <!-- Centered Title -->
+                <Grid HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+                    <TextBlock Text=""
+                               Margin="0,6,0,5"
+                               VerticalAlignment="Center"
+                               IsTextScaleFactorEnabled="False"
+                               IsHitTestVisible="False"
+                               x:Name="WindowTitle"/>
+                </Grid>
+
+                <!-- Close Button -->
+                <Button x:Name="CloseButton"
+                        Width="52"
+                        Height="36"
+                        Margin="20,1,32,0"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        CornerRadius="0, 0, 6, 6"
+                        Click="CloseButton_Click"
+                        ToolTipService.ToolTip="Close"
+                        Translation="0,0,16"
+                        IsTextScaleFactorEnabled="False">
+                    <Button.Shadow>
+                        <ThemeShadow />
+                    </Button.Shadow>
+                    <FontIcon Glyph="&#xF78A;"
+                              FontSize="16"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" 
+                              Margin="0, -3, 0, 0"
+                              IsTextScaleFactorEnabled="False"/>
+                </Button>
+            </Grid>
+
+            <!-- Pack List -->
+            <Grid Grid.Row="1">
+                <!-- Shadow receiver grid, should be behind the scrollviewer -->
+                <Grid x:Name="ShadowReceiverGrid" />
+
+                <ScrollViewer Padding="20, 20, 20, 0"
+                              Margin="0,-5,0,0"
+                              IsTextScaleFactorEnabled="False"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="PackListContainer"
+                                Spacing="8" />
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Empty State -->
+            <StackPanel x:Name="EmptyStatePanel"
+                        Grid.Row="1"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Visibility="Collapsed"
+                        Spacing="12">
+                <FontIcon Glyph="&#xE7C3;"
+                          FontSize="48"
+                          IsTextScaleFactorEnabled="False"
+                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                <TextBlock x:Name="EmptyStateText"
+                           Text="No compatible packs found"
+                           FontSize="14"
+                           IsTextScaleFactorEnabled="False"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

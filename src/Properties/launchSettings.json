@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Vanilla RTX App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Vanilla RTX App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

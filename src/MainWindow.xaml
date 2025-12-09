@@ -1,0 +1,1301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window x:Class="Vanilla_RTX_App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Vanilla_RTX_App"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="Vanilla RTX App"
+        mc:Ignorable="d">
+    
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="MainGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3.8*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Splash Blocker -->
+        <Grid x:Name="SplashOverlay"
+              Grid.ColumnSpan="2"
+              Canvas.ZIndex="9999">
+            <Grid.Background>
+                <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" />
+            </Grid.Background>
+
+            <Viewbox HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch"
+                     Margin="208, 164, 208, 164"
+                     Stretch="Uniform">
+                <Grid Width="256"
+                      Height="256">
+                    <Image x:Name="SplashLampHalo"
+                           Source="ms-appx:///Assets/icons/SplashScreen.Halo.png"
+                           Width="1280"
+                           Height="1280"
+                           Margin="-512,-512,-512,-512"
+                           Opacity="0.175"
+                           Stretch="Uniform"
+                           CacheMode="BitmapCache" />
+                    <Image x:Name="SplashLamp"
+                           Source="ms-appx:///Assets/icons/SplashScreen.Regular.png"
+                           Width="192"
+                           Height="192"
+                           Opacity="1.0"
+                           Stretch="Uniform"
+                           CacheMode="BitmapCache" />
+                    <Image x:Name="SplashLampSuper"
+                           Source="ms-appx:///Assets/icons/SplashScreen.Super.png"
+                           Width="192"
+                           Height="192"
+                           Opacity="0.0"
+                           Stretch="Uniform"
+                           CacheMode="BitmapCache" />
+                </Grid>
+            </Viewbox>
+        </Grid>
+
+        <!-- Light theme tint overlay -->
+        <Border x:Name="LightThemeOverlay"
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
+                Canvas.ZIndex="-1">
+            <Border.Background>
+                <SolidColorBrush Color="#24373737" />
+            </Border.Background>
+        </Border>
+
+        <!-- Titlebar background -->
+        <Grid Grid.ColumnSpan="2"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              Height="35">
+            <!-- Shadow receiver behind the titlebar) -->
+            <Grid x:Name="TitleBarShadowReceiver" />
+            <!-- Actual titlebar -->
+            <Border x:Name="TitleBarBackground"
+                    Height="37"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
+                    BorderThickness="0,0,0,6"
+                    CornerRadius="0"
+                    Translation="0,0,24"
+                    IsHitTestVisible="False">
+                <Border.Shadow>
+                    <ThemeShadow x:Name="TitleBarShadow" />
+                </Border.Shadow>
+            </Border>
+        </Grid>
+
+        <!-- Titlebar Center Content -->
+        <Grid Grid.ColumnSpan="2"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Margin="0, -1, -1, 0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Canvas Grid.Column="0"
+                    Height="20"
+                    Width="20"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                    CacheMode="BitmapCache"
+                    Canvas.ZIndex="1">
+
+                <!-- Halo (Bottom layer) -->
+                <Image x:Name="iconHaloImageBox"
+                       Source="ms-appx:///Assets/vrtx.lamp.halo.png"
+                       Height="128"
+                       Width="128"
+                       Canvas.Left="-54"
+                       Canvas.Top="-54"
+                       Opacity="0.25"
+                       Canvas.ZIndex="2"
+                       IsHitTestVisible="False"
+                       CacheMode="BitmapCache" />
+
+                <!-- Base "On" image (always visible) -->
+                <Image x:Name="iconImageBox"
+                       Source="ms-appx:///Assets/vrtx.lamp.on.small.png"
+                       Height="20"
+                       Width="20"
+                       Canvas.Top="1"
+                       Opacity="1.0"
+                       Canvas.ZIndex="3"
+                       IsHitTestVisible="False"
+                       CacheMode="BitmapCache" />
+
+                <!-- Overlay "Off" image (fades in and out during the animation) -->
+                <Image x:Name="iconOverlayImageBox"
+                       Source="ms-appx:///Assets/vrtx.lamp.off.small.png"
+                       Height="20"
+                       Width="20"
+                       Canvas.Top="1"
+                       Opacity="0.0"
+                       Canvas.ZIndex="4"
+                       IsHitTestVisible="False"
+                       CacheMode="BitmapCache" />
+
+                <!-- Button to make lamp interactive + Mojank easter egg -->
+                <Button x:Name="MojankEasterEggButton"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Canvas.Left="0.5"
+                        Canvas.Top="1"
+                        Opacity="0.0"
+                        Height="20"
+                        Width="20"
+                        Canvas.ZIndex="5"
+                        CornerRadius="0"
+                        Click="MojankEasterEggButton_Click" />
+            </Canvas>
+
+            <TextBlock x:Name="TitleBarText"
+                       Text="Vanilla RTX App"
+                       Grid.Column="1"
+                       Margin="0,6,0,5"
+                       VerticalAlignment="Center"
+                       Canvas.ZIndex="0"
+                       FontWeight="Normal"
+                       IsTextScaleFactorEnabled="False"
+                       IsHitTestVisible="False" />
+        </Grid>
+
+
+
+        <!-- LEFT CONTENT AREA -->
+        <Grid Grid.Column="0"
+              x:Name="LeftContentGrid">
+            <!-- Shadow receiver for left column -->
+            <Grid x:Name="LeftShadowReceiver"
+                  IsHitTestVisible="False"
+                  Background="Transparent" />
+
+            <!-- Titlebar Buttons -->
+            <Border x:Name="CommandBarButtonsShadowReceiver"
+                    Margin="-2,-2,16,0"
+                    VerticalAlignment="Top"
+                    Height="34"
+                    Width="Auto"
+                    Translation="0,0,0"
+                    CornerRadius="4">
+                <Border.Shadow>
+                    <ThemeShadow x:Name="CommandBarShadow" />
+                </Border.Shadow>
+                <Grid Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="1"
+                      CornerRadius="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Help Button -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Spacing -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Donate Button -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Separator -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Theme Button -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Flex space -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Help Button -->
+                    <Button x:Name="HelpButton"
+                            Grid.Column="0"
+                            FontFamily="Segoe Fluent Icons"
+                            Style="{StaticResource SubtleButtonStyle}"
+                            Content="&#xE946;"
+                            Width="43"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="16"
+                            Click="HelpButton_Click"
+                            PointerEntered="HelpButton_PointerEntered"
+                            PointerExited="HelpButton_PointerExited"
+                            ToolTipService.ToolTip="Documentation"
+                            IsTextScaleFactorEnabled="False" />
+
+                    <!-- Separator -->
+                    <Border Grid.Column="1"
+                            Width="1"
+                            Margin="4,6,4,6"
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- Donate Button -->
+                    <Button x:Name="DonateButton"
+                            Grid.Column="2"
+                            FontFamily="Segoe Fluent Icons"
+                            Style="{StaticResource SubtleButtonStyle}"
+                            Content="&#xEB51;"
+                            Width="42"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="14"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Click="DonateButton_Click"
+                            PointerEntered="DonateButton_PointerEntered"
+                            PointerExited="DonateButton_PointerExited"
+                            ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it this way!"
+                            IsTextScaleFactorEnabled="False" />
+
+                    <!-- Separator -->
+                    <Border Grid.Column="3"
+                            Width="1"
+                            Margin="4,6,4,6"
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- Theme Button -->
+                    <Button x:Name="CycleThemeButton"
+                            Grid.Column="4"
+                            FontFamily="Segoe Fluent Icons"
+                            Style="{StaticResource SubtleButtonStyle}"
+                            Content="&#xE793;"
+                            Width="42"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="16"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Click="CycleThemeButton_Click"
+                            ToolTipService.ToolTip="Theme: System"
+                            IsTextScaleFactorEnabled="False" />
+                </Grid>
+            </Border>
+
+            <!-- Locate Packs and Preview Buttons -->
+            <Border x:Name="BrowsePacksButtonShadowHost"
+                    Margin="16,52,8,0"
+                    VerticalAlignment="Top"
+                    Height="40"
+                    Translation="0,0,32"
+                    CornerRadius="4">
+                <Border.Shadow>
+                    <ThemeShadow x:Name="BrowsePacksShadow" />
+                </Border.Shadow>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="6" />
+                        <!-- 4px gap between buttons -->
+                        <ColumnDefinition Width="1.33*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button x:Name="BrowsePacksButton"
+                            Grid.Column="0"
+                            Click="BrowsePacksButton_Click"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            FontWeight="SemiBold"
+                            CornerRadius="4,0,0,4"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Select a pack from your local PBR-enabled resource packs for tuning or export. Hold shift and press to see detailed status of Vanilla RTX resource pack installations">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xF78B;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Select another pack"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <ToggleButton x:Name="TargetPreviewToggle"
+                                  Grid.Column="2"
+                                  Content="Preview"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  FontWeight="SemiBold"
+                                  CornerRadius="0,4,4,0"
+                                  BorderThickness="0"
+                                  Checked="TargetPreviewToggle_Checked"
+                                  Unchecked="TargetPreviewToggle_Unchecked"
+                                  IsTextScaleFactorEnabled="False"
+                                  ToolTipService.ToolTip="If enabled, all functionalities target Minecraft Preview instead of regular Minecraft." />
+
+                    <!-- Overlay borders for the visual split -->
+                    <!-- Dark border on RIGHT edge of left button -->
+                    <Grid Grid.Column="0"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                    <!-- Bright border on LEFT edge of right button -->
+                    <Grid Grid.Column="2"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0"
+                                x:Name="LeftEdgeOfTargetPreviewButton" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Sidebar Log Box -->
+            <Grid>
+                <Border x:Name="SidebarLogShadowHost"
+                        Margin="16,108,8,16"
+                        VerticalAlignment="Stretch"
+                        HorizontalAlignment="Stretch"
+                        Translation="0,0,64"
+                        BorderThickness="0"
+                        CornerRadius="6">
+                    <Border.Shadow>
+                        <ThemeShadow x:Name="SidebarLogShadow" />
+                    </Border.Shadow>
+                </Border>
+
+                <!-- Textbox -->
+                <TextBox x:Name="SidebarLog"
+                         Margin="16,108,8,16"
+                         VerticalAlignment="Stretch"
+                         HorizontalAlignment="Stretch"
+                         TextWrapping="Wrap"
+                         IsTabStop="False"
+                         AcceptsReturn="True"
+                         IsReadOnly="True"
+                         AllowFocusOnInteraction="True"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         Padding="12,12,12,138"
+                         IsTextScaleFactorEnabled="False"
+                         ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn the user while using the app. Double click the art area to copy logs to clipboard." />
+
+                <!-- Invisible Log Copy Button -->
+                <Button x:Name="LogCopyButton"
+                        Margin="17,0,0,17"
+                        Width="250"
+                        Height="100"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        IsTabStop="False"
+                        ToolTipService.ToolTip="Double-tap to copy all logs to clipboard."
+                        DoubleTapped="LogCopyButton_DoubleTapped">
+                    <Button.Resources>
+                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver"
+                                         Color="Transparent" />
+                        <SolidColorBrush x:Key="ButtonBackgroundPressed"
+                                         Color="Transparent" />
+                    </Button.Resources>
+                </Button>
+            </Grid>
+
+            <!-- Progress Bar -->
+            <ProgressBar x:Name="ProgressBar"
+                         Margin="16,108,8,0"
+                         VerticalAlignment="Top"
+                         HorizontalAlignment="Stretch"
+                         IsIndeterminate="False"
+                         ShowPaused="False"
+                         ShowError="False" />
+
+            <!-- Preview Image Vessels -->
+            <Image x:Name="PreviewVesselTop"
+                   Width="Auto"
+                   Height="150"
+                   MaxWidth="{Binding ActualWidth, ElementName=SidebarLog}"
+                   Margin="8,0,0,17"
+                   Stretch="Uniform"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Center"
+                   IsHitTestVisible="False"
+                   Canvas.ZIndex="99"
+                   Visibility="Collapsed"
+                   Opacity="0.0"
+                   Source="ms-appx:///Assets/empty.png" />
+            <Image x:Name="PreviewVesselBottom"
+                   Width="Auto"
+                   Height="150"
+                   MaxWidth="{Binding ActualWidth, ElementName=SidebarLog}"
+                   Margin="8,0,0,17"
+                   Stretch="Uniform"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Center"
+                   IsHitTestVisible="False"
+                   Canvas.ZIndex="98"
+                   Visibility="Collapsed"
+                   Opacity="0.0"
+                   Source="ms-appx:///Assets/empty.png" />
+            <Image x:Name="PreviewVesselBackground"
+                   Width="Auto"
+                   Height="150"
+                   Margin="17,0,9,17"
+                   Stretch="UniformToFill"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Center"
+                   IsHitTestVisible="False"
+                   Canvas.ZIndex="97"
+                   Visibility="Visible"
+                   Opacity="1.0"
+                   Source="ms-appx:///Assets/previews/huge_background.png" />
+        </Grid>
+
+
+
+        
+        <!-- RIGHT CONTENT AREA -->
+        <Grid Grid.Column="1">
+            <!-- Shadow receiver for right column -->
+            <Grid x:Name="RightShadowReceiver"
+                  IsHitTestVisible="False"
+                  Background="Transparent" />
+
+            <!-- Main layout grid with defined rows -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <!-- Pack Selection -->
+                    <RowDefinition Height="16" />
+                    <!-- Spacing -->
+                    <RowDefinition Height="*" />
+                    <!-- Sliders Grid (stretches) -->
+                    <RowDefinition Height="16" />
+                    <!-- Spacing -->
+                    <RowDefinition Height="Auto" />
+                    <!-- 3x2 Button Grid -->
+                </Grid.RowDefinitions>
+
+                <!-- Pack Selection Options with shadow -->
+                <Border x:Name="PackOptionsShadowHost"
+                        Grid.Row="0"
+                        Margin="8, 52, 16, 0"
+                        Padding="16,4"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Top"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderThickness="0"
+                        CornerRadius="5"
+                        Translation="0,0,32"
+                        ToolTipService.ToolTip="Select from the list of installed Vanilla RTX resource packs for tuning or export.">
+                    <Border.Shadow>
+                        <ThemeShadow x:Name="PackOptionsShadow" />
+                    </Border.Shadow>
+                    <Grid HorizontalAlignment="Stretch"
+                          BorderThickness="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.9*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <CheckBox x:Name="VanillaRTXCheckBox"
+                                  Grid.Column="0"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Checked="Option_Checked"
+                                  Unchecked="Option_Unchecked"
+                                  IsEnabled="False">
+                            <TextBlock Text="Vanilla RTX"
+                                       FontWeight="SemiBold"
+                                       Margin="2,1,0,0"
+                                       IsTextScaleFactorEnabled="False" />
+                        </CheckBox>
+
+                        <AppBarSeparator Grid.Column="1"
+                                         VerticalAlignment="Stretch"
+                                         Margin="0" />
+
+                        <CheckBox x:Name="NormalsCheckBox"
+                                  Grid.Column="2"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Checked="Option_Checked"
+                                  Unchecked="Option_Unchecked"
+                                  IsEnabled="False">
+                            <TextBlock Text="Vanilla RTX Normals"
+                                       FontWeight="SemiBold"
+                                       Margin="2,1,0,0"
+                                       IsTextScaleFactorEnabled="False" />
+                        </CheckBox>
+
+                        <AppBarSeparator Grid.Column="3"
+                                         VerticalAlignment="Stretch"
+                                         Margin="0" />
+
+                        <CheckBox x:Name="OpusCheckBox"
+                                  Grid.Column="4"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Checked="Option_Checked"
+                                  Unchecked="Option_Unchecked"
+                                  IsEnabled="False">
+                            <TextBlock Text="Vanilla RTX Opus"
+                                       FontWeight="SemiBold"
+                                       Margin="2,1,0,0"
+                                       IsTextScaleFactorEnabled="False" />
+                        </CheckBox>
+                    </Grid>
+                </Border>
+
+                <!-- =============== Sliders Grid =============== -->
+                <Border x:Name="SlidersGridShadowHost"
+                        Grid.Row="2"
+                        Margin="16,0,24,0"
+                        Translation="0,0,0"
+                        BorderBrush="Transparent"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                    <Border.Shadow>
+                        <ThemeShadow x:Name="SlidersGridShadow" />
+                    </Border.Shadow>
+                </Border>
+
+                <Grid x:Name="SlidersGrid"
+                      Grid.Row="2"
+                      Margin="16,0,24,0"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch">
+
+                    <!-- Grid Proportion Definitions -->
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="20" />
+                        <!-- 16px spacing between columns -->
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                    </Grid.RowDefinitions>
+
+                    <!-- (Special) Grid 2 Reset Button with shadow -->
+                    <Border x:Name="ClearResetButtonsShadowHost"
+                            Grid.Column="2"
+                            Grid.Row="0"
+                            Height="40"
+                            VerticalAlignment="Bottom"
+                            Translation="0,0,32"
+                            CornerRadius="4">
+                        <Border.Shadow>
+                            <ThemeShadow x:Name="ClearResetShadow" />
+                        </Border.Shadow>
+                    </Border>
+
+                    <Grid Grid.Column="2"
+                          Grid.Row="0"
+                          Height="40"
+                          VerticalAlignment="Bottom"
+                          BorderThickness="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.25*" />
+                            <ColumnDefinition Width="6" />
+                            <!-- 6px gap between buttons -->
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="ClearButton"
+                                Grid.Column="0"
+                                Click="ClearButton_Click"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                CornerRadius="4,0,0,4"
+                                BorderThickness="0"
+                                IsTextScaleFactorEnabled="False"
+                                ToolTipService.ToolTip="Clears">
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xEA99;"
+                                          FontSize="16"
+                                          Margin="0,0,8,0"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Clear selection"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="ResetButton"
+                                Grid.Column="2"
+                                Content="Reset"
+                                Click="ResetButton_Click"
+                                FontWeight="SemiBold"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                CornerRadius="0,4,4,0"
+                                BorderThickness="0"
+                                IsTextScaleFactorEnabled="False"
+                                ToolTipService.ToolTip="Resets tuning options back to their default values. Hold Shift and press to perform a hard reset of app's data.">
+                        </Button>
+
+                        <!-- Overlay borders for the visual split -->
+                        <!-- Dark border on RIGHT edge of left button -->
+                        <Grid Grid.Column="0"
+                              HorizontalAlignment="Right"
+                              Width="3"
+                              Margin="0,0,-3,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
+
+                        <!-- Bright border on LEFT edge of right button -->
+                        <Grid Grid.Column="2"
+                              HorizontalAlignment="Left"
+                              Width="3"
+                              Margin="-3,0,0,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
+                    </Grid>
+
+                    <!-- Fog Multiplier -->
+                    <StackPanel Grid.Column="0"
+                                Grid.Row="0"
+                                Spacing="2"
+                                VerticalAlignment="Bottom">
+                        <TextBlock Text="Fog multiplier"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Scales all fog densities. Recommended ranges: 0.2–0.8 for lighter fog, 1.5-3.0 for dense fog. 0 to disable air fog. Tip: Multiplier value will be used as a literal density value if fog density is already zero." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <!-- Slider room -->
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <!-- Spacing -->
+                                <ColumnDefinition Width="6" />
+                                <!-- TextBox room -->
+                                <ColumnDefinition Width="65" />
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="FogMultiplierSlider"
+                                    Grid.Column="0"
+                                    Minimum="0.0"
+                                    Maximum="10.0"
+                                    StepFrequency="0.01"
+                                    SmallChange="0.01"
+                                    Value="1"
+                                    ValueChanged="FogMultiplierSlider_ValueChanged" />
+
+                            <Border Grid.Column="2"
+                                    Translation="0,0,0"
+                                    CornerRadius="4">
+                                <Border.Shadow>
+                                    <ThemeShadow x:Name="FogMultiplierBoxShadow" />
+                                </Border.Shadow>
+                            </Border>
+
+                            <TextBox x:Name="FogMultiplierBox"
+                                     Grid.Column="2"
+                                     Width="60"
+                                     Text="1.00"
+                                     LostFocus="FogMultiplierBox_LostFocus"
+                                     IsTextScaleFactorEnabled="False"
+                                     BeforeTextChanging="DoubleTextBox_BeforeTextChanging" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Emissivity Multiplier -->
+                    <StackPanel Grid.Column="0"
+                                Grid.Row="2"
+                                Spacing="2"
+                                VerticalAlignment="Bottom">
+                        <TextBlock Text="Emissivity multiplier"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Scales emissivity of all emissive blocks. 1 = default, 0.5 = half brightness, higher values = stronger glow." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="65" />
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="EmissivityMultiplierSlider"
+                                    Grid.Column="0"
+                                    Minimum="0.5"
+                                    Maximum="10"
+                                    StepFrequency="0.1"
+                                    SmallChange="0.1"
+                                    Value="1"
+                                    ValueChanged="EmissivityMultiplierSlider_ValueChanged" />
+
+                            <Border Grid.Column="2"
+                                    Translation="0,0,0"
+                                    CornerRadius="4">
+                                <Border.Shadow>
+                                    <ThemeShadow x:Name="EmissivityMultiplierBoxShadow" />
+                                </Border.Shadow>
+                            </Border>
+
+                            <TextBox x:Name="EmissivityMultiplierBox"
+                                     Grid.Column="2"
+                                     Width="60"
+                                     Text="1.00"
+                                     IsTextScaleFactorEnabled="False"
+                                     LostFocus="EmissivityMultiplierBox_LostFocus"
+                                     BeforeTextChanging="DoubleTextBox_BeforeTextChanging" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Emissivity Ambient Light Toggle -->
+                    <StackPanel Grid.Column="0"
+                                Grid.Row="4"
+                                Spacing="2"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="Increase ambient lighting"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Modifies ambient lighting when emissivity is adjusted, higher emissive multipliers strengthen the effect." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ToggleSwitch x:Name="EmissivityAmbientLightToggle"
+                                          Grid.Column="0"
+                                          AutomationProperties.Name="Emissivity Ambient Light Toggle"
+                                          Toggled="EmissivityAmbientLightToggle_Toggled"
+                                          IsTextScaleFactorEnabled="False"
+                                          VerticalAlignment="Top" />
+                            <TextBlock x:Name="EmissivityWarningIcon"
+                                       Style="{StaticResource TextBlockSegIcons}"
+                                       Grid.Column="1"
+                                       Text="&#xE814;"
+                                       FontSize="35"
+                                       VerticalAlignment="Top"
+                                       HorizontalAlignment="Right"
+                                       Margin="0,0,13.5,0"
+                                       Visibility="Collapsed"
+                                       IsTextScaleFactorEnabled="False"
+                                       ToolTipService.ToolTip="Higher emissivity multipliers after tuning more than once with this option can break the pack. Keep Emissive Multiplier at default (1.0) if you've previously tuned the pack with this option enabled." />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Normal Intensity -->
+                    <StackPanel Grid.Column="0"
+                                Grid.Row="6"
+                                Spacing="2"
+                                VerticalAlignment="Bottom">
+                        <TextBlock Text="Surface normal intensity"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Adjust intensity normal maps and heightmaps. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="65" />
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="NormalIntensitySlider"
+                                    TickFrequency="25"
+                                    TickPlacement="Inline"
+                                    SnapsTo="Ticks"
+                                    Grid.Column="0"
+                                    Minimum="0"
+                                    Maximum="900"
+                                    StepFrequency="1"
+                                    SmallChange="1"
+                                    Value="100"
+                                    ValueChanged="NormalIntensity_ValueChanged" />
+
+                            <Border Grid.Column="2"
+                                    Translation="0,0,0"
+                                    CornerRadius="4">
+                                <Border.Shadow>
+                                    <ThemeShadow x:Name="NormalIntensityBoxShadow" />
+                                </Border.Shadow>
+                            </Border>
+
+                            <TextBox x:Name="NormalIntensityBox"
+                                     Grid.Column="2"
+                                     Width="60"
+                                     Text="100"
+                                     LostFocus="NormalIntensity_LostFocus"
+                                     IsTextScaleFactorEnabled="False"
+                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Material Grain Offset -->
+                    <StackPanel Grid.Column="2"
+                                Grid.Row="2"
+                                Spacing="2"
+                                VerticalAlignment="Bottom">
+                        <TextBlock Text="Material grain offset"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise in a manner that keeps the pack's intended look intact, your input determines the maximum deviation." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="65" />
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="MaterialNoiseSlider"
+                                    TickFrequency="5"
+                                    TickPlacement="BottomRight"
+                                    SnapsTo="StepValues"
+                                    Grid.Column="0"
+                                    Minimum="0"
+                                    Maximum="25"
+                                    StepFrequency="1"
+                                    SmallChange="1"
+                                    Value="0"
+                                    ValueChanged="MaterialNoise_ValueChanged" />
+
+                            <Border Grid.Column="2"
+                                    Translation="0,0,0"
+                                    CornerRadius="4">
+                                <Border.Shadow>
+                                    <ThemeShadow x:Name="MaterialNoiseBoxShadow" />
+                                </Border.Shadow>
+                            </Border>
+
+                            <TextBox x:Name="MaterialNoiseBox"
+                                     Grid.Column="2"
+                                     Width="60"
+                                     Text="0"
+                                     LostFocus="MaterialNoise_LostFocus"
+                                     IsTextScaleFactorEnabled="False"
+                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                        </Grid>
+                    </StackPanel>
+
+
+                    <!-- Roughen Up -->
+                    <StackPanel Grid.Column="2"
+                                Grid.Row="4"
+                                Spacing="2"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="Rougheness Control"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Adjust roughness of materials, higher values result in overall fewer glossy surfaces and metallic metals, negative values strengthen glossy or metallic surfaces, uses a decaying curve to impact values that are relevant." />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="65" />
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="RoughenUpSlider"
+                                    TickFrequency="5"
+                                    TickPlacement="BottomRight"
+                                    SnapsTo="StepValues"
+                                    Grid.Column="0"
+                                    Minimum="-5"
+                                    Maximum="25"
+                                    StepFrequency="1"
+                                    SmallChange="1"
+                                    Value="0"
+                                    ValueChanged="RoughenUp_ValueChanged" />
+
+                            <Border Grid.Column="2"
+                                    Translation="0,0,0"
+                                    CornerRadius="4">
+                                <Border.Shadow>
+                                    <ThemeShadow x:Name="RoughenUpBoxShadow" />
+                                </Border.Shadow>
+                            </Border>
+
+                            <TextBox x:Name="RoughenUpBox"
+                                     Grid.Column="2"
+                                     Width="60"
+                                     Text="0"
+                                     LostFocus="RoughenUp_LostFocus"
+                                     IsTextScaleFactorEnabled="False"
+                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Butcher Heightmaps -->
+                    <StackPanel Grid.Column="2"
+                                Grid.Row="6"
+                                Spacing="2"
+                                VerticalAlignment="Bottom">
+                        <TextBlock Text="Lazify surface normals"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False"
+                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see no change or slight improvements, higher quality packs can receive an additional layer of detail, for which a small value of 3-30 is recommended" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"
+                                                  MinWidth="80" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="65" />
+                            </Grid.ColumnDefinitions>
+
+                            <Slider x:Name="LazifyNormalsSlider"
+                                    TickFrequency="25"
+                                    TickPlacement="Inline"
+                                    SnapsTo="StepValues"
+                                    Grid.Column="0"
+                                    Minimum="0"
+                                    Maximum="255"
+                                    StepFrequency="1"
+                                    SmallChange="1"
+                                    Value="0"
+                                    ValueChanged="LazifyNormals_ValueChanged" />
+
+                            <Border Grid.Column="2"
+                                    Translation="0,0,0"
+                                    CornerRadius="4">
+                                <Border.Shadow>
+                                    <ThemeShadow x:Name="LazifyNormalsBoxShadow" />
+                                </Border.Shadow>
+                            </Border>
+
+                            <TextBox x:Name="LazifyNormalsBox"
+                                     Grid.Column="2"
+                                     Width="60"
+                                     Text="0"
+                                     LostFocus="LazifyNormals_LostFocus"
+                                     IsTextScaleFactorEnabled="False"
+                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+                <!-- =============== End of Sliders Grid =============== -->
+
+
+
+                <!-- Bottom Buttons Grid 3x2 with shadow -->
+                <Border x:Name="BottomButtonsShadowHost"
+                        Grid.Row="4"
+                        Margin="8,0,16,16"
+                        Height="136"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Bottom"
+                        Translation="0,0,48"
+                        CornerRadius="6"
+                        BorderThickness="0">
+                    <Border.Shadow>
+                        <ThemeShadow x:Name="BottomButtonsShadow" />
+                    </Border.Shadow>
+                </Border>
+
+                <Grid Grid.Row="4"
+                      Margin="8,0,16,16"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Bottom"
+                      Height="136"
+                      BorderThickness="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ============================================ -->
+                    <!-- ROW 1: Tune Selection & Export Selection -->
+                    <!-- ============================================ -->
+
+                    <!-- Tune Button (Top-Left) -->
+                    <Button x:Name="TuneSelectionButton"
+                            Click="TuneSelectionButton_Click"
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="6,0,0,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Begins the tuning process based on selected packs and given parameters. Make sure Minecraft is closed while tuning or restart the game after tuning is complete.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xF4A5;"
+                                      FontSize="18"
+                                      Margin="0,1,6,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Tune selection"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Export Selection Button (Top-Right) -->
+                    <Button x:Name="ExportButton"
+                            Click="ExportButton_Click"
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0,6,0,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Exports selected packages.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xEDE2;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Export selection"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ============================================ -->
+                    <!-- ROW 2: Install Latest RTX & DLSS Switcher -->
+                    <!-- ============================================ -->
+
+                    <!-- Install Latest RTX Button (Middle-Left) -->
+                    <Button x:Name="UpdateVanillaRTXButton"
+                            Click="UpdateVanillaRTXButton_Click"
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Downloads the latest releases of Vanilla RTX and Vanilla RTX Normals, further reinstallations are always redeployed from a cached version unless a new Vanilla RTX update is available.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xEBD3;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center"
+                                      x:Name="UpdateVanillaRTXGlyph"
+                                      x:FieldModifier="public" />
+                            <TextBlock Text="Install latest RTX packages"
+                                       VerticalAlignment="Center"
+                                       x:Name="UpdateVanillaRTXButtonText"
+                                       x:FieldModifier="public" />
+                        </StackPanel>
+                    </Button>
+
+                    <!--  Better RTX Manager (Middle-Right) -->
+                    <Button x:Name="BetterRTXPresetManagerButton"
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            Click="BetterRTXPresetManagerButton_Click"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Manage BetterRTX presets">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE794;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="BetterRTX manager"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ============================================ -->
+                    <!-- ROW 3: Launch Minecraft & BetterRTX -->
+                    <!-- ============================================ -->
+
+                    <!-- Launch Button (Bottom-Left) -->
+                    <Button x:Name="LaunchButton"
+                            Click="LaunchButton_Click"
+                            BorderBrush="#40404040"
+                            BorderThickness="0"
+                            Grid.Row="4"
+                            Grid.Column="0"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0,0,0,6"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE78B;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Launch Minecraft RTX"
+                                       VerticalAlignment="Center"
+                                       x:Name="LaunchButtonText" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- DLSS Version Switcher (Bottom-Right) -->
+                    <Button x:Name="DLSSVersionSwitcherButton"
+                            Grid.Row="4"
+                            Grid.Column="2"
+                            Click="DLSSVersionSwitcherButton_Click"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0,0,6,0"
+                            BorderThickness="0"
+                            FontWeight="SemiBold"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Change DLSS versions">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE81E;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="DLSS version swapper"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ============================================ -->
+                    <!-- OVERLAY BORDERS FOR VISUAL SPLITS -->
+                    <!-- ============================================ -->
+
+                    <!-- TOP HORIZONTAL DIVIDER (dark line under row 1) -->
+                    <Grid Grid.Row="0"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalAlignment="Bottom"
+                          Height="3"
+                          Margin="0,0,0,-3"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="0,0,0,3" />
+                    </Grid>
+
+                    <!-- MIDDLE TOP HORIZONTAL DIVIDER (bright line above row 2) -->
+                    <Grid Grid.Row="2"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalAlignment="Top"
+                          Height="3"
+                          Margin="0,-3,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="0,3,0,0" />
+                    </Grid>
+
+                    <!-- MIDDLE BOTTOM HORIZONTAL DIVIDER (dark line under row 2) -->
+                    <Grid Grid.Row="2"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalAlignment="Bottom"
+                          Height="3"
+                          Margin="0,0,0,-3"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="0,0,0,3" />
+                    </Grid>
+
+                    <!-- BOTTOM HORIZONTAL DIVIDER (bright line above row 3) -->
+                    <Grid Grid.Row="4"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="3"
+                          VerticalAlignment="Top"
+                          Height="3"
+                          Margin="0,-3,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="0,3,0,0" />
+                    </Grid>
+
+                    <!-- LEFT VERTICAL DIVIDER (dark line on right edge of left column) -->
+                    <Grid Grid.Row="0"
+                          Grid.Column="0"
+                          Grid.RowSpan="5"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                    <!-- RIGHT VERTICAL DIVIDER (bright line on left edge of right column) -->
+                    <Grid Grid.Row="0"
+                          Grid.Column="2"
+                          Grid.RowSpan="5"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                    <!-- FUCKY CORRECTION PIXEL (Top Cross) -->
+                    <Border Grid.Row="1"
+                            Grid.Column="1"
+                            Width="3"
+                            Height="3"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Background="{ThemeResource IntersectionNeutralizerBrush}"
+                            Opacity="1.0"
+                            IsHitTestVisible="False" />
+
+                    <!-- FUCKY CORRECTION PIXEL (Bottom Cross) -->
+                    <Border Grid.Row="3"
+                            Grid.Column="1"
+                            Width="3"
+                            Height="3"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Background="{ThemeResource IntersectionNeutralizerBrush}"
+                            Opacity="1.0"
+                            IsHitTestVisible="False" />
+
+                </Grid>
+            </Grid>
+        </Grid>
+        
+        
+        
+        
+    </Grid>
+</Window>
