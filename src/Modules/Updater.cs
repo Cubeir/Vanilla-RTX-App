@@ -38,6 +38,9 @@ public class PackUpdater
     private const string LastUpdateCheckKey = "LastPackUpdateCheckTime";
     private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(60);
 
+    // Cooldowns for update notification checks, independant from the above
+    private const string LastUpdateCheckNotificationKey = "LastPackUpdateNotificationCheckTime";
+    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(60);
 
     // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
     public string EnhancementFolderName { get; set; } = "__enhancements";
@@ -772,6 +775,176 @@ public class PackUpdater
         var (exists, _) = GetCacheInfo();
         return exists;
     }
+
+    /// <summary>
+    /// Checks if updates are available for currently installed packs.
+    /// Returns null if on cooldown (silent). Returns update message otherwise.
+    /// </summary>
+    public async Task<string?> CheckForPackUpdates(
+        string vanillaRTXVersion,
+        string vanillaRTXNormalsVersion,
+        string vanillaRTXOpusVersion)
+    {
+        // FIRST: Check cooldown - no network activity if on cooldown
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var now = DateTimeOffset.UtcNow;
+
+        if (localSettings.Values[LastUpdateCheckNotificationKey] is string lastCheckStr &&
+            DateTimeOffset.TryParse(lastCheckStr, out var lastCheck))
+        {
+            if (now < lastCheck + UpdateCheckNotificationCooldown)
+            {
+                var minutesLeft = (int)Math.Ceiling((lastCheck + UpdateCheckNotificationCooldown - now).TotalMinutes);
+                Debug.WriteLine($"[Update Check] On cooldown – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} remaining");
+                return null; // Silent - don't show anything to user
+            }
+        }
+
+        // Check network availability
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            return "Failed to check for pack updates: No network connection available.";
+        }
+
+        try
+        {
+            // Fetch remote manifests
+            var remoteManifests = await FetchRemoteManifests();
+            if (remoteManifests == null)
+            {
+                return "Failed to check for pack updates: Unable to reach GitHub.";
+            }
+
+            var (rtxRemote, normalsRemote, opusRemote) = remoteManifests.Value;
+
+            // Track which packs are installed and which need updates
+            var installedPacks = new List<string>();
+            var packsNeedingUpdate = new List<string>();
+
+            // Check Vanilla RTX
+            if (!string.IsNullOrEmpty(vanillaRTXVersion))
+            {
+                installedPacks.Add("Vanilla RTX");
+                if (rtxRemote != null && IsRemoteVersionNewerThanInstalled(vanillaRTXVersion, rtxRemote))
+                {
+                    packsNeedingUpdate.Add("Vanilla RTX");
+                }
+            }
+
+            // Check Vanilla RTX Normals
+            if (!string.IsNullOrEmpty(vanillaRTXNormalsVersion))
+            {
+                installedPacks.Add("Vanilla RTX Normals");
+                if (normalsRemote != null && IsRemoteVersionNewerThanInstalled(vanillaRTXNormalsVersion, normalsRemote))
+                {
+                    packsNeedingUpdate.Add("Vanilla RTX Normals");
+                }
+            }
+
+            // Check Vanilla RTX Opus
+            if (!string.IsNullOrEmpty(vanillaRTXOpusVersion))
+            {
+                installedPacks.Add("Vanilla RTX Opus");
+                if (opusRemote != null && IsRemoteVersionNewerThanInstalled(vanillaRTXOpusVersion, opusRemote))
+                {
+                    packsNeedingUpdate.Add("Vanilla RTX Opus");
+                }
+            }
+
+            // If no packs were installed, return null (nothing to check)
+            if (installedPacks.Count == 0)
+            {
+                Debug.WriteLine("[Update Check] No packs installed, skipping check");
+                return null;
+            }
+
+            // Update cooldown timestamp only after successful check
+            localSettings.Values[LastUpdateCheckNotificationKey] = now.ToString("o");
+
+            // Generate a well constructed message for the results 
+            return GenerateUpdateMessage(packsNeedingUpdate, installedPacks.Count);
+        }
+        catch (Exception ex)
+        {
+            return $"Failed to check for pack updates: {ex.Message}";
+        }
+    }
+
+    private string GenerateUpdateMessage(List<string> packsNeedingUpdate, int totalInstalledPacks)
+    {
+        if (packsNeedingUpdate.Count == 0)
+        {
+            return "✅ All packs are up-to-date!";
+        }
+        else if (packsNeedingUpdate.Count == totalInstalledPacks && totalInstalledPacks == 3)
+        {
+            // All three packs installed and all need updates
+            return "📦 Updates for all packs are available.";
+        }
+        else if (packsNeedingUpdate.Count == 1)
+        {
+            return $"📦 Update for {packsNeedingUpdate[0]} is available.";
+        }
+        else if (packsNeedingUpdate.Count == 2)
+        {
+            return $"📦 Updates for {packsNeedingUpdate[0]} and {packsNeedingUpdate[1]} are available.";
+        }
+        else
+        {
+            // 3 packs need update but not all are installed (shouldn't happen in practice)
+            return "📦 Updates for all installed packs are available.";
+        }
+    }
+
+    private bool IsRemoteVersionNewerThanInstalled(string installedVersionString, JObject remoteManifest)
+    {
+        try
+        {
+            // Parse installed version string (format: "v1.2.3")
+            var installedVersion = ParseVersionString(installedVersionString);
+            if (installedVersion == null) return true; // Can't parse installed, assume update needed
+
+            // Parse remote version from manifest
+            var remoteVersion = remoteManifest["header"]?["version"]?.ToObject<int[]>();
+            if (remoteVersion == null) return false; // Can't get remote version, assume no update
+
+            // Compare versions component by component
+            for (int i = 0; i < Math.Max(installedVersion.Length, remoteVersion.Length); i++)
+            {
+                int installed = i < installedVersion.Length ? installedVersion[i] : 0;
+                int remote = i < remoteVersion.Length ? remoteVersion[i] : 0;
+
+                if (remote > installed) return true;  // Remote is newer
+                if (remote < installed) return false; // Installed is newer (shouldn't happen)
+            }
+
+            return false; // Versions are equal
+        }
+        catch
+        {
+            return false; // If comparison fails, assume no update to avoid false positives
+        }
+    }
+
+    private int[]? ParseVersionString(string versionString)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(versionString))
+                return null;
+
+            // Remove 'v' prefix if present (handles "v1.1232.323" format from LocatePacks)
+            versionString = versionString.TrimStart('v', 'V');
+
+            var parts = versionString.Split('.');
+            return parts.Select(int.Parse).ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
 
 
     // ---------- Other Helpers

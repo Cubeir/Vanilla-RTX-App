@@ -1354,6 +1354,20 @@ public sealed partial class MainWindow : Window
         {
             OpusCheckBox.IsEnabled = true;
         }
+
+
+        // Pack update check whenever it figures it out
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var msg = await _updater.CheckForPackUpdates(
+                    VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
+                if (!string.IsNullOrEmpty(msg)) Log(msg);
+            }
+            catch { /* Silent fail */ }
+        });
+
     }
     private void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
