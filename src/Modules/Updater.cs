@@ -38,12 +38,12 @@ public class PackUpdater
     // These are now target-aware (Release vs Preview have independent cooldowns)
     private const string LastUpdateCheckKey_Release = "LastPackUpdateCheckTime_Release";
     private const string LastUpdateCheckKey_Preview = "LastPackUpdateCheckTime_Preview";
-    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(55);
+    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(50);
 
     // Cooldowns for update notification checks, independent from the above
     private const string LastUpdateCheckNotificationKey_Release = "LastPackUpdateNotificationCheckTime_Release";
     private const string LastUpdateCheckNotificationKey_Preview = "LastPackUpdateNotificationCheckTime_Preview";
-    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(55);
+    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(50);
 
     // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
     public string EnhancementFolderName { get; set; } = "__enhancements";
@@ -54,7 +54,6 @@ public class PackUpdater
     // If enabled, tries to find the opposite folder of where we're deploying to, and cleans the folders there too before and after installation
     public bool CleanUpTheOtherFolder { get; set; } = true;
 
-    // -------------------------------\           /------------------------------------ \\
 
     // Helper to get target-aware cooldown keys
     private string GetUpdateCheckKey() => TunerVariables.Persistent.IsTargetingPreview

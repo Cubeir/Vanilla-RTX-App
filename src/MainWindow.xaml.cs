@@ -1365,7 +1365,7 @@ public sealed partial class MainWindow : Window
                     VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
                 if (!string.IsNullOrEmpty(msg)) Log(msg);
             }
-            catch { /* Silent fail */ }
+            catch { Debug.WriteLine("FAILURE: The update check in LocatePacksButton_Click"); }
         });
 
     }
