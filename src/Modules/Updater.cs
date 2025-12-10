@@ -907,7 +907,7 @@ public class PackUpdater
             var versionArray = manifest["header"]?["version"]?.ToObject<int[]>();
             if (versionArray == null || versionArray.Length == 0) return null;
 
-            return $"v{string.Join(".", versionArray)}";
+            return $"{string.Join(".", versionArray)}";
         }
         catch
         {
