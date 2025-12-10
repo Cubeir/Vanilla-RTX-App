@@ -222,6 +222,8 @@ public sealed partial class MainWindow : Window
     private int _mojankClickCount = 0;
     private DateTime _mojankLastClick = DateTime.MinValue;
 
+    private Dictionary<FrameworkElement, string> _originalTexts = new();
+    private bool _shiftPressed = false;
 
     public MainWindow()
     {
@@ -255,6 +257,31 @@ public sealed partial class MainWindow : Window
         {
             SaveSettings();
             App.CleanupMutex();
+        };
+
+        // For dynamiclly changing text with Shift key
+        Content.KeyDown += (s, e) =>
+        {
+            if (e.Key == VirtualKey.Shift && !_shiftPressed)
+            {
+                _shiftPressed = true;
+                // Just set controls and shift texts here
+                SetShiftText(ResetButton, "⚠️ Wipe");
+                SetShiftText(BrowsePacksButtonText, "Check Vanilla RTX version");
+                // Add more as needed...
+            }
+        };
+        Content.KeyUp += (s, e) =>
+        {
+            if (e.Key == VirtualKey.Shift && _shiftPressed)
+            {
+                _shiftPressed = false;
+                foreach (var kvp in _originalTexts)
+                {
+                    if (kvp.Key is Button btn) btn.Content = kvp.Value;
+                    else if (kvp.Key is TextBlock tb) tb.Text = kvp.Value;
+                }
+            }
         };
 
         // Things to do after mainwindow is initialized
@@ -1175,6 +1202,25 @@ public sealed partial class MainWindow : Window
         double Lerp(double start, double end, double t) => start + (end - start) * t;
     }
 
+
+
+    private void SetShiftText(FrameworkElement control, string shiftText)
+    {
+        // Save original text if not already saved
+        if (!_originalTexts.ContainsKey(control))
+        {
+            if (control is Button btn)
+                _originalTexts[control] = btn.Content?.ToString() ?? "";
+            else if (control is TextBlock tb)
+                _originalTexts[control] = tb.Text;
+        }
+
+        // Apply shift text
+        if (control is Button button)
+            button.Content = shiftText;
+        else if (control is TextBlock textBlock)
+            textBlock.Text = shiftText;
+    }
     #endregion -------------------------------
 
     private async void MojankEasterEggButton_Click(object sender, RoutedEventArgs e)
