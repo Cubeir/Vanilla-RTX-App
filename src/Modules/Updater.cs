@@ -35,12 +35,15 @@ public class PackUpdater
     private readonly List<string> _logMessages = new();
 
     // For cooldown of checking for update to avoid spamming github
-    private const string LastUpdateCheckKey = "LastPackUpdateCheckTime";
-    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(60);
+    // These are now target-aware (Release vs Preview have independent cooldowns)
+    private const string LastUpdateCheckKey_Release = "LastPackUpdateCheckTime_Release";
+    private const string LastUpdateCheckKey_Preview = "LastPackUpdateCheckTime_Preview";
+    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(55);
 
-    // Cooldowns for update notification checks, independant from the above
-    private const string LastUpdateCheckNotificationKey = "LastPackUpdateNotificationCheckTime";
-    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(60);
+    // Cooldowns for update notification checks, independent from the above
+    private const string LastUpdateCheckNotificationKey_Release = "LastPackUpdateNotificationCheckTime_Release";
+    private const string LastUpdateCheckNotificationKey_Preview = "LastPackUpdateNotificationCheckTime_Preview";
+    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(55);
 
     // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
     public string EnhancementFolderName { get; set; } = "__enhancements";
@@ -50,6 +53,17 @@ public class PackUpdater
 
     // If enabled, tries to find the opposite folder of where we're deploying to, and cleans the folders there too before and after installation
     public bool CleanUpTheOtherFolder { get; set; } = true;
+
+    // -------------------------------\           /------------------------------------ \\
+
+    // Helper to get target-aware cooldown keys
+    private string GetUpdateCheckKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? LastUpdateCheckKey_Preview
+        : LastUpdateCheckKey_Release;
+
+    private string GetNotificationCheckKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? LastUpdateCheckNotificationKey_Preview
+        : LastUpdateCheckNotificationKey_Release;
 
     // -------------------------------\           /------------------------------------ \\
     public async Task<(bool Success, List<string> Logs)> UpdatePacksAsync()
@@ -142,9 +156,10 @@ public class PackUpdater
 
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
+        var cooldownKey = GetUpdateCheckKey();
 
         // Only honor cooldown if we have a VALID, usable cache
-        if (localSettings.Values[LastUpdateCheckKey] is string lastCheckStr &&
+        if (localSettings.Values[cooldownKey] is string lastCheckStr &&
             DateTimeOffset.TryParse(lastCheckStr, out var lastSuccessfulCheck))
         {
             if (now < lastSuccessfulCheck + UpdateCooldown)
@@ -171,7 +186,7 @@ public class PackUpdater
         // ONLY update cooldown timestamp on SUCCESSFUL remote contact + valid cache comparison
         if (fetchSuccess && remote.HasValue)
         {
-            localSettings.Values[LastUpdateCheckKey] = now.ToString("o");
+            localSettings.Values[cooldownKey] = now.ToString("o");
         }
 
         if (remote == null)
@@ -269,16 +284,7 @@ public class PackUpdater
 
             if (cachedVersion == null || remoteVersion == null) return true;
 
-            for (int i = 0; i < Math.Max(cachedVersion.Length, remoteVersion.Length); i++)
-            {
-                int cached = i < cachedVersion.Length ? cachedVersion[i] : 0;
-                int remote = i < remoteVersion.Length ? remoteVersion[i] : 0;
-
-                if (remote > cached) return true;
-                if (remote < cached) return false;
-            }
-
-            return false;
+            return CompareVersionArrays(remoteVersion, cachedVersion) > 0;
         }
         catch
         {
@@ -454,7 +460,7 @@ public class PackUpdater
                         }
                         File.WriteAllText(contentsPath, "{}");
                     }
-                    catch{ Debug.WriteLine("Contents json or textures list creation failed."); }
+                    catch { Debug.WriteLine("Contents json or textures list creation failed."); }
 
                     LogMessage($"✅ {pack.displayName} deployed successfully");
                     anyPackDeployed = true;
@@ -788,8 +794,9 @@ public class PackUpdater
         // FIRST: Check cooldown - no network activity if on cooldown
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
+        var cooldownKey = GetNotificationCheckKey();
 
-        if (localSettings.Values[LastUpdateCheckNotificationKey] is string lastCheckStr &&
+        if (localSettings.Values[cooldownKey] is string lastCheckStr &&
             DateTimeOffset.TryParse(lastCheckStr, out var lastCheck))
         {
             if (now < lastCheck + UpdateCheckNotificationCooldown)
@@ -859,7 +866,7 @@ public class PackUpdater
             }
 
             // Update cooldown timestamp only after successful check
-            localSettings.Values[LastUpdateCheckNotificationKey] = now.ToString("o");
+            localSettings.Values[cooldownKey] = now.ToString("o");
 
             // Generate a well constructed message for the results 
             return GenerateUpdateMessage(packsNeedingUpdate, installedPacks.Count);
@@ -908,17 +915,7 @@ public class PackUpdater
             var remoteVersion = remoteManifest["header"]?["version"]?.ToObject<int[]>();
             if (remoteVersion == null) return false; // Can't get remote version, assume no update
 
-            // Compare versions component by component
-            for (int i = 0; i < Math.Max(installedVersion.Length, remoteVersion.Length); i++)
-            {
-                int installed = i < installedVersion.Length ? installedVersion[i] : 0;
-                int remote = i < remoteVersion.Length ? remoteVersion[i] : 0;
-
-                if (remote > installed) return true;  // Remote is newer
-                if (remote < installed) return false; // Installed is newer (shouldn't happen)
-            }
-
-            return false; // Versions are equal
+            return CompareVersionArrays(remoteVersion, installedVersion) > 0;
         }
         catch
         {
@@ -948,6 +945,23 @@ public class PackUpdater
 
 
     // ---------- Other Helpers
+
+    /// <summary>
+    /// Unified version comparison logic. Returns: 1 if a > b, -1 if a < b, 0 if equal.
+    /// </summary>
+    private static int CompareVersionArrays(int[] versionA, int[] versionB)
+    {
+        for (int i = 0; i < Math.Max(versionA.Length, versionB.Length); i++)
+        {
+            int a = i < versionA.Length ? versionA[i] : 0;
+            int b = i < versionB.Length ? versionB[i] : 0;
+
+            if (a > b) return 1;
+            if (a < b) return -1;
+        }
+        return 0;
+    }
+
     private string GetTopLevelFolderForManifest(string manifestPath, string resourcePackPath)
     {
         var manifestDir = Path.GetDirectoryName(manifestPath);
