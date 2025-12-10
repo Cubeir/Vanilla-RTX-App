@@ -37,6 +37,27 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Rethink the "occasional update check" thingy
+Tie it into "Shift+Select another pack"
+OR BETTER YET MOVE it to SHIFT + REINSTALL LATEST PACKS entirely
+change the text to "Perform Version Check" while it is held down
+change the cooldown to 5 minutes, AND for packs that CAN be updated, log it this way:
+Vanilla RTX - Installed: {version} - Available: {version}
+Vanilla RTX Noramls - Installed: {version} - Up-to-date
+Vanilla RTX Opus - Not installed - Available: {version}
+
+Gonna need to yank it out of shift+select another pack, put it on update checker instead
+And update the output texts of that helper? some logic are bound to be rewritten
+
+Cover all possible scenarios
+"You just performed an update check, wait X minutes before attempting again"
+
+its gonna tell user WHAT PACK IS INSTALLED/or not, and WHAT its version is if installed
+what verison is available, if available, if it is available and its the same, say up-to-date
+This is as CLEAN as useful as it can get
+Ditch the occasional automated checks whenever locatepacks is triggered, it is just spammy and annoying/easy to miss
+
+
 - Add a way to manually uninstall and import MCPACKS, because Minecraft GDK's import is fucked up and doesn't work properly
 Besides, people are gonna appreiciate being able to reimport their packs which THE APP LETS THEM EXPORT FFS!
 
@@ -48,7 +69,7 @@ make it helpful not painful
 - IMPROVEMENT IDEA: Make lazifying normals apply 50% of the effect as regular blend, and the other half as Overlay the way it does now
 Intensity will still get adjusted at the end so it looks roughly the same as before
 
-- review and test the changes from the previous update
+- rereview and test the changes from the previous update
 
 - Somehow fix window maximizing when clicking titlebar buttons, they should absorb it but they dont.. window gets it too
 

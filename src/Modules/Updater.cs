@@ -929,7 +929,7 @@ public class PackUpdater
             if (string.IsNullOrEmpty(versionString))
                 return null;
 
-            // Remove 'v' prefix if present (handles "v1.1232.323" format from LocatePacks)
+            // Remove 'v' prefix if present
             versionString = versionString.TrimStart('v', 'V');
 
             var parts = versionString.Split('.');
