@@ -38,12 +38,12 @@ public class PackUpdater
     // These are now target-aware (Release vs Preview have independent cooldowns)
     private const string LastUpdateCheckKey_Release = "LastPackUpdateCheckTime_Release";
     private const string LastUpdateCheckKey_Preview = "LastPackUpdateCheckTime_Preview";
-    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(50);
+    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(60);
 
-    // Cooldowns for update notification checks, independent from the above
+    // Cooldowns for manual version checks (5 minutes, independent per target)
     private const string LastUpdateCheckNotificationKey_Release = "LastPackUpdateNotificationCheckTime_Release";
     private const string LastUpdateCheckNotificationKey_Preview = "LastPackUpdateNotificationCheckTime_Preview";
-    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(50);
+    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(15);
 
     // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
     public string EnhancementFolderName { get; set; } = "__enhancements";
@@ -55,7 +55,6 @@ public class PackUpdater
     public bool CleanUpTheOtherFolder { get; set; } = true;
 
 
-    // Helper to get target-aware cooldown keys
     private string GetUpdateCheckKey() => TunerVariables.Persistent.IsTargetingPreview
         ? LastUpdateCheckKey_Preview
         : LastUpdateCheckKey_Release;
@@ -781,9 +780,12 @@ public class PackUpdater
         return exists;
     }
 
+
+    // ---------- Concerning manual user-triggered update check
     /// <summary>
-    /// Checks if updates are available for currently installed packs.
-    /// Returns null if on cooldown (silent). Returns update message otherwise.
+    /// Performs a detailed version check with detailed output all packs (installed or not).
+    /// Returns cooldown message if on cooldown, detailed status for all packs otherwise.
+    /// This is designed for manual invocation (e.g., Shift+button press).
     /// </summary>
     public async Task<string?> CheckForPackUpdates(
         string vanillaRTXVersion,
@@ -801,104 +803,115 @@ public class PackUpdater
             if (now < lastCheck + UpdateCheckNotificationCooldown)
             {
                 var minutesLeft = (int)Math.Ceiling((lastCheck + UpdateCheckNotificationCooldown - now).TotalMinutes);
-                Debug.WriteLine($"[Update Check] On cooldown – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} remaining");
-                return null; // Silent - don't show anything to user
+                return $"⏳ You just performed an update check, wait {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} before trying again.";
             }
         }
 
         // Check network availability
         if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
         {
-            return "Failed to check for pack updates: No network connection available.";
+            return "❌ Failed to check for pack updates: No network connection available.";
         }
 
         try
         {
-            // Fetch remote manifests
+            // Fetch remote manifests (always fetch all three)
             var remoteManifests = await FetchRemoteManifests();
             if (remoteManifests == null)
             {
-                return "Failed to check for pack updates: Unable to reach GitHub.";
+                return "❌ Failed to check for pack updates: Unable to reach GitHub.";
             }
 
             var (rtxRemote, normalsRemote, opusRemote) = remoteManifests.Value;
 
-            // Track which packs are installed and which need updates
-            var installedPacks = new List<string>();
-            var packsNeedingUpdate = new List<string>();
+            // Build detailed status for each pack
+            var statusLines = new List<string>();
 
-            // Check Vanilla RTX
-            if (!string.IsNullOrEmpty(vanillaRTXVersion))
-            {
-                installedPacks.Add("Vanilla RTX");
-                if (rtxRemote != null && IsRemoteVersionNewerThanInstalled(vanillaRTXVersion, rtxRemote))
-                {
-                    packsNeedingUpdate.Add("Vanilla RTX");
-                }
-            }
+            // Vanilla RTX
+            statusLines.Add(GeneratePackStatus("Vanilla RTX", vanillaRTXVersion, rtxRemote));
 
-            // Check Vanilla RTX Normals
-            if (!string.IsNullOrEmpty(vanillaRTXNormalsVersion))
-            {
-                installedPacks.Add("Vanilla RTX Normals");
-                if (normalsRemote != null && IsRemoteVersionNewerThanInstalled(vanillaRTXNormalsVersion, normalsRemote))
-                {
-                    packsNeedingUpdate.Add("Vanilla RTX Normals");
-                }
-            }
+            // Vanilla RTX Normals
+            statusLines.Add(GeneratePackStatus("Vanilla RTX Normals", vanillaRTXNormalsVersion, normalsRemote));
 
-            // Check Vanilla RTX Opus
-            if (!string.IsNullOrEmpty(vanillaRTXOpusVersion))
-            {
-                installedPacks.Add("Vanilla RTX Opus");
-                if (opusRemote != null && IsRemoteVersionNewerThanInstalled(vanillaRTXOpusVersion, opusRemote))
-                {
-                    packsNeedingUpdate.Add("Vanilla RTX Opus");
-                }
-            }
-
-            // If no packs were installed, return null (nothing to check)
-            if (installedPacks.Count == 0)
-            {
-                Debug.WriteLine("[Update Check] No packs installed, skipping check");
-                return null;
-            }
+            // Vanilla RTX Opus
+            statusLines.Add(GeneratePackStatus("Vanilla RTX Opus", vanillaRTXOpusVersion, opusRemote));
 
             // Update cooldown timestamp only after successful check
             localSettings.Values[cooldownKey] = now.ToString("o");
 
-            // Generate a well constructed message for the results 
-            return GenerateUpdateMessage(packsNeedingUpdate, installedPacks.Count);
+            return string.Join(Environment.NewLine, statusLines);
         }
         catch (Exception ex)
         {
-            return $"Failed to check for pack updates: {ex.Message}";
+            return $"❌ Failed to check for pack updates: {ex.Message}";
         }
     }
 
-    private string GenerateUpdateMessage(List<string> packsNeedingUpdate, int totalInstalledPacks)
+    /// <summary>
+    /// Generates the detailed status line for a single pack.
+    /// Covers all scenarios: installed/not installed × available/unavailable × up-to-date/update available
+    /// </summary>
+    private string GeneratePackStatus(string packName, string installedVersion, JObject? remoteManifest)
     {
-        if (packsNeedingUpdate.Count == 0)
+        bool isInstalled = !string.IsNullOrEmpty(installedVersion);
+        string? remoteVersionStr = ExtractVersionFromManifest(remoteManifest);
+        bool remoteAvailable = !string.IsNullOrEmpty(remoteVersionStr);
+
+        if (!isInstalled)
         {
-            return "✅ All packs are up-to-date!";
-        }
-        else if (packsNeedingUpdate.Count == totalInstalledPacks && totalInstalledPacks == 3)
-        {
-            // All three packs installed and all need updates
-            return "📦 Updates for all packs are available.";
-        }
-        else if (packsNeedingUpdate.Count == 1)
-        {
-            return $"📦 Update for {packsNeedingUpdate[0]} is available.";
-        }
-        else if (packsNeedingUpdate.Count == 2)
-        {
-            return $"📦 Updates for {packsNeedingUpdate[0]} and {packsNeedingUpdate[1]} are available.";
+            // Pack is not installed
+            if (remoteAvailable)
+            {
+                return $"📦 {packName} - Not installed - Available: {remoteVersionStr}";
+            }
+            else
+            {
+                return $"⚠️ {packName} - Not installed - Unavailable";
+            }
         }
         else
         {
-            // 3 packs need update but not all are installed (shouldn't happen in practice)
-            return "📦 Updates for all installed packs are available.";
+            // Pack is installed
+            if (!remoteAvailable)
+            {
+                // Can't determine if update exists, just show installed version
+                return $"✅ {packName} - Installed: {installedVersion} - Unavailable";
+            }
+            else
+            {
+                // Compare versions
+                bool updateAvailable = IsRemoteVersionNewerThanInstalled(installedVersion, remoteManifest);
+
+                if (updateAvailable)
+                {
+                    return $"📦 {packName} - Installed: {installedVersion} - Available: {remoteVersionStr}";
+                }
+                else
+                {
+                    return $"✅ {packName} - Installed: {installedVersion} - Up-to-date";
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts version string from a remote manifest JObject.
+    /// Returns formatted version string like "v1.2.3" or null if unavailable.
+    /// </summary>
+    private string? ExtractVersionFromManifest(JObject? manifest)
+    {
+        try
+        {
+            if (manifest == null) return null;
+
+            var versionArray = manifest["header"]?["version"]?.ToObject<int[]>();
+            if (versionArray == null || versionArray.Length == 0) return null;
+
+            return $"v{string.Join(".", versionArray)}";
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -929,7 +942,7 @@ public class PackUpdater
             if (string.IsNullOrEmpty(versionString))
                 return null;
 
-            // Remove 'v' prefix if present
+            // Remove 'v' prefix if present (handles "v1.1232.323" format from LocatePacks)
             versionString = versionString.TrimStart('v', 'V');
 
             var parts = versionString.Split('.');

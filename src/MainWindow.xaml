@@ -209,7 +209,9 @@
                         <ColumnDefinition Width="Auto" />
                         <!-- Theme Button -->
                         <ColumnDefinition Width="Auto" />
-                        <!-- Flex space -->
+                        <!-- Separator -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Sync Button -->
                     </Grid.ColumnDefinitions>
 
                     <!-- Help Button -->
@@ -273,6 +275,36 @@
                             Click="CycleThemeButton_Click"
                             ToolTipService.ToolTip="Theme: System"
                             IsTextScaleFactorEnabled="False" />
+
+                    <!-- Separator -->
+                    <Border Grid.Column="5"
+                            Width="1"
+                            Margin="4,6,4,6"
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- Sync Button -->
+                    <Button x:Name="VersionCheckButton"
+                            Grid.Column="6"
+                            Style="{StaticResource SubtleButtonStyle}"
+                            Width="42"
+                            Height="35"
+                            CornerRadius="0"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Click="VersionCheckButton_Click"
+                            ToolTipService.ToolTip="Check for pack updates"
+                            IsTextScaleFactorEnabled="False">
+                        <TextBlock FontFamily="Segoe Fluent Icons"
+                                   Text="&#xE895;"
+                                   FontSize="14"
+                                   RenderTransformOrigin="0.5,0.5"
+                                   IsTextScaleFactorEnabled="False">
+                            <TextBlock.RenderTransform>
+                                <RotateTransform x:Name="VersionCheckButtonRotation"
+                                                 Angle="0" />
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+                    </Button>
                 </Grid>
             </Border>
 

@@ -14,7 +14,6 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -27,7 +26,7 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
-using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Dispatching;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -36,27 +35,6 @@ namespace Vanilla_RTX_App;
 
 /*
 ### GENERAL TODO & IDEAS ###
-
-- Rethink the "occasional update check" thingy
-Tie it into "Shift+Select another pack"
-OR BETTER YET MOVE it to SHIFT + REINSTALL LATEST PACKS entirely
-change the text to "Perform Version Check" while it is held down
-change the cooldown to 5 minutes, AND for packs that CAN be updated, log it this way:
-Vanilla RTX - Installed: {version} - Available: {version}
-Vanilla RTX Noramls - Installed: {version} - Up-to-date
-Vanilla RTX Opus - Not installed - Available: {version}
-
-Gonna need to yank it out of shift+select another pack, put it on update checker instead
-And update the output texts of that helper? some logic are bound to be rewritten
-
-Cover all possible scenarios
-"You just performed an update check, wait X minutes before attempting again"
-
-its gonna tell user WHAT PACK IS INSTALLED/or not, and WHAT its version is if installed
-what verison is available, if available, if it is available and its the same, say up-to-date
-This is as CLEAN as useful as it can get
-Ditch the occasional automated checks whenever locatepacks is triggered, it is just spammy and annoying/easy to miss
-
 
 - Add a way to manually uninstall and import MCPACKS, because Minecraft GDK's import is fucked up and doesn't work properly
 Besides, people are gonna appreiciate being able to reimport their packs which THE APP LETS THEM EXPORT FFS!
@@ -288,7 +266,6 @@ public sealed partial class MainWindow : Window
                 _shiftPressed = true;
                 // Just set controls and shift texts here
                 SetShiftText(ResetButton, "⚠️ Wipe");
-                SetShiftText(BrowsePacksButtonText, "Check Vanilla RTX version");
                 // Add more as needed...
             }
         };
@@ -1373,6 +1350,93 @@ public sealed partial class MainWindow : Window
 
 
 
+    private bool isVersionCheckRunning = false; private CancellationTokenSource _spinAnimationCts;
+    private async void VersionCheckButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (isVersionCheckRunning)
+            return;
+
+        isVersionCheckRunning = true;
+        VersionCheckButton.IsEnabled = false;
+        _spinAnimationCts = new CancellationTokenSource();
+
+        // Start the spinning animation
+        _ = AnimateSyncIcon(_spinAnimationCts.Token);
+
+        // Pack update check
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var msg = await _updater.CheckForPackUpdates(
+                    VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
+                if (!string.IsNullOrEmpty(msg)) Log(msg);
+            }
+            catch { Debug.WriteLine("FAILURE: The update check in LocatePacksButton_Click"); }
+            finally
+            {
+                // Signal animation to stop after current spin completes
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    _spinAnimationCts?.Cancel();
+                });
+            }
+        });
+    }
+    private async Task AnimateSyncIcon(CancellationToken cancellationToken)
+    {
+        bool firstSpin = true;
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested || firstSpin)
+            {
+                // Perform one fast spin
+                var spinAnimation = new DoubleAnimation
+                {
+                    From = 0,
+                    To = 360,
+                    Duration = new Duration(TimeSpan.FromMilliseconds(400)),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                };
+
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(spinAnimation, VersionCheckButtonRotation);
+                Storyboard.SetTargetProperty(spinAnimation, "Angle");
+                storyboard.Children.Add(spinAnimation);
+
+                var tcs = new TaskCompletionSource<bool>();
+                storyboard.Completed += (s, e) => tcs.TrySetResult(true);
+                storyboard.Begin();
+
+                await tcs.Task;
+
+                // Reset rotation to 0 for next spin
+                VersionCheckButtonRotation.Angle = 0;
+
+                firstSpin = false;
+
+                // If cancelled, do one final spin and exit
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                // Brief pause before next spin (smooth deceleration effect)
+                await Task.Delay(150, CancellationToken.None);
+            }
+        }
+        finally
+        {
+            // Ensure we're at 0 degrees
+            VersionCheckButtonRotation.Angle = 0;
+            isVersionCheckRunning = false;
+            VersionCheckButton.IsEnabled = true;
+        }
+    }
+
+
+
     public async Task LocatePacksButton_Click(bool ShowLogs = false)
     {
         _ = BlinkingLamp(true, true, 1.0);
@@ -1421,20 +1485,6 @@ public sealed partial class MainWindow : Window
         {
             OpusCheckBox.IsEnabled = true;
         }
-
-
-        // Pack update check whenever it figures it out
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var msg = await _updater.CheckForPackUpdates(
-                    VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
-                if (!string.IsNullOrEmpty(msg)) Log(msg);
-            }
-            catch { Debug.WriteLine("FAILURE: The update check in LocatePacksButton_Click"); }
-        });
-
     }
     private void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
