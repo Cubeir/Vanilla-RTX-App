@@ -142,7 +142,7 @@ public class PackLocator
             if (latestVanillaRTX != null)
             {
                 vanillaRTXLocation = latestVanillaRTX.Value.path;
-                vanillaRTXVersion = $"v{latestVanillaRTX.Value.version[0]}.{latestVanillaRTX.Value.version[1]}.{latestVanillaRTX.Value.version[2]}";
+                vanillaRTXVersion = $"{latestVanillaRTX.Value.version[0]}.{latestVanillaRTX.Value.version[1]}.{latestVanillaRTX.Value.version[2]}";
                 results.Add($"✅ Found: Vanilla RTX — {vanillaRTXVersion}");
             }
             else
@@ -153,7 +153,7 @@ public class PackLocator
             if (latestVanillaRTXNormals != null)
             {
                 vanillaRTXNormalsLocation = latestVanillaRTXNormals.Value.path;
-                vanillaRTXNormalsVersion = $"v{latestVanillaRTXNormals.Value.version[0]}.{latestVanillaRTXNormals.Value.version[1]}.{latestVanillaRTXNormals.Value.version[2]}";
+                vanillaRTXNormalsVersion = $"{latestVanillaRTXNormals.Value.version[0]}.{latestVanillaRTXNormals.Value.version[1]}.{latestVanillaRTXNormals.Value.version[2]}";
                 results.Add($"✅ Found: Vanilla RTX Normals — {vanillaRTXNormalsVersion}");
             }
             else
@@ -164,7 +164,7 @@ public class PackLocator
             if (latestVanillaRTXOpus != null)
             {
                 vanillaRTXOpusLocation = latestVanillaRTXOpus.Value.path;
-                vanillaRTXOpusVersion = $"v{latestVanillaRTXOpus.Value.version[0]}.{latestVanillaRTXOpus.Value.version[1]}.{latestVanillaRTXOpus.Value.version[2]}";
+                vanillaRTXOpusVersion = $"{latestVanillaRTXOpus.Value.version[0]}.{latestVanillaRTXOpus.Value.version[1]}.{latestVanillaRTXOpus.Value.version[2]}";
                 results.Add($"✅ Found: Vanilla RTX Opus — {vanillaRTXOpusVersion}");
             }
             else
