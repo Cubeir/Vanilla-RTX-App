@@ -1135,7 +1135,7 @@ public class Processor
                 }
                 double originalIntensity = originalIntensitySum / (width * height);
 
-                // Blend generated normal map with original using Overlay blend mode
+                // Blend generated normal map with original using a blend of overlay and regular blend methods
                 var blendedNormals = new (byte r, byte g)[width, height];
                 for (var y = 0; y < height; y++)
                 {
@@ -1148,20 +1148,30 @@ public class Processor
                         var detailR = (alpha * newR + (255 - alpha) * 128) / 255.0;
                         var detailG = (alpha * newG + (255 - alpha) * 128) / 255.0;
 
-                        // Overlay blend mode
-                        double finalR, finalG;
+                        // Regular/Linear blend (33%)
+                        var linearR = (origColor.R + detailR) / 2.0;
+                        var linearG = (origColor.G + detailG) / 2.0;
+
+                        // Overlay blend mode (67%)
+                        double overlayR, overlayG;
 
                         // R
                         if (origColor.R < 128)
-                            finalR = (2.0 * origColor.R * detailR) / 255.0;
+                            overlayR = (2.0 * origColor.R * detailR) / 255.0;
                         else
-                            finalR = 255.0 - (2.0 * (255.0 - origColor.R) * (255.0 - detailR)) / 255.0;
+                            overlayR = 255.0 - (2.0 * (255.0 - origColor.R) * (255.0 - detailR)) / 255.0;
 
                         // G
                         if (origColor.G < 128)
-                            finalG = (2.0 * origColor.G * detailG) / 255.0;
+                            overlayG = (2.0 * origColor.G * detailG) / 255.0;
                         else
-                            finalG = 255.0 - (2.0 * (255.0 - origColor.G) * (255.0 - detailG)) / 255.0;
+                            overlayG = 255.0 - (2.0 * (255.0 - origColor.G) * (255.0 - detailG)) / 255.0;
+
+                        // DC about B
+
+                        // Combine: 33% linear + 67% overlay
+                        var finalR = 0.33 * linearR + 0.67 * overlayR;
+                        var finalG = 0.33 * linearG + 0.67 * overlayG;
 
                         blendedNormals[x, y] = ((byte)Math.Clamp(finalR, 0, 255), (byte)Math.Clamp(finalG, 0, 255));
                     }
