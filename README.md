@@ -94,8 +94,7 @@ Upon launch, the app automatically scans for already-installed Vanilla RTX packs
 
 - `Select a local pack`  
   Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select one pack to be tuned alongside any of the 3 primary Vanilla RTX variants.
- > Holding `SHIFT` while pressing this button will instead trigger a Vanilla RTX version check which will appear in the logs.
-
+  
 - `Fog multiplier`  
   Updates all fog densities by a given factor — e.g., `0.5` to halve, `3.0` to triple, or `0` to effectively disable air fog. If a fog density is already at 0, the multiplier is instead converted into an acceptable literal number between `0.0-1.0`.
   If fog density is at maximum, excess of the multiplier will be used to scatter more light in the atmosphere. Underwater fog is also affected partially (to a much lesser degree to avoid exposing excessive underwater view distance).
@@ -124,7 +123,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   Metalness is slightly reduced in relation to how much roughness is boosted. For negative values, extremely rough surfaces are instead made less rough, and metalness is amplified in relation to how much roughness boost would've taken place if the given value was a positive.
   
 - `Lazify surface normals`  
-  Uses a modified color texture to make heightmaps/normal maps less refined. The given number determines effectiveness `(0 = no change, 255 = fully lazy)`.
+  Uses a modified color texture to make heightmaps/normal maps less refined. The given number determines effectiveness `(0 = no change, 255 = fully lazy)`. For normal maps, not all original detail is lost even at 255, instead it is partially blended and overlayed, the final normal map always retains the same overall intensity as the starting normal map.
   > Note: Assuming the pack isn't already shoddy, a value of 1-10 can add a subtle layer of organic detailing to the textures.
 
 - `Material grain offset`  
@@ -144,9 +143,9 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - `Reset`  
   Resets tuning values and options to their defaults — this does not reset the pack back to its default state, to do that, you must reinstall the packages via the `(Re)install latest RTX packs` or if it is a custom pack, manually reimport the original pack to Minecraft.
 
-- `Hard Reset (Hold Shift + Reset)`  
-  Wipes all of app's storage, as well as any temporary data, including: cache timestamps (like update check cooldowns), tuning options, cached pack locations or game locations, and more..., then restarts the app.
-  Effectively making it as if the app was just freshly installed on your system, removing all traces.
+- `Wipe / Hard reset (Hold Shift + Reset)`  
+  Wipes all of app's storage, as well as any temporary data, including: cache timestamps (like update check cooldowns), tuning options, cached pack locations or game locations, DLSS and BetterRTX catalogues, PSA messages, and more..., then restarts the app.
+  Effectively making it as if the app was just freshly installed on your system, removing all traces in a way that Windows settings' "reset" button doesn't.
 
 ## Miscellaneous
 
@@ -161,6 +160,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   Allowing you to keep your personal favorite values and quickly re-tune newer versions without having to remember everything, or come back to the app and swap DLSS again or reinstall your BetterRTX preset quickly in case of a Minecraft update.
 
 - Top-left titlebar buttons in order:
+  - Check Vanilla RTX installation status and update availability: Logs which Vanilla RTX packs you have installed, and if so lists their version, then checks against remote to see if an update is available and lets you know the results.  
   - Cycle themes: Change between dark, light, or system theme.
   - Help: Opens this page, which will hold up-to-date information about the app.
   - Donate: Opens the developer's Ko-Fi page.  
