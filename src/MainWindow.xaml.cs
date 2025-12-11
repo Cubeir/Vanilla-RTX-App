@@ -573,6 +573,10 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/minecart.launch.png"
         );
 
+        Previewer.Instance.InitializeButton(VersionCheckButton,
+            "ms-appx:///Assets/previews/version.checker.png"
+        );
+
         Previewer.Instance.InitializeButton(CycleThemeButton,
             "ms-appx:///Assets/previews/theme.png"
         );

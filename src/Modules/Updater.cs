@@ -866,16 +866,15 @@ public class PackUpdater
             }
             else
             {
-                return $"⚠️ {packName} - Not installed - Unavailable";
+                return $"❌ {packName} - Not installed - Unavailable";
             }
         }
-        else
+        else // Pack is installed
         {
-            // Pack is installed
             if (!remoteAvailable)
             {
                 // Can't determine if update exists, just show installed version
-                return $"✅ {packName} - Installed: {installedVersion} - Unavailable";
+                return $"⚠️ {packName} - Installed: {installedVersion} - Unavailable";
             }
             else
             {
