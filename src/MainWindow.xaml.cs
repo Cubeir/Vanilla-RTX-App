@@ -93,8 +93,6 @@ e.g. you can preserve their tuning histories there, embed it into the manifest, 
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
-
-
 */
 
 public static class TunerVariables
