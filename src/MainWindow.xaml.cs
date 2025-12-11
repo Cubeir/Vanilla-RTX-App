@@ -36,18 +36,7 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Add a way to manually uninstall and import MCPACKS, because Minecraft GDK's import is fucked up and doesn't work properly
-Besides, people are gonna appreiciate being able to reimport their packs which THE APP LETS THEM EXPORT FFS!
-
-- Rewrite the README.md file, put the quickguide there instead
-Then have a documentation file with the slightly technical babble and unnecessery details
-The goal is to the main readme file short and "read"able so people read it
-make it helpful not painful
-
-- IMPROVEMENT IDEA: Make lazifying normals apply 50% of the effect as regular blend, and the other half as Overlay the way it does now
-Intensity will still get adjusted at the end so it looks roughly the same as before
-
-- rereview and test the changes from the previous update
+- rereview and retest the changes from the previous updates 2.4.5 and later
 
 - Somehow fix window maximizing when clicking titlebar buttons, they should absorb it but they dont.. window gets it too
 
