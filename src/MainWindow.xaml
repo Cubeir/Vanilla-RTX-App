@@ -292,7 +292,7 @@
                             Background="Transparent"
                             BorderBrush="Transparent"
                             Click="VersionCheckButton_Click"
-                            ToolTipService.ToolTip="Check for pack updates"
+                            ToolTipService.ToolTip="Check Vanilla RTX version and update availability status"
                             IsTextScaleFactorEnabled="False">
                         <TextBlock FontFamily="Segoe Fluent Icons"
                                    Text="&#xE895;"
