@@ -188,4 +188,4 @@ Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affili
 
 ### PSA
 Critical issue: Default RTX preset created upon changing BetterRTX is not forward compatible, if you use the BetterRTX manager to switch between presets, avoid switching to default preset if Minecraft has updated.
-More info in the known issues list on github.
+More info in the known issues list on github. Additionally, make sure you reimport/update your BetterRTX presets if Minecraft has updated.
