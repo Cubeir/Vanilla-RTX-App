@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.Graphics;
+using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.Core;
 
@@ -16,10 +17,10 @@ public class WindowStateManager : IDisposable
     private Action<string>? _logAction;
     private readonly bool _enableLogging;
 
-    private const int MIN_WINDOW_WIDTH = 400;
-    private const int MIN_WINDOW_HEIGHT = 300;
-    private const int DEFAULT_WINDOW_WIDTH = 1105;
-    private const int DEFAULT_WINDOW_HEIGHT = 555;
+    private const int MIN_WINDOW_WIDTH = Defaults.WindowMinSizeX;
+    private const int MIN_WINDOW_HEIGHT = Defaults.WindowMinSizeY;
+    private const int DEFAULT_WINDOW_WIDTH = Defaults.WindowSizeX;
+    private const int DEFAULT_WINDOW_HEIGHT = Defaults.WindowSizeY;
 
     private double? _cachedDpiScale;
     private const double DEFAULT_DPI = 96.0;

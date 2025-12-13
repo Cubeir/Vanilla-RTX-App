@@ -9,7 +9,9 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,8 +21,7 @@ using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
-using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
+using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
 
@@ -96,8 +97,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             presenter.IsAlwaysOnTop = false;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(925 * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(525 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(Defaults.WindowMinSizeY * scaleFactor);
         }
 
         if (_appWindow.TitleBar != null)
@@ -105,7 +106,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Collapsed;
+            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
         this.Activated += BetterRTXManagerWindow_Activated;
@@ -137,11 +138,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             this.Activated -= BetterRTXManagerWindow_Activated;
 
-            _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-            {
-                SetTitleBarDragRegion();
-            });
-
             if (TunerVariables.Persistent.IsTargetingPreview)
             {
                 StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
@@ -154,23 +150,18 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             await InitializeAsync();
 
-            InitializeRefreshButton();
-        }
-    }
+            // Bring to top again
+            _ = this.DispatcherQueue.TryEnqueue(async () =>
+            {
+                await Task.Delay(75);
+                try
+                {
+                    this.Activate();
+                }
+                catch { }
+            });
 
-    private void SetTitleBarDragRegion()
-    {
-        if (_appWindow.TitleBar != null && TitleBarArea.XamlRoot != null)
-        {
-            try
-            {
-                var scaleAdjustment = TitleBarArea.XamlRoot.RasterizationScale;
-                var dragRectHeight = (int)(TitleBarArea.ActualHeight * scaleAdjustment);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error setting drag region: {ex.Message}");
-            }
+            InitializeRefreshButton();
         }
     }
 
@@ -535,23 +526,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             return new List<ApiPresetData>();
         }
     }
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        _scanCancellationTokenSource?.Cancel();
-        _scanCancellationTokenSource?.Dispose();
-
-        // Clear download queue and statuses
-        _downloadQueue.Clear();
-        _downloadStatuses.Clear();
-
-        // Dispose HttpClient
-        _betterRtxHttpClient?.Dispose();
-
-        this.Close();
-    }
-
-
 
     private async Task LoadLocalPresetsAsync()
     {

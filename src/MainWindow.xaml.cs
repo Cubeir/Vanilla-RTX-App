@@ -37,8 +37,15 @@ namespace Vanilla_RTX_App;
 ### GENERAL TODO & IDEAS ###
 
 - Rework the Windows of DLSS/BRTX/PACKSELECTION into UserControls with a modal blocker beneath
+OR just manually set a drag region for them? lol problem solved
+
+and call them to the front again with a TINY bit of delay after window launch so double clicking the buttons on mainwindow
+wont bring main window to front
+it will bring it to front
+but the window comes to the front yet again fixing the annoying
 
 - Somehow fix window maximizing when clicking titlebar buttons, they should absorb it but they dont.. window gets it too
+
 
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
@@ -145,6 +152,11 @@ public static class TunerVariables
         public const int RoughnessControlValue = 0;
         public const int LazifyNormalAlpha = 0;
         public const bool AddEmissivityAmbientLight = false;
+
+        public const int WindowSizeX = 1105;
+        public const int WindowSizeY = 555;
+        public const int WindowMinSizeX = 970;
+        public const int WindowMinSizeY = 555;
     }
 
     // Saves persistent variables
@@ -202,9 +214,6 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
-    private int _mojankClickCount = 0;
-    private DateTime _mojankLastClick = DateTime.MinValue;
-
     private Dictionary<FrameworkElement, string> _originalTexts = new();
     private bool _shiftPressed = false;
 
@@ -213,6 +222,9 @@ public sealed partial class MainWindow : Window
         // Properties to set before it is rendered
         SetMainWindowProperties();
         InitializeComponent();
+
+        // Titlebar drag region
+        SetTitleBar(TitleBarDragArea);
 
         // Show splash screen immedietly
         if (SplashOverlay != null)
@@ -225,7 +237,7 @@ public sealed partial class MainWindow : Window
 
         Instance = this;
 
-        var defaultSize = new SizeInt32(1105, 555);
+        var defaultSize = new SizeInt32(Defaults.WindowSizeX, Defaults.WindowSizeY);
         _windowStateManager.ApplySavedStateOrDefaults();
 
         // Version, title and initial logs
@@ -396,8 +408,8 @@ public sealed partial class MainWindow : Window
 
             var dpi = GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(970 * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(555 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(Defaults.WindowMinSizeY * scaleFactor);
         }
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");
@@ -1309,8 +1321,8 @@ public sealed partial class MainWindow : Window
         {
             btn.Content = mode switch
             {
-                "Light" => "\uE793",
-                "Dark" => "\uE706",
+                "Light" => "\uE706",
+                "Dark" => "\uEC46",
                 _ => "A",
             };
         }

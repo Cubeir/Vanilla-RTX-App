@@ -132,29 +132,5 @@
                       Margin="0, -3, 0, 0"
                       IsTextScaleFactorEnabled="False" />
         </Button>
-
-        <!-- Close Button  -->
-        <Button x:Name="CloseButton"
-                Width="52"
-                Height="36"
-                Margin="20,1,32,0"
-                Padding="0"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                CornerRadius="0, 0, 6, 6"
-                Click="CloseButton_Click"
-                ToolTipService.ToolTip="Close"
-                Translation="0,0,16"
-                IsTextScaleFactorEnabled="False">
-            <Button.Shadow>
-                <ThemeShadow />
-            </Button.Shadow>
-            <FontIcon Glyph="&#xF78A;"
-                      FontSize="16"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center"
-                      Margin="0, -3, 0, 0"
-                      IsTextScaleFactorEnabled="False" />
-        </Button>
     </Grid>
 </Window>

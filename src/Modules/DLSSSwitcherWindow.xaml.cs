@@ -16,6 +16,7 @@ using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.DLSSBrowser;
 
@@ -61,8 +62,8 @@ public sealed partial class DLSSSwitcherWindow : Window
             presenter.IsAlwaysOnTop = false;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(925 * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(525 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(Defaults.WindowMinSizeY * scaleFactor);
         }
 
         if (_appWindow.TitleBar != null)
@@ -70,7 +71,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Collapsed;
+            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
         this.Activated += DLSSSwitcherWindow_Activated;
@@ -103,6 +104,17 @@ public sealed partial class DLSSSwitcherWindow : Window
             ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? MinecraftGDKLocator.MinecraftPreviewFolderName : MinecraftGDKLocator.MinecraftFolderName)}";
 
             await InitializeAsync();
+
+            // Bring to top again
+            _ = this.DispatcherQueue.TryEnqueue(async () =>
+            {
+                await Task.Delay(75);
+                try
+                {
+                    this.Activate();
+                }
+                catch { }
+            });
         }
     }
 
@@ -872,13 +884,6 @@ public sealed partial class DLSSSwitcherWindow : Window
             Debug.WriteLine($"Error parsing DLL {dllPath}: {ex.Message}");
             return null;
         }
-    }
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        _scanCancellationTokenSource?.Cancel();
-        _scanCancellationTokenSource?.Dispose();
-        this.Close();
     }
 
     private class DllData

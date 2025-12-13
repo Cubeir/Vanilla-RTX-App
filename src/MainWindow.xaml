@@ -93,6 +93,15 @@
                     <ThemeShadow x:Name="TitleBarShadow" />
                 </Border.Shadow>
             </Border>
+
+            <!-- Transparent drag area: covers whole titlebar except left 200px so your buttons keep receiving clicks -->
+            <Border x:Name="TitleBarDragArea"
+                    Margin="200,0,0,0"
+                    Height="31"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    IsHitTestVisible="False" />
         </Grid>
 
         <!-- Titlebar Center Content -->
@@ -265,7 +274,7 @@
                             Grid.Column="4"
                             FontFamily="Segoe Fluent Icons"
                             Style="{StaticResource SubtleButtonStyle}"
-                            Content="&#xE793;"
+                            Content="&#xEC46;"
                             Width="42"
                             Height="35"
                             CornerRadius="0"

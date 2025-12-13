@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Windows.Storage;
 using WinRT.Interop;
+using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
 
@@ -51,8 +52,8 @@ public sealed partial class PackBrowserWindow : Window
             presenter.IsAlwaysOnTop = false;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(925 * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(525 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(Defaults.WindowMinSizeY * scaleFactor);
         }
 
         if (_appWindow.TitleBar != null)
@@ -60,7 +61,7 @@ public sealed partial class PackBrowserWindow : Window
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Collapsed;
+            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
         this.Activated += PackBrowserWindow_Activated;
@@ -95,6 +96,17 @@ public sealed partial class PackBrowserWindow : Window
             WindowTitle.Text = $"Select from compatible local {text} resource packs";
 
             await LoadPacksAsync();
+
+            // Bring to top again
+            _ = this.DispatcherQueue.TryEnqueue(async () =>
+            {
+                await Task.Delay(75);
+                try
+                {
+                    this.Activate();
+                }
+                catch { }
+            });
         }
     }
 
@@ -322,11 +334,6 @@ public sealed partial class PackBrowserWindow : Window
             TunerVariables.CustomPackDisplayName = packData.PackName;
             this.Close();
         }
-    }
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        this.Close();
     }
 
     private async Task<List<PackData>> ScanForCompatiblePacksAsync()
