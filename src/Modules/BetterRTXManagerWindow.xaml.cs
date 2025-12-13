@@ -530,13 +530,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             var icon = await LoadIconAsync(manifestDir) ?? await LoadIconAsync(presetFolder);
             var binFiles = Directory.GetFiles(presetFolder, "*.bin", SearchOption.AllDirectories).ToList();
 
-            string stubHash = null;
-            var stubPath = binFiles.FirstOrDefault(f =>
-                Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
-            if (stubPath != null)
-            {
-                stubHash = ComputeFileHash(stubPath);
-            }
+            // Compute hashes for ALL Core RTX files
+            var presetHashes = GetPresetHashes(binFiles);
 
             return new LocalPresetData
             {
@@ -545,7 +540,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 PresetPath = presetFolder,
                 Icon = icon,
                 BinFiles = binFiles,
-                StubHash = stubHash
+                FileHashes = presetHashes // Changed from StubHash
             };
         }
         catch (Exception ex)
@@ -603,13 +598,14 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             PresetListContainer.Children.Clear();
 
-            string currentHash = GetCurrentlyInstalledPresetHash();
+            // Get current game hashes (ALL Core RTX files)
+            var currentHashes = GetCurrentlyInstalledHashes();
 
             // Always add Default preset first
             var defaultPreset = CreateDefaultPreset();
             if (defaultPreset != null)
             {
-                var defaultButton = CreatePresetButton(defaultPreset, currentHash, true);
+                var defaultButton = CreatePresetButton(defaultPreset, currentHashes, true);
                 PresetListContainer.Children.Add(defaultButton);
             }
 
@@ -634,7 +630,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                         Icon = localPreset.Icon,
                         PresetPath = localPreset.PresetPath,
                         BinFiles = localPreset.BinFiles,
-                        StubHash = localPreset.StubHash
+                        FileHashes = localPreset.FileHashes // Changed from StubHash
                     });
                 }
                 else
@@ -648,13 +644,12 @@ public sealed partial class BetterRTXManagerWindow : Window
                         Icon = null,
                         PresetPath = null,
                         BinFiles = null,
-                        StubHash = null
+                        FileHashes = null // Changed from StubHash
                     });
                 }
             }
 
             // Second, add any local presets that weren't in the API list
-            // (This handles offline mode where we have local presets but no/old API data)
             foreach (var localPreset in _localPresets.Values)
             {
                 if (!seenUuids.Contains(localPreset.Uuid))
@@ -667,7 +662,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                         Icon = localPreset.Icon,
                         PresetPath = localPreset.PresetPath,
                         BinFiles = localPreset.BinFiles,
-                        StubHash = localPreset.StubHash
+                        FileHashes = localPreset.FileHashes // Changed from StubHash
                     });
                 }
             }
@@ -679,13 +674,13 @@ public sealed partial class BetterRTXManagerWindow : Window
             // Display downloaded first, then not downloaded
             foreach (var preset in downloadedPresets)
             {
-                var button = CreatePresetButton(preset, currentHash, false);
+                var button = CreatePresetButton(preset, currentHashes, false);
                 PresetListContainer.Children.Add(button);
             }
 
             foreach (var preset in notDownloadedPresets)
             {
-                var button = CreatePresetButton(preset, currentHash, false);
+                var button = CreatePresetButton(preset, currentHashes, false);
                 PresetListContainer.Children.Add(button);
             }
 
@@ -723,13 +718,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         if (binFiles.Count == 0)
             return null;
 
-        string stubHash = null;
-        var stubPath = binFiles.FirstOrDefault(f =>
-            Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
-        if (stubPath != null)
-        {
-            stubHash = ComputeFileHash(stubPath);
-        }
+        // Compute hashes for ALL Core RTX files
+        var presetHashes = GetPresetHashes(binFiles);
 
         return new LocalPresetData
         {
@@ -738,11 +728,11 @@ public sealed partial class BetterRTXManagerWindow : Window
             PresetPath = _defaultFolder,
             Icon = null,
             BinFiles = binFiles,
-            StubHash = stubHash
+            FileHashes = presetHashes // Changed from StubHash
         };
     }
 
-    private Button CreatePresetButton(object presetData, string currentInstalledHash, bool isDefault)
+    private Button CreatePresetButton(object presetData, Dictionary<string, string> currentInstalledHashes, bool isDefault)
     {
         bool isDownloaded = true;
         bool isCurrent = false;
@@ -759,9 +749,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             icon = localPreset.Icon;
             uuid = localPreset.Uuid;
 
-            if (!string.IsNullOrEmpty(currentInstalledHash) &&
-                !string.IsNullOrEmpty(localPreset.StubHash) &&
-                localPreset.StubHash == currentInstalledHash)
+            // Compare ALL hashes
+            if (localPreset.FileHashes != null && AreHashesMatching(currentInstalledHashes, localPreset.FileHashes))
             {
                 isCurrent = true;
             }
@@ -796,9 +785,9 @@ public sealed partial class BetterRTXManagerWindow : Window
                 }
             }
 
-            if (isDownloaded && !string.IsNullOrEmpty(currentInstalledHash) &&
-                !string.IsNullOrEmpty(displayPreset.StubHash) &&
-                displayPreset.StubHash == currentInstalledHash)
+            // Compare ALL hashes
+            if (isDownloaded && displayPreset.FileHashes != null &&
+                AreHashesMatching(currentInstalledHashes, displayPreset.FileHashes))
             {
                 isCurrent = true;
             }
@@ -920,7 +909,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             if (status == DownloadStatus.Downloading || status == DownloadStatus.Queued)
             {
-                // Show progress ring - BIGGER than button to encompass it
+                // Show progress ring
                 var progressRing = new ProgressRing
                 {
                     Width = 40,
@@ -1155,7 +1144,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             try
             {
                 LocalPresetData presetToApply = null;
-
                 if (button.Tag is LocalPresetData localPreset)
                 {
                     presetToApply = localPreset;
@@ -1177,15 +1165,13 @@ public sealed partial class BetterRTXManagerWindow : Window
                             PresetPath = displayPreset.PresetPath,
                             Icon = displayPreset.Icon,
                             BinFiles = displayPreset.BinFiles,
-                            StubHash = displayPreset.StubHash
+                            FileHashes = displayPreset.FileHashes // Changed from StubHash
                         };
                     }
                 }
-
                 if (presetToApply != null)
                 {
                     var success = await ApplyPresetAsync(presetToApply);
-
                     if (success)
                     {
                         OperationSuccessful = true;
@@ -1331,10 +1317,107 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    private string GetCurrentlyInstalledPresetHash()
+    /// <summary>
+    /// Computes hashes for all Core RTX files present in the game's materials folder.
+    /// Returns a dictionary of filename -> hash.
+    /// </summary>
+    private Dictionary<string, string> GetCurrentlyInstalledHashes()
     {
-        var stubPath = Path.Combine(_gameMaterialsPath, "RTXStub.material.bin");
-        return ComputeFileHash(stubPath);
+        var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var fileName in CoreRTXFiles)
+        {
+            var filePath = Path.Combine(_gameMaterialsPath, fileName);
+            if (File.Exists(filePath))
+            {
+                var hash = ComputeFileHash(filePath);
+                if (!string.IsNullOrEmpty(hash))
+                {
+                    hashes[fileName] = hash;
+                    Debug.WriteLine($"  📊 {fileName}: {hash.Substring(0, 8)}...");
+                }
+            }
+        }
+
+        Debug.WriteLine($"📊 Current game has {hashes.Count}/{CoreRTXFiles.Length} Core RTX files");
+        return hashes;
+    }
+
+    /// <summary>
+    /// Computes hashes for all Core RTX files in a preset's bin files.
+    /// Returns a dictionary of filename -> hash.
+    /// </summary>
+    private Dictionary<string, string> GetPresetHashes(List<string> binFiles)
+    {
+        var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var fileName in CoreRTXFiles)
+        {
+            var matchingFile = binFiles.FirstOrDefault(f =>
+                Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
+
+            if (matchingFile != null && File.Exists(matchingFile))
+            {
+                var hash = ComputeFileHash(matchingFile);
+                if (!string.IsNullOrEmpty(hash))
+                {
+                    hashes[fileName] = hash;
+                }
+            }
+        }
+
+        return hashes;
+    }
+
+    /// <summary>
+    /// Compares two hash dictionaries.
+    /// Returns true if ALL files present in BOTH dictionaries have matching hashes.
+    /// Ignores files that are missing from either dictionary.
+    /// </summary>
+    private bool AreHashesMatching(Dictionary<string, string> currentHashes, Dictionary<string, string> presetHashes)
+    {
+        if (currentHashes == null || presetHashes == null)
+        {
+            Debug.WriteLine("⚠ Cannot compare - one or both hash sets are null");
+            return false;
+        }
+
+        if (currentHashes.Count == 0 || presetHashes.Count == 0)
+        {
+            Debug.WriteLine("⚠ Cannot compare - one or both hash sets are empty");
+            return false;
+        }
+
+        // Find files present in BOTH
+        var commonFiles = currentHashes.Keys.Intersect(presetHashes.Keys, StringComparer.OrdinalIgnoreCase).ToList();
+
+        if (commonFiles.Count == 0)
+        {
+            Debug.WriteLine("⚠ No common files to compare");
+            return false;
+        }
+
+        Debug.WriteLine($"🔍 Comparing {commonFiles.Count} common files:");
+
+        // ALL common files must match
+        foreach (var fileName in commonFiles)
+        {
+            var currentHash = currentHashes[fileName];
+            var presetHash = presetHashes[fileName];
+
+            if (currentHash != presetHash)
+            {
+                Debug.WriteLine($"  ✗ {fileName}: MISMATCH");
+                return false;
+            }
+            else
+            {
+                Debug.WriteLine($"  ✓ {fileName}: Match");
+            }
+        }
+
+        Debug.WriteLine("  ✓✓✓ ALL common files match!");
+        return true;
     }
 
     public static string SanitizePresetName(string name)
@@ -1420,7 +1503,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         public string PresetPath { get; set; }
         public BitmapImage Icon { get; set; }
         public List<string> BinFiles { get; set; }
-        public string StubHash { get; set; }
+        public Dictionary<string, string> FileHashes { get; set; }
     }
 
     private class DisplayPresetData
@@ -1431,7 +1514,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         public BitmapImage Icon { get; set; }
         public string PresetPath { get; set; }
         public List<string> BinFiles { get; set; }
-        public string StubHash { get; set; }
+        public Dictionary<string, string> FileHashes { get; set; }
     }
 }
 
