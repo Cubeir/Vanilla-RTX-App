@@ -136,7 +136,6 @@ public sealed partial class BetterRTXManagerWindow : Window
                 SetTitleBarDragRegion();
             });
 
-            // CRITICAL: Check if targeting Preview
             if (TunerVariables.Persistent.IsTargetingPreview)
             {
                 StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
@@ -774,14 +773,14 @@ public sealed partial class BetterRTXManagerWindow : Window
                 {
                     description = status switch
                     {
-                        DownloadStatus.Queued => "Queued",
+                        DownloadStatus.Queued => "In queue",
                         DownloadStatus.Downloading => "Download in progress...",
-                        _ => "Not downloaded"
+                        _ => "Click to download"
                     };
                 }
                 else
                 {
-                    description = "Not downloaded";
+                    description = "Clik to download";
                 }
             }
 
