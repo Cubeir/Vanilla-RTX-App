@@ -48,15 +48,13 @@ public class Processor
         {
             MainWindow.Log("Options left at default will be skipped.", MainWindow.LogLevel.Informational);
         }
-        MainWindow.Log("Tuning selected packages...", MainWindow.LogLevel.Lengthy);
-
         var packs = new[]
         {
         new PackInfo("Vanilla RTX", VanillaRTXLocation, IsVanillaRTXEnabled),
         new PackInfo("Vanilla RTX Normals", VanillaRTXNormalsLocation, IsNormalsEnabled),
         new PackInfo("Vanilla RTX Opus", VanillaRTXOpusLocation, IsOpusEnabled),
         new PackInfo(CustomPackDisplayName, CustomPackLocation, !string.IsNullOrEmpty(CustomPackLocation))
-    };
+        };
 
 
         // Remove custom pack path if it points to the same location of an already selected pack
@@ -78,6 +76,7 @@ public class Processor
             packs = packs.Take(packs.Length - 1).ToArray();
         }
 
+        MainWindow.Log($"Tuning selected {((IsVanillaRTXEnabled ? 1 : 0) + (IsNormalsEnabled ? 1 : 0) + (IsOpusEnabled ? 1 : 0) + (!string.IsNullOrEmpty(CustomPackLocation) ? 1 : 0) == 1 ? "package" : "packages")}...", MainWindow.LogLevel.Lengthy);
 
         if (FogMultiplier != Defaults.FogMultiplier)
         {
