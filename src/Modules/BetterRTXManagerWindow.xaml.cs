@@ -94,7 +94,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             presenter.IsResizable = true;
             presenter.IsMaximizable = true;
-            presenter.IsAlwaysOnTop = false;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
             presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
@@ -106,6 +105,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(144, 136, 136, 136);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 

@@ -36,17 +36,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Rework the Windows of DLSS/BRTX/PACKSELECTION into UserControls with a modal blocker beneath
-OR just manually set a drag region for them? lol problem solved
-
-and call them to the front again with a TINY bit of delay after window launch so double clicking the buttons on mainwindow
-wont bring main window to front
-it will bring it to front
-but the window comes to the front yet again fixing the annoying
-
-- Somehow fix window maximizing when clicking titlebar buttons, they should absorb it but they dont.. window gets it too
-
-
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
@@ -64,8 +53,7 @@ Additionally, while going through params,
 Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github
 
-- Do the TODO and ISSUES scattered in the code
-Finish all that you had postponed
+- Do the TODOs scattered in the code
 
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
