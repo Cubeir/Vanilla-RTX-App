@@ -58,7 +58,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             presenter.IsResizable = true;
             presenter.IsMaximizable = true;
-            presenter.IsAlwaysOnTop = true;
+            presenter.IsAlwaysOnTop = false;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
             presenter.PreferredMinimumWidth = (int)(925 * scaleFactor);
