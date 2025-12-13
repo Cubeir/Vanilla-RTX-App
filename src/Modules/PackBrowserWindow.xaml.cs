@@ -51,8 +51,8 @@ public sealed partial class PackBrowserWindow : Window
             presenter.IsMaximizable = true;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(Defaults.WindowMinSizeY * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
         }
 
         if (_appWindow.TitleBar != null)

@@ -140,12 +140,13 @@ public static class TunerVariables
         public const int RoughnessControlValue = 0;
         public const int LazifyNormalAlpha = 0;
         public const bool AddEmissivityAmbientLight = false;
-
-        public const int WindowSizeX = 1105;
-        public const int WindowSizeY = 555;
-        public const int WindowMinSizeX = 970;
-        public const int WindowMinSizeY = 555;
     }
+
+    // Set Window size default for all windows
+    public const int WindowSizeX = 1105;
+    public const int WindowSizeY = 555;
+    public const int WindowMinSizeX = 970;
+    public const int WindowMinSizeY = 555;
 
     // Saves persistent variables
     public static void SaveSettings()
@@ -225,7 +226,7 @@ public sealed partial class MainWindow : Window
 
         Instance = this;
 
-        var defaultSize = new SizeInt32(Defaults.WindowSizeX, Defaults.WindowSizeY);
+        var defaultSize = new SizeInt32(WindowSizeX, WindowSizeY);
         _windowStateManager.ApplySavedStateOrDefaults();
 
         // Version, title and initial logs
@@ -396,8 +397,8 @@ public sealed partial class MainWindow : Window
 
             var dpi = GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(Defaults.WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(Defaults.WindowMinSizeY * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
         }
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");

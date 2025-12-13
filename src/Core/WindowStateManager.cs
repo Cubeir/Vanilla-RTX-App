@@ -17,10 +17,10 @@ public class WindowStateManager : IDisposable
     private Action<string>? _logAction;
     private readonly bool _enableLogging;
 
-    private const int MIN_WINDOW_WIDTH = Defaults.WindowMinSizeX;
-    private const int MIN_WINDOW_HEIGHT = Defaults.WindowMinSizeY;
-    private const int DEFAULT_WINDOW_WIDTH = Defaults.WindowSizeX;
-    private const int DEFAULT_WINDOW_HEIGHT = Defaults.WindowSizeY;
+    private const int MIN_WINDOW_WIDTH = WindowMinSizeX;
+    private const int MIN_WINDOW_HEIGHT = WindowMinSizeY;
+    private const int DEFAULT_WINDOW_WIDTH = WindowSizeX;
+    private const int DEFAULT_WINDOW_HEIGHT = WindowSizeY;
 
     private double? _cachedDpiScale;
     private const double DEFAULT_DPI = 96.0;
