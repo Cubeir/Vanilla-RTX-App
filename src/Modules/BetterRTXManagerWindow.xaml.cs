@@ -780,7 +780,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 }
                 else
                 {
-                    description = "Clik to download";
+                    description = "Click to download";
                 }
             }
 
