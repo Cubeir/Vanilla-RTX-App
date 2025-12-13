@@ -105,7 +105,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(144, 136, 136, 136);
+            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(139, 139, 139, 139);
+            _appWindow.TitleBar.InactiveForegroundColor = ColorHelper.FromArgb(128, 139, 139, 139);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
