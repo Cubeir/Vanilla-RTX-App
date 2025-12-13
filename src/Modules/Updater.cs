@@ -43,7 +43,7 @@ public class PackUpdater
     // Cooldowns for manual version checks (5 minutes, independent per target)
     private const string LastUpdateCheckNotificationKey_Release = "LastPackUpdateNotificationCheckTime_Release";
     private const string LastUpdateCheckNotificationKey_Preview = "LastPackUpdateNotificationCheckTime_Preview";
-    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(5);
 
     // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
     public string EnhancementFolderName { get; set; } = "__enhancements";
