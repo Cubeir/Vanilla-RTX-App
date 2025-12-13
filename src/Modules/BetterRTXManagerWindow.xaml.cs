@@ -41,7 +41,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly HttpClient _betterRtxHttpClient;
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp_v1";
-    private const int REFRESH_COOLDOWN_MINUTES = 1;
+    private const int REFRESH_COOLDOWN_SECONDS = 3;
     private DispatcherTimer _cooldownTimer;
 
     public bool OperationSuccessful { get; private set; } = false;
@@ -235,9 +235,9 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         UpdateRefreshButtonState();
 
-        // Set up timer to update button state every minute
+        // Set up timer to update button state every second
         _cooldownTimer = new DispatcherTimer();
-        _cooldownTimer.Interval = TimeSpan.FromMinutes(1);
+        _cooldownTimer.Interval = TimeSpan.FromSeconds(1);
         _cooldownTimer.Tick += (s, e) => UpdateRefreshButtonState();
         _cooldownTimer.Start();
     }
@@ -252,7 +252,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 var lastClickTime = new DateTime(ticks, DateTimeKind.Utc);
                 var elapsed = DateTime.UtcNow - lastClickTime;
-                var remainingMinutes = REFRESH_COOLDOWN_MINUTES - (int)elapsed.TotalMinutes;
+                var remainingMinutes = REFRESH_COOLDOWN_SECONDS - (int)elapsed.TotalSeconds;
 
                 if (remainingMinutes > 0)
                 {
