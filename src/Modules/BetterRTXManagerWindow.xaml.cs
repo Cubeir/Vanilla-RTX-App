@@ -40,6 +40,10 @@ public sealed partial class BetterRTXManagerWindow : Window
     private bool _isProcessingQueue;
     private readonly HttpClient _betterRtxHttpClient;
 
+    private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp_v1";
+    private const int REFRESH_COOLDOWN_MINUTES = 1;
+    private DispatcherTimer _cooldownTimer;
+
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
@@ -113,14 +117,16 @@ public sealed partial class BetterRTXManagerWindow : Window
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
 
-        // Clear download queue and statuses
         _downloadQueue.Clear();
         _downloadStatuses.Clear();
 
-        // Dispose HttpClient
         _betterRtxHttpClient?.Dispose();
 
         _mainWindow.Closed -= MainWindow_Closed;
+
+        _cooldownTimer?.Stop();
+        _cooldownTimer = null;
+
         this.Close();
     }
 
@@ -147,6 +153,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {MinecraftGDKLocator.MinecraftFolderName}";
 
             await InitializeAsync();
+
+            InitializeRefreshButton();
         }
     }
 
@@ -220,6 +228,102 @@ public sealed partial class BetterRTXManagerWindow : Window
             this.Close();
         }
     }
+
+
+    // Refresh button things
+    private void InitializeRefreshButton()
+    {
+        UpdateRefreshButtonState();
+
+        // Set up timer to update button state every minute
+        _cooldownTimer = new DispatcherTimer();
+        _cooldownTimer.Interval = TimeSpan.FromMinutes(1);
+        _cooldownTimer.Tick += (s, e) => UpdateRefreshButtonState();
+        _cooldownTimer.Start();
+    }
+
+    private void UpdateRefreshButtonState()
+    {
+        try
+        {
+            var settings = ApplicationData.Current.LocalSettings;
+
+            if (settings.Values.TryGetValue(REFRESH_COOLDOWN_KEY, out var storedValue) && storedValue is long ticks)
+            {
+                var lastClickTime = new DateTime(ticks, DateTimeKind.Utc);
+                var elapsed = DateTime.UtcNow - lastClickTime;
+                var remainingMinutes = REFRESH_COOLDOWN_MINUTES - (int)elapsed.TotalMinutes;
+
+                if (remainingMinutes > 0)
+                {
+                    RefreshButton.IsEnabled = false;
+                    ToolTipService.SetToolTip(RefreshButton, $"On cooldown, check back in {remainingMinutes} minute{(remainingMinutes != 1 ? "s" : "")}");
+                    return;
+                }
+            }
+
+            RefreshButton.IsEnabled = true;
+            ToolTipService.SetToolTip(RefreshButton, "Refresh preset list");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating refresh button state: {ex.Message}");
+        }
+    }
+
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Debug.WriteLine("=== REFRESH BUTTON CLICKED ===");
+
+            // Set cooldown timestamp
+            var settings = ApplicationData.Current.LocalSettings;
+            settings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
+
+            // Update button state immediately to show cooldown
+            UpdateRefreshButtonState();
+
+            // Delete API cache to force re-fetch
+            if (File.Exists(_apiCachePath))
+            {
+                File.Delete(_apiCachePath);
+                Debug.WriteLine("✓ Deleted API cache - will fetch fresh data");
+            }
+            else
+            {
+                Debug.WriteLine("⚠ API cache didn't exist");
+            }
+
+            // Show loading panel
+            LoadingPanel.Visibility = Visibility.Visible;
+            PresetSelectionPanel.Visibility = Visibility.Collapsed;
+
+            await Task.Delay(100); // Brief delay for UI update
+
+            // Reload everything (this will fetch fresh API data since cache was deleted)
+            _apiPresets = null;
+            await LoadApiDataAsync();
+            await LoadLocalPresetsAsync();
+            await DisplayPresetsAsync();
+
+            // Hide loading panel
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            PresetSelectionPanel.Visibility = Visibility.Visible;
+
+            Debug.WriteLine("✓ Preset list refreshed successfully");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"✗ Error refreshing preset list: {ex.Message}");
+
+            // Ensure UI is restored even on error
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            PresetSelectionPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
