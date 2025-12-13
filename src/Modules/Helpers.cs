@@ -173,16 +173,13 @@ public static class Helpers
 
     public static readonly HttpClient SharedHttpClient = new()
     {
-        Timeout = TimeSpan.FromSeconds(30) // Default timeout
+        Timeout = TimeSpan.FromSeconds(59)
     };
-
-    // Static constructor - runs once when class is first accessed
     static Helpers()
     {
         SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
         Debug.WriteLine("✓ SharedHttpClient configured");
     }
-
     /// <summary>
     /// Downloads a file with progress tracking and retry logic.
     /// Uses the shared HttpClient which is pre-configured.

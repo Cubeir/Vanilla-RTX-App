@@ -63,7 +63,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         // This is configured ONCE and never modified
         _betterRtxHttpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(60) // Longer timeout for downloads
+            Timeout = TimeSpan.FromMinutes(3)
         };
         _betterRtxHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
 
