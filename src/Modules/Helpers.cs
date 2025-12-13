@@ -171,24 +171,37 @@ public static class Helpers
     }
 
 
-    private static readonly HttpClient SharedHttpClient = new();
-    public static async Task<(bool, string?)> Download(string url, CancellationToken cancellationToken = default)
+    public static readonly HttpClient SharedHttpClient = new()
     {
+        Timeout = TimeSpan.FromSeconds(30) // Default timeout
+    };
+
+    // Static constructor - runs once when class is first accessed
+    static Helpers()
+    {
+        SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
+        Debug.WriteLine("✓ SharedHttpClient configured");
+    }
+
+    /// <summary>
+    /// Downloads a file with progress tracking and retry logic.
+    /// Uses the shared HttpClient which is pre-configured.
+    /// For custom timeout/headers, pass a custom HttpClient.
+    /// </summary>
+    public static async Task<(bool, string?)> Download(
+        string url,
+        CancellationToken cancellationToken = default,
+        HttpClient? httpClient = null)
+    {
+        var client = httpClient ?? SharedHttpClient;
         var retries = 3;
+
         while (retries-- > 0)
         {
             try
             {
-                // === HTTP CLIENT CONFIGURATION ===
-                SharedHttpClient.Timeout = TimeSpan.FromSeconds(15);
-                var userAgent = $"vanilla_rtx_app/{TunerVariables.appVersion}";
-                if (!SharedHttpClient.DefaultRequestHeaders.Contains("User-Agent"))
-                {
-                    SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
-                }
-
                 // === DOWNLOAD ===
-                using var response = await SharedHttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
                 Log("Starting Download.", LogLevel.Lengthy);
 
@@ -207,7 +220,6 @@ public static class Helpers
                     fileName = Path.GetFileName(new Uri(url).AbsolutePath);
                     if (string.IsNullOrEmpty(fileName))
                     {
-                        // Fallback to random UUID filename if no valid name found
                         fileName = $"download_{Guid.NewGuid():N}";
                         Log($"No valid filename found, using random name: {fileName}", LogLevel.Informational);
                     }
@@ -230,7 +242,6 @@ public static class Helpers
                     var downloadDir = Path.Combine(localFolder, "Downloads");
                     Directory.CreateDirectory(downloadDir);
 
-                    // Check if file exists and generate unique name if needed
                     var finalPath = Path.Combine(downloadDir, fileName);
                     var counter = 1;
                     var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);

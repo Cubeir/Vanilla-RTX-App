@@ -4,7 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Management.Automation;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,11 +18,11 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
-using Windows.Storage.Pickers;
 using WinRT.Interop;
+using System.Threading.Tasks;
+using Microsoft.UI.Dispatching;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
-
 
 public sealed partial class BetterRTXManagerWindow : Window
 {
@@ -30,11 +31,17 @@ public sealed partial class BetterRTXManagerWindow : Window
     private string _gameMaterialsPath;
     private string _cacheFolder;
     private string _defaultFolder;
+    private string _apiCachePath;
     private CancellationTokenSource _scanCancellationTokenSource;
+    private List<ApiPresetData> _apiPresets;
+    private Dictionary<string, LocalPresetData> _localPresets;
+    private Dictionary<string, DownloadStatus> _downloadStatuses;
+    private readonly Queue<DownloadQueueItem> _downloadQueue;
+    private bool _isProcessingQueue;
+    private readonly HttpClient _betterRtxHttpClient;
 
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
-
 
     private static readonly string[] CoreRTXFiles = new[]
     {
@@ -44,12 +51,21 @@ public sealed partial class BetterRTXManagerWindow : Window
        "RTXStub.material.bin"
     };
 
-
-
     public BetterRTXManagerWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
         _mainWindow = mainWindow;
+        _downloadStatuses = new Dictionary<string, DownloadStatus>();
+        _downloadQueue = new Queue<DownloadQueueItem>();
+        _isProcessingQueue = false;
+
+        // Create dedicated HttpClient for BetterRTX downloads
+        // This is configured ONCE and never modified
+        _betterRtxHttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(60) // Longer timeout for downloads
+        };
+        _betterRtxHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
 
         // Theme
         var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
@@ -96,6 +112,14 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
+
+        // Clear download queue and statuses
+        _downloadQueue.Clear();
+        _downloadStatuses.Clear();
+
+        // Dispose HttpClient
+        _betterRtxHttpClient?.Dispose();
+
         _mainWindow.Closed -= MainWindow_Closed;
         this.Close();
     }
@@ -112,10 +136,17 @@ public sealed partial class BetterRTXManagerWindow : Window
                 SetTitleBarDragRegion();
             });
 
-            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
-            WindowTitle.Text = $"BetterRTX Preset Manager - {text}";
+            // CRITICAL: Check if targeting Preview
+            if (TunerVariables.Persistent.IsTargetingPreview)
+            {
+                StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
+                this.Close();
+                return;
+            }
 
-            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {(TunerVariables.Persistent.IsTargetingPreview ? MinecraftGDKLocator.MinecraftPreviewFolderName : MinecraftGDKLocator.MinecraftFolderName)}";
+            WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
+            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {MinecraftGDKLocator.MinecraftFolderName}";
+
             await InitializeAsync();
         }
     }
@@ -131,7 +162,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error setting drag region: {ex.Message}");
+                Debug.WriteLine($"Error setting drag region: {ex.Message}");
             }
         }
     }
@@ -140,15 +171,10 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            var isPreview = TunerVariables.Persistent.IsTargetingPreview;
-            var cachedPath = isPreview
-                ? TunerVariables.Persistent.MinecraftPreviewInstallPath
-                : TunerVariables.Persistent.MinecraftInstallPath;
-
+            var cachedPath = TunerVariables.Persistent.MinecraftInstallPath;
             string minecraftPath = null;
 
-            // SAFETY: Re-validate cache before trusting it
-            // Handles edge case where user moved/deleted folder between startup and window opening
+            // Validate cached path
             if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
             {
                 Debug.WriteLine($"✓ Using cached path: {cachedPath}");
@@ -160,36 +186,32 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (!string.IsNullOrEmpty(cachedPath))
                 {
                     Debug.WriteLine($"⚠ Cache became invalid, clearing");
-                    if (isPreview)
-                        TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
-                    else
-                        TunerVariables.Persistent.MinecraftInstallPath = null;
+                    TunerVariables.Persistent.MinecraftInstallPath = null;
                 }
 
-                // Show manual selection button immediately
+                // Show manual selection button
                 _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
                     ManualSelectionButton.Visibility = Visibility.Visible;
                 });
 
-                // Start Phase 2: System-wide search in background
+                // Start system-wide search
                 Debug.WriteLine("Starting system-wide search...");
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
-                    isPreview,
+                    false, // Never preview
                     _scanCancellationTokenSource.Token
                 );
 
                 if (minecraftPath == null)
                 {
-                    // Search was cancelled or failed - wait for manual selection
                     Debug.WriteLine("System search cancelled or failed - waiting for manual selection");
                     return;
                 }
             }
 
-            // At this point we have a valid path - continue initialization
+            // Continue with valid path
             await ContinueInitializationWithPath(minecraftPath);
         }
         catch (Exception ex)
@@ -200,34 +222,27 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    private string EstablishCacheFolder()
+    private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            var localFolder = ApplicationData.Current.LocalFolder.Path;
-            var cacheLocation = Path.Combine(localFolder, "RTX_Cache");
+        Debug.WriteLine("Manual selection button clicked - cancelling system search");
 
-            System.Diagnostics.Debug.WriteLine($"Creating BetterRTX cache at: {cacheLocation}");
-            Directory.CreateDirectory(cacheLocation);
-            System.Diagnostics.Debug.WriteLine($"✓ BetterRTX cache established at: {cacheLocation}");
-
-            return cacheLocation;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"✗ Failed to create BetterRTX cache: {ex.Message}");
-            return null;
-        }
-    }
-
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
         _scanCancellationTokenSource?.Cancel();
-        _scanCancellationTokenSource?.Dispose();
-        this.Close();
+
+        var hWnd = WindowNative.GetWindowHandle(this);
+        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(false, hWnd);
+
+        if (path != null)
+        {
+            Debug.WriteLine($"✓ User selected valid path: {path}");
+            await ContinueInitializationWithPath(path);
+        }
+        else
+        {
+            Debug.WriteLine("✗ User cancelled or selected invalid path");
+            StatusMessage = "No valid Minecraft installation selected";
+            this.Close();
+        }
     }
-
-
 
     private async Task ContinueInitializationWithPath(string minecraftPath)
     {
@@ -250,225 +265,292 @@ public sealed partial class BetterRTXManagerWindow : Window
             return;
         }
 
-        // Establish default folder
         _defaultFolder = Path.Combine(_cacheFolder, "__DEFAULT");
-        Directory.CreateDirectory(_defaultFolder);
+        _apiCachePath = Path.Combine(_cacheFolder, "betterrtx_api_cache.json");
 
-        // Load and display all cached presets
-        await LoadPresetsAsync();
+        // CRITICAL: Check if game version changed
+        bool versionChanged = await GameVersionDetector.HasGameVersionChanged(minecraftPath);
+
+        if (versionChanged)
+        {
+            Debug.WriteLine("⚠⚠⚠ GAME VERSION CHANGED - WIPING CACHE ⚠⚠⚠");
+            WipeEntireCache();
+            // Recreate cache folder structure
+            Directory.CreateDirectory(_cacheFolder);
+            Directory.CreateDirectory(_defaultFolder);
+        }
+        else
+        {
+            Directory.CreateDirectory(_defaultFolder);
+        }
+
+        // Load or fetch API data
+        await LoadApiDataAsync();
+
+        // Load local presets
+        await LoadLocalPresetsAsync();
+
+        // Display everything
+        await DisplayPresetsAsync();
 
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
     }
-    private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
-    {
-        Debug.WriteLine("Manual selection button clicked - cancelling system search");
 
-        // Cancel any ongoing system search
-        _scanCancellationTokenSource?.Cancel();
-
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var isPreview = TunerVariables.Persistent.IsTargetingPreview;
-
-        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
-
-        if (path != null)
-        {
-            Debug.WriteLine($"✓ User selected valid path: {path}");
-            await ContinueInitializationWithPath(path);
-        }
-        else
-        {
-            Debug.WriteLine("✗ User cancelled or selected invalid path");
-            StatusMessage = "No valid Minecraft installation selected";
-            this.Close();
-        }
-    }
-
-    private async Task LoadPresetsAsync()
+    private string EstablishCacheFolder()
     {
         try
         {
-            PresetListContainer.Children.Clear();
+            var localFolder = ApplicationData.Current.LocalFolder.Path;
+            var cacheLocation = Path.Combine(localFolder, "RTX_Cache");
 
-            // Get hash of currently installed RTXStub.material.bin
-            string currentHash = GetCurrentlyInstalledPresetHash();
-            System.Diagnostics.Debug.WriteLine($"Current installed hash: {currentHash ?? "NULL"}");
+            Debug.WriteLine($"Cache location: {cacheLocation}");
+            Directory.CreateDirectory(cacheLocation);
+            Debug.WriteLine($"✓ Cache established");
 
-            // Always add Default preset first
-            var defaultPreset = CreateDefaultPreset();
-            if (defaultPreset != null)
-            {
-                // Check if default matches current
-                if (!string.IsNullOrEmpty(currentHash) && defaultPreset.StubHash == currentHash)
-                {
-                    System.Diagnostics.Debug.WriteLine("Current installation matches Default preset");
-                }
-                var defaultButton = CreatePresetButton(defaultPreset, currentHash);
-                PresetListContainer.Children.Add(defaultButton);
-            }
-
-            // Get all preset folders from cache (excluding __DEFAULT)
-            var presetFolders = Directory.GetDirectories(_cacheFolder)
-                .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(d => Path.GetFileName(d))
-                .ToList();
-
-            if (presetFolders.Count == 0 && defaultPreset == null)
-            {
-                EmptyStatePanel.Visibility = Visibility.Visible;
-                EmptyStateText.Text = "No BetterRTX presets have been imported yet. Click download presets, download .rtpacks from BetterRTX's website and import them here.";
-            }
-            else
-            {
-                EmptyStatePanel.Visibility = Visibility.Collapsed;
-
-                foreach (var presetFolder in presetFolders)
-                {
-                    var presetData = await ParsePresetAsync(presetFolder);
-                    if (presetData != null)
-                    {
-                        if (!string.IsNullOrEmpty(currentHash) && presetData.StubHash == currentHash)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Current installation matches preset: {presetData.PresetName}");
-                        }
-                        var presetButton = CreatePresetButton(presetData, currentHash);
-                        PresetListContainer.Children.Add(presetButton);
-                    }
-                }
-            }
-
-            // Add "Add Preset" button at the end
-            var addButton = CreateAddPresetButton();
-            PresetListContainer.Children.Add(addButton);
-
-            System.Diagnostics.Debug.WriteLine("Preset loading complete");
+            return cacheLocation;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"EXCEPTION in LoadPresetsAsync: {ex}");
-            EmptyStatePanel.Visibility = Visibility.Visible;
-            EmptyStateText.Text = $"Error loading presets: {ex.Message}";
+            Debug.WriteLine($"✗ Failed to create cache: {ex.Message}");
+            return null;
         }
     }
 
-    private PresetData CreateDefaultPreset()
-    {
-        if (!Directory.Exists(_defaultFolder))
-            return null;
-
-        var binFiles = Directory.GetFiles(_defaultFolder, "*.bin", SearchOption.TopDirectoryOnly).ToList();
-
-        if (binFiles.Count == 0)
-            return null;
-
-        // Compute hash of RTXStub.material.bin if it exists
-        string stubHash = null;
-        var stubPath = binFiles.FirstOrDefault(f =>
-            Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
-        if (stubPath != null)
-        {
-            stubHash = ComputeFileHash(stubPath);
-        }
-
-        return new PresetData
-        {
-            PresetName = "Default RTX",
-            PresetDescription = _defaultFolder,
-            PresetPath = _defaultFolder,
-            Icon = null,
-            BinFiles = binFiles,
-            IsDefault = true,
-            StubHash = stubHash
-        };
-    }
-
-    private async Task<PresetData> ParsePresetAsync(string presetFolder)
+    private void WipeEntireCache()
     {
         try
         {
-            // Search recursively for manifest.json
-            var manifestFiles = Directory.GetFiles(presetFolder, "manifest.json", SearchOption.AllDirectories);
-
-            string presetName = Path.GetFileName(presetFolder);
-            BitmapImage icon = null;
-
-            // Try to parse manifest if found (only for name)
-            if (manifestFiles.Length > 0)
+            if (Directory.Exists(_cacheFolder))
             {
-                var manifestPath = manifestFiles[0];
-                var manifestDir = Path.GetDirectoryName(manifestPath);
+                Debug.WriteLine($"Deleting entire cache folder: {_cacheFolder}");
+                Directory.Delete(_cacheFolder, true);
+                Debug.WriteLine("✓ Cache wiped successfully");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error wiping cache: {ex.Message}");
+        }
+    }
 
-                try
+    private async Task LoadApiDataAsync()
+    {
+        try
+        {
+            string jsonData = null;
+
+            // Check if cache exists
+            if (File.Exists(_apiCachePath))
+            {
+                Debug.WriteLine("✓ Loading API data from cache (no fetch needed)");
+                jsonData = await File.ReadAllTextAsync(_apiCachePath);
+            }
+            else
+            {
+                // No cache - fetch from API
+                Debug.WriteLine("Fetching API data from server (no cache found)...");
+                jsonData = await FetchApiDataAsync();
+
+                if (jsonData != null)
                 {
-                    var json = await File.ReadAllTextAsync(manifestPath);
-                    using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
-                    {
-                        AllowTrailingCommas = true,
-                        CommentHandling = JsonCommentHandling.Skip
-                    });
-
-                    var root = doc.RootElement;
-
-                    if (root.TryGetProperty("header", out var header))
-                    {
-                        if (header.TryGetProperty("name", out var nameElement))
-                        {
-                            var name = nameElement.GetString();
-                            if (!string.IsNullOrWhiteSpace(name))
-                                presetName = name;
-                        }
-                    }
+                    // Save to cache
+                    await File.WriteAllTextAsync(_apiCachePath, jsonData);
+                    Debug.WriteLine("✓ API data cached");
                 }
-                catch (Exception ex)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error parsing manifest in {presetFolder}: {ex.Message}");
+                    Debug.WriteLine("⚠ Failed to fetch API data and no cache available");
+                    _apiPresets = new List<ApiPresetData>();
+                    return;
                 }
-
-                // Try to load icon from manifest directory
-                icon = await LoadIconAsync(manifestDir);
             }
 
-            // If no icon found in manifest directory, try preset root
-            if (icon == null)
+            if (jsonData != null)
             {
-                icon = await LoadIconAsync(presetFolder);
+                _apiPresets = ParseApiData(jsonData);
+                Debug.WriteLine($"✓ Loaded {_apiPresets?.Count ?? 0} presets from API");
             }
-
-            // Search recursively for bin files
-            var binFiles = Directory.GetFiles(presetFolder, "*.bin", SearchOption.AllDirectories).ToList();
-
-            if (binFiles.Count == 0)
+            else
             {
-                System.Diagnostics.Debug.WriteLine($"No bin files found in preset: {presetFolder}");
+                _apiPresets = new List<ApiPresetData>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error loading API data: {ex.Message}");
+            _apiPresets = new List<ApiPresetData>();
+        }
+    }
+
+    private async Task<string> FetchApiDataAsync()
+    {
+        try
+        {
+            // Use the shared client WITHOUT modifying it
+            // Assume it's already configured with timeout and user-agent
+            var client = Helpers.SharedHttpClient;
+
+            var response = await client.GetAsync("https://bedrock.graphics/api");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"⚠ API returned status code: {response.StatusCode}");
                 return null;
             }
 
-            // Compute hash of RTXStub.material.bin if it exists
+            var content = await response.Content.ReadAsStringAsync();
+            return content;
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            Debug.WriteLine("⚠ API request timed out");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"⚠ Error fetching API data: {ex.Message}");
+            return null;
+        }
+    }
+
+    private List<ApiPresetData> ParseApiData(string jsonData)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var presets = JsonSerializer.Deserialize<List<ApiPresetData>>(jsonData, options);
+            return presets ?? new List<ApiPresetData>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error parsing API data: {ex.Message}");
+            return new List<ApiPresetData>();
+        }
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        _scanCancellationTokenSource?.Cancel();
+        _scanCancellationTokenSource?.Dispose();
+
+        // Clear download queue and statuses
+        _downloadQueue.Clear();
+        _downloadStatuses.Clear();
+
+        // Dispose HttpClient
+        _betterRtxHttpClient?.Dispose();
+
+        this.Close();
+    }
+
+
+
+    private async Task LoadLocalPresetsAsync()
+    {
+        _localPresets = new Dictionary<string, LocalPresetData>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            // Get all folders except __DEFAULT
+            var presetFolders = Directory.GetDirectories(_cacheFolder)
+                .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var folder in presetFolders)
+            {
+                var localPreset = await ParseLocalPresetAsync(folder);
+                if (localPreset != null && !string.IsNullOrEmpty(localPreset.Uuid))
+                {
+                    _localPresets[localPreset.Uuid] = localPreset;
+                    Debug.WriteLine($"✓ Loaded local preset: {localPreset.Name} (UUID: {localPreset.Uuid})");
+                }
+            }
+
+            Debug.WriteLine($"✓ Loaded {_localPresets.Count} local presets");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error loading local presets: {ex.Message}");
+        }
+    }
+
+    private async Task<LocalPresetData> ParseLocalPresetAsync(string presetFolder)
+    {
+        try
+        {
+            var manifestFiles = Directory.GetFiles(presetFolder, "manifest.json", SearchOption.AllDirectories);
+
+            if (manifestFiles.Length == 0)
+            {
+                Debug.WriteLine($"No manifest found in: {presetFolder}");
+                return null;
+            }
+
+            var manifestPath = manifestFiles[0];
+            var manifestDir = Path.GetDirectoryName(manifestPath);
+
+            var json = await File.ReadAllTextAsync(manifestPath);
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip
+            });
+
+            var root = doc.RootElement;
+
+            string uuid = null;
+            string name = Path.GetFileName(presetFolder);
+
+            if (root.TryGetProperty("header", out var header))
+            {
+                if (header.TryGetProperty("uuid", out var uuidElement))
+                {
+                    uuid = uuidElement.GetString();
+                }
+
+                if (header.TryGetProperty("name", out var nameElement))
+                {
+                    var parsedName = nameElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(parsedName))
+                        name = parsedName;
+                }
+            }
+
+            if (string.IsNullOrEmpty(uuid))
+            {
+                Debug.WriteLine($"⚠ No UUID in manifest: {presetFolder}");
+                return null;
+            }
+
+            var icon = await LoadIconAsync(manifestDir) ?? await LoadIconAsync(presetFolder);
+            var binFiles = Directory.GetFiles(presetFolder, "*.bin", SearchOption.AllDirectories).ToList();
+
             string stubHash = null;
             var stubPath = binFiles.FirstOrDefault(f =>
                 Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
             if (stubPath != null)
             {
                 stubHash = ComputeFileHash(stubPath);
-                System.Diagnostics.Debug.WriteLine($"Preset {presetName} stub hash: {stubHash}");
             }
 
-            // Description is always the file path
-            return new PresetData
+            return new LocalPresetData
             {
-                PresetName = presetName,
-                PresetDescription = presetFolder,
+                Uuid = uuid,
+                Name = name,
                 PresetPath = presetFolder,
                 Icon = icon,
                 BinFiles = binFiles,
-                IsDefault = false,
                 StubHash = stubHash
             };
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error parsing preset {presetFolder}: {ex.Message}");
+            Debug.WriteLine($"Error parsing local preset {presetFolder}: {ex.Message}");
             return null;
         }
     }
@@ -478,7 +560,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         if (!Directory.Exists(directory))
             return null;
 
-        // Search recursively for pack_icon
         var iconFiles = Directory.GetFiles(directory, "pack_icon.*", SearchOption.AllDirectories)
             .Where(f =>
             {
@@ -491,7 +572,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"Loading icon: {iconPath}");
                 var bitmap = new BitmapImage();
 
                 using (var fileStream = File.OpenRead(iconPath))
@@ -510,26 +590,219 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading icon {iconPath}: {ex.Message}");
+                Debug.WriteLine($"Error loading icon {iconPath}: {ex.Message}");
             }
         }
 
         return null;
     }
 
-
-
-
-
-
-
-    // PART 3: UI Creation Methods - Add these to the BetterRTXManagerWindow class
-
-    private Button CreatePresetButton(PresetData preset, string currentInstalledHash)
+    private async Task DisplayPresetsAsync()
     {
-        bool isCurrent = !string.IsNullOrEmpty(currentInstalledHash) &&
-                         !string.IsNullOrEmpty(preset.StubHash) &&
-                         preset.StubHash == currentInstalledHash;
+        try
+        {
+            PresetListContainer.Children.Clear();
+
+            string currentHash = GetCurrentlyInstalledPresetHash();
+
+            // Always add Default preset first
+            var defaultPreset = CreateDefaultPreset();
+            if (defaultPreset != null)
+            {
+                var defaultButton = CreatePresetButton(defaultPreset, currentHash, true);
+                PresetListContainer.Children.Add(defaultButton);
+            }
+
+            // Merge API presets with local presets
+            var downloadedPresets = new List<DisplayPresetData>();
+            var notDownloadedPresets = new List<DisplayPresetData>();
+            var seenUuids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // First, process API presets
+            foreach (var apiPreset in _apiPresets)
+            {
+                seenUuids.Add(apiPreset.Uuid);
+
+                if (_localPresets.TryGetValue(apiPreset.Uuid, out var localPreset))
+                {
+                    // Downloaded - add to downloaded list
+                    downloadedPresets.Add(new DisplayPresetData
+                    {
+                        Uuid = apiPreset.Uuid,
+                        Name = localPreset.Name,
+                        IsDownloaded = true,
+                        Icon = localPreset.Icon,
+                        PresetPath = localPreset.PresetPath,
+                        BinFiles = localPreset.BinFiles,
+                        StubHash = localPreset.StubHash
+                    });
+                }
+                else
+                {
+                    // Not downloaded - add to not downloaded list
+                    notDownloadedPresets.Add(new DisplayPresetData
+                    {
+                        Uuid = apiPreset.Uuid,
+                        Name = apiPreset.Name,
+                        IsDownloaded = false,
+                        Icon = null,
+                        PresetPath = null,
+                        BinFiles = null,
+                        StubHash = null
+                    });
+                }
+            }
+
+            // Second, add any local presets that weren't in the API list
+            // (This handles offline mode where we have local presets but no/old API data)
+            foreach (var localPreset in _localPresets.Values)
+            {
+                if (!seenUuids.Contains(localPreset.Uuid))
+                {
+                    downloadedPresets.Add(new DisplayPresetData
+                    {
+                        Uuid = localPreset.Uuid,
+                        Name = localPreset.Name,
+                        IsDownloaded = true,
+                        Icon = localPreset.Icon,
+                        PresetPath = localPreset.PresetPath,
+                        BinFiles = localPreset.BinFiles,
+                        StubHash = localPreset.StubHash
+                    });
+                }
+            }
+
+            // Sort each list alphabetically
+            downloadedPresets = downloadedPresets.OrderBy(p => p.Name).ToList();
+            notDownloadedPresets = notDownloadedPresets.OrderBy(p => p.Name).ToList();
+
+            // Display downloaded first, then not downloaded
+            foreach (var preset in downloadedPresets)
+            {
+                var button = CreatePresetButton(preset, currentHash, false);
+                PresetListContainer.Children.Add(button);
+            }
+
+            foreach (var preset in notDownloadedPresets)
+            {
+                var button = CreatePresetButton(preset, currentHash, false);
+                PresetListContainer.Children.Add(button);
+            }
+
+            // Handle empty state
+            if (downloadedPresets.Count == 0 && notDownloadedPresets.Count == 0 && defaultPreset == null)
+            {
+                EmptyStatePanel.Visibility = Visibility.Visible;
+                if (_apiPresets.Count == 0 && _localPresets.Count == 0)
+                {
+                    EmptyStateText.Text = "No presets available. An internet connection is required to load BetterRTX presets.";
+                }
+                else
+                {
+                    EmptyStateText.Text = "No BetterRTX presets available.";
+                }
+            }
+            else
+            {
+                EmptyStatePanel.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error displaying presets: {ex.Message}");
+        }
+    }
+
+    private LocalPresetData CreateDefaultPreset()
+    {
+        if (!Directory.Exists(_defaultFolder))
+            return null;
+
+        var binFiles = Directory.GetFiles(_defaultFolder, "*.bin", SearchOption.TopDirectoryOnly).ToList();
+
+        if (binFiles.Count == 0)
+            return null;
+
+        string stubHash = null;
+        var stubPath = binFiles.FirstOrDefault(f =>
+            Path.GetFileName(f).Equals("RTXStub.material.bin", StringComparison.OrdinalIgnoreCase));
+        if (stubPath != null)
+        {
+            stubHash = ComputeFileHash(stubPath);
+        }
+
+        return new LocalPresetData
+        {
+            Uuid = "__DEFAULT",
+            Name = "Default RTX",
+            PresetPath = _defaultFolder,
+            Icon = null,
+            BinFiles = binFiles,
+            StubHash = stubHash
+        };
+    }
+
+    private Button CreatePresetButton(object presetData, string currentInstalledHash, bool isDefault)
+    {
+        bool isDownloaded = true;
+        bool isCurrent = false;
+        string name = "";
+        string description = "";
+        string uuid = "";
+        BitmapImage icon = null;
+
+        if (presetData is LocalPresetData localPreset)
+        {
+            isDownloaded = true;
+            name = localPreset.Name;
+            description = Helpers.SanitizePathForDisplay(localPreset.PresetPath);
+            icon = localPreset.Icon;
+            uuid = localPreset.Uuid;
+
+            if (!string.IsNullOrEmpty(currentInstalledHash) &&
+                !string.IsNullOrEmpty(localPreset.StubHash) &&
+                localPreset.StubHash == currentInstalledHash)
+            {
+                isCurrent = true;
+            }
+        }
+        else if (presetData is DisplayPresetData displayPreset)
+        {
+            isDownloaded = displayPreset.IsDownloaded;
+            name = displayPreset.Name;
+            uuid = displayPreset.Uuid;
+            icon = displayPreset.Icon;
+
+            // Dynamic description based on download status
+            if (displayPreset.IsDownloaded)
+            {
+                description = Helpers.SanitizePathForDisplay(displayPreset.PresetPath);
+            }
+            else
+            {
+                // Check download status
+                if (_downloadStatuses.TryGetValue(uuid, out var status))
+                {
+                    description = status switch
+                    {
+                        DownloadStatus.Queued => "Queued",
+                        DownloadStatus.Downloading => "Download in progress...",
+                        _ => "Not downloaded"
+                    };
+                }
+                else
+                {
+                    description = "Not downloaded";
+                }
+            }
+
+            if (isDownloaded && !string.IsNullOrEmpty(currentInstalledHash) &&
+                !string.IsNullOrEmpty(displayPreset.StubHash) &&
+                displayPreset.StubHash == currentInstalledHash)
+            {
+                isCurrent = true;
+            }
+        }
 
         var button = new Button
         {
@@ -538,12 +811,11 @@ public sealed partial class BetterRTXManagerWindow : Window
             Padding = new Thickness(16, 20, 38, 20),
             Margin = new Thickness(0, 5, 0, 5),
             CornerRadius = new CornerRadius(5),
-            Tag = preset,
+            Tag = presetData,
             IsTextScaleFactorEnabled = false,
             Translation = new System.Numerics.Vector3(0, 0, 32)
         };
 
-        // Highlight ONLY the currently installed preset
         if (isCurrent)
         {
             button.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
@@ -586,11 +858,11 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
         };
 
-        if (preset.Icon != null)
+        if (icon != null)
         {
             iconBorder.Child = new Image
             {
-                Source = preset.Icon,
+                Source = icon,
                 Stretch = Stretch.UniformToFill
             };
         }
@@ -609,7 +881,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         Grid.SetColumn(iconBorder, 0);
         grid.Children.Add(iconBorder);
 
-        // Preset info
+        // Info panel
         var infoPanel = new StackPanel
         {
             VerticalAlignment = VerticalAlignment.Center
@@ -617,7 +889,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var nameText = new TextBlock
         {
-            Text = preset.PresetName,
+            Text = name,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -626,7 +898,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var descText = new TextBlock
         {
-            Text = Helpers.SanitizePathForDisplay(preset.PresetDescription),
+            Text = description,
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -640,32 +912,54 @@ public sealed partial class BetterRTXManagerWindow : Window
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // Delete button - only show if not current preset or default preset
-        if (!preset.IsDefault && !isCurrent)
+        // Download button or progress indicator
+        if (!isDefault && !isDownloaded)
         {
-            var deleteButton = new Button
+            // Check download status
+            var status = _downloadStatuses.TryGetValue(uuid, out var s) ? s : DownloadStatus.NotDownloaded;
+
+            if (status == DownloadStatus.Downloading || status == DownloadStatus.Queued)
             {
-                Width = 36,
-                Height = 36,
-                VerticalAlignment = VerticalAlignment.Center,
-                Padding = new Thickness(0),
-                Margin = new Thickness(16, 0, 0, 0),
-                IsTextScaleFactorEnabled = false,
-                Tag = preset
-            };
+                // Show progress ring - BIGGER than button to encompass it
+                var progressRing = new ProgressRing
+                {
+                    Width = 40,
+                    Height = 40,
+                    IsActive = true,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(14, 0, 0, 0)
+                };
 
-            var deleteIcon = new FontIcon
+                Grid.SetColumn(progressRing, 4);
+                grid.Children.Add(progressRing);
+            }
+            else
             {
-                Glyph = "\uE74D",
-                FontSize = 16,
-                IsTextScaleFactorEnabled = false
-            };
+                // Show download button
+                var downloadButton = new Button
+                {
+                    Width = 36,
+                    Height = 36,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(16, 0, 0, 0),
+                    IsTextScaleFactorEnabled = false,
+                    Tag = presetData
+                };
 
-            deleteButton.Content = deleteIcon;
-            deleteButton.Click += DeletePresetButton_Click;
+                var downloadIcon = new FontIcon
+                {
+                    Glyph = "\uE896",
+                    FontSize = 16,
+                    IsTextScaleFactorEnabled = false
+                };
 
-            Grid.SetColumn(deleteButton, 4);
-            grid.Children.Add(deleteButton);
+                downloadButton.Content = downloadIcon;
+                downloadButton.Click += DownloadButton_Click;
+
+                Grid.SetColumn(downloadButton, 4);
+                grid.Children.Add(downloadButton);
+            }
         }
 
         button.Content = grid;
@@ -674,319 +968,146 @@ public sealed partial class BetterRTXManagerWindow : Window
         return button;
     }
 
-    private Button CreateAddPresetButton()
+    private async void DownloadButton_Click(object sender, RoutedEventArgs e)
     {
-        var button = new Button
+        if (sender is Button button && button.Tag is DisplayPresetData preset)
         {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 38, 20),
-            Margin = new Thickness(0, 5, 0, 5),
-            CornerRadius = new CornerRadius(5),
-            IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32),
-            AllowDrop = true
-        };
-
-        button.DragOver += AddPresetButton_DragOver;
-        button.Drop += AddPresetButton_Drop;
-        button.DragEnter += AddPresetButton_DragEnter;
-        button.DragLeave += AddPresetButton_DragLeave;
-
-        var buttonShadow = new ThemeShadow();
-        button.Shadow = buttonShadow;
-        button.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-            {
-                buttonShadow.Receivers.Add(ShadowReceiverGrid);
-            }
-        };
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        // Icon
-        var iconBorder = new Border
-        {
-            Width = 75,
-            Height = 75,
-            CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(Colors.Transparent)
-        };
-
-        var icon = new FontIcon
-        {
-            Glyph = "\uE710",
-            FontSize = 48,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        };
-
-        iconBorder.Child = icon;
-        Grid.SetColumn(iconBorder, 0);
-        grid.Children.Add(iconBorder);
-
-        // Info panel
-        var infoPanel = new StackPanel
-        {
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        var titleText = new TextBlock
-        {
-            Text = "Add BetterRTX Preset",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        var descText = new TextBlock
-        {
-            Text = "Drag and drop or browse for a BetterRTX preset (.rtpack or .zip)",
-            FontSize = 12,
-            Opacity = 0.75,
-            Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        infoPanel.Children.Add(titleText);
-        infoPanel.Children.Add(descText);
-        Grid.SetColumn(infoPanel, 2);
-        grid.Children.Add(infoPanel);
-
-        // Download link badge
-        var hyperlinkButton = new HyperlinkButton
-        {
-            Content = "Download Presets",
-            NavigateUri = new Uri("https://bedrock.graphics/presets"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(16, 6, 16, 6),
-            IsTextScaleFactorEnabled = false
-        };
-
-        Grid.SetColumn(hyperlinkButton, 4);
-        grid.Children.Add(hyperlinkButton);
-
-        button.Content = grid;
-        button.Click += AddPresetButton_Click;
-
-        return button;
-    }
-
-    private void AddPresetButton_DragEnter(object sender, DragEventArgs e)
-    {
-        if (sender is Button button)
-        {
-            button.Opacity = 0.7;
+            // Add to queue
+            EnqueueDownload(preset.Uuid, preset.Name);
         }
     }
 
-    private void AddPresetButton_DragLeave(object sender, DragEventArgs e)
+    private void EnqueueDownload(string uuid, string name)
     {
-        if (sender is Button button)
+        // Check if already in queue or downloading
+        if (_downloadStatuses.ContainsKey(uuid))
         {
-            button.Opacity = 1.0;
+            Debug.WriteLine($"⚠ Already queued or downloading: {name}");
+            return;
+        }
+
+        Debug.WriteLine($"➕ Queued download: {name}");
+
+        // Mark as queued
+        _downloadStatuses[uuid] = DownloadStatus.Queued;
+
+        // Add to queue
+        _downloadQueue.Enqueue(new DownloadQueueItem { Uuid = uuid, Name = name });
+
+        // Refresh UI to show "Queued" status
+        _ = this.DispatcherQueue.EnqueueAsync(async () => await DisplayPresetsAsync());
+
+        // Start processing queue if not already running
+        if (!_isProcessingQueue)
+        {
+            _ = ProcessDownloadQueueAsync();
         }
     }
 
-    private void AddPresetButton_DragOver(object sender, DragEventArgs e)
+    private async Task ProcessDownloadQueueAsync()
     {
-        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
-        {
-            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
-            e.DragUIOverride.Caption = "Drop to add BetterRTX preset";
-            e.DragUIOverride.IsCaptionVisible = true;
-            e.DragUIOverride.IsContentVisible = true;
-        }
-        else
-        {
-            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
-        }
-    }
+        if (_isProcessingQueue)
+            return;
 
-    private async void AddPresetButton_Drop(object sender, DragEventArgs e)
-    {
-        if (sender is Button button)
-        {
-            button.Opacity = 1.0;
-        }
+        _isProcessingQueue = true;
+        Debug.WriteLine("▶ Starting download queue processor");
 
         try
         {
-            if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+            while (_downloadQueue.Count > 0)
             {
-                var items = await e.DataView.GetStorageItemsAsync();
+                var item = _downloadQueue.Dequeue();
+                Debug.WriteLine($"🔽 Processing download: {item.Name} (Queue: {_downloadQueue.Count} remaining)");
 
-                foreach (var item in items)
-                {
-                    if (item is Windows.Storage.StorageFile file)
-                    {
-                        var extension = file.FileType.ToLower();
+                // Update status to downloading
+                _downloadStatuses[item.Uuid] = DownloadStatus.Downloading;
+                await this.DispatcherQueue.EnqueueAsync(async () => await DisplayPresetsAsync());
 
-                        if (extension == ".rtpack" || extension == ".zip")
-                        {
-                            await ProcessArchiveFileAsync(file.Path);
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Skipped unsupported file type: {extension}");
-                        }
-                    }
-                }
+                // Wait a moment before starting (helps with slow API)
+                await Task.Delay(2000);
 
-                await LoadPresetsAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error processing dropped files: {ex.Message}");
-        }
-    }
-
-    private async void AddPresetButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var picker = new FileOpenPicker
-            {
-                SuggestedStartLocation = PickerLocationId.Downloads,
-                ViewMode = PickerViewMode.List
-            };
-            picker.FileTypeFilter.Add(".rtpack");
-            picker.FileTypeFilter.Add(".zip");
-
-            var hWnd = WindowNative.GetWindowHandle(this);
-            InitializeWithWindow.Initialize(picker, hWnd);
-
-            var file = await picker.PickSingleFileAsync();
-            if (file != null)
-            {
-                await ProcessArchiveFileAsync(file.Path);
-                await LoadPresetsAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error adding file: {ex.Message}");
-        }
-    }
-
-    private async void DeletePresetButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.Tag is PresetData presetData)
-        {
-            try
-            {
-                if (presetData.IsDefault)
-                {
-                    System.Diagnostics.Debug.WriteLine("Cannot delete default preset");
-                    return;
-                }
-
-                if (Directory.Exists(presetData.PresetPath))
-                {
-                    Directory.Delete(presetData.PresetPath, true);
-                    System.Diagnostics.Debug.WriteLine($"Deleted preset: {presetData.PresetName}");
-                    await LoadPresetsAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error deleting preset: {ex.Message}");
-            }
-        }
-    }
-
-    private async void PresetButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.Tag is PresetData presetData)
-        {
-            try
-            {
-                var success = await ApplyPresetAsync(presetData);
+                // Download
+                var success = await DownloadPresetAsync(item.Uuid);
 
                 if (success)
                 {
-                    OperationSuccessful = true;
-                    StatusMessage = $"Installed {presetData.PresetName} successfully";
-                    System.Diagnostics.Debug.WriteLine(StatusMessage);
-                    // refresh the preset list
-                    await LoadPresetsAsync();
+                    Debug.WriteLine($"✓ Download complete: {item.Name}");
+
+                    // Mark as downloaded and remove from status tracking
+                    _downloadStatuses.Remove(item.Uuid);
+
+                    // Reload local presets and refresh UI
+                    await LoadLocalPresetsAsync();
+                    await this.DispatcherQueue.EnqueueAsync(async () => await DisplayPresetsAsync());
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Failed to apply preset: {presetData.PresetName}");
+                    Debug.WriteLine($"✗ Download failed: {item.Name}");
+
+                    // Remove from status (will show download button again)
+                    _downloadStatuses.Remove(item.Uuid);
+                    await this.DispatcherQueue.EnqueueAsync(async () => await DisplayPresetsAsync());
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error applying preset: {ex.Message}");
-            }
-        }
-    }
 
-
-    private string ComputeFileHash(string filePath)
-    {
-        try
-        {
-            if (!File.Exists(filePath))
-                return null;
-
-            using (var sha256 = System.Security.Cryptography.SHA256.Create())
-            using (var stream = File.OpenRead(filePath))
-            {
-                var hash = sha256.ComputeHash(stream);
-                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                // Wait between downloads (be nice to the API)
+                if (_downloadQueue.Count > 0)
+                {
+                    Debug.WriteLine("⏱ Waiting 3 seconds before next download...");
+                    await Task.Delay(3000);
+                }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error computing hash for {filePath}: {ex.Message}");
-            return null;
+            Debug.WriteLine($"✗ Error in download queue processor: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessingQueue = false;
+            Debug.WriteLine("⏹ Download queue processor stopped");
         }
     }
-    private string GetCurrentlyInstalledPresetHash()
-    {
-        var stubPath = Path.Combine(_gameMaterialsPath, "RTXStub.material.bin");
-        return ComputeFileHash(stubPath);
-    }
 
-
-
-
-
-    // PART 4: File Processing & Application - Add these to the BetterRTXManagerWindow class
-
-    private async Task ProcessArchiveFileAsync(string archivePath)
+    private async Task<bool> DownloadPresetAsync(string uuid)
     {
         try
         {
-            var fileName = Path.GetFileNameWithoutExtension(archivePath);
-            var sanitizedName = SanitizePresetName(fileName);
+            var url = $"https://bedrock.graphics/pack/{uuid}/release";
+            Debug.WriteLine($"Downloading from: {url}");
+
+            // Use our dedicated HttpClient (already configured, no modifications)
+            var response = await _betterRtxHttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"✗ Download failed with status: {response.StatusCode}");
+                return false;
+            }
+
+            // Get content
+            var content = await response.Content.ReadAsByteArrayAsync();
+            Debug.WriteLine($"✓ Downloaded {content.Length} bytes");
+
+            // Save to temp file
+            var tempPath = Path.Combine(Path.GetTempPath(), $"{uuid}.rtpack");
+            await File.WriteAllBytesAsync(tempPath, content);
+
+            // Extract to RTX_Cache
+            var sanitizedName = SanitizePresetName(uuid);
             var destinationFolder = Path.Combine(_cacheFolder, sanitizedName);
 
-            // If folder already exists, delete it to allow overwrite
+            // Delete existing folder if present
             if (Directory.Exists(destinationFolder))
             {
-                System.Diagnostics.Debug.WriteLine($"Overwriting existing preset: {sanitizedName}");
                 Directory.Delete(destinationFolder, true);
             }
 
             Directory.CreateDirectory(destinationFolder);
 
+            // Extract the archive
             await Task.Run(() =>
             {
-                using (var archive = ZipFile.OpenRead(archivePath))
+                using (var archive = ZipFile.OpenRead(tempPath))
                 {
                     foreach (var entry in archive.Entries)
                     {
@@ -994,134 +1115,161 @@ public sealed partial class BetterRTXManagerWindow : Window
                         {
                             if (string.IsNullOrEmpty(entry.Name)) continue;
 
-                            var destinationPath = Path.Combine(destinationFolder, entry.FullName);
-                            var destinationDir = Path.GetDirectoryName(destinationPath);
+                            var destPath = Path.Combine(destinationFolder, entry.FullName);
+                            var destDir = Path.GetDirectoryName(destPath);
 
-                            if (!string.IsNullOrEmpty(destinationDir))
+                            if (!string.IsNullOrEmpty(destDir))
                             {
-                                Directory.CreateDirectory(destinationDir);
+                                Directory.CreateDirectory(destDir);
                             }
 
-                            entry.ExtractToFile(destinationPath, true);
+                            entry.ExtractToFile(destPath, true);
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Error extracting {entry.FullName}: {ex.Message}");
+                            Debug.WriteLine($"Error extracting {entry.FullName}: {ex.Message}");
                         }
                     }
                 }
             });
 
-            System.Diagnostics.Debug.WriteLine($"Extracted preset to: {destinationFolder}");
+            Debug.WriteLine($"✓ Extracted to: {destinationFolder}");
+
+            // Clean up temp file
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch { }
+
+            return true;
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            Debug.WriteLine($"✗ Download timed out for {uuid}");
+            return false;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error processing archive {archivePath}: {ex.Message}");
+            Debug.WriteLine($"✗ Error downloading {uuid}: {ex.Message}");
+            return false;
         }
     }
 
-    private async Task<bool> ApplyPresetAsync(PresetData preset)
+    private async void PresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag != null)
+        {
+            try
+            {
+                LocalPresetData presetToApply = null;
+
+                if (button.Tag is LocalPresetData localPreset)
+                {
+                    presetToApply = localPreset;
+                }
+                else if (button.Tag is DisplayPresetData displayPreset)
+                {
+                    if (!displayPreset.IsDownloaded)
+                    {
+                        // Trigger download by adding to queue
+                        EnqueueDownload(displayPreset.Uuid, displayPreset.Name);
+                        return;
+                    }
+                    else
+                    {
+                        presetToApply = new LocalPresetData
+                        {
+                            Uuid = displayPreset.Uuid,
+                            Name = displayPreset.Name,
+                            PresetPath = displayPreset.PresetPath,
+                            Icon = displayPreset.Icon,
+                            BinFiles = displayPreset.BinFiles,
+                            StubHash = displayPreset.StubHash
+                        };
+                    }
+                }
+
+                if (presetToApply != null)
+                {
+                    var success = await ApplyPresetAsync(presetToApply);
+
+                    if (success)
+                    {
+                        OperationSuccessful = true;
+                        StatusMessage = $"Installed {presetToApply.Name} successfully";
+                        Debug.WriteLine(StatusMessage);
+                        await DisplayPresetsAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error applying preset: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task<bool> ApplyPresetAsync(LocalPresetData preset)
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"=== APPLYING PRESET: {preset.PresetName} ===");
+            Debug.WriteLine($"=== APPLYING PRESET: {preset.Name} ===");
 
             var filesToApply = new List<(string sourcePath, string destPath)>();
             var filesToCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var existingDefaultFiles = Directory.GetFiles(_defaultFolder, "*.bin", SearchOption.TopDirectoryOnly);
             bool isDefaultEmpty = existingDefaultFiles.Length == 0;
-            System.Diagnostics.Debug.WriteLine($"__DEFAULT folder status: {(isDefaultEmpty ? "EMPTY" : $"HAS {existingDefaultFiles.Length} FILES")}");
 
-            // PHASE 1: Always try to cache the 4 core RTX files if they exist
-            System.Diagnostics.Debug.WriteLine("PHASE 1: Checking core RTX files for Default preset...");
-            foreach (var coreFileName in CoreRTXFiles)
+            if (isDefaultEmpty)
             {
-                var coreFilePath = Path.Combine(_gameMaterialsPath, coreFileName);
-                if (File.Exists(coreFilePath))
+                foreach (var coreFileName in CoreRTXFiles)
                 {
-                    System.Diagnostics.Debug.WriteLine($"  Core file exists: {coreFileName}");
-                    filesToCache.Add(coreFilePath);
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"  Core file missing: {coreFileName}");
+                    var coreFilePath = Path.Combine(_gameMaterialsPath, coreFileName);
+                    if (File.Exists(coreFilePath))
+                    {
+                        filesToCache.Add(coreFilePath);
+                    }
                 }
             }
 
-            // PHASE 2: Check which files the preset will replace and add them to cache list
-            System.Diagnostics.Debug.WriteLine("PHASE 2: Checking preset files...");
             foreach (var binFilePath in preset.BinFiles)
             {
                 var binFileName = Path.GetFileName(binFilePath);
                 var destBinPath = Path.Combine(_gameMaterialsPath, binFileName);
 
-                if (File.Exists(destBinPath))
+                if (File.Exists(destBinPath) && isDefaultEmpty)
                 {
-                    System.Diagnostics.Debug.WriteLine($"  Preset file exists in game: {binFileName}");
                     filesToCache.Add(destBinPath);
                 }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"  Preset file missing in game: {binFileName}");
-                }
 
-                // Add to operation list regardless of existence
                 filesToApply.Add((binFilePath, destBinPath));
             }
 
-            if (filesToApply.Count == 0)
-            {
-                System.Diagnostics.Debug.WriteLine("⚠ No files to apply (preset might be empty)");
-                return false;
-            }
-
-            // PHASE 3: Cache all collected files to Default preset
             if (isDefaultEmpty && filesToCache.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"PHASE 3: Caching {filesToCache.Count} files to Default preset...");
-
-                foreach (var existingFilePath in filesToCache)
+                foreach (var filePath in filesToCache)
                 {
-                    var fileName = Path.GetFileName(existingFilePath);
-                    var defaultBinPath = Path.Combine(_defaultFolder, fileName);
+                    var fileName = Path.GetFileName(filePath);
+                    var defaultPath = Path.Combine(_defaultFolder, fileName);
                     try
                     {
-                        File.Copy(existingFilePath, defaultBinPath, false);
-                        System.Diagnostics.Debug.WriteLine($"  ✓ Cached to Default: {fileName}");
+                        File.Copy(filePath, defaultPath, false);
+                        Debug.WriteLine($"  ✓ Cached: {fileName}");
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"  ✗ Error caching {fileName}: {ex.Message}");
+                        Debug.WriteLine($"  ✗ Error caching {fileName}: {ex.Message}");
                     }
                 }
             }
-            else if (!isDefaultEmpty)
-            {
-                System.Diagnostics.Debug.WriteLine("PHASE 3: Skipped - Default preset already populated");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("⚠ No files to cache - Default preset will remain empty");
-            }
 
-            // PHASE 4: Apply the preset
-            System.Diagnostics.Debug.WriteLine($"PHASE 4: Applying {filesToApply.Count} files with elevation...");
             var success = await ReplaceFilesWithElevation(filesToApply);
-
-            if (success)
-            {
-                System.Diagnostics.Debug.WriteLine($"✓ Successfully applied preset: {preset.PresetName}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"✗ Failed to apply preset: {preset.PresetName}");
-            }
-
             return success;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error in ApplyPresetAsync: {ex.Message}");
+            Debug.WriteLine($"Error in ApplyPresetAsync: {ex.Message}");
             return false;
         }
     }
@@ -1136,10 +1284,8 @@ public sealed partial class BetterRTXManagerWindow : Window
 
                 foreach (var (sourcePath, destPath) in filesToReplace)
                 {
-                    // Escape single quotes
                     var escapedSource = sourcePath.Replace("'", "''");
                     var escapedDest = destPath.Replace("'", "''");
-
                     scriptLines.Add($"Copy-Item -Path '{escapedSource}' -Destination '{escapedDest}' -Force");
                 }
 
@@ -1159,7 +1305,6 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (process != null)
                 {
                     process.WaitForExit();
-                    System.Diagnostics.Debug.WriteLine($"File operations completed with exit code: {process.ExitCode}");
                     return process.ExitCode == 0;
                 }
 
@@ -1168,28 +1313,51 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error in ReplaceFilesWithElevation: {ex.Message}");
+            Debug.WriteLine($"Error in ReplaceFilesWithElevation: {ex.Message}");
             return false;
         }
     }
 
-    // REUSABLE
+    private string ComputeFileHash(string filePath)
+    {
+        try
+        {
+            if (!File.Exists(filePath))
+                return null;
+
+            using (var sha256 = SHA256.Create())
+            using (var stream = File.OpenRead(filePath))
+            {
+                var hash = sha256.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error computing hash: {ex.Message}");
+            return null;
+        }
+    }
+
+    private string GetCurrentlyInstalledPresetHash()
+    {
+        var stubPath = Path.Combine(_gameMaterialsPath, "RTXStub.material.bin");
+        return ComputeFileHash(stubPath);
+    }
+
     public static string SanitizePresetName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return "Unnamed_Preset";
 
-        // original name
         var sanitized = name;
 
-        // These are all problematic characters (filesystem + PowerShell or command line)
         var badChars = new HashSet<char>(Path.GetInvalidFileNameChars())
-    {
-        '\'', '`', '$', ';', '&', '|', '<', '>', '(', ')', '{', '}', '[', ']',
-        '"', '~', '!', '@', '#', '%', '^'
-    };
+        {
+            '\'', '`', '$', ';', '&', '|', '<', '>', '(', ')', '{', '}', '[', ']',
+            '"', '~', '!', '@', '#', '%', '^'
+        };
 
-        // Replace bad characters and control characters with underscores
         var chars = sanitized.ToCharArray();
         for (int i = 0; i < chars.Length; i++)
         {
@@ -1200,22 +1368,14 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         sanitized = new string(chars);
 
-        // Collapse multiple consecutive underscores into one
         while (sanitized.Contains("__"))
-        {
             sanitized = sanitized.Replace("__", "_");
-        }
 
-        // Collapse multiple consecutive spaces into one
         while (sanitized.Contains("  "))
-        {
             sanitized = sanitized.Replace("  ", " ");
-        }
 
-        // Remove leading/trailing underscores, spaces, and dots
         sanitized = sanitized.Trim('_', ' ', '.');
 
-        // reserved Windows names
         var reserved = new[] { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5",
                        "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4",
                        "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" };
@@ -1226,11 +1386,9 @@ public sealed partial class BetterRTXManagerWindow : Window
             sanitized = "_" + sanitized;
         }
 
-        // Ensure not empty after sanitization
         if (string.IsNullOrWhiteSpace(sanitized))
             return "Unnamed_Preset";
 
-        // Limit length, leave room for full path (recommend 150-200 max)
         if (sanitized.Length > 200)
             sanitized = sanitized.Substring(0, 150).TrimEnd('_', ' ', '.');
 
@@ -1238,37 +1396,363 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
 
 
-
-
-    private class PresetData
+    // Data classes
+    private enum DownloadStatus
     {
-        public string PresetName
+        NotDownloaded,
+        Queued,
+        Downloading,
+        Downloaded
+    }
+
+    private class DownloadQueueItem
+    {
+        public string Uuid { get; set; }
+        public string Name { get; set; }
+    }
+
+    private class ApiPresetData
+    {
+        public string Uuid { get; set; }
+        public string Slug { get; set; }
+        public string Name { get; set; }
+        public string Stub { get; set; }
+        public string Tonemapping { get; set; }
+        public string Bloom { get; set; }
+    }
+
+    private class LocalPresetData
+    {
+        public string Uuid { get; set; }
+        public string Name { get; set; }
+        public string PresetPath { get; set; }
+        public BitmapImage Icon { get; set; }
+        public List<string> BinFiles { get; set; }
+        public string StubHash { get; set; }
+    }
+
+    private class DisplayPresetData
+    {
+        public string Uuid { get; set; }
+        public string Name { get; set; }
+        public bool IsDownloaded { get; set; }
+        public BitmapImage Icon { get; set; }
+        public string PresetPath { get; set; }
+        public List<string> BinFiles { get; set; }
+        public string StubHash { get; set; }
+    }
+}
+
+
+
+
+
+
+
+
+public static class GameVersionDetector
+{
+    private const string VERSION_HASH_KEY = "MinecraftVersionHash";
+    private const string CONFIG_HASH_KEY = "MinecraftConfigHash";
+
+    /// <summary>
+    /// Detects if game version has changed by comparing file hashes.
+    /// Returns true if version changed, false if same or unable to determine.
+    /// </summary>
+    public static async Task<bool> HasGameVersionChanged(string minecraftInstallPath)
+    {
+        try
         {
-            get; set;
+            Debug.WriteLine("=== GAME VERSION DETECTION START ===");
+
+            if (string.IsNullOrEmpty(minecraftInstallPath) || !Directory.Exists(minecraftInstallPath))
+            {
+                Debug.WriteLine("⚠ Invalid Minecraft install path provided to version detector");
+                return false;
+            }
+
+            // Find the two key files
+            var exePath = FindFileRecursively(minecraftInstallPath, "Minecraft.Windows.exe", 2);
+            var configPath = FindFileRecursively(minecraftInstallPath, "MicrosoftGame.Config", 2);
+
+            if (string.IsNullOrEmpty(exePath) && string.IsNullOrEmpty(configPath))
+            {
+                Debug.WriteLine("⚠ Could not find version files - unable to detect version");
+                Debug.WriteLine("=== GAME VERSION DETECTION END (no files) ===");
+                return false;
+            }
+
+            // Compute current hashes
+            string currentExeHash = null;
+            string currentConfigHash = null;
+
+            if (!string.IsNullOrEmpty(exePath))
+            {
+                currentExeHash = ComputeFileHash(exePath);
+                Debug.WriteLine($"📊 Current EXE hash: {currentExeHash}");
+            }
+            else
+            {
+                Debug.WriteLine("⚠ EXE file not found (unusual but handled)");
+            }
+
+            if (!string.IsNullOrEmpty(configPath))
+            {
+                currentConfigHash = ComputeFileHash(configPath);
+                Debug.WriteLine($"📊 Current Config hash: {currentConfigHash}");
+            }
+            else
+            {
+                Debug.WriteLine("⚠ Config file not found (unusual but handled)");
+            }
+
+            // Get stored hashes
+            var settings = ApplicationData.Current.LocalSettings;
+            var storedExeHash = settings.Values[VERSION_HASH_KEY] as string;
+            var storedConfigHash = settings.Values[CONFIG_HASH_KEY] as string;
+
+            Debug.WriteLine($"💾 Stored EXE hash: {storedExeHash ?? "NULL"}");
+            Debug.WriteLine($"💾 Stored Config hash: {storedConfigHash ?? "NULL"}");
+
+            // Determine if version changed
+            bool versionChanged = false;
+
+            // FIRST RUN: No stored hashes at all
+            if (string.IsNullOrEmpty(storedExeHash) && string.IsNullOrEmpty(storedConfigHash))
+            {
+                Debug.WriteLine("✓ First run - no stored version hashes (not a change)");
+                versionChanged = false;
+            }
+            else
+            {
+                // NOT first run - we have at least one stored hash
+
+                // Check EXE file
+                if (!string.IsNullOrEmpty(currentExeHash))
+                {
+                    if (string.IsNullOrEmpty(storedExeHash))
+                    {
+                        // NEW FILE APPEARED - cache invalidation
+                        Debug.WriteLine("🔥 EXE FILE NEWLY APPEARED - CACHE INVALIDATION!");
+                        versionChanged = true;
+                    }
+                    else if (currentExeHash != storedExeHash)
+                    {
+                        // HASH CHANGED - version update
+                        Debug.WriteLine("🔥 EXE HASH CHANGED - GAME VERSION UPDATED!");
+                        versionChanged = true;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(storedExeHash))
+                {
+                    // FILE DISAPPEARED - cache invalidation
+                    Debug.WriteLine("🔥 EXE FILE DISAPPEARED - CACHE INVALIDATION!");
+                    versionChanged = true;
+                }
+
+                // Check Config file
+                if (!string.IsNullOrEmpty(currentConfigHash))
+                {
+                    if (string.IsNullOrEmpty(storedConfigHash))
+                    {
+                        // NEW FILE APPEARED - cache invalidation
+                        Debug.WriteLine("🔥 CONFIG FILE NEWLY APPEARED - CACHE INVALIDATION!");
+                        versionChanged = true;
+                    }
+                    else if (currentConfigHash != storedConfigHash)
+                    {
+                        // HASH CHANGED - version update
+                        Debug.WriteLine("🔥 CONFIG HASH CHANGED - GAME VERSION UPDATED!");
+                        versionChanged = true;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(storedConfigHash))
+                {
+                    // FILE DISAPPEARED - cache invalidation
+                    Debug.WriteLine("🔥 CONFIG FILE DISAPPEARED - CACHE INVALIDATION!");
+                    versionChanged = true;
+                }
+
+                if (!versionChanged)
+                {
+                    Debug.WriteLine("✓ All hashes match - no version change");
+                }
+            }
+
+            // Update stored hashes with current values (even if null)
+            if (!string.IsNullOrEmpty(currentExeHash))
+            {
+                settings.Values[VERSION_HASH_KEY] = currentExeHash;
+                Debug.WriteLine("💾 Saved current EXE hash");
+            }
+            else if (storedExeHash != null)
+            {
+                settings.Values.Remove(VERSION_HASH_KEY);
+                Debug.WriteLine("💾 Removed EXE hash (file no longer exists)");
+            }
+
+            if (!string.IsNullOrEmpty(currentConfigHash))
+            {
+                settings.Values[CONFIG_HASH_KEY] = currentConfigHash;
+                Debug.WriteLine("💾 Saved current Config hash");
+            }
+            else if (storedConfigHash != null)
+            {
+                settings.Values.Remove(CONFIG_HASH_KEY);
+                Debug.WriteLine("💾 Removed Config hash (file no longer exists)");
+            }
+
+            Debug.WriteLine($"=== GAME VERSION DETECTION END (changed: {versionChanged}) ===");
+            return versionChanged;
         }
-        public string PresetDescription
+        catch (Exception ex)
         {
-            get; set;
+            Debug.WriteLine($"✗ Error detecting game version: {ex.Message}");
+            Debug.WriteLine("=== GAME VERSION DETECTION END (error) ===");
+            return false;
         }
-        public string PresetPath
+    }
+
+    private static string FindFileRecursively(string startPath, string fileName, int maxDepth)
+    {
+        try
         {
-            get; set;
+            return FindFileRecursivelyInternal(startPath, fileName, 0, maxDepth);
         }
-        public BitmapImage Icon
+        catch (Exception ex)
         {
-            get; set;
+            Debug.WriteLine($"Error searching for {fileName}: {ex.Message}");
+            return null;
         }
-        public List<string> BinFiles
+    }
+
+    private static string FindFileRecursivelyInternal(string currentPath, string fileName, int currentDepth, int maxDepth)
+    {
+        if (currentDepth > maxDepth || !Directory.Exists(currentPath))
+            return null;
+
+        var targetPath = Path.Combine(currentPath, fileName);
+        if (File.Exists(targetPath))
         {
-            get; set;
+            Debug.WriteLine($"✓ Found {fileName} at: {targetPath}");
+            return targetPath;
         }
-        public bool IsDefault
+
+        if (currentDepth < maxDepth)
         {
-            get; set;
+            try
+            {
+                foreach (var subDir in Directory.GetDirectories(currentPath))
+                {
+                    var result = FindFileRecursivelyInternal(subDir, fileName, currentDepth + 1, maxDepth);
+                    if (result != null)
+                        return result;
+                }
+            }
+            catch (UnauthorizedAccessException) { }
         }
-        public string StubHash // Hash of RTXStub.material.bin
+
+        return null;
+    }
+
+    private static string ComputeFileHash(string filePath)
+    {
+        try
         {
-            get; set;
-        } 
+            if (!File.Exists(filePath))
+                return null;
+
+            using (var sha256 = SHA256.Create())
+            using (var stream = File.OpenRead(filePath))
+            {
+                var hash = sha256.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error computing hash for {filePath}: {ex.Message}");
+            return null;
+        }
+    }
+
+    public static void ClearStoredVersionHashes()
+    {
+        try
+        {
+            var settings = ApplicationData.Current.LocalSettings;
+            settings.Values.Remove(VERSION_HASH_KEY);
+            settings.Values.Remove(CONFIG_HASH_KEY);
+            Debug.WriteLine("✓ Cleared stored version hashes");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error clearing version hashes: {ex.Message}");
+        }
+    }
+}
+
+
+
+
+/// <summary>
+/// Extension methods for DispatcherQueue to support async operations
+/// </summary>
+public static class DispatcherQueueExtensions
+{
+    /// <summary>
+    /// Enqueues an async callback on the dispatcher queue and awaits its completion
+    /// </summary>
+    public static Task EnqueueAsync(this DispatcherQueue dispatcher, Func<Task> callback, DispatcherQueuePriority priority = DispatcherQueuePriority.Normal)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        bool enqueued = dispatcher.TryEnqueue(priority, async () =>
+        {
+            try
+            {
+                await callback();
+                tcs.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+        {
+            tcs.SetException(new InvalidOperationException("Failed to enqueue operation on dispatcher"));
+        }
+
+        return tcs.Task;
+    }
+
+    /// <summary>
+    /// Enqueues a synchronous callback on the dispatcher queue and awaits its completion
+    /// </summary>
+    public static Task EnqueueAsync(this DispatcherQueue dispatcher, Action callback, DispatcherQueuePriority priority = DispatcherQueuePriority.Normal)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        bool enqueued = dispatcher.TryEnqueue(priority, () =>
+        {
+            try
+            {
+                callback();
+                tcs.SetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+        {
+            tcs.SetException(new InvalidOperationException("Failed to enqueue operation on dispatcher"));
+        }
+
+        return tcs.Task;
     }
 }
