@@ -147,8 +147,8 @@
                        IsHitTestVisible="False"
                        CacheMode="BitmapCache" />
 
-                <!-- Button to make lamp interactive + Mojank easter egg -->
-                <Button x:Name="MojankEasterEggButton"
+                <!-- Button to make lamp interactive -->
+                <Button x:Name="LampInteractionButton"
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Canvas.Left="0.5"
@@ -158,7 +158,7 @@
                         Width="20"
                         Canvas.ZIndex="5"
                         CornerRadius="0"
-                        Click="MojankEasterEggButton_Click" />
+                        Click="LampInteraction_Click" />
             </Canvas>
 
             <TextBlock x:Name="TitleBarText"

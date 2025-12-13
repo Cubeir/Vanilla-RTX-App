@@ -1216,32 +1216,10 @@ public sealed partial class MainWindow : Window
     }
     #endregion -------------------------------
 
-    private async void MojankEasterEggButton_Click(object sender, RoutedEventArgs e)
+    private async void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true);
-
-        var now = DateTime.UtcNow;
-        if ((now - _mojankLastClick).TotalSeconds > 8)
-        {
-            _mojankClickCount = 0;
-        }
-        _mojankLastClick = now;
-        _mojankClickCount++;
-
-        if (_mojankClickCount == 3)
-        {
-            var message = MojankMessages.JokeMessages[Random.Shared.Next(MojankMessages.JokeMessages.Length)];
-            Log(message + " Continue and you might see a UAC prompt...", LogLevel.Warning);
-        }
-
-        if (_mojankClickCount >= 4)
-        {
-            _mojankClickCount = 0;
-            await MojankEasterEgg.TriggerAsync();
-            Log("Your Minecraft startup splash texts may have been slightly updated to Mojank.", LogLevel.Informational);
-        }
     }
-
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
