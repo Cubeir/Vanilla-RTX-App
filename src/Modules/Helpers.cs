@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -321,22 +321,7 @@ public static class Helpers
         Log("Download failed after multiple attempts.", LogLevel.Error);
         return (false, null);
     }
-    public static string GetCacheFolderName()
-    {
-        try
-        {
-            var family = Windows.ApplicationModel.Package.Current.Id.FamilyName;
-            var idx = family.LastIndexOf('_');
-            var suffix = (idx >= 0 && idx < family.Length - 1)
-                ? family[(idx + 1)..]
-                : family;
-            return $"vrtxapp_{suffix}";
-        }
-        catch
-        {
-            return "vanilla_rtx_app";
-        }
-    }
+
 
     // Shortens it too
     public static string SanitizePathForDisplay(string fullPath)
@@ -462,7 +447,6 @@ public static class Helpers
             int excludedCount = imageFiles.Distinct().Count() - filteredPaths.Count;
         }
     }
-
 
 
     public static bool IsMinecraftRunning()

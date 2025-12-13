@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using Microsoft.UI.Xaml;
 using Vanilla_RTX_App.Modules;
@@ -32,7 +32,7 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         bool isNewInstance;
-        _mutex = new Mutex(true, $"VanillaRTXTuner{Helpers.GetCacheFolderName()}", out isNewInstance);
+        _mutex = new Mutex(true, $"{GetUniqueFolderName()}", out isNewInstance);
 
         if (!isNewInstance)
         {
@@ -46,6 +46,23 @@ public partial class App : Application
         // Continue with app initialization only if this is a new instance
         _window = new MainWindow();
         _window.Activate();
+    }
+
+    public static string GetUniqueFolderName()
+    {
+        try
+        {
+            var family = Windows.ApplicationModel.Package.Current.Id.FamilyName;
+            var idx = family.LastIndexOf('_');
+            var suffix = (idx >= 0 && idx < family.Length - 1)
+                ? family[(idx + 1)..]
+                : family;
+            return $"vrtxapp_{suffix}";
+        }
+        catch
+        {
+            return "vanilla_rtx_app";
+        }
     }
 
     // Clean up mutex when app exits
