@@ -317,9 +317,13 @@ public sealed partial class MainWindow : Window
         {
             _ = LocatePacksButton_Click();
         }
+        else
+        {
+            BetterRTXPresetManagerButton.IsEnabled = false;
+        }
 
-        // lazy credits and PSA retriever, credits are saved for donate hover event, PSA is shown when ready
-        _ = CreditsUpdater.GetCredits(false);
+            // lazy credits and PSA retriever, credits are saved for donate hover event, PSA is shown when ready
+            _ = CreditsUpdater.GetCredits(false);
         _ = Task.Run(async () =>
         {
             var psa = await PSAUpdater.GetPSAAsync();
@@ -1525,6 +1529,7 @@ public sealed partial class MainWindow : Window
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
 
         LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources["SystemAccentColorLight3"]);
+        BetterRTXPresetManagerButton.IsEnabled = false;
     }
     private void TargetPreviewToggle_Unchecked(object sender, RoutedEventArgs e)
     {
@@ -1543,6 +1548,7 @@ public sealed partial class MainWindow : Window
                 LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
             }
         }
+        BetterRTXPresetManagerButton.IsEnabled = true;
     }
 
 
