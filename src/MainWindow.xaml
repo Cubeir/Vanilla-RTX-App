@@ -762,7 +762,7 @@
                                      Text="1.00"
                                      LostFocus="FogMultiplierBox_LostFocus"
                                      IsTextScaleFactorEnabled="False"
-                                     BeforeTextChanging="DoubleTextBox_BeforeTextChanging" />
+                                    />
                         </Grid>
                     </StackPanel>
 
@@ -806,7 +806,7 @@
                                      Text="1.00"
                                      IsTextScaleFactorEnabled="False"
                                      LostFocus="EmissivityMultiplierBox_LostFocus"
-                                     BeforeTextChanging="DoubleTextBox_BeforeTextChanging" />
+                                     />
                         </Grid>
                     </StackPanel>
 
@@ -888,7 +888,7 @@
                                      Text="100"
                                      LostFocus="NormalIntensity_LostFocus"
                                      IsTextScaleFactorEnabled="False"
-                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                                      />
                         </Grid>
                     </StackPanel>
 
@@ -935,7 +935,7 @@
                                      Text="0"
                                      LostFocus="MaterialNoise_LostFocus"
                                      IsTextScaleFactorEnabled="False"
-                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                                      />
                         </Grid>
                     </StackPanel>
 
@@ -983,7 +983,7 @@
                                      Text="0"
                                      LostFocus="RoughenUp_LostFocus"
                                      IsTextScaleFactorEnabled="False"
-                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                                      />
                         </Grid>
                     </StackPanel>
 
@@ -1030,7 +1030,7 @@
                                      Text="0"
                                      LostFocus="LazifyNormals_LostFocus"
                                      IsTextScaleFactorEnabled="False"
-                                     BeforeTextChanging="IntegerTextBox_BeforeTextChanging" />
+                                      />
                         </Grid>
                     </StackPanel>
                 </Grid>

@@ -1,20 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -26,7 +28,6 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
-using Microsoft.UI.Dispatching;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -1605,152 +1606,103 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void FogMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+    #region =============== SLIDER HANDLERS ===============
+
+    // Doubles
+    private void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
     {
-        double roundedValue = Math.Round(e.NewValue, 2);
-        FogMultiplier = roundedValue;
-        FogMultiplierSlider.Value = roundedValue; // force slider to show rounded value
-        if (FogMultiplierBox != null && FogMultiplierBox.FocusState == FocusState.Unfocused)
-            FogMultiplierBox.Text = roundedValue.ToString("0.00");
+        double roundedValue = Math.Round(slider.Value, decimalPlaces);
+        property = roundedValue;
+        slider.Value = roundedValue;
+
+        string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
+        if (textBox != null && textBox.FocusState == FocusState.Unfocused)
+            textBox.Text = roundedValue.ToString(format, CultureInfo.InvariantCulture);
     }
+
+    private void HandleDoubleTextBoxLostFocus(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
+    {
+        if (double.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+        {
+            val = Math.Clamp(val, slider.Minimum, slider.Maximum);
+            double roundedVal = Math.Round(val, decimalPlaces);
+            property = roundedVal;
+            slider.Value = roundedVal;
+
+            string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
+            textBox.Text = roundedVal.ToString(format, CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
+            textBox.Text = property.ToString(format, CultureInfo.InvariantCulture);
+        }
+    }
+
+    // Ints
+    private void HandleIntSliderValueChanged(Slider slider, TextBox textBox, ref int property)
+    {
+        property = (int)Math.Round(slider.Value);
+        if (textBox != null && textBox.FocusState == FocusState.Unfocused)
+            textBox.Text = property.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void HandleIntTextBoxLostFocus(Slider slider, TextBox textBox, ref int property)
+    {
+        if (int.TryParse(textBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int val))
+        {
+            val = Math.Clamp(val, (int)slider.Minimum, (int)slider.Maximum);
+            property = val;
+            slider.Value = val;
+            textBox.Text = val.ToString(CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            textBox.Text = property.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    // =============== SLIDER EVENT HANDLERS ===============
+    private void FogMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleDoubleSliderValueChanged(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
 
     private void FogMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (double.TryParse(FogMultiplierBox.Text, out double val))
-        {
-            val = Math.Clamp(val, 0.0, 10.0);
-            double roundedVal = Math.Round(val, 2);
-            FogMultiplier = roundedVal;
-            FogMultiplierSlider.Value = roundedVal;
-            FogMultiplierBox.Text = roundedVal.ToString("0.00");
-        }
-        else
-        {
-            FogMultiplierBox.Text = FogMultiplier.ToString("0.00");
-        }
-    }
+        => HandleDoubleTextBoxLostFocus(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
 
+    // Emissivity Multiplier (double, 1 decimal)
     private void EmissivityMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-    {
-        EmissivityMultiplier = Math.Round(e.NewValue, 1);
-        if (EmissivityMultiplierBox != null && EmissivityMultiplierBox.FocusState == FocusState.Unfocused)
-            EmissivityMultiplierBox.Text = EmissivityMultiplier.ToString("F1");
-    }
+        => HandleDoubleSliderValueChanged(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
 
     private void EmissivityMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (double.TryParse(EmissivityMultiplierBox.Text, out double val))
-        {
-            val = Math.Clamp(val, 0.5, 10.0);
-            EmissivityMultiplier = val;
-            EmissivityMultiplierSlider.Value = val;
-            EmissivityMultiplierBox.Text = val.ToString("F1");
-        }
-        else
-        {
-            EmissivityMultiplierBox.Text = EmissivityMultiplier.ToString("F1");
-        }
-    }
+        => HandleDoubleTextBoxLostFocus(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
 
+    // Normal Intensity (int)
     private void NormalIntensity_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-    {
-        NormalIntensity = (int)Math.Round(e.NewValue);
-        if (NormalIntensityBox != null && NormalIntensityBox.FocusState == FocusState.Unfocused)
-            NormalIntensityBox.Text = NormalIntensity.ToString();
-    }
+        => HandleIntSliderValueChanged(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
 
     private void NormalIntensity_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (int.TryParse(NormalIntensityBox.Text, out int val))
-        {
-            val = Math.Clamp(val, 0, 900);
-            NormalIntensity = val;
-            NormalIntensitySlider.Value = val;
-            NormalIntensityBox.Text = val.ToString();
-        }
-        else
-        {
-            NormalIntensityBox.Text = NormalIntensity.ToString();
-        }
-    }
+        => HandleIntTextBoxLostFocus(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
 
+    // Material Noise (int)
     private void MaterialNoise_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-    {
-        MaterialNoiseOffset = (int)Math.Round(e.NewValue);
-        if (MaterialNoiseBox != null && MaterialNoiseBox.FocusState == FocusState.Unfocused)
-            MaterialNoiseBox.Text = MaterialNoiseOffset.ToString();
-    }
+        => HandleIntSliderValueChanged(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
 
     private void MaterialNoise_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (int.TryParse(MaterialNoiseBox.Text, out int val))
-        {
-            val = Math.Clamp(val, 0, 25);
-            MaterialNoiseOffset = val;
-            MaterialNoiseSlider.Value = val;
-            MaterialNoiseBox.Text = val.ToString();
-        }
-        else
-        {
-            MaterialNoiseBox.Text = MaterialNoiseOffset.ToString();
-        }
-    }
+        => HandleIntTextBoxLostFocus(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
 
+    // Roughen Up (int)
     private void RoughenUp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-    {
-        RoughnessControlValue = (int)Math.Round(e.NewValue);
-        if (RoughenUpBox != null && RoughenUpBox.FocusState == FocusState.Unfocused)
-            RoughenUpBox.Text = RoughnessControlValue.ToString();
-    }
+        => HandleIntSliderValueChanged(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
 
     private void RoughenUp_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (int.TryParse(RoughenUpBox.Text, out int val))
-        {
-            val = Math.Clamp(val, -5, 25);
-            RoughnessControlValue = val;
-            RoughenUpSlider.Value = val;
-            RoughenUpBox.Text = val.ToString();
-        }
-        else
-        {
-            RoughenUpBox.Text = RoughnessControlValue.ToString();
-        }
-    }
+        => HandleIntTextBoxLostFocus(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
 
+    // Lazify Normals (int)
     private void LazifyNormals_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-    {
-        LazifyNormalAlpha = (int)Math.Round(e.NewValue);
-        if (LazifyNormalsBox != null && LazifyNormalsBox.FocusState == FocusState.Unfocused)
-            LazifyNormalsBox.Text = LazifyNormalAlpha.ToString();
-    }
+        => HandleIntSliderValueChanged(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
 
     private void LazifyNormals_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (int.TryParse(LazifyNormalsBox.Text, out int val))
-        {
-            val = Math.Clamp(val, 0, 255);
-            LazifyNormalAlpha = val;
-            LazifyNormalsSlider.Value = val;
-            LazifyNormalsBox.Text = val.ToString();
-        }
-        else
-        {
-            LazifyNormalsBox.Text = LazifyNormalAlpha.ToString();
-        }
-    }
-
-    // Input validation helpers to prevent invalid characters
-    private void IntegerTextBox_BeforeTextChanging(TextBox sender, TextBoxBeforeTextChangingEventArgs args)
-    {
-        // Allow only digits and negatives
-        args.Cancel = !System.Text.RegularExpressions.Regex.IsMatch(args.NewText, @"^-?[0-9]*$");
-    }
-    private void DoubleTextBox_BeforeTextChanging(TextBox sender, TextBoxBeforeTextChangingEventArgs args)
-    {
-        // Allow digits, one decimal point, and leading negative sign
-        args.Cancel = !System.Text.RegularExpressions.Regex.IsMatch(args.NewText, @"^-?[0-9]*\.?[0-9]*$");
-    }
+        => HandleIntTextBoxLostFocus(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
 
 
     private void EmissivityAmbientLightToggle_Toggled(object sender, RoutedEventArgs e)
@@ -1761,7 +1713,7 @@ public sealed partial class MainWindow : Window
         // Show/hide the warning icon
         EmissivityWarningIcon.Visibility = toggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
     }
-    
+    #endregion
 
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)
@@ -1915,9 +1867,6 @@ public sealed partial class MainWindow : Window
 
 
 
-
-
-
     private void BetterRTXPresetManagerButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleControls(this, false, true, []);
@@ -1989,13 +1938,6 @@ public sealed partial class MainWindow : Window
 
         dlssSwitcherWindow.Activate();
     }
-
-
-
-
-
-
-
 
 
 
