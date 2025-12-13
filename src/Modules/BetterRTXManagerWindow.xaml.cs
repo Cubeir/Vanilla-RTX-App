@@ -1075,22 +1075,19 @@ public sealed partial class BetterRTXManagerWindow : Window
             var url = $"https://bedrock.graphics/pack/{uuid}/release";
             Debug.WriteLine($"Downloading from: {url}");
 
-            // Use our dedicated HttpClient (already configured, no modifications)
-            var response = await _betterRtxHttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            var (success, downloadedPath) = await Helpers.Download(
+                url,
+                cancellationToken: CancellationToken.None,
+                httpClient: _betterRtxHttpClient
+            );
 
-            if (!response.IsSuccessStatusCode)
+            if (!success || string.IsNullOrEmpty(downloadedPath))
             {
-                Debug.WriteLine($"✗ Download failed with status: {response.StatusCode}");
+                Debug.WriteLine($"✗ Download failed");
                 return false;
             }
 
-            // Get content
-            var content = await response.Content.ReadAsByteArrayAsync();
-            Debug.WriteLine($"✓ Downloaded {content.Length} bytes");
-
-            // Save to temp file
-            var tempPath = Path.Combine(Path.GetTempPath(), $"{uuid}.rtpack");
-            await File.WriteAllBytesAsync(tempPath, content);
+            Debug.WriteLine($"✓ Downloaded to: {downloadedPath}");
 
             // Extract to RTX_Cache
             var sanitizedName = SanitizePresetName(uuid);
@@ -1107,7 +1104,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             // Extract the archive
             await Task.Run(() =>
             {
-                using (var archive = ZipFile.OpenRead(tempPath))
+                using (var archive = ZipFile.OpenRead(downloadedPath))
                 {
                     foreach (var entry in archive.Entries)
                     {
@@ -1135,19 +1132,14 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             Debug.WriteLine($"✓ Extracted to: {destinationFolder}");
 
-            // Clean up temp file
+            // Clean up downloaded file
             try
             {
-                File.Delete(tempPath);
+                File.Delete(downloadedPath);
             }
             catch { }
 
             return true;
-        }
-        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-        {
-            Debug.WriteLine($"✗ Download timed out for {uuid}");
-            return false;
         }
         catch (Exception ex)
         {
