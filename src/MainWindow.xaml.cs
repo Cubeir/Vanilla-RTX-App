@@ -552,7 +552,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
-            "ms-appx:///Assets/previews/repository.reinstall.png"
+            "ms-appx:///Assets/previews/version.checker.png"
         );
 
         Previewer.Instance.InitializeButton(TuneSelectionButton,
@@ -561,10 +561,6 @@ public sealed partial class MainWindow : Window
 
         Previewer.Instance.InitializeButton(LaunchButton,
             "ms-appx:///Assets/previews/minecart.launch.png"
-        );
-
-        Previewer.Instance.InitializeButton(VersionCheckButton,
-            "ms-appx:///Assets/previews/version.checker.png"
         );
 
         Previewer.Instance.InitializeButton(CycleThemeButton,
@@ -1321,92 +1317,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private bool isVersionCheckRunning = false; private CancellationTokenSource _spinAnimationCts;
-    private async void VersionCheckButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (isVersionCheckRunning)
-            return;
-
-        isVersionCheckRunning = true;
-        VersionCheckButton.IsEnabled = false;
-        _spinAnimationCts = new CancellationTokenSource();
-
-        // Start the spinning animation
-        _ = AnimateSyncIcon(_spinAnimationCts.Token);
-
-        // Pack update check
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var msg = await _updater.CheckForPackUpdates(
-                    VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
-                if (!string.IsNullOrEmpty(msg)) Log(msg);
-            }
-            catch { Debug.WriteLine("FAILURE: The update check in LocatePacksButton_Click"); }
-            finally
-            {
-                // Signal animation to stop after current spin completes
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    _spinAnimationCts?.Cancel();
-                });
-            }
-        });
-    }
-    private async Task AnimateSyncIcon(CancellationToken cancellationToken)
-    {
-        bool firstSpin = true;
-
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested || firstSpin)
-            {
-                // Perform one fast spin
-                var spinAnimation = new DoubleAnimation
-                {
-                    From = 0,
-                    To = 360,
-                    Duration = new Duration(TimeSpan.FromMilliseconds(400)),
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
-                };
-
-                var storyboard = new Storyboard();
-                Storyboard.SetTarget(spinAnimation, VersionCheckButtonRotation);
-                Storyboard.SetTargetProperty(spinAnimation, "Angle");
-                storyboard.Children.Add(spinAnimation);
-
-                var tcs = new TaskCompletionSource<bool>();
-                storyboard.Completed += (s, e) => tcs.TrySetResult(true);
-                storyboard.Begin();
-
-                await tcs.Task;
-
-                // Reset rotation to 0 for next spin
-                VersionCheckButtonRotation.Angle = 0;
-
-                firstSpin = false;
-
-                // If cancelled, do one final spin and exit
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                // Brief pause before next spin (smooth deceleration effect)
-                await Task.Delay(150, CancellationToken.None);
-            }
-        }
-        finally
-        {
-            // Ensure we're at 0 degrees
-            VersionCheckButtonRotation.Angle = 0;
-            isVersionCheckRunning = false;
-            VersionCheckButton.IsEnabled = true;
-        }
-    }
-
-
 
     public async Task LocatePacksButton_Click(bool ShowLogs = false)
     {
@@ -2060,72 +1970,6 @@ public sealed partial class MainWindow : Window
 
     private async void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
     {
-        // ----- LEGACY BEHAVIOR, CALLS THE OLD PACKUPDATER CLASS, WHICH WORKS FLAWESLLY, ATOMIC UPDATE FOR ALL 3 ENSURING YOU GET LATEST
-        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
-        {
-            if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
-            {
-                Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
-            }
-            try
-            {
-                ToggleControls(this, false);
-                _progressManager.ShowProgress();
-                _ = BlinkingLamp(true);
-
-                var updater = new PackUpdater();
-
-                updater.ProgressUpdate += (message) =>
-                {
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        Log($"{message}");
-                    });
-                };
-
-                // Run the update operation
-                var (success, logs) = await Task.Run(() => updater.UpdatePacksAsync());
-                // foreach (var log in logs) Log(log);
-
-                if (success)
-                {
-                    Log($"{HaveDeployableCache} completed.", LogLevel.Success);
-                }
-                else
-                {
-                    Log($"{HaveDeployableCache} failed.", LogLevel.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Unexpected error: {ex.Message}", LogLevel.Error);
-            }
-            finally
-            {
-                _ = BlinkingLamp(false);
-                ToggleControls(this, true);
-                _progressManager.HideProgress();
-
-                // Set reinstall latest packs button visuals based on cache status
-                if (_updater.HasDeployableCache())
-                {
-                    UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
-                    UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
-                }
-                else
-                {
-                    UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
-                    UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
-                }
-
-                // Trigger an automatic pack location check after update (fail or not)
-                _ = LocatePacksButton_Click();
-            }
-        }
-        // ----- LEGACY BEHAVIOR
-
-
         ToggleControls(this, false, true, []);
 
         var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
