@@ -44,12 +44,12 @@
 
             <!-- Pack Panels -->
             <Grid Grid.Row="1"
-                  Margin="20,20,20,20">
+                  Margin="16,16,16,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
@@ -88,12 +88,16 @@
                         <!-- Info Section -->
                         <StackPanel Grid.Row="1"
                                     Padding="16"
-                                    Spacing="8">
+                                    Spacing="4">
                             <!-- Pack Name -->
-                            <TextBlock Text="Vanilla RTX"
-                                       FontSize="18"
-                                       FontWeight="SemiBold"
-                                       IsTextScaleFactorEnabled="False" />
+                            <HyperlinkButton Content="Vanilla RTX"
+                                             FontSize="20"
+                                             Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                             FontWeight="SemiBold"
+                                             Padding="0"
+                                             HorizontalAlignment="Left"
+                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx"
+                                             IsTextScaleFactorEnabled="False" />
 
                             <!-- Description -->
                             <TextBlock Text="The default ray-traced Minecraft graphics, everything is covered!"
@@ -108,7 +112,7 @@
                                         Spacing="6">
                                 <TextBlock Text="Installed:"
                                            FontSize="13"
-                                           Opacity="0.7"
+                                           Opacity="0.75"
                                            IsTextScaleFactorEnabled="False" />
                                 <TextBlock x:Name="VanillaRTX_InstalledVersion"
                                            Text="Not installed"
@@ -122,7 +126,7 @@
                                         Spacing="6">
                                 <TextBlock Text="Available:"
                                            FontSize="13"
-                                           Opacity="0.7"
+                                           Opacity="0.75"
                                            IsTextScaleFactorEnabled="False" />
                                 <ProgressRing x:Name="VanillaRTX_AvailableLoading"
                                               Width="16"
@@ -158,6 +162,7 @@
                                             Content="Install"
                                             Style="{StaticResource AccentButtonStyle}"
                                             MinWidth="100"
+                                            MinHeight="50"
                                             IsEnabled="False"
                                             IsTextScaleFactorEnabled="False" />
                                     <ProgressRing x:Name="VanillaRTX_LoadingRing"
@@ -203,15 +208,19 @@
                         <!-- Info Section -->
                         <StackPanel Grid.Row="1"
                                     Padding="16"
-                                    Spacing="8">
+                                    Spacing="4">
                             <!-- Pack Name -->
-                            <TextBlock Text="Vanilla RTX Normals"
-                                       FontSize="18"
-                                       FontWeight="SemiBold"
-                                       IsTextScaleFactorEnabled="False" />
+                            <HyperlinkButton Content="Vanilla RTX Normals"
+                                             FontSize="20"
+                                             Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                             FontWeight="SemiBold"
+                                             Padding="0"
+                                             HorizontalAlignment="Left"
+                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/truly-vanilla-rtx"
+                                             IsTextScaleFactorEnabled="False" />
 
                             <!-- Description -->
-                            <TextBlock Text="Vanilla RTX with handcrafted 16x normal maps for all blocks."
+                            <TextBlock Text="Vanilla RTX with handcrafted 16x normal maps for all blocks!"
                                        FontSize="13"
                                        Opacity="0.8"
                                        TextWrapping="Wrap"
@@ -223,7 +232,7 @@
                                         Spacing="6">
                                 <TextBlock Text="Installed:"
                                            FontSize="13"
-                                           Opacity="0.7"
+                                           Opacity="0.75"
                                            IsTextScaleFactorEnabled="False" />
                                 <TextBlock x:Name="VanillaRTXNormals_InstalledVersion"
                                            Text="Not installed"
@@ -237,7 +246,7 @@
                                         Spacing="6">
                                 <TextBlock Text="Available:"
                                            FontSize="13"
-                                           Opacity="0.7"
+                                           Opacity="0.75"
                                            IsTextScaleFactorEnabled="False" />
                                 <ProgressRing x:Name="VanillaRTXNormals_AvailableLoading"
                                               Width="16"
@@ -273,6 +282,7 @@
                                             Content="Install"
                                             Style="{StaticResource AccentButtonStyle}"
                                             MinWidth="100"
+                                            MinHeight="50"
                                             IsEnabled="False"
                                             IsTextScaleFactorEnabled="False" />
                                     <ProgressRing x:Name="VanillaRTXNormals_LoadingRing"
@@ -317,15 +327,19 @@
                         <!-- Info Section -->
                         <StackPanel Grid.Row="1"
                                     Padding="16"
-                                    Spacing="8">
+                                    Spacing="4">
                             <!-- Pack Name -->
-                            <TextBlock Text="Vanilla RTX Opus"
-                                       FontSize="18"
-                                       FontWeight="SemiBold"
-                                       IsTextScaleFactorEnabled="False" />
+                            <HyperlinkButton Content="Vanilla RTX Opus"
+                                             FontSize="20"
+                                             Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                             FontWeight="SemiBold"
+                                             Padding="0"
+                                             HorizontalAlignment="Left"
+                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-opus"
+                                             IsTextScaleFactorEnabled="False" />
 
                             <!-- Description -->
-                            <TextBlock Text="The ultimate default ray-traced Minecraft graphics, composition of both Vanilla RTX and Vanilla RTX Normals."
+                            <TextBlock Text="Composition of both Vanilla RTX and Vanilla RTX Normals."
                                        FontSize="13"
                                        Opacity="0.8"
                                        TextWrapping="Wrap"
@@ -337,7 +351,7 @@
                                         Spacing="6">
                                 <TextBlock Text="Installed:"
                                            FontSize="13"
-                                           Opacity="0.7"
+                                           Opacity="0.75"
                                            IsTextScaleFactorEnabled="False" />
                                 <TextBlock x:Name="VanillaRTXOpus_InstalledVersion"
                                            Text="Not installed"
@@ -351,7 +365,7 @@
                                         Spacing="6">
                                 <TextBlock Text="Available:"
                                            FontSize="13"
-                                           Opacity="0.7"
+                                           Opacity="0.75"
                                            IsTextScaleFactorEnabled="False" />
                                 <ProgressRing x:Name="VanillaRTXOpus_AvailableLoading"
                                               Width="16"
@@ -387,6 +401,7 @@
                                             Content="Install"
                                             Style="{StaticResource AccentButtonStyle}"
                                             MinWidth="100"
+                                            MinHeight="50"
                                             IsEnabled="False"
                                             IsTextScaleFactorEnabled="False" />
                                     <ProgressRing x:Name="VanillaRTXOpus_LoadingRing"
