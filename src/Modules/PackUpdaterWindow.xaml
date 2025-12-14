@@ -74,19 +74,6 @@
 
                         <!-- Image Section -->
                         <Grid Grid.Row="0">
-                            <!-- Blurred Background -->
-                            <Border>
-                                <Border.Background>
-                                    <ImageBrush ImageSource="ms-appx:///Assets/covers/regular.blur.png"
-                                                Stretch="UniformToFill">
-                                        <ImageBrush.Transform>
-                                            <ScaleTransform ScaleX="1.2"
-                                                            ScaleY="1.2" />
-                                        </ImageBrush.Transform>
-                                    </ImageBrush>
-                                </Border.Background>
-                            </Border>
-
                             <!-- Main Image -->
                             <Border CornerRadius="8,8,0,0">
                                 <Image Source="ms-appx:///Assets/covers/regular.cover.png"
@@ -201,18 +188,6 @@
 
                         <!-- Image Section -->
                         <Grid Grid.Row="0">
-                            <!-- Blurred Background -->
-                            <Border>
-                                <Border.Background>
-                                    <ImageBrush ImageSource="ms-appx:///Assets/covers/normals.blur.png"
-                                                Stretch="UniformToFill">
-                                        <ImageBrush.Transform>
-                                            <ScaleTransform ScaleX="1.2"
-                                                            ScaleY="1.2" />
-                                        </ImageBrush.Transform>
-                                    </ImageBrush>
-                                </Border.Background>
-                            </Border>
 
                             <!-- Main Image -->
                             <Border CornerRadius="8,8,0,0">
@@ -328,19 +303,6 @@
 
                         <!-- Image Section -->
                         <Grid Grid.Row="0">
-                            <!-- Blurred Background -->
-                            <Border>
-                                <Border.Background>
-                                    <ImageBrush ImageSource="ms-appx:///Assets/covers/opus.blur.png"
-                                                Stretch="UniformToFill">
-                                        <ImageBrush.Transform>
-                                            <ScaleTransform ScaleX="1.2"
-                                                            ScaleY="1.2" />
-                                        </ImageBrush.Transform>
-                                    </ImageBrush>
-                                </Border.Background>
-                            </Border>
-
                             <!-- Main Image -->
                             <Border CornerRadius="8,8,0,0">
                                 <Image Source="ms-appx:///Assets/covers/opus.cover.png"

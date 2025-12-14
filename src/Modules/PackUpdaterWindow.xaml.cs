@@ -42,8 +42,8 @@ public sealed partial class PackUpdateWindow : Window
             presenter.IsMaximizable = true;
             var dpi = MainWindow.GetDpiForWindow(hWnd);
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(900 * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(600 * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
         }
 
         if (_appWindow.TitleBar != null)
@@ -81,6 +81,9 @@ public sealed partial class PackUpdateWindow : Window
             {
                 SetTitleBarDragRegion();
             });
+
+            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+            WindowTitle.Text = $"Update Vanilla RTX resource packs for {text}";
 
             // Setup shadows for panels
             SetupShadows();

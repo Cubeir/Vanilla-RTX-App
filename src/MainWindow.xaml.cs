@@ -1968,8 +1968,13 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private async void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
+    private void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
     {
+        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+        {
+            Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+        }
+
         ToggleControls(this, false, true, []);
 
         var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
@@ -1980,9 +1985,29 @@ public sealed partial class MainWindow : Window
             mainAppWindow.Size.Height));
         packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
 
-        packUpdaterWindow.Activate();
+        // Do on window closure
+        packUpdaterWindow.Closed += (s, args) =>
+        {
+            // Enable main UI buttons again
+            ToggleControls(this, true, true, []);
 
-        ToggleControls(this, true, true, []);
+            // Set reinstall latest packs button visuals based on cache status
+            if (_updater.HasDeployableCache())
+            {
+                UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
+                UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
+            }
+            else
+            {
+                UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
+                UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
+            }
+
+            // Trigger an automatic pack location check after update (fail or not)
+            _ = LocatePacksButton_Click();
+        };
+
+        packUpdaterWindow.Activate();
     }
 
 
