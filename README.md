@@ -175,10 +175,6 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
 
-- Default RTX preset created by the app upon initially changing to a BetterRTX preset may not be forward compatible and could cause crashes if it is switched to after a Minecraft update.
-It is highly recommended that you hard-reset the app (shift + reset button) after Minecraft updates, so the default preset can be recreated which is normally not deletable through the app.
-This workaround is not ideal, this issue is quite difficult to tackle, stay patient until a real solution is implemented.  
-
 ### Need help?
 
 Ask your questions or post suggestions/issues to forum channel of [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud).
@@ -189,5 +185,4 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Critical issue: Default RTX preset created upon changing BetterRTX is not forward compatible, if you use the BetterRTX manager to switch between presets, avoid switching to default preset if Minecraft has updated.
-More info in the known issues list on github. Additionally, make sure you reimport/update your BetterRTX presets if Minecraft has updated.
+BetterRTX manager has been overhauled! You can now download and install presets directly from within the app, no more manual imports. Be sure to update!
