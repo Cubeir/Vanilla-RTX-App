@@ -74,7 +74,6 @@
 
                         <!-- Image Section -->
                         <Grid Grid.Row="0">
-                            <!-- Main Image -->
                             <Border CornerRadius="8,8,0,0">
                                 <Image Source="ms-appx:///Assets/covers/regular.cover.png"
                                        Stretch="UniformToFill"
@@ -157,17 +156,21 @@
                                               IsTextScaleFactorEnabled="False" />
 
                                 <!-- Install Button + Loading Ring -->
-                                <Grid Grid.Column="2">
+                                <Grid Grid.Column="2"
+                                      MinWidth="100"
+                                      MinHeight="50">
                                     <Button x:Name="VanillaRTX_InstallButton"
                                             Content="Install"
                                             Style="{StaticResource AccentButtonStyle}"
-                                            MinWidth="100"
-                                            MinHeight="50"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
                                             IsEnabled="False"
                                             IsTextScaleFactorEnabled="False" />
                                     <ProgressRing x:Name="VanillaRTX_LoadingRing"
                                                   Width="32"
                                                   Height="32"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
                                                   Visibility="Collapsed"
                                                   IsActive="False" />
                                 </Grid>
@@ -193,8 +196,6 @@
 
                         <!-- Image Section -->
                         <Grid Grid.Row="0">
-
-                            <!-- Main Image -->
                             <Border CornerRadius="8,8,0,0">
                                 <Image Source="ms-appx:///Assets/covers/normals.cover.png"
                                        Stretch="UniformToFill"
@@ -277,17 +278,21 @@
                                               IsTextScaleFactorEnabled="False" />
 
                                 <!-- Install Button + Loading Ring -->
-                                <Grid Grid.Column="2">
+                                <Grid Grid.Column="2"
+                                      MinWidth="100"
+                                      MinHeight="50">
                                     <Button x:Name="VanillaRTXNormals_InstallButton"
                                             Content="Install"
                                             Style="{StaticResource AccentButtonStyle}"
-                                            MinWidth="100"
-                                            MinHeight="50"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
                                             IsEnabled="False"
                                             IsTextScaleFactorEnabled="False" />
                                     <ProgressRing x:Name="VanillaRTXNormals_LoadingRing"
                                                   Width="32"
                                                   Height="32"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
                                                   Visibility="Collapsed"
                                                   IsActive="False" />
                                 </Grid>
@@ -313,14 +318,13 @@
 
                         <!-- Image Section -->
                         <Grid Grid.Row="0">
-                            <!-- Main Image -->
                             <Border CornerRadius="8,8,0,0">
                                 <Image Source="ms-appx:///Assets/covers/opus.cover.png"
                                        Stretch="UniformToFill"
                                        IsHitTestVisible="False"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Top"
-                                       CacheMode="BitmapCache"/>
+                                       CacheMode="BitmapCache" />
                             </Border>
                         </Grid>
 
@@ -396,17 +400,21 @@
                                               IsTextScaleFactorEnabled="False" />
 
                                 <!-- Install Button + Loading Ring -->
-                                <Grid Grid.Column="2">
+                                <Grid Grid.Column="2"
+                                      MinWidth="100"
+                                      MinHeight="50">
                                     <Button x:Name="VanillaRTXOpus_InstallButton"
                                             Content="Install"
                                             Style="{StaticResource AccentButtonStyle}"
-                                            MinWidth="100"
-                                            MinHeight="50"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
                                             IsEnabled="False"
                                             IsTextScaleFactorEnabled="False" />
                                     <ProgressRing x:Name="VanillaRTXOpus_LoadingRing"
                                                   Width="32"
                                                   Height="32"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
                                                   Visibility="Collapsed"
                                                   IsActive="False" />
                                 </Grid>

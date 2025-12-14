@@ -20,6 +20,8 @@ namespace Vanilla_RTX_App.Modules;
 /// Deployment deletes any pack that matches UUIDs as defined at the begenning of PackLocator class
 /// =====================================================================================================================
 
+public enum PackType { VanillaRTX, VanillaRTXNormals, VanillaRTXOpus }
+
 public class PackUpdater
 {
     private const string VANILLA_RTX_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX/manifest.json";
@@ -43,15 +45,16 @@ public class PackUpdater
     private const string LastUpdateCheckNotificationKey_Preview = "LastPackUpdateNotificationCheckTime_Preview";
     private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(5);
 
+    // Remote version cache keys
+    private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
+    private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
+    private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
+    private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
+
     // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
     public string EnhancementFolderName { get; set; } = "__enhancements";
-
-    // If enabled, installs to development folder
     public bool InstallToDevelopmentFolder { get; set; } = false;
-
-    // If enabled, tries to find the opposite folder of where we're deploying to, and cleans the folders there too before and after installation
     public bool CleanUpTheOtherFolder { get; set; } = true;
-
 
     private string GetUpdateCheckKey() => TunerVariables.Persistent.IsTargetingPreview
         ? LastUpdateCheckKey_Preview
@@ -61,33 +64,43 @@ public class PackUpdater
         ? LastUpdateCheckNotificationKey_Preview
         : LastUpdateCheckNotificationKey_Release;
 
-    // -------------------------------\           /------------------------------------ \\
-    public async Task<(bool Success, List<string> Logs)> UpdatePacksAsync()
+    private string GetRemoteVersionsCacheKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? RemoteVersionsCacheKey_Preview
+        : RemoteVersionsCacheKey_Release;
+
+    private string GetRemoteVersionsCacheTimeKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? RemoteVersionsCacheTimeKey_Preview
+        : RemoteVersionsCacheTimeKey_Release;
+
+    // ======================= Individual Pack Installation =======================
+
+    public async Task<(bool Success, List<string> Logs)> UpdateSinglePackAsync(PackType packType, bool enableEnhancements)
     {
         _logMessages.Clear();
 
         try
         {
+            var packName = GetPackDisplayName(packType);
+            LogMessage($"🔄 Starting installation for {packName}...");
+
             var cacheInfo = GetCacheInfo();
             if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
             {
-                return await HandleNoCacheScenario();
+                return await HandleNoCacheScenarioForSinglePack(packType, enableEnhancements);
             }
-            // Either cache location or the file itself were unavailable:
             else
             {
-                return await HandleCacheExistsScenario(cacheInfo.path);
+                return await HandleCacheExistsScenarioForSinglePack(cacheInfo.path, packType, enableEnhancements);
             }
         }
         catch (Exception ex)
         {
-            LogMessage($"Unexpected error: {ex.Message}");
+            LogMessage($"❌ Unexpected error: {ex.Message}");
             return (false, new List<string>(_logMessages));
         }
     }
 
-    // Updating packs splits into two major possible outcomes, the rest is here:
-    private async Task<(bool Success, List<string> Logs)> HandleNoCacheScenario()
+    private async Task<(bool Success, List<string> Logs)> HandleNoCacheScenarioForSinglePack(PackType packType, bool enableEnhancements)
     {
         LogMessage("📦 Downloading latest version");
 
@@ -101,10 +114,11 @@ public class PackUpdater
         SaveCachedZipballPath(downloadPath);
         LogMessage("✅ Download cached for quicker future redeployment");
 
-        var deploySuccess = await DeployPackage(downloadPath);
+        var deploySuccess = await DeployPackage(downloadPath, packType, enableEnhancements);
         return (deploySuccess, new List<string>(_logMessages));
     }
-    private async Task<(bool Success, List<string> Logs)> HandleCacheExistsScenario(string cachePath)
+
+    private async Task<(bool Success, List<string> Logs)> HandleCacheExistsScenarioForSinglePack(string cachePath, PackType packType, bool enableEnhancements)
     {
         LogMessage("✅ Cache found");
 
@@ -120,237 +134,96 @@ public class PackUpdater
                 SaveCachedZipballPath(downloadPath);
                 LogMessage("✅ New version downloaded and cached successfully for future redeployment.");
 
-                var deploySuccess = await DeployPackage(downloadPath);
+                var deploySuccess = await DeployPackage(downloadPath, packType, enableEnhancements);
                 return (deploySuccess, new List<string>(_logMessages));
             }
             else
             {
                 LogMessage("⚠️ Download failed: fell back to older cached version.");
-                var deploySuccess = await DeployPackage(cachePath);
+                var deploySuccess = await DeployPackage(cachePath, packType, enableEnhancements);
                 return (deploySuccess, new List<string>(_logMessages));
             }
         }
         else
         {
-            // Either update failed, or is on cooldown, or no update is available, whatever the case got no choice, this is the latest we got
-            // TODO: Update so it returns actual reasons
             LogMessage("ℹ️ Current cached package is the latest available at the moment.");
-            var deploySuccess = await DeployPackage(cachePath);
+            var deploySuccess = await DeployPackage(cachePath, packType, enableEnhancements);
             return (deploySuccess, new List<string>(_logMessages));
         }
     }
 
+    // ======================= Remote Version Fetching with Cache =======================
 
-
-    private async Task<bool> CheckIfUpdateNeeded(string cachePath)
+    public async Task<(string? rtx, string? normals, string? opus, bool fromCache)> GetRemoteVersionsAsync()
     {
-        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
-        {
-            LogMessage("🛜 No network available – reusing cache.");
-            return false;
-        }
-
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
-        var cooldownKey = GetUpdateCheckKey();
+        var cacheKey = GetRemoteVersionsCacheKey();
+        var timeKey = GetRemoteVersionsCacheTimeKey();
 
-        // Only honor cooldown if we have a VALID, usable cache
-        if (localSettings.Values[cooldownKey] is string lastCheckStr &&
-            DateTimeOffset.TryParse(lastCheckStr, out var lastSuccessfulCheck))
+        // Check if we have cached versions within cooldown period
+        if (localSettings.Values[timeKey] is string cacheTimeStr &&
+            DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
+            now < cacheTime + UpdateCheckNotificationCooldown)
         {
-            if (now < lastSuccessfulCheck + UpdateCooldown)
-            {
-                var minutesLeft = (int)Math.Ceiling((lastSuccessfulCheck + UpdateCooldown - now).TotalMinutes);
-                LogMessage($"⏳ Update check on cooldown – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
-                return false;
-            }
-        }
-
-        (JObject? rtx, JObject? normals, JObject? opus)? remote = null;
-        bool fetchSuccess = false;
-
-        try
-        {
-            remote = await FetchRemoteManifests();
-            fetchSuccess = true;
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"Failed to contact GitHub – forcing redownload ({ex.Message})");
-        }
-
-        // ONLY update cooldown timestamp on SUCCESSFUL remote contact + valid cache comparison
-        if (fetchSuccess && remote.HasValue)
-        {
-            localSettings.Values[cooldownKey] = now.ToString("o");
-        }
-
-        if (remote == null)
-            return true; // network/manifest fail means force download
-
-        return await DoesCacheNeedUpdate(cachePath, remote.Value);
-    }
-
-    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
-    {
-        try
-        {
-            using var archive = ZipFile.OpenRead(cachedPath);
-
-            async Task<JObject?> TryReadManifest(string partialPath)
-            {
-                var entry = archive.Entries.FirstOrDefault(e =>
-                    e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
-                if (entry == null) return null;
-
-                using var stream = entry.Open();
-                using var reader = new StreamReader(stream);
-                var json = await reader.ReadToEndAsync();
-                return JObject.Parse(json);
-            }
-
-            var rtxManifest = await TryReadManifest("Vanilla-RTX/manifest.json");
-            var normalsManifest = await TryReadManifest("Vanilla-RTX-Normals/manifest.json");
-            var opusManifest = await TryReadManifest("Vanilla-RTX-Opus/manifest.json");
-
-            // Check each pack independently
-            bool needsUpdate = false;
-
-            // RTX Pack
-            if (remoteManifests.rtx != null)
-            {
-                if (rtxManifest == null)
-                {
-                    // Pack exists remotely but not in cache - definitely need update
-                    LogMessage("📦 Vanilla RTX is available remotely but missing from cache");
-                    needsUpdate = true;
-                }
-                else if (IsRemoteVersionNewer(rtxManifest, remoteManifests.rtx))
-                {
-                    LogMessage("📦 Vanilla RTX has a newer version available!");
-                    needsUpdate = true;
-                }
-            }
-
-            // Normals Pack
-            if (remoteManifests.normals != null)
-            {
-                if (normalsManifest == null)
-                {
-                    LogMessage("📦 Vanilla RTX Normals is available remotely but missing from cache");
-                    needsUpdate = true;
-                }
-                else if (IsRemoteVersionNewer(normalsManifest, remoteManifests.normals))
-                {
-                    LogMessage("📦 Vanilla RTX Normals has a newer version available!");
-                    needsUpdate = true;
-                }
-            }
-
-            // Opus Pack
-            if (remoteManifests.opus != null)
-            {
-                if (opusManifest == null)
-                {
-                    LogMessage("📦 Vanilla RTX Opus is available remotely but missing from cache");
-                    needsUpdate = true;
-                }
-                else if (IsRemoteVersionNewer(opusManifest, remoteManifests.opus))
-                {
-                    LogMessage("📦 Vanilla RTX Opus has a newer version available!");
-                    needsUpdate = true;
-                }
-            }
-
-            return needsUpdate;
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"Error reading cached package: {ex.Message}");
-            return true; // Force update on read errors
-        }
-    }
-
-    private bool IsRemoteVersionNewer(JObject cachedManifest, JObject remoteManifest)
-    {
-        try
-        {
-            var cachedVersion = cachedManifest["header"]?["version"]?.ToObject<int[]>();
-            var remoteVersion = remoteManifest["header"]?["version"]?.ToObject<int[]>();
-
-            if (cachedVersion == null || remoteVersion == null) return true;
-
-            return CompareVersionArrays(remoteVersion, cachedVersion) > 0;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    private async Task<(JObject? rtx, JObject? normals, JObject? opus)?> FetchRemoteManifests()
-    {
-        try
-        {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app_updater/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)");
-
-            // Fetch each manifest independently, allowing some to fail
-            async Task<JObject?> TryFetchManifest(string url)
+            // Use cached versions
+            if (localSettings.Values[cacheKey] is string cachedJson)
             {
                 try
                 {
-                    var response = await client.GetStringAsync(url);
-                    return JObject.Parse(response);
+                    var cached = JObject.Parse(cachedJson);
+                    return (
+                        cached["rtx"]?.ToString(),
+                        cached["normals"]?.ToString(),
+                        cached["opus"]?.ToString(),
+                        true
+                    );
                 }
-                catch
-                {
-                    return null; // Pack doesn't exist remotely or network error
-                }
+                catch { /* Fall through to fetch fresh */ }
             }
+        }
 
-            var rtxTask = TryFetchManifest(VANILLA_RTX_MANIFEST_URL);
-            var normalsTask = TryFetchManifest(VANILLA_RTX_NORMALS_MANIFEST_URL);
-            var opusTask = TryFetchManifest(VANILLA_RTX_OPUS_MANIFEST_URL);
+        // Fetch fresh versions
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            return (null, null, null, false);
+        }
 
-            await Task.WhenAll(rtxTask, normalsTask, opusTask);
-
-            var rtx = await rtxTask;
-            var normals = await normalsTask;
-            var opus = await opusTask;
-
-            // Return null only if ALL manifests failed to fetch
-            if (rtx == null && normals == null && opus == null)
+        try
+        {
+            var remoteManifests = await FetchRemoteManifests();
+            if (remoteManifests == null)
             {
-                return null;
+                return (null, null, null, false);
             }
 
-            return (rtx, normals, opus);
+            var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
+
+            var rtxVersion = ExtractVersionFromManifest(rtxManifest);
+            var normalsVersion = ExtractVersionFromManifest(normalsManifest);
+            var opusVersion = ExtractVersionFromManifest(opusManifest);
+
+            // Cache the results
+            var cacheObj = new JObject
+            {
+                ["rtx"] = rtxVersion,
+                ["normals"] = normalsVersion,
+                ["opus"] = opusVersion
+            };
+            localSettings.Values[cacheKey] = cacheObj.ToString();
+            localSettings.Values[timeKey] = now.ToString("o");
+
+            return (rtxVersion, normalsVersion, opusVersion, false);
         }
         catch
         {
-            return null;
+            return (null, null, null, false);
         }
     }
 
-    private async Task<(bool Success, string? Path)> DownloadLatestPackage()
-    {
-        try
-        {
-            return await Helpers.Download(VANILLA_RTX_REPO_ZIPBALL_URL);
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"Download error: {ex.Message}");
-            return (false, null);
-        }
-    }
+    // ======================= Deploy Package (Now Supports Single Pack) =======================
 
-
-    // ---------- Deployment methods
-
-
-    private async Task<bool> DeployPackage(string packagePath)
+    private async Task<bool> DeployPackage(string packagePath, PackType? targetPack = null, bool enableEnhancements = true)
     {
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
@@ -363,7 +236,6 @@ public class PackUpdater
 
         try
         {
-            // Find the resource pack path, where we wanna deploy
             string basePath = TunerVariables.Persistent.IsTargetingPreview
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock Preview")
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock");
@@ -392,7 +264,7 @@ public class PackUpdater
             // Step 2: Find which packs exist in the zipball extraction
             var extractedManifests = Directory.GetFiles(tempExtractionDir, "manifest.json", SearchOption.AllDirectories);
 
-            var packsToProcess = new List<(string uuid, string moduleUuid, string sourcePath, string finalName, string displayName)>();
+            var packsToProcess = new List<(string uuid, string moduleUuid, string sourcePath, string finalName, string displayName, PackType packType)>();
 
             foreach (var manifestPath in extractedManifests)
             {
@@ -404,42 +276,56 @@ public class PackUpdater
 
                 if (headerUUID == VANILLA_RTX_HEADER_UUID && moduleUUID == VANILLA_RTX_MODULE_UUID)
                 {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtx", "Vanilla RTX"));
+                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtx", "Vanilla RTX", PackType.VanillaRTX));
                 }
                 else if (headerUUID == VANILLA_RTX_NORMALS_HEADER_UUID && moduleUUID == VANILLA_RTX_NORMALS_MODULE_UUID)
                 {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxn", "Vanilla RTX Normals"));
+                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxn", "Vanilla RTX Normals", PackType.VanillaRTXNormals));
                 }
                 else if (headerUUID == VANILLA_RTX_OPUS_HEADER_UUID && moduleUUID == VANILLA_RTX_OPUS_MODULE_UUID)
                 {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxo", "Vanilla RTX Opus"));
+                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxo", "Vanilla RTX Opus", PackType.VanillaRTXOpus));
                 }
+            }
+
+            // Filter by target pack if specified
+            if (targetPack.HasValue)
+            {
+                packsToProcess = packsToProcess.Where(p => p.packType == targetPack.Value).ToList();
             }
 
             if (packsToProcess.Count == 0)
             {
-                LogMessage("❌ No recognized Vanilla RTX packs found in the downloaded package.");
+                LogMessage(targetPack.HasValue
+                    ? $"❌ {GetPackDisplayName(targetPack.Value)} not found in the downloaded package."
+                    : "❌ No recognized Vanilla RTX packs found in the downloaded package.");
                 return false;
             }
 
-            LogMessage($"📦 Found {packsToProcess.Count} pack(s) in cache: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
+            LogMessage($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
 
-
-            // Step 4: Atomic deployment for each pack
+            // Step 3: Atomic deployment for each pack
             foreach (var pack in packsToProcess)
             {
                 try
                 {
                     LogMessage($"🔄 Processing {pack.displayName}...");
 
-                    // Atomic operation: Delete old, then immediately move new
-                    await DeleteExistingPackByUUID(resourcePackPath,
-                        pack.uuid, pack.moduleUuid, pack.displayName);
+                    await DeleteExistingPackByUUID(resourcePackPath, pack.uuid, pack.moduleUuid, pack.displayName);
 
                     var finalDestination = GetSafeDirectoryName(resourcePackPath, pack.finalName);
                     Directory.Move(pack.sourcePath, finalDestination);
 
-                    ProcessEnhancementFolders(finalDestination);
+                    // Process enhancements only if enabled
+                    if (enableEnhancements)
+                    {
+                        ProcessEnhancementFolders(finalDestination);
+                    }
+                    else
+                    {
+                        // Remove enhancements folder if present
+                        RemoveEnhancementsFolder(finalDestination);
+                    }
 
                     // Ensure empty contents.json and make TL.json
                     try
@@ -464,7 +350,6 @@ public class PackUpdater
                 catch (Exception ex)
                 {
                     LogMessage($"❌ Failed to deploy {pack.displayName}: {ex.Message}");
-                    // Continue with other packs - don't let one failure stop everything
                 }
             }
 
@@ -477,7 +362,7 @@ public class PackUpdater
         }
         finally
         {
-            // Step 5: Clean up temp extraction directory
+            // Clean up temp extraction directory
             if (tempExtractionDir != null && Directory.Exists(tempExtractionDir))
             {
                 try
@@ -492,12 +377,11 @@ public class PackUpdater
                 }
             }
 
-            // Step 6: Clean up orphaned temp directories (like from crashes)
+            // Clean up orphaned temp directories
             if (resourcePackPath != null)
             {
                 var pathsToCleanOrphans = new List<string> { resourcePackPath };
 
-                // Same logic as deployment-time existing pack clean up thingy
                 if (CleanUpTheOtherFolder)
                 {
                     var dirInfo = new DirectoryInfo(resourcePackPath);
@@ -515,7 +399,7 @@ public class PackUpdater
                     }
                 }
 
-                var cutoff = DateTime.UtcNow.AddMinutes(-1); // 1 minute grace period for temp folders
+                var cutoff = DateTime.UtcNow.AddMinutes(-1);
 
                 foreach (var pathToClean in pathsToCleanOrphans)
                 {
@@ -540,22 +424,364 @@ public class PackUpdater
             }
         }
     }
+
+    // ======================= Enhancement Folder Removal =======================
+
+    private void RemoveEnhancementsFolder(string rootDirectory)
+    {
+        if (string.IsNullOrEmpty(EnhancementFolderName)) return;
+
+        try
+        {
+            var enhancementFolders = Directory.GetDirectories(rootDirectory, EnhancementFolderName, SearchOption.AllDirectories);
+
+            foreach (var enhancementPath in enhancementFolders)
+            {
+                try
+                {
+                    ForceWritable(enhancementPath);
+                    Directory.Delete(enhancementPath, true);
+                    LogMessage("🗑️ Removed enhancements folder (toggle was OFF)");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to remove enhancement folder ({enhancementPath}): {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error during enhancement folder removal: {ex.Message}");
+        }
+    }
+
+    // ======================= Existing Methods (Kept for compatibility) =======================
+
+    private async Task<bool> CheckIfUpdateNeeded(string cachePath)
+    {
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            LogMessage("🛜 No network available – reusing cache.");
+            return false;
+        }
+
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var now = DateTimeOffset.UtcNow;
+        var cooldownKey = GetUpdateCheckKey();
+
+        if (localSettings.Values[cooldownKey] is string lastCheckStr &&
+            DateTimeOffset.TryParse(lastCheckStr, out var lastSuccessfulCheck))
+        {
+            if (now < lastSuccessfulCheck + UpdateCooldown)
+            {
+                var minutesLeft = (int)Math.Ceiling((lastSuccessfulCheck + UpdateCooldown - now).TotalMinutes);
+                LogMessage($"⏳ Update check on cooldown – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
+                return false;
+            }
+        }
+
+        (JObject? rtx, JObject? normals, JObject? opus)? remote = null;
+        bool fetchSuccess = false;
+
+        try
+        {
+            remote = await FetchRemoteManifests();
+            fetchSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"Failed to contact GitHub – forcing redownload ({ex.Message})");
+        }
+
+        if (fetchSuccess && remote.HasValue)
+        {
+            localSettings.Values[cooldownKey] = now.ToString("o");
+        }
+
+        if (remote == null)
+            return true;
+
+        return await DoesCacheNeedUpdate(cachePath, remote.Value);
+    }
+
+    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(cachedPath);
+
+            async Task<JObject?> TryReadManifest(string partialPath)
+            {
+                var entry = archive.Entries.FirstOrDefault(e =>
+                    e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
+                if (entry == null) return null;
+
+                using var stream = entry.Open();
+                using var reader = new StreamReader(stream);
+                var json = await reader.ReadToEndAsync();
+                return JObject.Parse(json);
+            }
+
+            var rtxManifest = await TryReadManifest("Vanilla-RTX/manifest.json");
+            var normalsManifest = await TryReadManifest("Vanilla-RTX-Normals/manifest.json");
+            var opusManifest = await TryReadManifest("Vanilla-RTX-Opus/manifest.json");
+
+            bool needsUpdate = false;
+
+            if (remoteManifests.rtx != null)
+            {
+                if (rtxManifest == null)
+                {
+                    LogMessage("📦 Vanilla RTX is available remotely but missing from cache");
+                    needsUpdate = true;
+                }
+                else if (IsRemoteVersionNewer(rtxManifest, remoteManifests.rtx))
+                {
+                    LogMessage("📦 Vanilla RTX has a newer version available!");
+                    needsUpdate = true;
+                }
+            }
+
+            if (remoteManifests.normals != null)
+            {
+                if (normalsManifest == null)
+                {
+                    LogMessage("📦 Vanilla RTX Normals is available remotely but missing from cache");
+                    needsUpdate = true;
+                }
+                else if (IsRemoteVersionNewer(normalsManifest, remoteManifests.normals))
+                {
+                    LogMessage("📦 Vanilla RTX Normals has a newer version available!");
+                    needsUpdate = true;
+                }
+            }
+
+            if (remoteManifests.opus != null)
+            {
+                if (opusManifest == null)
+                {
+                    LogMessage("📦 Vanilla RTX Opus is available remotely but missing from cache");
+                    needsUpdate = true;
+                }
+                else if (IsRemoteVersionNewer(opusManifest, remoteManifests.opus))
+                {
+                    LogMessage("📦 Vanilla RTX Opus has a newer version available!");
+                    needsUpdate = true;
+                }
+            }
+
+            return needsUpdate;
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"Error reading cached package: {ex.Message}");
+            return true;
+        }
+    }
+
+    private bool IsRemoteVersionNewer(JObject cachedManifest, JObject remoteManifest)
+    {
+        try
+        {
+            var cachedVersion = cachedManifest["header"]?["version"]?.ToObject<int[]>();
+            var remoteVersion = remoteManifest["header"]?["version"]?.ToObject<int[]>();
+
+            if (cachedVersion == null || remoteVersion == null) return true;
+
+            return CompareVersionArrays(remoteVersion, cachedVersion) > 0;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private async Task<(JObject? rtx, JObject? normals, JObject? opus)?> FetchRemoteManifests()
+    {
+        try
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app_updater/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)");
+
+            async Task<JObject?> TryFetchManifest(string url)
+            {
+                try
+                {
+                    var response = await client.GetStringAsync(url);
+                    return JObject.Parse(response);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            var rtxTask = TryFetchManifest(VANILLA_RTX_MANIFEST_URL);
+            var normalsTask = TryFetchManifest(VANILLA_RTX_NORMALS_MANIFEST_URL);
+            var opusTask = TryFetchManifest(VANILLA_RTX_OPUS_MANIFEST_URL);
+
+            await Task.WhenAll(rtxTask, normalsTask, opusTask);
+
+            var rtx = await rtxTask;
+            var normals = await normalsTask;
+            var opus = await opusTask;
+
+            if (rtx == null && normals == null && opus == null)
+            {
+                return null;
+            }
+
+            return (rtx, normals, opus);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<(bool Success, string? Path)> DownloadLatestPackage()
+    {
+        try
+        {
+            return await Helpers.Download(VANILLA_RTX_REPO_ZIPBALL_URL);
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"Download error: {ex.Message}");
+            return (false, null);
+        }
+    }
+
+    // ======================= Check if Pack Exists in Cached Zipball =======================
+
+    public async Task<bool> DoesPackExistInCache(PackType packType)
+    {
+        var cacheInfo = GetCacheInfo();
+        if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var archive = ZipFile.OpenRead(cacheInfo.path);
+
+            string manifestPath = packType switch
+            {
+                PackType.VanillaRTX => "Vanilla-RTX/manifest.json",
+                PackType.VanillaRTXNormals => "Vanilla-RTX-Normals/manifest.json",
+                PackType.VanillaRTXOpus => "Vanilla-RTX-Opus/manifest.json",
+                _ => null
+            };
+
+            if (manifestPath == null) return false;
+
+            var entry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.EndsWith(manifestPath, StringComparison.OrdinalIgnoreCase));
+
+            return entry != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ======================= Helper Methods =======================
+
+    private string GetPackDisplayName(PackType packType)
+    {
+        return packType switch
+        {
+            PackType.VanillaRTX => "Vanilla RTX",
+            PackType.VanillaRTXNormals => "Vanilla RTX Normals",
+            PackType.VanillaRTXOpus => "Vanilla RTX Opus",
+            _ => "Unknown Pack"
+        };
+    }
+
+    private string? ExtractVersionFromManifest(JObject? manifest)
+    {
+        try
+        {
+            if (manifest == null) return null;
+
+            var versionArray = manifest["header"]?["version"]?.ToObject<int[]>();
+            if (versionArray == null || versionArray.Length == 0) return null;
+
+            return $"{string.Join(".", versionArray)}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public bool IsRemoteVersionNewerThanInstalled(string? installedVersionString, string? remoteVersionString)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(installedVersionString) || string.IsNullOrEmpty(remoteVersionString))
+                return false;
+
+            var installedVersion = ParseVersionString(installedVersionString);
+            var remoteVersion = ParseVersionString(remoteVersionString);
+
+            if (installedVersion == null || remoteVersion == null)
+                return false;
+
+            return CompareVersionArrays(remoteVersion, installedVersion) > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private int[]? ParseVersionString(string versionString)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(versionString))
+                return null;
+
+            versionString = versionString.TrimStart('v', 'V');
+
+            var parts = versionString.Split('.');
+            return parts.Select(int.Parse).ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int CompareVersionArrays(int[] versionA, int[] versionB)
+    {
+        for (int i = 0; i < Math.Max(versionA.Length, versionB.Length); i++)
+        {
+            int a = i < versionA.Length ? versionA[i] : 0;
+            int b = i < versionB.Length ? versionB[i] : 0;
+
+            if (a > b) return 1;
+            if (a < b) return -1;
+        }
+        return 0;
+    }
+
     private string GetSafeDirectoryName(string parentPath, string desiredName)
     {
         var fullPath = Path.Combine(parentPath, desiredName);
 
-        // If directory doesn't exist, we can use it
         if (!Directory.Exists(fullPath))
             return fullPath;
 
-        // If directory exists but is empty, we can safely overwrite
         if (Directory.GetFileSystemEntries(fullPath).Length == 0)
         {
             Directory.Delete(fullPath);
             return fullPath;
         }
 
-        // Directory exists and has files, find a numbered suffix
         int suffix = 1;
         string safeName;
         do
@@ -564,16 +790,14 @@ public class PackUpdater
             suffix++;
         } while (Directory.Exists(safeName) && Directory.GetFileSystemEntries(safeName).Length > 0);
 
-        // If we found an existing empty directory with this numbered name, delete it
         if (Directory.Exists(safeName))
             Directory.Delete(safeName);
 
         return safeName;
     }
-    private async Task DeleteExistingPackByUUID(string resourcePackPath,
-        string targetHeaderUUID, string targetModuleUUID, string packName)
+
+    private async Task DeleteExistingPackByUUID(string resourcePackPath, string targetHeaderUUID, string targetModuleUUID, string packName)
     {
-        // Build list of paths to clean
         var pathsToClean = new List<string> { resourcePackPath };
 
         if (CleanUpTheOtherFolder)
@@ -594,7 +818,6 @@ public class PackUpdater
             }
         }
 
-        // Clean from all paths
         foreach (var pathToClean in pathsToClean)
         {
             var currentManifests = Directory.GetFiles(pathToClean, "manifest.json", SearchOption.AllDirectories)
@@ -616,17 +839,16 @@ public class PackUpdater
                         Directory.Delete(topLevelFolder, true);
                         LogMessage($"🗑️ Removed previous installation of: {packName}");
                     }
-                    // Don't early return anymore - we might find it in both folders
                 }
             }
         }
     }
+
     private void ForceWritable(string path)
     {
         var di = new DirectoryInfo(path);
         if (!di.Exists) return;
 
-        // Only modify if actually read-only
         if ((di.Attributes & System.IO.FileAttributes.ReadOnly) != 0)
             di.Attributes &= ~System.IO.FileAttributes.ReadOnly;
 
@@ -642,6 +864,7 @@ public class PackUpdater
                 dir.Attributes &= ~System.IO.FileAttributes.ReadOnly;
         }
     }
+
     private async Task<(string headerUUID, string moduleUUID)?> ReadManifestUUIDs(string manifestPath)
     {
         try
@@ -660,9 +883,6 @@ public class PackUpdater
         }
     }
 
-
-
-    // ---------- Enhanced option enabler
     private void ProcessEnhancementFolders(string rootDirectory)
     {
         if (string.IsNullOrEmpty(EnhancementFolderName)) return;
@@ -705,6 +925,7 @@ public class PackUpdater
             LogMessage(msg);
         }
     }
+
     private int MoveDirectoryContents(string sourceDir, string targetDir)
     {
         int deleteFailures = 0;
@@ -744,7 +965,6 @@ public class PackUpdater
         return deleteFailures;
     }
 
-    // ---------- Caching Helpers
     private (bool exists, string path) GetCacheInfo()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -778,206 +998,12 @@ public class PackUpdater
         return exists;
     }
 
-
-    // ---------- Concerning manual user-triggered update check
-    /// <summary>
-    /// Performs a detailed version check with detailed output all packs (installed or not).
-    /// Returns cooldown message if on cooldown, detailed status for all packs otherwise.
-    /// This is designed for manual invocation (e.g., Shift+button press).
-    /// </summary>
-    public async Task<string?> CheckForPackUpdates(
-        string vanillaRTXVersion,
-        string vanillaRTXNormalsVersion,
-        string vanillaRTXOpusVersion)
-    {
-        // FIRST: Check cooldown - no network activity if on cooldown
-        var localSettings = ApplicationData.Current.LocalSettings;
-        var now = DateTimeOffset.UtcNow;
-        var cooldownKey = GetNotificationCheckKey();
-
-        if (localSettings.Values[cooldownKey] is string lastCheckStr &&
-            DateTimeOffset.TryParse(lastCheckStr, out var lastCheck))
-        {
-            if (now < lastCheck + UpdateCheckNotificationCooldown)
-            {
-                var minutesLeft = (int)Math.Ceiling((lastCheck + UpdateCheckNotificationCooldown - now).TotalMinutes);
-                return $"⏳ You just performed an update check, wait {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} before trying again.";
-            }
-        }
-
-        // Check network availability
-        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
-        {
-            return "❌ Failed to check for pack updates: No network connection available.";
-        }
-
-        try
-        {
-            // Fetch remote manifests (always fetch all three)
-            var remoteManifests = await FetchRemoteManifests();
-            if (remoteManifests == null)
-            {
-                return "❌ Failed to check for pack updates: Unable to reach GitHub.";
-            }
-
-            var (rtxRemote, normalsRemote, opusRemote) = remoteManifests.Value;
-
-            // Build detailed status for each pack
-            var statusLines = new List<string>();
-
-            // Vanilla RTX
-            statusLines.Add(GeneratePackStatus("Vanilla RTX", vanillaRTXVersion, rtxRemote));
-
-            // Vanilla RTX Normals
-            statusLines.Add(GeneratePackStatus("Vanilla RTX Normals", vanillaRTXNormalsVersion, normalsRemote));
-
-            // Vanilla RTX Opus
-            statusLines.Add(GeneratePackStatus("Vanilla RTX Opus", vanillaRTXOpusVersion, opusRemote));
-
-            // Update cooldown timestamp only after successful check
-            localSettings.Values[cooldownKey] = now.ToString("o");
-
-            return string.Join(Environment.NewLine, statusLines);
-        }
-        catch (Exception ex)
-        {
-            return $"❌ Failed to check for pack updates: {ex.Message}";
-        }
-    }
-
-    /// <summary>
-    /// Generates the detailed status line for a single pack.
-    /// Covers all scenarios: installed/not installed × available/unavailable × up-to-date/update available
-    /// </summary>
-    private string GeneratePackStatus(string packName, string installedVersion, JObject? remoteManifest)
-    {
-        bool isInstalled = !string.IsNullOrEmpty(installedVersion);
-        string? remoteVersionStr = ExtractVersionFromManifest(remoteManifest);
-        bool remoteAvailable = !string.IsNullOrEmpty(remoteVersionStr);
-
-        if (!isInstalled)
-        {
-            // Pack is not installed
-            if (remoteAvailable)
-            {
-                return $"📦 {packName} - Not installed - Available: {remoteVersionStr}";
-            }
-            else
-            {
-                return $"❌ {packName} - Not installed - Unavailable";
-            }
-        }
-        else // Pack is installed
-        {
-            if (!remoteAvailable)
-            {
-                // Can't determine if update exists, just show installed version
-                return $"⚠️ {packName} - Installed: {installedVersion} - Unavailable";
-            }
-            else
-            {
-                // Compare versions
-                bool updateAvailable = IsRemoteVersionNewerThanInstalled(installedVersion, remoteManifest);
-
-                if (updateAvailable)
-                {
-                    return $"📦 {packName} - Installed: {installedVersion} - Available: {remoteVersionStr}";
-                }
-                else
-                {
-                    return $"✅ {packName} - Installed: {installedVersion} - Up-to-date";
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Extracts version string from a remote manifest JObject.
-    /// Returns formatted version string like "v1.2.3" or null if unavailable.
-    /// </summary>
-    private string? ExtractVersionFromManifest(JObject? manifest)
-    {
-        try
-        {
-            if (manifest == null) return null;
-
-            var versionArray = manifest["header"]?["version"]?.ToObject<int[]>();
-            if (versionArray == null || versionArray.Length == 0) return null;
-
-            return $"{string.Join(".", versionArray)}";
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private bool IsRemoteVersionNewerThanInstalled(string installedVersionString, JObject remoteManifest)
-    {
-        try
-        {
-            // Parse installed version string (format: "v1.2.3")
-            var installedVersion = ParseVersionString(installedVersionString);
-            if (installedVersion == null) return true; // Can't parse installed, assume update needed
-
-            // Parse remote version from manifest
-            var remoteVersion = remoteManifest["header"]?["version"]?.ToObject<int[]>();
-            if (remoteVersion == null) return false; // Can't get remote version, assume no update
-
-            return CompareVersionArrays(remoteVersion, installedVersion) > 0;
-        }
-        catch
-        {
-            return false; // If comparison fails, assume no update to avoid false positives
-        }
-    }
-
-    private int[]? ParseVersionString(string versionString)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(versionString))
-                return null;
-
-            // Remove 'v' prefix if present (handles "v1.1232.323" format from LocatePacks)
-            versionString = versionString.TrimStart('v', 'V');
-
-            var parts = versionString.Split('.');
-            return parts.Select(int.Parse).ToArray();
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-
-
-    // ---------- Other Helpers
-
-    /// <summary>
-    /// Unified version comparison logic. Returns: 1 if a > b, -1 if a < b, 0 if equal.
-    /// </summary>
-    private static int CompareVersionArrays(int[] versionA, int[] versionB)
-    {
-        for (int i = 0; i < Math.Max(versionA.Length, versionB.Length); i++)
-        {
-            int a = i < versionA.Length ? versionA[i] : 0;
-            int b = i < versionB.Length ? versionB[i] : 0;
-
-            if (a > b) return 1;
-            if (a < b) return -1;
-        }
-        return 0;
-    }
-
     private string GetTopLevelFolderForManifest(string manifestPath, string resourcePackPath)
     {
         var manifestDir = Path.GetDirectoryName(manifestPath);
         var resourcePackDir = new DirectoryInfo(resourcePackPath);
         var currentDir = new DirectoryInfo(manifestDir);
 
-        // Walk up the directory tree until we find the direct child of resourcePackPath
         while (currentDir != null && currentDir.Parent != null)
         {
             if (currentDir.Parent.FullName.Equals(resourcePackDir.FullName, StringComparison.OrdinalIgnoreCase))
