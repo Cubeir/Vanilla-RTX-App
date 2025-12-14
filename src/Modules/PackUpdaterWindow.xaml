@@ -89,14 +89,14 @@
                                                IsHitTestVisible="False"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Top"
-                                               MaxHeight="400"
+                                               MaxHeight="325"
                                                CacheMode="BitmapCache" />
                                     </Border>
 
                                     <!-- Overlay with title and description -->
-                                    <Border CornerRadius="8,8,0,0"
-                                            VerticalAlignment="Top"
-                                            Padding="16,16,16,16">
+                                    <Border CornerRadius="0,0,0,0"
+                                            VerticalAlignment="Bottom"
+                                            Padding="16,12,16,8">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="#FF000000"
                                                           TintOpacity="0.0"
@@ -227,14 +227,14 @@
                                                IsHitTestVisible="False"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Top"
-                                               MaxHeight="400"
+                                               MaxHeight="325"
                                                CacheMode="BitmapCache" />
                                     </Border>
 
                                     <!-- Overlay with title and description -->
-                                    <Border CornerRadius="8,8,0,0"
-                                            VerticalAlignment="Top"
-                                            Padding="16,16,16,16">
+                                    <Border CornerRadius="0,0,0,0"
+                                            VerticalAlignment="Bottom"
+                                            Padding="16,12,16,8">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="#FF000000"
                                                           TintOpacity="0.0"
@@ -365,14 +365,14 @@
                                                IsHitTestVisible="False"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Top"
-                                               MaxHeight="400"
+                                               MaxHeight="325"
                                                CacheMode="BitmapCache" />
                                     </Border>
 
                                     <!-- Overlay with title and description -->
-                                    <Border CornerRadius="8,8,0,0"
-                                            VerticalAlignment="Top"
-                                            Padding="16,16,16,16">
+                                    <Border CornerRadius="0,0,0,0"
+                                            VerticalAlignment="Bottom"
+                                            Padding="16,12,16,8">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="#FF000000"
                                                           TintOpacity="0.0"
@@ -481,7 +481,7 @@
                     </Grid>
 
                     <!-- Secondary Packs Section -->
-                    <Grid MaxHeight="600">
+                    <Grid MaxHeight="325">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
@@ -494,47 +494,51 @@
                         <Border Grid.Column="0"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                Translation="0,0,32"
-                                MaxHeight="600">
+                                Translation="0,0,32">
                             <Border.Shadow>
                                 <ThemeShadow />
                             </Border.Shadow>
 
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
+                                <Border CornerRadius="8">
+                                    <Image Source="ms-appx:///Assets/covers/addons.cover.png"
+                                           Stretch="UniformToFill"
+                                           IsHitTestVisible="False"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Top"
+                                           MaxHeight="325"
+                                           CacheMode="BitmapCache" />
+                                </Border>
 
-                                <!-- Image Section -->
-                                <Grid Grid.Row="0">
-                                    <Border CornerRadius="8,8,0,0">
-                                        <Image Source="ms-appx:///Assets/covers/addons.cover.png"
-                                               Stretch="UniformToFill"
-                                               IsHitTestVisible="False"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Top"
-                                               CacheMode="BitmapCache" />
-                                    </Border>
-                                </Grid>
+                                <!-- Overlay with title and description - CENTERED -->
+                                <Border CornerRadius="0"
+                                        VerticalAlignment="Center"
+                                        Padding="16,10,16,12">
+                                    <Border.Background>
+                                        <AcrylicBrush TintColor="#FF000000"
+                                                      TintOpacity="0.0"
+                                                      TintLuminosityOpacity="0.0"
+                                                      FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                    </Border.Background>
 
-                                <StackPanel Grid.Row="1"
-                                            Padding="16"
-                                            Spacing="8">
-                                    <HyperlinkButton Content="Vanilla RTX Add-Ons"
-                                                     FontSize="18"
-                                                     FontWeight="SemiBold"
-                                                     Padding="0"
-                                                     HorizontalAlignment="Left"
-                                                     NavigateUri="https://curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-add-ons"
-                                                     IsTextScaleFactorEnabled="False" />
+                                    <StackPanel Spacing="4">
+                                        <HyperlinkButton Content="Vanilla RTX Add-Ons"
+                                                         FontSize="18"
+                                                         Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                         FontWeight="SemiBold"
+                                                         Padding="0"
+                                                         HorizontalAlignment="Left"
+                                                         NavigateUri="https://curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-add-ons"
+                                                         IsTextScaleFactorEnabled="False" />
 
-                                    <TextBlock Text="A series of smaller packages that give certain blocks more interesting properties with ray tracing!"
-                                               FontSize="13"
-                                               Opacity="0.8"
-                                               TextWrapping="Wrap"
-                                               IsTextScaleFactorEnabled="False" />
-                                </StackPanel>
+                                        <TextBlock Text="A series of smaller packages that give certain blocks more interesting properties with ray tracing!"
+                                                   FontSize="13"
+                                                   Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                   Opacity="0.9"
+                                                   TextWrapping="Wrap"
+                                                   IsTextScaleFactorEnabled="False" />
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </Border>
 
@@ -542,47 +546,51 @@
                         <Border Grid.Column="2"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                Translation="0,0,32"
-                                MaxHeight="600">
+                                Translation="0,0,32">
                             <Border.Shadow>
                                 <ThemeShadow />
                             </Border.Shadow>
 
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
+                                <Border CornerRadius="8">
+                                    <Image Source="ms-appx:///Assets/covers/education.cover.png"
+                                           Stretch="UniformToFill"
+                                           IsHitTestVisible="False"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Top"
+                                           MaxHeight="325"
+                                           CacheMode="BitmapCache" />
+                                </Border>
 
-                                <!-- Image Section -->
-                                <Grid Grid.Row="0">
-                                    <Border CornerRadius="8,8,0,0">
-                                        <Image Source="ms-appx:///Assets/covers/education.cover.png"
-                                               Stretch="UniformToFill"
-                                               IsHitTestVisible="False"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Top"
-                                               CacheMode="BitmapCache" />
-                                    </Border>
-                                </Grid>
+                                <!-- Overlay with title and description - CENTERED -->
+                                <Border CornerRadius="0"
+                                        VerticalAlignment="Center"
+                                        Padding="16,10,16,12">
+                                    <Border.Background>
+                                        <AcrylicBrush TintColor="#FF000000"
+                                                      TintOpacity="0.0"
+                                                      TintLuminosityOpacity="0.0"
+                                                      FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                    </Border.Background>
 
-                                <StackPanel Grid.Row="1"
-                                            Padding="16"
-                                            Spacing="8">
-                                    <HyperlinkButton Content="Chemistry RTX"
-                                                     FontSize="18"
-                                                     FontWeight="SemiBold"
-                                                     Padding="0"
-                                                     HorizontalAlignment="Left"
-                                                     NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/chemistry-rtx"
-                                                     IsTextScaleFactorEnabled="False" />
+                                    <StackPanel Spacing="4">
+                                        <HyperlinkButton Content="Chemistry RTX"
+                                                         FontSize="18"
+                                                         Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                         FontWeight="SemiBold"
+                                                         Padding="0"
+                                                         HorizontalAlignment="Left"
+                                                         NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/chemistry-rtx"
+                                                         IsTextScaleFactorEnabled="False" />
 
-                                    <TextBlock Text="Optional Vanilla RTX extensions to extend ray tracing support to Education Edition content!"
-                                               FontSize="13"
-                                               Opacity="0.8"
-                                               TextWrapping="Wrap"
-                                               IsTextScaleFactorEnabled="False" />
-                                </StackPanel>
+                                        <TextBlock Text="Optional Vanilla RTX extensions to extend ray tracing support to Education Edition content!"
+                                                   FontSize="13"
+                                                   Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                   Opacity="0.9"
+                                                   TextWrapping="Wrap"
+                                                   IsTextScaleFactorEnabled="False" />
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </Border>
 
@@ -590,47 +598,51 @@
                         <Border Grid.Column="4"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                Translation="0,0,32"
-                                MaxHeight="600">
+                                Translation="0,0,32">
                             <Border.Shadow>
                                 <ThemeShadow />
                             </Border.Shadow>
 
                             <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
+                                <Border CornerRadius="8">
+                                    <Image Source="ms-appx:///Assets/covers/creative.cover.png"
+                                           Stretch="UniformToFill"
+                                           IsHitTestVisible="False"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Top"
+                                           MaxHeight="325"
+                                           CacheMode="BitmapCache" />
+                                </Border>
 
-                                <!-- Image Section -->
-                                <Grid Grid.Row="0">
-                                    <Border CornerRadius="8,8,0,0">
-                                        <Image Source="ms-appx:///Assets/covers/creative.cover.png"
-                                               Stretch="UniformToFill"
-                                               IsHitTestVisible="False"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Top"
-                                               CacheMode="BitmapCache" />
-                                    </Border>
-                                </Grid>
+                                <!-- Overlay with title and description - CENTERED -->
+                                <Border CornerRadius="0"
+                                        VerticalAlignment="Center"
+                                        Padding="16,10,16,12">
+                                    <Border.Background>
+                                        <AcrylicBrush TintColor="#FF000000"
+                                                      TintOpacity="0.0"
+                                                      TintLuminosityOpacity="0.0"
+                                                      FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                    </Border.Background>
 
-                                <StackPanel Grid.Row="1"
-                                            Padding="16"
-                                            Spacing="8">
-                                    <HyperlinkButton Content="Creative RTX"
-                                                     FontSize="18"
-                                                     FontWeight="SemiBold"
-                                                     Padding="0"
-                                                     HorizontalAlignment="Left"
-                                                     NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/creative-rtx"
-                                                     IsTextScaleFactorEnabled="False" />
+                                    <StackPanel Spacing="4">
+                                        <HyperlinkButton Content="Creative RTX"
+                                                         FontSize="18"
+                                                         Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                         FontWeight="SemiBold"
+                                                         Padding="0"
+                                                         HorizontalAlignment="Left"
+                                                         NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/creative-rtx"
+                                                         IsTextScaleFactorEnabled="False" />
 
-                                    <TextBlock Text="Replaces Element block textures with high definition, exotic materials for creative builds with RTX!"
-                                               FontSize="13"
-                                               Opacity="0.8"
-                                               TextWrapping="Wrap"
-                                               IsTextScaleFactorEnabled="False" />
-                                </StackPanel>
+                                        <TextBlock Text="Replaces Element block textures with high definition, exotic materials for creative builds with RTX!"
+                                                   FontSize="13"
+                                                   Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                   Opacity="0.9"
+                                                   TextWrapping="Wrap"
+                                                   IsTextScaleFactorEnabled="False" />
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>
