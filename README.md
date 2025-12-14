@@ -72,10 +72,12 @@ Allows you to import and manage a catalogue of DLSS dll files for easy version s
 > This feature is particularly essential to RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image as Minecraft's is heavily outdated. The app does not validate `.dll` files to belong to DLSS, it is your responsibility to provide valid DLSS files.
 
 - `BetterRTX manager`
-Installs and manages BetterRTX presets which you can download and import from BetterRTX's website. Supports `.rtpack` and `.zip` files which contain the `material.bin` files.  
-You can create your own catalogue of presets to switch between instantly. On first use, the app automatically creates a "Default RTX" preset by backing up the game's original files, this preset cannot be deleted as it is the only way to restore default RTX (aside from game updates/reinstalls), your currently-selected preset is highlighted.
+Displays an up-to-date list of all available BetterRTX presets, which you can click to download and then install. The list is long so downloaded presets are moved to the top for convenience.
+Upon installing your first ever preset, a Default RTX preset is created at the top allowing you to rollback/uninstall BetterRTX.
+> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential crashes, sometimes the bin files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never accidentally install outdated RTX files.
+You will have to redownload the presets as they may have likely been updated on the [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update.
 
-> Notes: The last 2 features only support Minecraft GDK (1.21.120 and higher), and given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. If the game is relocated, the cache is invalidated.
+> Note: The last 2 features only support Minecraft GDK (1.21.120 and higher), and given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. If the game is relocated, the cache is invalidated.
 
 - `Preview (Toggle)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
@@ -173,10 +175,6 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
 
-- Default RTX preset created by the app upon initially changing to a BetterRTX preset may not be forward compatible and could cause crashes if it is switched to after a Minecraft update.
-It is highly recommended that you hard-reset the app (shift + reset button) after Minecraft updates, so the default preset can be recreated which is normally not deletable through the app.
-This workaround is not ideal, this issue is quite difficult to tackle, stay patient until a real solution is implemented.  
-
 ### Need help?
 
 Ask your questions or post suggestions/issues to forum channel of [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud).
@@ -187,5 +185,4 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Critical issue: Default RTX preset created upon changing BetterRTX is not forward compatible, if you use the BetterRTX manager to switch between presets, avoid switching to default preset if Minecraft has updated.
-More info in the known issues list on github. Additionally, make sure you reimport/update your BetterRTX presets if Minecraft has updated.
+BetterRTX manager has been overhauled! You can now download and install presets directly from within the app, no more manual imports. Be sure to update!
