@@ -1321,7 +1321,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-
     private bool isVersionCheckRunning = false; private CancellationTokenSource _spinAnimationCts;
     private async void VersionCheckButton_Click(object sender, RoutedEventArgs e)
     {

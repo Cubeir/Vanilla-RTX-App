@@ -14,8 +14,6 @@ using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are 
 
 namespace Vanilla_RTX_App.Modules;
 
-// Updating logging of classes here to allow proper use of the actual Logging method with logLevels
-
 /// =====================================================================================================================
 /// Only deals with cache, we don't care if user has Vanilla RTX installed or not, we compare versions of cache to remote
 /// No cache? download latest, cache outdated? download latest, if there's a cache and the rest fails for whatever the reason, fallback to cache
