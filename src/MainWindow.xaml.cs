@@ -2060,64 +2060,85 @@ public sealed partial class MainWindow : Window
 
     private async void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+        // ----- LEGACY BEHAVIOR, CALLS THE OLD PACKUPDATER CLASS, WHICH WORKS FLAWESLLY, ATOMIC UPDATE FOR ALL 3 ENSURING YOU GET LATEST
+        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+        if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
         {
-            Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
-        }
-        try
-        {
-            ToggleControls(this, false);
-            _progressManager.ShowProgress();
-            _ = BlinkingLamp(true);
-
-            var updater = new PackUpdater();
-
-            updater.ProgressUpdate += (message) =>
+            if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
             {
-                DispatcherQueue.TryEnqueue(() =>
+                Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+            }
+            try
+            {
+                ToggleControls(this, false);
+                _progressManager.ShowProgress();
+                _ = BlinkingLamp(true);
+
+                var updater = new PackUpdater();
+
+                updater.ProgressUpdate += (message) =>
                 {
-                    Log($"{message}");
-                });
-            };
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        Log($"{message}");
+                    });
+                };
 
-            // Run the update operation
-            var (success, logs) = await Task.Run(() => updater.UpdatePacksAsync());
-            // foreach (var log in logs) Log(log);
+                // Run the update operation
+                var (success, logs) = await Task.Run(() => updater.UpdatePacksAsync());
+                // foreach (var log in logs) Log(log);
 
-            if (success)
-            {
-                Log($"{HaveDeployableCache} completed.", LogLevel.Success);
+                if (success)
+                {
+                    Log($"{HaveDeployableCache} completed.", LogLevel.Success);
+                }
+                else
+                {
+                    Log($"{HaveDeployableCache} failed.", LogLevel.Error);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Log($"{HaveDeployableCache} failed.", LogLevel.Error);
+                Log($"Unexpected error: {ex.Message}", LogLevel.Error);
+            }
+            finally
+            {
+                _ = BlinkingLamp(false);
+                ToggleControls(this, true);
+                _progressManager.HideProgress();
+
+                // Set reinstall latest packs button visuals based on cache status
+                if (_updater.HasDeployableCache())
+                {
+                    UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
+                    UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
+                }
+                else
+                {
+                    UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
+                    UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
+                }
+
+                // Trigger an automatic pack location check after update (fail or not)
+                _ = LocatePacksButton_Click();
             }
         }
-        catch (Exception ex)
-        {
-            Log($"Unexpected error: {ex.Message}", LogLevel.Error);
-        }
-        finally
-        {
-            _ = BlinkingLamp(false);
-            ToggleControls(this, true);
-            _progressManager.HideProgress();
+        // ----- LEGACY BEHAVIOR
 
-            // Set reinstall latest packs button visuals based on cache status
-            if (_updater.HasDeployableCache())
-            {
-                UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
-                UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
-            }
-            else
-            {
-                UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
-                UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
-            }
 
-            // Trigger an automatic pack location check after update (fail or not)
-            _ = LocatePacksButton_Click();
-        }
+        ToggleControls(this, false, true, []);
+
+        var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
+
+        packUpdaterWindow.Activate();
+
+        ToggleControls(this, true, true, []);
     }
 
 

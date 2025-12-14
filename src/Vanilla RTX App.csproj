@@ -73,6 +73,7 @@
   <ItemGroup>
     <None Remove="Modules\BetterRTXManagerWindow.xaml" />
     <None Remove="Modules\DLSSSwitcherWindow.xaml" />
+    <None Remove="Modules\PackUpdaterWindow.xaml" />
     <None Remove="Modules\ReviewPromptControl.xaml" />
   </ItemGroup>
 
@@ -101,6 +102,24 @@
     <PackageReference Include="System.Management.Automation" Version="7.5.4" />
   </ItemGroup>
   <ItemGroup>
+    <Content Update="Assets\covers\normals.blur.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\covers\normals.cover.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\covers\opus.blur.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\covers\opus.cover.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\covers\regular.blur.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\covers\regular.cover.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Update="Assets\discord-icon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -746,6 +765,9 @@
     <None Update="Assets\Wide310x150Logo.scale-400.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Page Update="Modules\PackUpdaterWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Update="Modules\ReviewPromptControl.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
