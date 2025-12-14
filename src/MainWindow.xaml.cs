@@ -1607,7 +1607,7 @@ public sealed partial class MainWindow : Window
 
     #region =============== SLIDER HANDLERS ===============
 
-    // Doubles
+
     private void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
     {
         double roundedValue = Math.Round(slider.Value, decimalPlaces);
@@ -1638,7 +1638,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // Ints
+
     private void HandleIntSliderValueChanged(Slider slider, TextBox textBox, ref int property)
     {
         property = (int)Math.Round(slider.Value);
@@ -1668,35 +1668,35 @@ public sealed partial class MainWindow : Window
     private void FogMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
         => HandleDoubleTextBoxLostFocus(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
 
-    // Emissivity Multiplier (double, 1 decimal)
+
     private void EmissivityMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         => HandleDoubleSliderValueChanged(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
 
     private void EmissivityMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
         => HandleDoubleTextBoxLostFocus(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
 
-    // Normal Intensity (int)
+
     private void NormalIntensity_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         => HandleIntSliderValueChanged(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
 
     private void NormalIntensity_LostFocus(object sender, RoutedEventArgs e)
         => HandleIntTextBoxLostFocus(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
 
-    // Material Noise (int)
+
     private void MaterialNoise_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         => HandleIntSliderValueChanged(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
 
     private void MaterialNoise_LostFocus(object sender, RoutedEventArgs e)
         => HandleIntTextBoxLostFocus(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
 
-    // Roughen Up (int)
+
     private void RoughenUp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         => HandleIntSliderValueChanged(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
 
     private void RoughenUp_LostFocus(object sender, RoutedEventArgs e)
         => HandleIntTextBoxLostFocus(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
 
-    // Lazify Normals (int)
+
     private void LazifyNormals_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
         => HandleIntSliderValueChanged(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
 
