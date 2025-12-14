@@ -163,18 +163,29 @@ public sealed partial class PackUpdateWindow : Window
             // Fetch failed, versions remain null
         }
 
-        // Always update UI with results (null becomes "Not available")
+        // Get installed versions for comparison
+        var vanillaRTXVersion = VanillaRTXVersion;
+        var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
+        var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
+
+        // Update UI with results (null OR empty becomes "Not available", matching versions show "Up-to-date")
         VanillaRTX_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTX_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTX_AvailableVersion.Text = rtx ?? "Not available";
+        VanillaRTX_AvailableVersion.Text = string.IsNullOrEmpty(rtx) ? "Not available"
+            : (!string.IsNullOrEmpty(vanillaRTXVersion) && rtx == vanillaRTXVersion) ? "Up-to-date"
+            : rtx;
 
         VanillaRTXNormals_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTXNormals_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTXNormals_AvailableVersion.Text = normals ?? "Not available";
+        VanillaRTXNormals_AvailableVersion.Text = string.IsNullOrEmpty(normals) ? "Not available"
+            : (!string.IsNullOrEmpty(vanillaRTXNormalsVersion) && normals == vanillaRTXNormalsVersion) ? "Up-to-date"
+            : normals;
 
         VanillaRTXOpus_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTXOpus_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTXOpus_AvailableVersion.Text = opus ?? "Not available";
+        VanillaRTXOpus_AvailableVersion.Text = string.IsNullOrEmpty(opus) ? "Not available"
+            : (!string.IsNullOrEmpty(vanillaRTXOpusVersion) && opus == vanillaRTXOpusVersion) ? "Up-to-date"
+            : opus;
 
         // Update button states
         await UpdateAllButtonStates(rtx, normals, opus);
@@ -238,11 +249,44 @@ public sealed partial class PackUpdateWindow : Window
 
     private async void QueueInstallation(PackType packType, bool enableEnhancements)
     {
+        // Set panel to queued state immediately
+        SetPanelQueuedState(packType, true);
+
         _installQueue.Enqueue((packType, enableEnhancements));
 
         if (!_isInstalling)
         {
             await ProcessInstallQueue();
+        }
+    }
+    private void SetPanelQueuedState(PackType packType, bool isQueued)
+    {
+        Button button;
+        ToggleSwitch toggle;
+
+        switch (packType)
+        {
+            case PackType.VanillaRTX:
+                button = VanillaRTX_InstallButton;
+                toggle = VanillaRTX_EnhancementsToggle;
+                break;
+            case PackType.VanillaRTXNormals:
+                button = VanillaRTXNormals_InstallButton;
+                toggle = VanillaRTXNormals_EnhancementsToggle;
+                break;
+            case PackType.VanillaRTXOpus:
+                button = VanillaRTXOpus_InstallButton;
+                toggle = VanillaRTXOpus_EnhancementsToggle;
+                break;
+            default:
+                return;
+        }
+
+        if (isQueued)
+        {
+            button.Content = "In queue";
+            button.IsEnabled = false;
+            toggle.IsEnabled = false;
         }
     }
 
@@ -266,7 +310,7 @@ public sealed partial class PackUpdateWindow : Window
 
         try
         {
-            // Install the pack
+            // Install the pack, Task.Run it to prevent UI freeze
             var (success, logs) = await Task.Run(() =>
                 _updater.UpdateSinglePackAsync(packType, enableEnhancements));
 
@@ -291,7 +335,7 @@ public sealed partial class PackUpdateWindow : Window
         }
         finally
         {
-            // Hide loading state
+            // Hide loading state and re-enable toggle
             SetPanelLoadingState(packType, false);
         }
     }
@@ -300,20 +344,24 @@ public sealed partial class PackUpdateWindow : Window
     {
         Button button;
         ProgressRing loadingRing;
+        ToggleSwitch toggle;
 
         switch (packType)
         {
             case PackType.VanillaRTX:
                 button = VanillaRTX_InstallButton;
                 loadingRing = VanillaRTX_LoadingRing;
+                toggle = VanillaRTX_EnhancementsToggle;
                 break;
             case PackType.VanillaRTXNormals:
                 button = VanillaRTXNormals_InstallButton;
                 loadingRing = VanillaRTXNormals_LoadingRing;
+                toggle = VanillaRTXNormals_EnhancementsToggle;
                 break;
             case PackType.VanillaRTXOpus:
                 button = VanillaRTXOpus_InstallButton;
                 loadingRing = VanillaRTXOpus_LoadingRing;
+                toggle = VanillaRTXOpus_EnhancementsToggle;
                 break;
             default:
                 return;
@@ -324,12 +372,14 @@ public sealed partial class PackUpdateWindow : Window
             button.Visibility = Visibility.Collapsed;
             loadingRing.Visibility = Visibility.Visible;
             loadingRing.IsActive = true;
+            toggle.IsEnabled = false;
         }
         else
         {
             loadingRing.IsActive = false;
             loadingRing.Visibility = Visibility.Collapsed;
             button.Visibility = Visibility.Visible;
+            toggle.IsEnabled = true;
         }
     }
 
