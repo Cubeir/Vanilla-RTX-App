@@ -1,12 +1,13 @@
 <Window x:Class="Vanilla_RTX_App.PackUpdate.PackUpdateWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Vanilla RTX Installer">
+        Title="Update Vanilla RTX">
 
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
+    
     <Grid>
         <!-- Light Theme Overlay -->
         <Border x:Name="LightThemeOverlay"
@@ -96,12 +97,12 @@
                                     <!-- Overlay with title and description -->
                                     <Border CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,12,16,8">
+                                            Padding="16,10,16,12">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="#FF000000"
                                                           TintOpacity="0.0"
                                                           TintLuminosityOpacity="0.0"
-                                                          FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                                          FallbackColor="#C8202020" />
                                         </Border.Background>
 
                                         <StackPanel Spacing="4">
@@ -234,12 +235,12 @@
                                     <!-- Overlay with title and description -->
                                     <Border CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,12,16,8">
+                                            Padding="16,10,16,12">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="#FF000000"
                                                           TintOpacity="0.0"
                                                           TintLuminosityOpacity="0.0"
-                                                          FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                                          FallbackColor="#C8202020" />
                                         </Border.Background>
 
                                         <StackPanel Spacing="4">
@@ -372,12 +373,12 @@
                                     <!-- Overlay with title and description -->
                                     <Border CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,12,16,8">
+                                            Padding="16,10,16,12">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="#FF000000"
                                                           TintOpacity="0.0"
                                                           TintLuminosityOpacity="0.0"
-                                                          FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                                          FallbackColor="#C8202020" />
                                         </Border.Background>
 
                                         <StackPanel Spacing="4">
@@ -510,7 +511,7 @@
                                            CacheMode="BitmapCache" />
                                 </Border>
 
-                                <!-- Overlay with title and description - CENTERED -->
+                                <!-- Overlay with title and description -->
                                 <Border CornerRadius="0"
                                         VerticalAlignment="Center"
                                         Padding="16,10,16,12">
@@ -518,7 +519,7 @@
                                         <AcrylicBrush TintColor="#FF000000"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.0"
-                                                      FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                                      FallbackColor="#C8202020" />
                                     </Border.Background>
 
                                     <StackPanel Spacing="4">
@@ -562,7 +563,7 @@
                                            CacheMode="BitmapCache" />
                                 </Border>
 
-                                <!-- Overlay with title and description - CENTERED -->
+                                <!-- Overlay with title and description -->
                                 <Border CornerRadius="0"
                                         VerticalAlignment="Center"
                                         Padding="16,10,16,12">
@@ -570,11 +571,11 @@
                                         <AcrylicBrush TintColor="#FF000000"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.0"
-                                                      FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                                      FallbackColor="#C8202020" />
                                     </Border.Background>
 
                                     <StackPanel Spacing="4">
-                                        <HyperlinkButton Content="Chemistry RTX"
+                                        <HyperlinkButton Content="Chemistry RTX Extensions"
                                                          FontSize="18"
                                                          Foreground="{ThemeResource TextOnAccentFillColorDefault}"
                                                          FontWeight="SemiBold"
@@ -614,7 +615,7 @@
                                            CacheMode="BitmapCache" />
                                 </Border>
 
-                                <!-- Overlay with title and description - CENTERED -->
+                                <!-- Overlay with title and description -->
                                 <Border CornerRadius="0"
                                         VerticalAlignment="Center"
                                         Padding="16,10,16,12">
@@ -622,11 +623,11 @@
                                         <AcrylicBrush TintColor="#FF000000"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.0"
-                                                      FallbackColor="{ThemeResource LayerFillColorDefault}" />
+                                                      FallbackColor="#C8202020" />
                                     </Border.Background>
 
                                     <StackPanel Spacing="4">
-                                        <HyperlinkButton Content="Creative RTX"
+                                        <HyperlinkButton Content="Creative RTX Extension"
                                                          FontSize="18"
                                                          Foreground="{ThemeResource TextOnAccentFillColorDefault}"
                                                          FontWeight="SemiBold"

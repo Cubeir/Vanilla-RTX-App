@@ -88,7 +88,7 @@ public sealed partial class PackUpdateWindow : Window
             });
 
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Update Vanilla RTX resource packs for {text}";
+            WindowTitle.Text = $"Setup Vanilla RTX resource packs for {text}";
 
             SetupShadows();
 
