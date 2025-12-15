@@ -9,7 +9,6 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
@@ -40,9 +39,10 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly Queue<DownloadQueueItem> _downloadQueue;
     private bool _isProcessingQueue;
     private readonly HttpClient _betterRtxHttpClient;
+    private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 3;
+    private const int REFRESH_COOLDOWN_SECONDS = 5;
     private DispatcherTimer _cooldownTimer;
 
     public bool OperationSuccessful { get; private set; } = false;
@@ -65,7 +65,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         _isProcessingQueue = false;
 
         // Create dedicated HttpClient for BetterRTX downloads
-        // This is configured ONCE and never modified
         _betterRtxHttpClient = new HttpClient
         {
             Timeout = TimeSpan.FromMinutes(3)
@@ -120,7 +119,10 @@ public sealed partial class BetterRTXManagerWindow : Window
         _scanCancellationTokenSource?.Dispose();
 
         _downloadQueue.Clear();
-        _downloadStatuses.Clear();
+        lock (_downloadStatusLock)
+        {
+            _downloadStatuses.Clear();
+        }
 
         _betterRtxHttpClient?.Dispose();
 
@@ -199,7 +201,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
-                    false, // Never preview
+                    false,
                     _scanCancellationTokenSource.Token
                 );
 
@@ -221,8 +223,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-
-    // Refresh button things
     private void InitializeRefreshButton()
     {
         UpdateRefreshButtonState();
@@ -244,18 +244,18 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 var lastClickTime = new DateTime(ticks, DateTimeKind.Utc);
                 var elapsed = DateTime.UtcNow - lastClickTime;
-                var remainingMinutes = REFRESH_COOLDOWN_SECONDS - (int)elapsed.TotalSeconds;
+                var remainingSeconds = REFRESH_COOLDOWN_SECONDS - (int)elapsed.TotalSeconds;
 
-                if (remainingMinutes > 0)
+                if (remainingSeconds > 0)
                 {
                     RefreshButton.IsEnabled = false;
-                    ToolTipService.SetToolTip(RefreshButton, $"On cooldown, check back in {remainingMinutes} minute{(remainingMinutes != 1 ? "s" : "")}");
+                    ToolTipService.SetToolTip(RefreshButton, $"On cooldown, check back in {remainingSeconds} second{(remainingSeconds != 1 ? "s" : "")}");
                     return;
                 }
             }
 
             RefreshButton.IsEnabled = true;
-            ToolTipService.SetToolTip(RefreshButton, "Refresh preset list");
+            ToolTipService.SetToolTip(RefreshButton, "Refreshes the list and removes all presets, so you can obtain the latest");
         }
         catch (Exception ex)
         {
@@ -267,7 +267,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            Debug.WriteLine("=== REFRESH BUTTON CLICKED ===");
+            Debug.WriteLine("=== RESET BUTTON CLICKED ===");
 
             // Set cooldown timestamp
             var settings = ApplicationData.Current.LocalSettings;
@@ -276,25 +276,124 @@ public sealed partial class BetterRTXManagerWindow : Window
             // Update button state immediately to show cooldown
             UpdateRefreshButtonState();
 
-            // Delete API cache to force re-fetch
-            if (File.Exists(_apiCachePath))
-            {
-                File.Delete(_apiCachePath);
-                Debug.WriteLine("✓ Deleted API cache - will fetch fresh data");
-            }
-            else
-            {
-                Debug.WriteLine("⚠ API cache didn't exist");
-            }
-
             // Show loading panel
             LoadingPanel.Visibility = Visibility.Visible;
             PresetSelectionPanel.Visibility = Visibility.Collapsed;
 
             await Task.Delay(100); // Brief delay for UI update
 
-            // Reload everything (this will fetch fresh API data since cache was deleted)
+            // STEP 1: Read API cache to get list of preset UUIDs to delete
+            List<string> uuidsToDelete = new List<string>();
+
+            if (File.Exists(_apiCachePath))
+            {
+                try
+                {
+                    Debug.WriteLine("📖 Reading API cache to identify presets to delete...");
+                    var jsonData = await File.ReadAllTextAsync(_apiCachePath);
+                    var apiPresets = ParseApiData(jsonData);
+
+                    if (apiPresets != null && apiPresets.Count > 0)
+                    {
+                        uuidsToDelete = apiPresets.Select(p => p.Uuid).ToList();
+                        Debug.WriteLine($"✓ Found {uuidsToDelete.Count} presets to delete from API cache");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("⚠ API cache was empty or invalid");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"⚠ Error reading API cache for deletion: {ex.Message}");
+                }
+            }
+            else
+            {
+                Debug.WriteLine("⚠ API cache didn't exist - no presets to delete");
+            }
+
+            // STEP 2: Delete preset folders (but NOT __DEFAULT)
+            if (uuidsToDelete.Count > 0)
+            {
+                Debug.WriteLine("🗑️ Deleting preset folders...");
+                int deletedCount = 0;
+
+                foreach (var uuid in uuidsToDelete)
+                {
+                    try
+                    {
+                        // Find folder matching this UUID
+                        // Presets are stored with sanitized names, so we need to check all folders
+                        var allFolders = Directory.GetDirectories(_cacheFolder)
+                            .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+
+                        foreach (var folder in allFolders)
+                        {
+                            // Check if this folder contains a manifest with matching UUID
+                            var manifestFiles = Directory.GetFiles(folder, "manifest.json", SearchOption.AllDirectories);
+
+                            if (manifestFiles.Length > 0)
+                            {
+                                try
+                                {
+                                    var manifestJson = await File.ReadAllTextAsync(manifestFiles[0]);
+                                    using var doc = JsonDocument.Parse(manifestJson, new JsonDocumentOptions
+                                    {
+                                        AllowTrailingCommas = true,
+                                        CommentHandling = JsonCommentHandling.Skip
+                                    });
+
+                                    if (doc.RootElement.TryGetProperty("header", out var header) &&
+                                        header.TryGetProperty("uuid", out var uuidElement))
+                                    {
+                                        var folderUuid = uuidElement.GetString();
+
+                                        if (string.Equals(folderUuid, uuid, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            // This is the folder we want to delete
+                                            Directory.Delete(folder, true);
+                                            deletedCount++;
+                                            Debug.WriteLine($"  ✓ Deleted: {Path.GetFileName(folder)}");
+                                            break; // Found and deleted, move to next UUID
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"  ⚠ Error checking folder {Path.GetFileName(folder)}: {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"  ✗ Error deleting preset {uuid}: {ex.Message}");
+                    }
+                }
+
+                Debug.WriteLine($"✓ Deleted {deletedCount}/{uuidsToDelete.Count} preset folders");
+            }
+
+            // STEP 3: Delete API cache
+            if (File.Exists(_apiCachePath))
+            {
+                File.Delete(_apiCachePath);
+                Debug.WriteLine("✓ Deleted API cache - will fetch fresh data");
+            }
+
+            // STEP 4: Clear download statuses and queue
+            lock (_downloadStatusLock)
+            {
+                _downloadStatuses.Clear();
+            }
+            _downloadQueue.Clear();
+
+            // STEP 5: Reload everything (this will fetch fresh API data since cache was deleted)
             _apiPresets = null;
+            _localPresets = null;
+
             await LoadApiDataAsync();
             await LoadLocalPresetsAsync();
             await DisplayPresetsAsync();
@@ -303,19 +402,18 @@ public sealed partial class BetterRTXManagerWindow : Window
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
 
-            Debug.WriteLine("✓ Preset list refreshed successfully");
+            Debug.WriteLine("✓ Reset completed successfully");
+            Debug.WriteLine("✓ __DEFAULT preset preserved (not deleted)");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"✗ Error refreshing preset list: {ex.Message}");
+            Debug.WriteLine($"✗ Error during reset: {ex.Message}");
 
             // Ensure UI is restored even on error
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
         }
     }
-
-
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
@@ -385,7 +483,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Load local presets
         await LoadLocalPresetsAsync();
 
-        // Display everything
+        // Display everything aftyer a bit of delay
+        await Task.Delay(50);
         await DisplayPresetsAsync();
 
         LoadingPanel.Visibility = Visibility.Collapsed;
@@ -434,46 +533,94 @@ public sealed partial class BetterRTXManagerWindow : Window
         try
         {
             string jsonData = null;
+            bool loadedFromCache = false;
 
             // Check if cache exists
             if (File.Exists(_apiCachePath))
             {
-                Debug.WriteLine("✓ Loading API data from cache (no fetch needed)");
-                jsonData = await File.ReadAllTextAsync(_apiCachePath);
+                Debug.WriteLine("✓ Loading API data from cache...");
+                try
+                {
+                    jsonData = await File.ReadAllTextAsync(_apiCachePath);
+
+                    // Validate that cache has actual content
+                    if (!string.IsNullOrWhiteSpace(jsonData))
+                    {
+                        var testParse = ParseApiData(jsonData);
+                        if (testParse != null && testParse.Count > 0)
+                        {
+                            loadedFromCache = true;
+                            Debug.WriteLine($"✓ Cache is valid with {testParse.Count} presets");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("⚠ Cache exists but is empty or invalid - will fetch fresh data");
+                            jsonData = null;
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine("⚠ Cache file is empty - will fetch fresh data");
+                        jsonData = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"⚠ Error reading cache: {ex.Message} - will fetch fresh data");
+                    jsonData = null;
+                }
             }
-            else
+
+            // If no valid cache, fetch from API
+            if (!loadedFromCache)
             {
-                // No cache - fetch from API
-                Debug.WriteLine("Fetching API data from server (no cache found)...");
+                Debug.WriteLine("Fetching API data from server...");
                 jsonData = await FetchApiDataAsync();
 
-                if (jsonData != null)
+                if (jsonData != null && !string.IsNullOrWhiteSpace(jsonData))
                 {
-                    // Save to cache
-                    await File.WriteAllTextAsync(_apiCachePath, jsonData);
-                    Debug.WriteLine("✓ API data cached");
+                    // Validate before saving
+                    var testParse = ParseApiData(jsonData);
+                    if (testParse != null && testParse.Count > 0)
+                    {
+                        // Save to cache
+                        try
+                        {
+                            await File.WriteAllTextAsync(_apiCachePath, jsonData);
+                            Debug.WriteLine("✓ API data cached successfully");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"⚠ Failed to save cache: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine("⚠ Fetched data is empty or invalid - not caching");
+                        jsonData = null;
+                    }
                 }
                 else
                 {
-                    Debug.WriteLine("⚠ Failed to fetch API data and no cache available");
-                    _apiPresets = new List<ApiPresetData>();
-                    return;
+                    Debug.WriteLine("⚠ Failed to fetch API data and no valid cache available");
                 }
             }
 
+            // Parse final data
             if (jsonData != null)
             {
                 _apiPresets = ParseApiData(jsonData);
-                Debug.WriteLine($"✓ Loaded {_apiPresets?.Count ?? 0} presets from API");
+                Debug.WriteLine($"✓ Loaded {_apiPresets?.Count ?? 0} presets total");
             }
             else
             {
                 _apiPresets = new List<ApiPresetData>();
+                Debug.WriteLine("⚠ No API data available - starting with empty list");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error loading API data: {ex.Message}");
+            Debug.WriteLine($"Error in LoadApiDataAsync: {ex.Message}");
             _apiPresets = new List<ApiPresetData>();
         }
     }
@@ -482,10 +629,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            // Use the shared client WITHOUT modifying it
-            // Assume it's already configured with timeout and user-agent
             var client = Helpers.SharedHttpClient;
-
             var response = await client.GetAsync("https://bedrock.graphics/api");
 
             if (!response.IsSuccessStatusCode)
@@ -495,6 +639,13 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
 
             var content = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                Debug.WriteLine("⚠ API returned empty response");
+                return null;
+            }
+
             return content;
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
@@ -513,6 +664,12 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(jsonData))
+            {
+                Debug.WriteLine("⚠ Cannot parse null or empty JSON data");
+                return new List<ApiPresetData>();
+            }
+
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -534,6 +691,12 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         try
         {
+            if (!Directory.Exists(_cacheFolder))
+            {
+                Debug.WriteLine("⚠ Cache folder doesn't exist - no local presets");
+                return;
+            }
+
             // Get all folders except __DEFAULT
             var presetFolders = Directory.GetDirectories(_cacheFolder)
                 .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
@@ -618,7 +781,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 PresetPath = presetFolder,
                 Icon = icon,
                 BinFiles = binFiles,
-                FileHashes = presetHashes // Changed from StubHash
+                FileHashes = presetHashes
             };
         }
         catch (Exception ex)
@@ -693,55 +856,61 @@ public sealed partial class BetterRTXManagerWindow : Window
             var seenUuids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // First, process API presets
-            foreach (var apiPreset in _apiPresets)
+            if (_apiPresets != null)
             {
-                seenUuids.Add(apiPreset.Uuid);
+                foreach (var apiPreset in _apiPresets)
+                {
+                    seenUuids.Add(apiPreset.Uuid);
 
-                if (_localPresets.TryGetValue(apiPreset.Uuid, out var localPreset))
-                {
-                    // Downloaded - add to downloaded list
-                    downloadedPresets.Add(new DisplayPresetData
+                    if (_localPresets != null && _localPresets.TryGetValue(apiPreset.Uuid, out var localPreset))
                     {
-                        Uuid = apiPreset.Uuid,
-                        Name = localPreset.Name,
-                        IsDownloaded = true,
-                        Icon = localPreset.Icon,
-                        PresetPath = localPreset.PresetPath,
-                        BinFiles = localPreset.BinFiles,
-                        FileHashes = localPreset.FileHashes // Changed from StubHash
-                    });
-                }
-                else
-                {
-                    // Not downloaded - add to not downloaded list
-                    notDownloadedPresets.Add(new DisplayPresetData
+                        // Downloaded - add to downloaded list
+                        downloadedPresets.Add(new DisplayPresetData
+                        {
+                            Uuid = apiPreset.Uuid,
+                            Name = localPreset.Name,
+                            IsDownloaded = true,
+                            Icon = localPreset.Icon,
+                            PresetPath = localPreset.PresetPath,
+                            BinFiles = localPreset.BinFiles,
+                            FileHashes = localPreset.FileHashes
+                        });
+                    }
+                    else
                     {
-                        Uuid = apiPreset.Uuid,
-                        Name = apiPreset.Name,
-                        IsDownloaded = false,
-                        Icon = null,
-                        PresetPath = null,
-                        BinFiles = null,
-                        FileHashes = null // Changed from StubHash
-                    });
+                        // Not downloaded - add to not downloaded list
+                        notDownloadedPresets.Add(new DisplayPresetData
+                        {
+                            Uuid = apiPreset.Uuid,
+                            Name = apiPreset.Name,
+                            IsDownloaded = false,
+                            Icon = null,
+                            PresetPath = null,
+                            BinFiles = null,
+                            FileHashes = null
+                        });
+                    }
                 }
             }
 
             // Second, add any local presets that weren't in the API list
-            foreach (var localPreset in _localPresets.Values)
+            if (_localPresets != null)
             {
-                if (!seenUuids.Contains(localPreset.Uuid))
+                foreach (var localPreset in _localPresets.Values)
                 {
-                    downloadedPresets.Add(new DisplayPresetData
+                    if (!seenUuids.Contains(localPreset.Uuid))
                     {
-                        Uuid = localPreset.Uuid,
-                        Name = localPreset.Name,
-                        IsDownloaded = true,
-                        Icon = localPreset.Icon,
-                        PresetPath = localPreset.PresetPath,
-                        BinFiles = localPreset.BinFiles,
-                        FileHashes = localPreset.FileHashes // Changed from StubHash
-                    });
+                        downloadedPresets.Add(new DisplayPresetData
+                        {
+                            Uuid = localPreset.Uuid,
+                            Name = localPreset.Name,
+                            IsDownloaded = true,
+                            Icon = localPreset.Icon,
+                            PresetPath = localPreset.PresetPath,
+                            BinFiles = localPreset.BinFiles,
+                            FileHashes = localPreset.FileHashes
+                        });
+                    }
                 }
             }
 
@@ -762,18 +931,26 @@ public sealed partial class BetterRTXManagerWindow : Window
                 PresetListContainer.Children.Add(button);
             }
 
-            // Handle empty state
+            // Handle empty state - always show refresh button
             if (downloadedPresets.Count == 0 && notDownloadedPresets.Count == 0 && defaultPreset == null)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
-                if (_apiPresets.Count == 0 && _localPresets.Count == 0)
+
+                int apiCount = _apiPresets?.Count ?? 0;
+                int localCount = _localPresets?.Count ?? 0;
+
+                if (apiCount == 0 && localCount == 0)
                 {
                     EmptyStateText.Text = "No presets available. An internet connection is required to load BetterRTX presets.";
+                    Debug.WriteLine("⚠ Empty state: No API data and no local presets");
                 }
                 else
                 {
                     EmptyStateText.Text = "No BetterRTX presets available.";
+                    Debug.WriteLine($"⚠ Empty state: API={apiCount}, Local={localCount} but no displayable presets");
                 }
+
+                // Refresh button is always visible (it's in the root Grid, not in panels)
             }
             else
             {
@@ -806,7 +983,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             PresetPath = _defaultFolder,
             Icon = null,
             BinFiles = binFiles,
-            FileHashes = presetHashes // Changed from StubHash
+            FileHashes = presetHashes
         };
     }
 
@@ -847,20 +1024,19 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
             else
             {
-                // Check download status
-                if (_downloadStatuses.TryGetValue(uuid, out var status))
+                // Check download status with lock
+                DownloadStatus status;
+                lock (_downloadStatusLock)
                 {
-                    description = status switch
-                    {
-                        DownloadStatus.Queued => "In queue",
-                        DownloadStatus.Downloading => "Download in progress...",
-                        _ => "Click to download"
-                    };
+                    _downloadStatuses.TryGetValue(uuid, out status);
                 }
-                else
+
+                description = status switch
                 {
-                    description = "Click to download";
-                }
+                    DownloadStatus.Queued => "In queue",
+                    DownloadStatus.Downloading => "Download in progress...",
+                    _ => "Click to download"
+                };
             }
 
             // Compare ALL hashes
@@ -982,8 +1158,12 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Download button or progress indicator
         if (!isDefault && !isDownloaded)
         {
-            // Check download status
-            var status = _downloadStatuses.TryGetValue(uuid, out var s) ? s : DownloadStatus.NotDownloaded;
+            // Check download status with lock
+            DownloadStatus status;
+            lock (_downloadStatusLock)
+            {
+                status = _downloadStatuses.TryGetValue(uuid, out var s) ? s : DownloadStatus.NotDownloaded;
+            }
 
             if (status == DownloadStatus.Downloading || status == DownloadStatus.Queued)
             {
@@ -1047,16 +1227,19 @@ public sealed partial class BetterRTXManagerWindow : Window
     private void EnqueueDownload(string uuid, string name)
     {
         // Check if already in queue or downloading
-        if (_downloadStatuses.ContainsKey(uuid))
+        lock (_downloadStatusLock)
         {
-            Debug.WriteLine($"⚠ Already queued or downloading: {name}");
-            return;
+            if (_downloadStatuses.ContainsKey(uuid))
+            {
+                Debug.WriteLine($"⚠ Already queued or downloading: {name}");
+                return;
+            }
+
+            Debug.WriteLine($"➕ Queued download: {name}");
+
+            // Mark as queued
+            _downloadStatuses[uuid] = DownloadStatus.Queued;
         }
-
-        Debug.WriteLine($"➕ Queued download: {name}");
-
-        // Mark as queued
-        _downloadStatuses[uuid] = DownloadStatus.Queued;
 
         // Add to queue
         _downloadQueue.Enqueue(new DownloadQueueItem { Uuid = uuid, Name = name });
@@ -1087,7 +1270,10 @@ public sealed partial class BetterRTXManagerWindow : Window
                 Debug.WriteLine($"🔽 Processing download: {item.Name} (Queue: {_downloadQueue.Count} remaining)");
 
                 // Update status to downloading
-                _downloadStatuses[item.Uuid] = DownloadStatus.Downloading;
+                lock (_downloadStatusLock)
+                {
+                    _downloadStatuses[item.Uuid] = DownloadStatus.Downloading;
+                }
                 await this.DispatcherQueue.EnqueueAsync(async () => await DisplayPresetsAsync());
 
                 // Wait a moment before starting (helps with slow API)
@@ -1101,7 +1287,10 @@ public sealed partial class BetterRTXManagerWindow : Window
                     Debug.WriteLine($"✓ Download complete: {item.Name}");
 
                     // Mark as downloaded and remove from status tracking
-                    _downloadStatuses.Remove(item.Uuid);
+                    lock (_downloadStatusLock)
+                    {
+                        _downloadStatuses.Remove(item.Uuid);
+                    }
 
                     // Reload local presets and refresh UI
                     await LoadLocalPresetsAsync();
@@ -1112,7 +1301,10 @@ public sealed partial class BetterRTXManagerWindow : Window
                     Debug.WriteLine($"✗ Download failed: {item.Name}");
 
                     // Remove from status (will show download button again)
-                    _downloadStatuses.Remove(item.Uuid);
+                    lock (_downloadStatusLock)
+                    {
+                        _downloadStatuses.Remove(item.Uuid);
+                    }
                     await this.DispatcherQueue.EnqueueAsync(async () => await DisplayPresetsAsync());
                 }
 
@@ -1243,7 +1435,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                             PresetPath = displayPreset.PresetPath,
                             Icon = displayPreset.Icon,
                             BinFiles = displayPreset.BinFiles,
-                            FileHashes = displayPreset.FileHashes // Changed from StubHash
+                            FileHashes = displayPreset.FileHashes
                         };
                     }
                 }
@@ -1395,10 +1587,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    /// <summary>
-    /// Computes hashes for all Core RTX files present in the game's materials folder.
-    /// Returns a dictionary of filename -> hash.
-    /// </summary>
     private Dictionary<string, string> GetCurrentlyInstalledHashes()
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -1421,10 +1609,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         return hashes;
     }
 
-    /// <summary>
-    /// Computes hashes for all Core RTX files in a preset's bin files.
-    /// Returns a dictionary of filename -> hash.
-    /// </summary>
     private Dictionary<string, string> GetPresetHashes(List<string> binFiles)
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -1447,11 +1631,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         return hashes;
     }
 
-    /// <summary>
-    /// Compares two hash dictionaries.
-    /// Returns true if ALL files present in BOTH dictionaries have matching hashes.
-    /// Ignores files that are missing from either dictionary.
-    /// </summary>
     private bool AreHashesMatching(Dictionary<string, string> currentHashes, Dictionary<string, string> presetHashes)
     {
         if (currentHashes == null || presetHashes == null)
@@ -1547,7 +1726,6 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         return sanitized;
     }
-
 
     // Data classes
     private enum DownloadStatus
