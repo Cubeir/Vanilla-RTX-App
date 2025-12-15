@@ -41,6 +41,10 @@
                     <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
                                      Color="#20000000" />
 
+                    <Color x:Key="OverlayBackgroundColor">#C0202020</Color>
+                    <SolidColorBrush x:Key="OverlayTextBrush"
+                                     Color="#FFFFFFFF" />
+
                 </ResourceDictionary>
 
                 <!-- Light theme -->
@@ -50,6 +54,12 @@
                     <Visibility x:Key="LightThemeBackgroundVisibility">Visible</Visibility>
                     <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
                                      Color="#37FFFFFF" />
+
+                    <Color x:Key="OverlayBackgroundColor">#C0F0F0F0</Color>
+                    <SolidColorBrush x:Key="OverlayTextBrush"
+                                     Color="#FF000000" />
+                    <x:Double x:Key="TintLuminosityOpacity">0.5</x:Double>
+
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>

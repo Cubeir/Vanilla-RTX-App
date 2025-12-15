@@ -99,17 +99,17 @@
                                             VerticalAlignment="Bottom"
                                             Padding="16,10,16,12">
                                         <Border.Background>
-                                            <AcrylicBrush TintColor="#FF000000"
+                                            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.0"
-                                                          FallbackColor="#C8202020" />
+                                                          TintLuminosityOpacity="0.5"
+                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
                                         <StackPanel Spacing="4">
                                             <!-- Pack Name -->
                                             <HyperlinkButton Content="Vanilla RTX"
                                                              FontSize="18"
-                                                             Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                             Foreground="{ThemeResource OverlayTextBrush}"
                                                              FontWeight="SemiBold"
                                                              Padding="0"
                                                              HorizontalAlignment="Left"
@@ -119,7 +119,7 @@
                                             <!-- Description -->
                                             <TextBlock Text="The default ray-traced Minecraft graphics, everything is covered!"
                                                        FontSize="13"
-                                                       Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
                                                        Opacity="0.9"
                                                        TextWrapping="Wrap"
                                                        IsTextScaleFactorEnabled="False" />
@@ -237,17 +237,17 @@
                                             VerticalAlignment="Bottom"
                                             Padding="16,10,16,12">
                                         <Border.Background>
-                                            <AcrylicBrush TintColor="#FF000000"
+                                            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.0"
-                                                          FallbackColor="#C8202020" />
+                                                          TintLuminosityOpacity="0.5"
+                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
                                         <StackPanel Spacing="4">
                                             <!-- Pack Name -->
                                             <HyperlinkButton Content="Vanilla RTX Normals"
                                                              FontSize="18"
-                                                             Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                             Foreground="{ThemeResource OverlayTextBrush}"
                                                              FontWeight="SemiBold"
                                                              Padding="0"
                                                              HorizontalAlignment="Left"
@@ -256,7 +256,7 @@
 
                                             <!-- Description -->
                                             <TextBlock Text="Vanilla RTX with handcrafted 16x normal maps for all blocks!"
-                                                       Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
                                                        FontSize="13"
                                                        Opacity="0.9"
                                                        TextWrapping="Wrap"
@@ -375,17 +375,17 @@
                                             VerticalAlignment="Bottom"
                                             Padding="16,10,16,12">
                                         <Border.Background>
-                                            <AcrylicBrush TintColor="#FF000000"
+                                            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.0"
-                                                          FallbackColor="#C8202020" />
+                                                          TintLuminosityOpacity="0.5"
+                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
                                         <StackPanel Spacing="4">
                                             <!-- Pack Name -->
                                             <HyperlinkButton Content="Vanilla RTX Opus"
                                                              FontSize="18"
-                                                             Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                             Foreground="{ThemeResource OverlayTextBrush}"
                                                              FontWeight="SemiBold"
                                                              Padding="0"
                                                              HorizontalAlignment="Left"
@@ -395,7 +395,7 @@
                                             <!-- Description -->
                                             <TextBlock Text="Composition of both Vanilla RTX and Vanilla RTX Normals."
                                                        FontSize="13"
-                                                       Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
                                                        Opacity="0.9"
                                                        TextWrapping="Wrap"
                                                        IsTextScaleFactorEnabled="False" />
@@ -516,16 +516,16 @@
                                         VerticalAlignment="Center"
                                         Padding="16,10,16,12">
                                     <Border.Background>
-                                        <AcrylicBrush TintColor="#FF000000"
+                                        <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
-                                                      TintLuminosityOpacity="0.0"
-                                                      FallbackColor="#C8202020" />
+                                                      TintLuminosityOpacity="0.5"
+                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
                                     <StackPanel Spacing="4">
                                         <HyperlinkButton Content="Vanilla RTX Add-Ons"
                                                          FontSize="18"
-                                                         Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                         Foreground="{ThemeResource OverlayTextBrush}"
                                                          FontWeight="SemiBold"
                                                          Padding="0"
                                                          HorizontalAlignment="Left"
@@ -534,7 +534,7 @@
 
                                         <TextBlock Text="A series of smaller packages that give certain blocks more interesting properties with ray tracing!"
                                                    FontSize="13"
-                                                   Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                   Foreground="{ThemeResource OverlayTextBrush}"
                                                    Opacity="0.9"
                                                    TextWrapping="Wrap"
                                                    IsTextScaleFactorEnabled="False" />
@@ -568,16 +568,16 @@
                                         VerticalAlignment="Center"
                                         Padding="16,10,16,12">
                                     <Border.Background>
-                                        <AcrylicBrush TintColor="#FF000000"
+                                        <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
-                                                      TintLuminosityOpacity="0.0"
-                                                      FallbackColor="#C8202020" />
+                                                      TintLuminosityOpacity="0.5"
+                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
                                     <StackPanel Spacing="4">
                                         <HyperlinkButton Content="Chemistry RTX Extensions"
                                                          FontSize="18"
-                                                         Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                         Foreground="{ThemeResource OverlayTextBrush}"
                                                          FontWeight="SemiBold"
                                                          Padding="0"
                                                          HorizontalAlignment="Left"
@@ -586,7 +586,7 @@
 
                                         <TextBlock Text="Optional Vanilla RTX extensions to extend ray tracing support to Education Edition content!"
                                                    FontSize="13"
-                                                   Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                   Foreground="{ThemeResource OverlayTextBrush}"
                                                    Opacity="0.9"
                                                    TextWrapping="Wrap"
                                                    IsTextScaleFactorEnabled="False" />
@@ -620,16 +620,16 @@
                                         VerticalAlignment="Center"
                                         Padding="16,10,16,12">
                                     <Border.Background>
-                                        <AcrylicBrush TintColor="#FF000000"
+                                        <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
-                                                      TintLuminosityOpacity="0.0"
-                                                      FallbackColor="#C8202020" />
+                                                      TintLuminosityOpacity="0.5"
+                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
                                     <StackPanel Spacing="4">
                                         <HyperlinkButton Content="Creative RTX Extension"
                                                          FontSize="18"
-                                                         Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                         Foreground="{ThemeResource OverlayTextBrush}"
                                                          FontWeight="SemiBold"
                                                          Padding="0"
                                                          HorizontalAlignment="Left"
@@ -638,7 +638,7 @@
 
                                         <TextBlock Text="Replaces Element block textures with high definition, exotic materials for creative builds with RTX!"
                                                    FontSize="13"
-                                                   Foreground="{ThemeResource TextOnAccentFillColorDefault}"
+                                                   Foreground="{ThemeResource OverlayTextBrush}"
                                                    Opacity="0.9"
                                                    TextWrapping="Wrap"
                                                    IsTextScaleFactorEnabled="False" />
