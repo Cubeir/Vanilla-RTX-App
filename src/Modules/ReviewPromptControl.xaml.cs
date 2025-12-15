@@ -77,14 +77,14 @@ public sealed partial class ReviewPromptControl : UserControl
 
 public static class ReviewPromptManager
 {
-    private const string FIRST_LAUNCH_KEY = "FirstLaunchTime";
-    private const string DONT_SHOW_KEY = "DontShowReviewPrompt";
-    private const string LAST_PROMPT_KEY = "LastPromptTime";
-    private const double MINUTES_BEFORE_PROMPT = 3000; // how many hours to wait before showing for the first time, or showing again
+    private const string FIRST_LAUNCH_KEY = "ReviewPromptFirstLaunchTime";
+    private const string DONT_SHOW_KEY = "ReviewPromptDontShowReviewPrompt";
+    private const string LAST_PROMPT_KEY = "ReviewPromptLastPromptTime";
+    private const double MINUTES_BEFORE_PROMPT = 3600; // how many hours to wait before showing for the first time, or showing again
     private const int SHOW_DELAY_SECONDS = 1; // delay to show it after being called
 
-    private static ReviewPromptControl _currentPrompt;
-    private static Panel _rootPanel;
+    private static ReviewPromptControl? _currentPrompt;
+    private static Panel? _rootPanel;
 
     /// <summary>
     /// Initialize and show the review prompt if conditions are met.
