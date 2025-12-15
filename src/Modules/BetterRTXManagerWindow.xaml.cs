@@ -41,7 +41,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     private bool _isProcessingQueue;
     private readonly HttpClient _betterRtxHttpClient;
 
-    private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp_v1";
+    private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
     private const int REFRESH_COOLDOWN_SECONDS = 3;
     private DispatcherTimer _cooldownTimer;
 
