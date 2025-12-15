@@ -22,7 +22,7 @@
                 Padding="24"
                 Margin="24"
                 CornerRadius="8"
-                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                Background="{ThemeResource SolidBackgroundFillColorSecondary}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 HorizontalAlignment="Center"
@@ -35,7 +35,7 @@
             </Border.Shadow>
 
             <!-- Elevation for shadow to work -->
-            <Border.Translation>0,0,32</Border.Translation>
+            <Border.Translation>0,0,64</Border.Translation>
 
             <StackPanel Spacing="16">
                 <!-- Header Text -->
