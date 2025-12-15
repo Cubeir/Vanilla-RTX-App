@@ -101,7 +101,7 @@
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.5"
+                                                          TintLuminosityOpacity="0.64"
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
@@ -186,6 +186,7 @@
                                               MinHeight="50">
                                             <Button x:Name="VanillaRTX_InstallButton"
                                                     Content="Install"
+                                                    FontWeight="SemiBold"
                                                     Style="{StaticResource AccentButtonStyle}"
                                                     HorizontalAlignment="Stretch"
                                                     VerticalAlignment="Stretch"
@@ -239,7 +240,7 @@
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.5"
+                                                          TintLuminosityOpacity="0.64"
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
@@ -324,6 +325,7 @@
                                               MinHeight="50">
                                             <Button x:Name="VanillaRTXNormals_InstallButton"
                                                     Content="Install"
+                                                    FontWeight="SemiBold"
                                                     Style="{StaticResource AccentButtonStyle}"
                                                     HorizontalAlignment="Stretch"
                                                     VerticalAlignment="Stretch"
@@ -377,7 +379,7 @@
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.5"
+                                                          TintLuminosityOpacity="0.64"
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
@@ -393,7 +395,7 @@
                                                              IsTextScaleFactorEnabled="False" />
 
                                             <!-- Description -->
-                                            <TextBlock Text="Composition of both Vanilla RTX and Vanilla RTX Normals."
+                                            <TextBlock Text="The composition of both Vanilla RTX and Vanilla RTX Normals!"
                                                        FontSize="13"
                                                        Foreground="{ThemeResource OverlayTextBrush}"
                                                        Opacity="0.9"
@@ -462,6 +464,7 @@
                                               MinHeight="50">
                                             <Button x:Name="VanillaRTXOpus_InstallButton"
                                                     Content="Install"
+                                                    FontWeight="SemiBold"
                                                     Style="{StaticResource AccentButtonStyle}"
                                                     HorizontalAlignment="Stretch"
                                                     VerticalAlignment="Stretch"
@@ -518,7 +521,7 @@
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
-                                                      TintLuminosityOpacity="0.5"
+                                                      TintLuminosityOpacity="0.64"
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
@@ -570,7 +573,7 @@
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
-                                                      TintLuminosityOpacity="0.5"
+                                                      TintLuminosityOpacity="0.64"
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
@@ -622,7 +625,7 @@
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
-                                                      TintLuminosityOpacity="0.5"
+                                                      TintLuminosityOpacity="0.64"
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
@@ -647,6 +650,42 @@
                             </Grid>
                         </Border>
                     </Grid>
+
+                    <!-- Info Panel -->
+                    <Border CornerRadius="8"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Padding="16"
+                            Translation="0,0,32">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Info Icon -->
+                            <FontIcon Grid.Column="0"
+                                      Glyph="&#xE946;"
+                                      FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                      FontSize="20"
+                                      VerticalAlignment="Center"
+                                      Margin="0,2,12,0"
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+                            <!-- Info Text -->
+                            <TextBlock Grid.Column="1"
+                                       TextWrapping="Wrap"
+                                       FontSize="13"
+                                       Opacity="0.9"
+                                       TextAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False"
+                                       Text="Other optional Vanilla RTX Add-Ons and Extensions can be downloaded manually and must be activated above one of the three primary Vanilla RTX resource packs, they are not automatically updated via the app since they are rarely updated due to always being forward-compatible." />
+                        </Grid>
+                    </Border>
 
                 </StackPanel>
             </ScrollViewer>
