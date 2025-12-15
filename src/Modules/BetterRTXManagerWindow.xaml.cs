@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -1114,7 +1115,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             iconBorder.Child = new FontIcon
             {
                 Glyph = "\uE794",
-                FontSize = 48,
+                FontSize = 36,
+                FontWeight = FontWeights.ExtraLight,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 IsTextScaleFactorEnabled = false
