@@ -838,9 +838,9 @@
                             </Grid.ColumnDefinitions>
 
                             <Slider x:Name="NormalIntensitySlider"
-                                    TickFrequency="25"
+                                    TickFrequency="90"
                                     TickPlacement="Inline"
-                                    SnapsTo="Ticks"
+                                    SnapsTo="StepValues"
                                     Grid.Column="0"
                                     Minimum="0"
                                     Maximum="900"
@@ -980,7 +980,7 @@
                             </Grid.ColumnDefinitions>
 
                             <Slider x:Name="LazifyNormalsSlider"
-                                    TickFrequency="25"
+                                    TickFrequency="3"
                                     TickPlacement="Inline"
                                     SnapsTo="StepValues"
                                     Grid.Column="0"
