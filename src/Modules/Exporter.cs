@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -49,7 +49,7 @@ public static class Exporter
 
             if (!File.Exists(tempZipPath))
             {
-                Debug.WriteLine($"Temporary .mcpack archive was deleted before writing to output.");
+                Trace.WriteLine($"Temporary .mcpack archive was deleted before writing to output.");
                 return;
             }
 
@@ -57,11 +57,11 @@ public static class Exporter
             using var srcStream = File.OpenRead(tempZipPath);
             await srcStream.CopyToAsync(destStream);
 
-            Debug.WriteLine($"{suggestedName}.mcpack exported successfully.");
+            Trace.WriteLine($"{suggestedName}.mcpack exported successfully.");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to export {suggestedName}: {ex.Message}");
+            Trace.WriteLine($"Failed to export {suggestedName}: {ex.Message}");
         }
         finally
         {
@@ -72,7 +72,7 @@ public static class Exporter
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Warning: Couldn't delete temp file: {ex.Message}");
+                Trace.WriteLine($"Warning: Couldn't delete temp file: {ex.Message}");
             }
         }
     }

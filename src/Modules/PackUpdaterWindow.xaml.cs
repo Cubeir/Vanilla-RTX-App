@@ -109,7 +109,7 @@ public sealed partial class PackUpdateWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error setting drag region: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Error setting drag region: {ex.Message}");
             }
         }
     }
@@ -316,11 +316,11 @@ public sealed partial class PackUpdateWindow : Window
 
             if (success)
             {
-                System.Diagnostics.Debug.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
+                System.Diagnostics.Trace.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"{GetPackDisplayName(packType)} installation failed");
+                System.Diagnostics.Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
             }
 
             // Refresh installed versions by triggering pack location check
@@ -331,7 +331,7 @@ public sealed partial class PackUpdateWindow : Window
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
+            System.Diagnostics.Trace.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
         }
         finally
         {

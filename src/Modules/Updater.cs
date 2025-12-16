@@ -342,7 +342,7 @@ public class PackUpdater
                         }
                         File.WriteAllText(contentsPath, "{}");
                     }
-                    catch { Debug.WriteLine("Contents json or textures list creation failed."); }
+                    catch { Trace.WriteLine("Contents json or textures list creation failed."); }
 
                     LogMessage($"✅ {pack.displayName} deployed successfully");
                     anyPackDeployed = true;
@@ -445,13 +445,13 @@ public class PackUpdater
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Failed to remove enhancement folder ({enhancementPath}): {ex.Message}");
+                    Trace.WriteLine($"Failed to remove enhancement folder ({enhancementPath}): {ex.Message}");
                 }
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error during enhancement folder removal: {ex.Message}");
+            Trace.WriteLine($"Error during enhancement folder removal: {ex.Message}");
         }
     }
 
@@ -912,7 +912,7 @@ public class PackUpdater
             catch (Exception ex)
             {
                 failed++;
-                Debug.WriteLine($"Enhancement folder error ({enhancementPath}): {ex.Message}");
+                Trace.WriteLine($"Enhancement folder error ({enhancementPath}): {ex.Message}");
             }
         }
 

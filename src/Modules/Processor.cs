@@ -885,7 +885,7 @@ public class Processor
         {
             if (string.IsNullOrEmpty(heightmapFile))
             {
-                Debug.WriteLine($"{pack.Name}: heightmap not found for {Path.GetFileName(colormapFile)}; skipped.");
+                Trace.WriteLine($"{pack.Name}: heightmap not found for {Path.GetFileName(colormapFile)}; skipped.");
                 continue;
             }
 
@@ -899,7 +899,7 @@ public class Processor
 
                 if (colormapBmp.Width != width || colormapBmp.Height != height)
                 {
-                    Debug.WriteLine($"{pack.Name}: dimension mismatch between heightmap and colormap for {Path.GetFileName(heightmapFile)}; skipped.");
+                    Trace.WriteLine($"{pack.Name}: dimension mismatch between heightmap and colormap for {Path.GetFileName(heightmapFile)}; skipped.");
                     continue;
                 }
 
@@ -974,16 +974,16 @@ public class Processor
                 if (wroteBack)
                 {
                     WriteImageAsTGA(heightmapBmp, heightmapFile);
-                    Debug.WriteLine($"{pack.Name}: updated heightmap in {Path.GetFileName(heightmapFile)}.");
+                    Trace.WriteLine($"{pack.Name}: updated heightmap in {Path.GetFileName(heightmapFile)}.");
                 }
                 else
                 {
-                    Debug.WriteLine($"{pack.Name}: no heightmap changes in {Path.GetFileName(heightmapFile)}.");
+                    Trace.WriteLine($"{pack.Name}: no heightmap changes in {Path.GetFileName(heightmapFile)}.");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"{pack.Name}: error processing {Path.GetFileName(heightmapFile)} — {ex.Message}");
+                Trace.WriteLine($"{pack.Name}: error processing {Path.GetFileName(heightmapFile)} — {ex.Message}");
             }
         }
 
@@ -992,7 +992,7 @@ public class Processor
         {
             if (string.IsNullOrEmpty(normalmapFile))
             {
-                Debug.WriteLine($"{pack.Name}: normal map not found for {Path.GetFileName(colormapFile)}; skipped.");
+                Trace.WriteLine($"{pack.Name}: normal map not found for {Path.GetFileName(colormapFile)}; skipped.");
                 continue;
             }
 
@@ -1006,7 +1006,7 @@ public class Processor
 
                 if (colormapBmp.Width != width || colormapBmp.Height != height)
                 {
-                    Debug.WriteLine($"{pack.Name}: dimension mismatch between normal map and colormap for {Path.GetFileName(normalmapFile)}; skipped.");
+                    Trace.WriteLine($"{pack.Name}: dimension mismatch between normal map and colormap for {Path.GetFileName(normalmapFile)}; skipped.");
                     continue;
                 }
 
@@ -1221,16 +1221,16 @@ public class Processor
                 if (wroteBack)
                 {
                     WriteImageAsTGA(normalmapBmp, normalmapFile);
-                    Debug.WriteLine($"{pack.Name}: updated normal map in {Path.GetFileName(normalmapFile)}.");
+                    Trace.WriteLine($"{pack.Name}: updated normal map in {Path.GetFileName(normalmapFile)}.");
                 }
                 else
                 {
-                    Debug.WriteLine($"{pack.Name}: no normal map changes in {Path.GetFileName(normalmapFile)}.");
+                    Trace.WriteLine($"{pack.Name}: no normal map changes in {Path.GetFileName(normalmapFile)}.");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"{pack.Name}: error processing {Path.GetFileName(normalmapFile)} — {ex.Message}");
+                Trace.WriteLine($"{pack.Name}: error processing {Path.GetFileName(normalmapFile)} — {ex.Message}");
             }
         }
 

@@ -180,7 +180,7 @@ public static class TunerVariables
             }
             catch
             {
-                Debug.WriteLine($"An issue occured loading settings");
+                Trace.WriteLine($"An issue occured loading settings");
             }
         }
     }
@@ -1444,18 +1444,23 @@ public sealed partial class MainWindow : Window
         if (!string.IsNullOrEmpty(SidebarLog.Text))
         {
             var sb = new StringBuilder();
+
+            // Original sidebar log (important status messages)
+            sb.AppendLine("===== Sidebar Log (UI-shown Messages)");
             sb.AppendLine(SidebarLog.Text);
             sb.AppendLine();
-            sb.AppendLine("===== Tuner Variables");
 
+            // Tuner variables
+            sb.AppendLine("===== Tuner Variables");
             var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
             foreach (var field in fields)
             {
                 var value = field.GetValue(null);
                 sb.AppendLine($"{field.Name}: {value ?? "null"}");
             }
-
             sb.AppendLine();
+
+            // Persistent variables
             sb.AppendLine("===== Persistent Variables");
             var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
             foreach (var field in persistentFields)
@@ -1463,11 +1468,16 @@ public sealed partial class MainWindow : Window
                 var value = field.GetValue(null);
                 sb.AppendLine($"{field.Name}: {value ?? "null"}");
             }
+            sb.AppendLine();
+
+            // Trace logs
+            sb.AppendLine(TraceManager.GetAllTraceLogs());
 
             var dataPackage = new DataPackage();
             dataPackage.SetText(sb.ToString());
             Clipboard.SetContent(dataPackage);
-            Log("Copied logs to clipboard.", LogLevel.Success);
+
+            Log("Copied debug logs to clipboard.", LogLevel.Success);
 
             // Lamp off single flash
             _ = BlinkingLamp(true, true, 0.0);
@@ -2004,7 +2014,7 @@ public sealed partial class MainWindow : Window
             }
 
             // Trigger an automatic pack location check after update (fail or not)
-            _ = LocatePacksButton_Click();
+            _ = LocatePacksButton_Click(true);
         };
 
         packUpdaterWindow.Activate();

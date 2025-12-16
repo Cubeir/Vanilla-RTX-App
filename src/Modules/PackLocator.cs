@@ -143,33 +143,33 @@ public class PackLocator
             {
                 vanillaRTXLocation = latestVanillaRTX.Value.path;
                 vanillaRTXVersion = $"{latestVanillaRTX.Value.version[0]}.{latestVanillaRTX.Value.version[1]}.{latestVanillaRTX.Value.version[2]}";
-                results.Add($"✅ Found: Vanilla RTX — {vanillaRTXVersion}");
+                results.Add($"✅ Installed: Vanilla RTX - {vanillaRTXVersion}");
             }
             else
             {
-                results.Add("⚠️ Not found: Vanilla RTX");
+                results.Add("⚠️ Not installed: Vanilla RTX");
             }
 
             if (latestVanillaRTXNormals != null)
             {
                 vanillaRTXNormalsLocation = latestVanillaRTXNormals.Value.path;
                 vanillaRTXNormalsVersion = $"{latestVanillaRTXNormals.Value.version[0]}.{latestVanillaRTXNormals.Value.version[1]}.{latestVanillaRTXNormals.Value.version[2]}";
-                results.Add($"✅ Found: Vanilla RTX Normals — {vanillaRTXNormalsVersion}");
+                results.Add($"✅ Installed: Vanilla RTX Normals - {vanillaRTXNormalsVersion}");
             }
             else
             {
-                results.Add("⚠️ Not found: Vanilla RTX Normals");
+                results.Add("⚠️ Not installed: Vanilla RTX Normals");
             }
 
             if (latestVanillaRTXOpus != null)
             {
                 vanillaRTXOpusLocation = latestVanillaRTXOpus.Value.path;
                 vanillaRTXOpusVersion = $"{latestVanillaRTXOpus.Value.version[0]}.{latestVanillaRTXOpus.Value.version[1]}.{latestVanillaRTXOpus.Value.version[2]}";
-                results.Add($"✅ Found: Vanilla RTX Opus — {vanillaRTXOpusVersion}");
+                results.Add($"✅ Installed: Vanilla RTX Opus - {vanillaRTXOpusVersion}");
             }
             else
             {
-                results.Add("⚠️ Not found: Vanilla RTX Opus");
+                results.Add("⚠️ Not installed: Vanilla RTX Opus");
             }
 
             return string.Join(Environment.NewLine, results);

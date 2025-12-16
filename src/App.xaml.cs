@@ -1,8 +1,9 @@
 using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
 using System.Threading;
 using Microsoft.UI.Xaml;
-using Vanilla_RTX_App.Modules;
-
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -23,6 +24,8 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        TraceManager.Initialize();
     }
 
     /// <summary>
@@ -102,4 +105,98 @@ public partial class App : Application
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     private const int SW_RESTORE = 9;
+}
+
+
+/// <summary>
+/// Custom TraceListener that captures all Trace.WriteLine calls
+/// Thread-safe and memory-efficient with rolling buffer
+/// </summary>
+public class InMemoryTraceListener : TraceListener
+{
+    private readonly ConcurrentQueue<TraceEntry> _entries = new();
+    private readonly int _maxEntries;
+
+    public InMemoryTraceListener(int maxEntries = 1000)
+    {
+        _maxEntries = maxEntries;
+    }
+
+    public override void Write(string message)
+    {
+        // Usually not used, but implement for completeness
+        WriteLine(message);
+    }
+
+    public override void WriteLine(string message)
+    {
+        var entry = new TraceEntry
+        {
+            Timestamp = DateTime.Now,
+            Message = message,
+            ThreadId = Environment.CurrentManagedThreadId
+        };
+
+        _entries.Enqueue(entry);
+
+        // Keep buffer size under control
+        while (_entries.Count > _maxEntries)
+        {
+            _entries.TryDequeue(out _);
+        }
+    }
+
+    public string GetAllEntries()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("===== Trace Log (Chronological)");
+
+        foreach (var entry in _entries)
+        {
+            sb.AppendLine($"[{entry.Timestamp:HH:mm:ss.fff}] [T{entry.ThreadId}] {entry.Message}");
+        }
+
+        return sb.ToString();
+    }
+
+    public void Clear()
+    {
+        while (_entries.TryDequeue(out _)) { }
+    }
+
+    private class TraceEntry
+    {
+        public DateTime Timestamp { get; set; }
+        public string Message { get; set; }
+        public int ThreadId { get; set; }
+    }
+}
+
+/// <summary>
+/// Initialize this in your App startup (App.xaml.cs constructor or OnLaunched)
+/// </summary>
+public static class TraceManager
+{
+    private static InMemoryTraceListener? _listener;
+
+    public static void Initialize()
+    {
+        // Remove if we don't want debugger output...
+        // Trace.Listeners.Clear();
+
+        _listener = new InMemoryTraceListener(maxEntries: 25000);
+        Trace.Listeners.Add(_listener);
+
+        Trace.WriteLine("TraceManager initialized");
+    }
+
+    public static string GetAllTraceLogs()
+    {
+        return _listener?.GetAllEntries() ?? "Trace logging not initialized";
+    }
+
+    public static void ClearTraceLogs()
+    {
+        _listener?.Clear();
+    }
 }

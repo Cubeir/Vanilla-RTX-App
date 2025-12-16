@@ -130,7 +130,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error setting drag region: {ex.Message}");
+                Trace.WriteLine($"Error setting drag region: {ex.Message}");
             }
         }
     }
@@ -150,7 +150,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             // Handles edge case where user moved/deleted folder between startup and window opening
             if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
             {
-                Debug.WriteLine($"✓ Using cached path: {cachedPath}");
+                Trace.WriteLine($"✓ Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;
             }
             else
@@ -158,7 +158,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 // Cache invalid - clear it and search
                 if (!string.IsNullOrEmpty(cachedPath))
                 {
-                    Debug.WriteLine($"⚠ Cache became invalid, clearing");
+                    Trace.WriteLine($"⚠ Cache became invalid, clearing");
                     if (isPreview)
                         TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
                     else
@@ -172,7 +172,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 });
 
                 // Start Phase 2: System-wide search in background
-                Debug.WriteLine("Starting system-wide search...");
+                Trace.WriteLine("Starting system-wide search...");
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
@@ -183,7 +183,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                 if (minecraftPath == null)
                 {
                     // Search was cancelled or failed - wait for manual selection
-                    Debug.WriteLine("System search cancelled or failed - waiting for manual selection");
+                    Trace.WriteLine("System search cancelled or failed - waiting for manual selection");
                     return;
                 }
             }
@@ -193,7 +193,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"EXCEPTION in InitializeAsync: {ex}");
+            Trace.WriteLine($"EXCEPTION in InitializeAsync: {ex}");
             StatusMessage = $"Initialization error: {ex.Message}";
             this.Close();
         }
@@ -217,7 +217,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         if (!gameDllExists)
         {
-            Debug.WriteLine($"⚠ DLSS file not found at: {_gameDllPath}");
+            Trace.WriteLine($"⚠ DLSS file not found at: {_gameDllPath}");
 
             // Look for cached DLLs to repair the game
             var cachedDlls = Directory.GetFiles(_cacheFolder, "*.dll")
@@ -227,24 +227,24 @@ public sealed partial class DLSSSwitcherWindow : Window
             if (cachedDlls.Count > 0)
             {
                 var repairDll = cachedDlls.First();
-                Debug.WriteLine($"🔧 Attempting to repair with: {repairDll}");
+                Trace.WriteLine($"🔧 Attempting to repair with: {repairDll}");
 
                 var repairSuccess = await ReplaceDllWithElevation(repairDll);
 
                 if (repairSuccess)
                 {
-                    Debug.WriteLine("✓ Game repaired successfully");
+                    Trace.WriteLine("✓ Game repaired successfully");
                     gameDllExists = true;
                     await CopyCurrentDllToCache();
                 }
                 else
                 {
-                    Debug.WriteLine("⚠ User cancelled UAC or repair failed - continuing anyway");
+                    Trace.WriteLine("⚠ User cancelled UAC or repair failed - continuing anyway");
                 }
             }
             else
             {
-                Debug.WriteLine("⚠ No cached DLLs available - user must import one");
+                Trace.WriteLine("⚠ No cached DLLs available - user must import one");
             }
         }
         else
@@ -262,7 +262,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
-        Debug.WriteLine("Manual selection button clicked - cancelling system search");
+        Trace.WriteLine("Manual selection button clicked - cancelling system search");
 
         // Cancel any ongoing system search
         _scanCancellationTokenSource?.Cancel();
@@ -274,12 +274,12 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         if (path != null)
         {
-            Debug.WriteLine($"✓ User selected valid path: {path}");
+            Trace.WriteLine($"✓ User selected valid path: {path}");
             await ContinueInitializationWithPath(path);
         }
         else
         {
-            Debug.WriteLine("✗ User cancelled or selected invalid path");
+            Trace.WriteLine("✗ User cancelled or selected invalid path");
             StatusMessage = "No valid Minecraft installation selected";
             this.Close();
         }
@@ -292,15 +292,15 @@ public sealed partial class DLSSSwitcherWindow : Window
             var localFolder = ApplicationData.Current.LocalFolder.Path;
             var cacheLocation = Path.Combine(localFolder, "DLSS_Cache");
 
-            Debug.WriteLine($"Creating DLSS cache at: {cacheLocation}");
+            Trace.WriteLine($"Creating DLSS cache at: {cacheLocation}");
             Directory.CreateDirectory(cacheLocation);
-            Debug.WriteLine($"✓ DLSS cache established at: {cacheLocation}");
+            Trace.WriteLine($"✓ DLSS cache established at: {cacheLocation}");
 
             return cacheLocation;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"✗ Failed to create DLSS cache: {ex.Message}");
+            Trace.WriteLine($"✗ Failed to create DLSS cache: {ex.Message}");
             return null;
         }
     }
@@ -317,11 +317,11 @@ public sealed partial class DLSSSwitcherWindow : Window
 
             await Task.Run(() => File.Copy(_gameDllPath, cachePath, true));
 
-            Debug.WriteLine($"Copied current DLSS {_currentInstalledVersion} to cache");
+            Trace.WriteLine($"Copied current DLSS {_currentInstalledVersion} to cache");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error copying current DLL to cache: {ex.Message}");
+            Trace.WriteLine($"Error copying current DLL to cache: {ex.Message}");
             _currentInstalledVersion = "Unknown";
         }
     }
@@ -362,11 +362,11 @@ public sealed partial class DLSSSwitcherWindow : Window
             var addButton = CreateAddDllButton();
             DllListContainer.Children.Add(addButton);
 
-            Debug.WriteLine("DLL loading complete");
+            Trace.WriteLine("DLL loading complete");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"EXCEPTION in LoadDllsAsync: {ex}");
+            Trace.WriteLine($"EXCEPTION in LoadDllsAsync: {ex}");
             EmptyStatePanel.Visibility = Visibility.Visible;
             EmptyStateText.Text = $"Error loading DLLs: {ex.Message}";
         }
@@ -504,20 +504,20 @@ public sealed partial class DLSSSwitcherWindow : Window
             {
                 if (dllData.Version == _currentInstalledVersion)
                 {
-                    Debug.WriteLine("Cannot delete currently installed DLSS version");
+                    Trace.WriteLine("Cannot delete currently installed DLSS version");
                     return;
                 }
 
                 if (File.Exists(dllData.FilePath))
                 {
                     File.Delete(dllData.FilePath);
-                    Debug.WriteLine($"Deleted DLSS version {dllData.Version} from cache");
+                    Trace.WriteLine($"Deleted DLSS version {dllData.Version} from cache");
                     await LoadDllsAsync();
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error deleting DLL: {ex.Message}");
+                Trace.WriteLine($"Error deleting DLL: {ex.Message}");
             }
         }
     }
@@ -687,7 +687,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                         }
                         else
                         {
-                            Debug.WriteLine($"Skipped unsupported file type: {extension}");
+                            Trace.WriteLine($"Skipped unsupported file type: {extension}");
                         }
                     }
                 }
@@ -697,7 +697,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error processing dropped files: {ex.Message}");
+            Trace.WriteLine($"Error processing dropped files: {ex.Message}");
         }
     }
 
@@ -733,7 +733,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error adding file: {ex.Message}");
+            Trace.WriteLine($"Error adding file: {ex.Message}");
         }
     }
 
@@ -747,11 +747,11 @@ public sealed partial class DLSSSwitcherWindow : Window
             var cachePath = Path.Combine(_cacheFolder, cacheFileName);
 
             await Task.Run(() => File.Copy(dllPath, cachePath, true));
-            Debug.WriteLine($"Added DLSS {version} to cache");
+            Trace.WriteLine($"Added DLSS {version} to cache");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error processing DLL {dllPath}: {ex.Message}");
+            Trace.WriteLine($"Error processing DLL {dllPath}: {ex.Message}");
         }
     }
 
@@ -780,11 +780,11 @@ public sealed partial class DLSSSwitcherWindow : Window
                                 File.Copy(tempPath, cachePath, true);
                                 File.Delete(tempPath);
 
-                                Debug.WriteLine($"Extracted and added DLSS {version} from ZIP");
+                                Trace.WriteLine($"Extracted and added DLSS {version} from ZIP");
                             }
                             catch (Exception ex)
                             {
-                                Debug.WriteLine($"Error processing {entry.FullName} from ZIP: {ex.Message}");
+                                Trace.WriteLine($"Error processing {entry.FullName} from ZIP: {ex.Message}");
                             }
                         }
                     }
@@ -793,7 +793,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error processing ZIP file: {ex.Message}");
+            Trace.WriteLine($"Error processing ZIP file: {ex.Message}");
         }
     }
 
@@ -822,7 +822,7 @@ public sealed partial class DLSSSwitcherWindow : Window
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error replacing DLL: {ex.Message}");
+                Trace.WriteLine($"Error replacing DLL: {ex.Message}");
             }
         }
     }
@@ -852,7 +852,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                     if (process != null)
                     {
                         process.WaitForExit();
-                        Debug.WriteLine($"DLL replacement completed with exit code: {process.ExitCode}");
+                        Trace.WriteLine($"DLL replacement completed with exit code: {process.ExitCode}");
                         return process.ExitCode == 0;
                     }
 
@@ -862,7 +862,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error in ReplaceDllWithElevation: {ex.Message}");
+            Trace.WriteLine($"Error in ReplaceDllWithElevation: {ex.Message}");
             return false;
         }
     }
@@ -882,7 +882,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error parsing DLL {dllPath}: {ex.Message}");
+            Trace.WriteLine($"Error parsing DLL {dllPath}: {ex.Message}");
             return null;
         }
     }

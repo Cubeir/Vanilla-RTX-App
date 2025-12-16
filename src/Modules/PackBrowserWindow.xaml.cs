@@ -122,7 +122,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error setting drag region: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Error setting drag region: {ex.Message}");
             }
         }
     }
@@ -131,11 +131,11 @@ public sealed partial class PackBrowserWindow : Window
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine("Starting pack scan...");
+            System.Diagnostics.Trace.WriteLine("Starting pack scan...");
 
             var packs = await ScanForCompatiblePacksAsync();
 
-            System.Diagnostics.Debug.WriteLine($"Found {packs.Count} packs");
+            System.Diagnostics.Trace.WriteLine($"Found {packs.Count} packs");
 
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
@@ -151,16 +151,16 @@ public sealed partial class PackBrowserWindow : Window
 
             foreach (var pack in packs)
             {
-                System.Diagnostics.Debug.WriteLine($"Creating button for: {pack.PackName}");
+                System.Diagnostics.Trace.WriteLine($"Creating button for: {pack.PackName}");
                 var packButton = CreatePackButton(pack);
                 PackListContainer.Children.Add(packButton);
             }
 
-            System.Diagnostics.Debug.WriteLine("Pack loading complete");
+            System.Diagnostics.Trace.WriteLine("Pack loading complete");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"EXCEPTION in LoadPacksAsync: {ex}");
+            System.Diagnostics.Trace.WriteLine($"EXCEPTION in LoadPacksAsync: {ex}");
 
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
@@ -367,7 +367,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             if (!Directory.Exists(scanPath))
             {
-                System.Diagnostics.Debug.WriteLine($"Path doesn't exist: {scanPath}");
+                System.Diagnostics.Trace.WriteLine($"Path doesn't exist: {scanPath}");
                 continue;
             }
 
@@ -385,12 +385,12 @@ public sealed partial class PackBrowserWindow : Window
                 }
                 catch (JsonException jsonEx)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
+                    System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
                     // Skip this pack - likely encrypted marketplace content
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error parsing pack {packDir}: {ex.Message}");
+                    System.Diagnostics.Trace.WriteLine($"Error parsing pack {packDir}: {ex.Message}");
                 }
             }
         }
@@ -445,7 +445,7 @@ public sealed partial class PackBrowserWindow : Window
                 (string.Equals(headerUUID, PackLocator.VANILLA_RTX_OPUS_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
                  string.Equals(moduleUUID, PackLocator.VANILLA_RTX_OPUS_MODULE_UUID, StringComparison.OrdinalIgnoreCase)))
             {
-                System.Diagnostics.Debug.WriteLine($"Skipping Vanilla RTX pack: {packDir}");
+                System.Diagnostics.Trace.WriteLine($"Skipping Vanilla RTX pack: {packDir}");
                 return null; // Skip this pack
             }
         }
@@ -484,7 +484,7 @@ public sealed partial class PackBrowserWindow : Window
 
         if (capabilityTags.Count == 0)
         {
-            System.Diagnostics.Debug.WriteLine($"Pack {packDir} has no compatible capabilities");
+            System.Diagnostics.Trace.WriteLine($"Pack {packDir} has no compatible capabilities");
             return null;
         }
 
@@ -578,7 +578,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading lang file {langPath}: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Error loading lang file {langPath}: {ex.Message}");
             }
         }
 
@@ -600,7 +600,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"Loading icon: {iconPath}");
+                System.Diagnostics.Trace.WriteLine($"Loading icon: {iconPath}");
                 var bitmap = new BitmapImage();
 
                 using (var fileStream = File.OpenRead(iconPath))
@@ -619,7 +619,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading icon {iconPath}: {ex.Message}");
+                System.Diagnostics.Trace.WriteLine($"Error loading icon {iconPath}: {ex.Message}");
             }
         }
 
