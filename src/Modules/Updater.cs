@@ -39,11 +39,7 @@ public class PackUpdater
     private const string LastUpdateCheckKey_Release = "LastPackUpdateCheckTime_Release";
     private const string LastUpdateCheckKey_Preview = "LastPackUpdateCheckTime_Preview";
     private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(60);
-
-    // Cooldowns for manual version checks (5 minutes, independent per target)
-    private const string LastUpdateCheckNotificationKey_Release = "LastPackUpdateNotificationCheckTime_Release";
-    private const string LastUpdateCheckNotificationKey_Preview = "LastPackUpdateNotificationCheckTime_Preview";
-    private static readonly TimeSpan UpdateCheckNotificationCooldown = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan UpdateCheckCooldown = TimeSpan.FromMinutes(5);
 
     // Remote version cache keys
     private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
@@ -59,10 +55,6 @@ public class PackUpdater
     private string GetUpdateCheckKey() => TunerVariables.Persistent.IsTargetingPreview
         ? LastUpdateCheckKey_Preview
         : LastUpdateCheckKey_Release;
-
-    private string GetNotificationCheckKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? LastUpdateCheckNotificationKey_Preview
-        : LastUpdateCheckNotificationKey_Release;
 
     private string GetRemoteVersionsCacheKey() => TunerVariables.Persistent.IsTargetingPreview
         ? RemoteVersionsCacheKey_Preview
@@ -164,7 +156,7 @@ public class PackUpdater
         // Check if we have cached versions within cooldown period
         if (localSettings.Values[timeKey] is string cacheTimeStr &&
             DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
-            now < cacheTime + UpdateCheckNotificationCooldown)
+            now < cacheTime + UpdateCheckCooldown)
         {
             // Use cached versions
             if (localSettings.Values[cacheKey] is string cachedJson)
