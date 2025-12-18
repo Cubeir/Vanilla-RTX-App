@@ -1980,6 +1980,9 @@ public sealed partial class MainWindow : Window
 
     private void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
     {
+        // The UI display text relies on this, rerun it just in case, few ms overhead worth it
+        _ = LocatePacksButton_Click();
+
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
             Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
