@@ -92,7 +92,6 @@ public sealed partial class PackUpdateWindow : Window
 
             SetupShadows();
 
-            // Initialize UI
             await InitializePackInformation();
             SetupButtonHandlers();
         }
@@ -123,16 +122,12 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task InitializePackInformation()
     {
-        // Step 1: Load installed versions from global variables
         UpdateInstalledVersionDisplays();
-
-        // Step 2: Fetch and display remote versions
         await FetchAndDisplayRemoteVersions();
     }
 
     private void UpdateInstalledVersionDisplays()
     {
-        // Get versions from MainWindow's global variables
         var vanillaRTXVersion = VanillaRTXVersion;
         var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
         var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
@@ -150,6 +145,7 @@ public sealed partial class PackUpdateWindow : Window
     private async Task FetchAndDisplayRemoteVersions()
     {
         string rtx = null, normals = null, opus = null;
+        VersionSource source = VersionSource.Remote;
 
         try
         {
@@ -157,38 +153,47 @@ public sealed partial class PackUpdateWindow : Window
             rtx = result.rtx;
             normals = result.normals;
             opus = result.opus;
+            source = result.source;
         }
         catch
         {
-            // Fetch failed, versions remain null
+            // Fetch failed completely, versions remain null
         }
 
-        // Get installed versions for comparison
         var vanillaRTXVersion = VanillaRTXVersion;
         var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
         var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
 
-        // Update UI with results (null OR empty becomes "Not available", matching versions show "Up-to-date")
+        // Update UI
         VanillaRTX_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTX_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTX_AvailableVersion.Text = string.IsNullOrEmpty(rtx) ? "Not available"
-            : (!string.IsNullOrEmpty(vanillaRTXVersion) && rtx == vanillaRTXVersion) ? "Up-to-date"
-            : rtx;
+        VanillaRTX_AvailableVersion.Text = GetAvailabilityText(rtx, vanillaRTXVersion, source);
 
         VanillaRTXNormals_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTXNormals_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTXNormals_AvailableVersion.Text = string.IsNullOrEmpty(normals) ? "Not available"
-            : (!string.IsNullOrEmpty(vanillaRTXNormalsVersion) && normals == vanillaRTXNormalsVersion) ? "Up-to-date"
-            : normals;
+        VanillaRTXNormals_AvailableVersion.Text = GetAvailabilityText(normals, vanillaRTXNormalsVersion, source);
 
         VanillaRTXOpus_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTXOpus_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTXOpus_AvailableVersion.Text = string.IsNullOrEmpty(opus) ? "Not available"
-            : (!string.IsNullOrEmpty(vanillaRTXOpusVersion) && opus == vanillaRTXOpusVersion) ? "Up-to-date"
-            : opus;
+        VanillaRTXOpus_AvailableVersion.Text = GetAvailabilityText(opus, vanillaRTXOpusVersion, source);
 
-        // Update button states
         await UpdateAllButtonStates(rtx, normals, opus);
+    }
+
+    private string GetAvailabilityText(string? availableVersion, string? installedVersion, VersionSource source)
+    {
+        if (string.IsNullOrEmpty(availableVersion))
+        {
+            return "Not available";
+        }
+
+        if (!string.IsNullOrEmpty(installedVersion) && availableVersion == installedVersion)
+        {
+            return "Up-to-date";
+        }
+
+        // Only show "(cached)" for zipball fallback, not for 5-min cached remote data
+        return source == VersionSource.ZipballFallback ? $"{availableVersion} (cached)" : availableVersion;
     }
 
     private async Task UpdateAllButtonStates(string? rtxRemote, string? normalsRemote, string? opusRemote)
@@ -210,25 +215,20 @@ public sealed partial class PackUpdateWindow : Window
 
         if (!isInstalled)
         {
-            // Not installed
             button.Content = "Install";
             button.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
             button.IsEnabled = remoteAvailable || packInCache;
         }
         else if (remoteAvailable && _updater.IsRemoteVersionNewerThanInstalled(installedVersion, remoteVersion))
         {
-            // Update available
             button.Content = "Update";
             button.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
             button.IsEnabled = true;
         }
         else
         {
-            // Already installed, same version or can't determine
             button.Content = "Reinstall";
             button.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
-
-            // Enable Reinstall only if we have a way to get the pack (remote OR cache)
             button.IsEnabled = remoteAvailable || packInCache;
         }
     }
@@ -249,7 +249,6 @@ public sealed partial class PackUpdateWindow : Window
 
     private async void QueueInstallation(PackType packType, bool enableEnhancements)
     {
-        // Set panel to queued state immediately
         SetPanelQueuedState(packType, true);
 
         _installQueue.Enqueue((packType, enableEnhancements));
@@ -259,6 +258,7 @@ public sealed partial class PackUpdateWindow : Window
             await ProcessInstallQueue();
         }
     }
+
     private void SetPanelQueuedState(PackType packType, bool isQueued)
     {
         Button button;
@@ -305,12 +305,10 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task InstallSinglePack(PackType packType, bool enableEnhancements)
     {
-        // Show loading state for this panel
         SetPanelLoadingState(packType, true);
 
         try
         {
-            // Install the pack, Task.Run it to prevent UI freeze
             var (success, logs) = await Task.Run(() =>
                 _updater.UpdateSinglePackAsync(packType, enableEnhancements));
 
@@ -323,10 +321,7 @@ public sealed partial class PackUpdateWindow : Window
                 System.Diagnostics.Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
             }
 
-            // Refresh installed versions by triggering pack location check
             await RefreshInstalledVersions();
-
-            // Refresh remote versions and button states
             await FetchAndDisplayRemoteVersions();
         }
         catch (Exception ex)
@@ -335,7 +330,6 @@ public sealed partial class PackUpdateWindow : Window
         }
         finally
         {
-            // Hide loading state and re-enable toggle
             SetPanelLoadingState(packType, false);
         }
     }
@@ -385,10 +379,8 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task RefreshInstalledVersions()
     {
-        // Call the main window's LocatePacksButton_Click to refresh global version variables
         await _mainWindow.LocatePacksButton_Click();
 
-        // Update displays with new values
         this.DispatcherQueue.TryEnqueue(() =>
         {
             UpdateInstalledVersionDisplays();

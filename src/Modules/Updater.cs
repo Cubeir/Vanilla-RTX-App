@@ -22,47 +22,46 @@ namespace Vanilla_RTX_App.Modules;
 
 public enum PackType { VanillaRTX, VanillaRTXNormals, VanillaRTXOpus }
 
+public enum VersionSource
+{
+    Remote,           // Fresh from GitHub
+    CachedRemote,     // From 5-min cache of remote versions
+    ZipballFallback   // Read from cached zipball when remote unavailable
+}
+
 public class PackUpdater
 {
     private const string VANILLA_RTX_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX/manifest.json";
     private const string VANILLA_RTX_NORMALS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Normals/manifest.json";
     private const string VANILLA_RTX_OPUS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Opus/manifest.json";
-
     private const string VANILLA_RTX_REPO_ZIPBALL_URL = "https://github.com/Cubeir/Vanilla-RTX/archive/refs/heads/master.zip";
 
-    // Event for progress updates to avoid UI thread blocking
     public event Action<string>? ProgressUpdate;
     private readonly List<string> _logMessages = new();
 
-    // For cooldown of checking for update to avoid spamming github
-    // These are now target-aware (Release vs Preview have independent cooldowns)
-    private const string LastUpdateCheckKey_Release = "LastPackUpdateCheckTime_Release";
-    private const string LastUpdateCheckKey_Preview = "LastPackUpdateCheckTime_Preview";
-    private static readonly TimeSpan UpdateCooldown = TimeSpan.FromMinutes(60);
-    private static readonly TimeSpan UpdateCheckCooldown = TimeSpan.FromMinutes(5);
-
-    // Remote version cache keys
+    // Separate cooldowns for different purposes
     private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(5);
 
-    // TODO: EXPOSE THESE TO AN EXTERNAL FILE. CONFIGURE AT STARTUP -- SAME WITH THE OTHER STUFF
+    private const string LastDownloadTimeKey_Release = "LastPackDownloadTime_Release";
+    private const string LastDownloadTimeKey_Preview = "LastPackDownloadTime_Preview";
+    private static readonly TimeSpan DownloadCooldown = TimeSpan.FromMinutes(60);
+
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;
     public bool CleanUpTheOtherFolder { get; set; } = true;
 
-    private string GetUpdateCheckKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? LastUpdateCheckKey_Preview
-        : LastUpdateCheckKey_Release;
-
     private string GetRemoteVersionsCacheKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? RemoteVersionsCacheKey_Preview
-        : RemoteVersionsCacheKey_Release;
+        ? RemoteVersionsCacheKey_Preview : RemoteVersionsCacheKey_Release;
 
     private string GetRemoteVersionsCacheTimeKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? RemoteVersionsCacheTimeKey_Preview
-        : RemoteVersionsCacheTimeKey_Release;
+        ? RemoteVersionsCacheTimeKey_Preview : RemoteVersionsCacheTimeKey_Release;
+
+    private string GetLastDownloadTimeKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? LastDownloadTimeKey_Preview : LastDownloadTimeKey_Release;
 
     // ======================= Individual Pack Installation =======================
 
@@ -104,6 +103,7 @@ public class PackUpdater
         }
 
         SaveCachedZipballPath(downloadPath);
+        SaveLastDownloadTime();
         LogMessage("✅ Download cached for quicker future redeployment");
 
         var deploySuccess = await DeployPackage(downloadPath, packType, enableEnhancements);
@@ -114,7 +114,7 @@ public class PackUpdater
     {
         LogMessage("✅ Cache found");
 
-        var needsUpdate = await CheckIfUpdateNeeded(cachePath);
+        var needsUpdate = await CheckIfCacheNeedsUpdate(cachePath);
 
         if (needsUpdate)
         {
@@ -124,6 +124,7 @@ public class PackUpdater
             if (downloadSuccess && !string.IsNullOrEmpty(downloadPath))
             {
                 SaveCachedZipballPath(downloadPath);
+                SaveLastDownloadTime();
                 LogMessage("✅ New version downloaded and cached successfully for future redeployment.");
 
                 var deploySuccess = await DeployPackage(downloadPath, packType, enableEnhancements);
@@ -144,21 +145,20 @@ public class PackUpdater
         }
     }
 
-    // ======================= Remote Version Fetching with Cache =======================
+    // ======================= Remote Version Fetching with Cache Fallback =======================
 
-    public async Task<(string? rtx, string? normals, string? opus, bool fromCache)> GetRemoteVersionsAsync()
+    public async Task<(string? rtx, string? normals, string? opus, VersionSource source)> GetRemoteVersionsAsync()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
         var cacheKey = GetRemoteVersionsCacheKey();
         var timeKey = GetRemoteVersionsCacheTimeKey();
 
-        // Check if we have cached versions within cooldown period
+        // Try cached remote versions first (5 min cache)
         if (localSettings.Values[timeKey] is string cacheTimeStr &&
             DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
-            now < cacheTime + UpdateCheckCooldown)
+            now < cacheTime + RemoteVersionCacheDuration)
         {
-            // Use cached versions
             if (localSettings.Values[cacheKey] is string cachedJson)
             {
                 try
@@ -168,288 +168,91 @@ public class PackUpdater
                         cached["rtx"]?.ToString(),
                         cached["normals"]?.ToString(),
                         cached["opus"]?.ToString(),
-                        true
+                        VersionSource.CachedRemote
                     );
                 }
-                catch { /* Fall through to fetch fresh */ }
+                catch { /* Fall through */ }
             }
         }
 
-        // Fetch fresh versions
-        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        // Try fetching fresh versions from remote
+        if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
         {
-            return (null, null, null, false);
+            try
+            {
+                var remoteManifests = await FetchRemoteManifests();
+                if (remoteManifests.HasValue)
+                {
+                    var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
+
+                    var rtxVersion = ExtractVersionFromManifest(rtxManifest);
+                    var normalsVersion = ExtractVersionFromManifest(normalsManifest);
+                    var opusVersion = ExtractVersionFromManifest(opusManifest);
+
+                    // Cache the results
+                    var cacheObj = new JObject
+                    {
+                        ["rtx"] = rtxVersion,
+                        ["normals"] = normalsVersion,
+                        ["opus"] = opusVersion
+                    };
+                    localSettings.Values[cacheKey] = cacheObj.ToString();
+                    localSettings.Values[timeKey] = now.ToString("o");
+
+                    return (rtxVersion, normalsVersion, opusVersion, VersionSource.Remote);
+                }
+            }
+            catch { /* Fall through to cache fallback */ }
         }
 
+        // Fallback: Get versions from cached zipball
+        var cacheInfo = GetCacheInfo();
+        if (cacheInfo.exists && File.Exists(cacheInfo.path))
+        {
+            var cachedVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
+            if (cachedVersions.HasValue)
+            {
+                return (cachedVersions.Value.rtx, cachedVersions.Value.normals, cachedVersions.Value.opus, VersionSource.ZipballFallback);
+            }
+        }
+
+        return (null, null, null, VersionSource.Remote);
+    }
+
+    private async Task<(string? rtx, string? normals, string? opus)?> GetVersionsFromCachedZipball(string cachePath)
+    {
         try
         {
-            var remoteManifests = await FetchRemoteManifests();
-            if (remoteManifests == null)
+            using var archive = ZipFile.OpenRead(cachePath);
+
+            async Task<string?> TryReadVersion(string partialPath)
             {
-                return (null, null, null, false);
+                var entry = archive.Entries.FirstOrDefault(e =>
+                    e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
+                if (entry == null) return null;
+
+                using var stream = entry.Open();
+                using var reader = new StreamReader(stream);
+                var json = await reader.ReadToEndAsync();
+                var manifest = JObject.Parse(json);
+                return ExtractVersionFromManifest(manifest);
             }
 
-            var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
+            var rtxVersion = await TryReadVersion("Vanilla-RTX/manifest.json");
+            var normalsVersion = await TryReadVersion("Vanilla-RTX-Normals/manifest.json");
+            var opusVersion = await TryReadVersion("Vanilla-RTX-Opus/manifest.json");
 
-            var rtxVersion = ExtractVersionFromManifest(rtxManifest);
-            var normalsVersion = ExtractVersionFromManifest(normalsManifest);
-            var opusVersion = ExtractVersionFromManifest(opusManifest);
-
-            // Cache the results
-            var cacheObj = new JObject
-            {
-                ["rtx"] = rtxVersion,
-                ["normals"] = normalsVersion,
-                ["opus"] = opusVersion
-            };
-            localSettings.Values[cacheKey] = cacheObj.ToString();
-            localSettings.Values[timeKey] = now.ToString("o");
-
-            return (rtxVersion, normalsVersion, opusVersion, false);
+            return (rtxVersion, normalsVersion, opusVersion);
         }
         catch
         {
-            return (null, null, null, false);
+            return null;
         }
     }
 
-    // ======================= Deploy Package (Now Supports Single Pack) =======================
+    // ======================= Cache Update Check =======================
 
-    private async Task<bool> DeployPackage(string packagePath, PackType? targetPack = null, bool enableEnhancements = true)
-    {
-        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
-        {
-            LogMessage("⚠️ Minecraft is running. Please close the game while using the app.");
-        }
-
-        bool anyPackDeployed = false;
-        string tempExtractionDir = null;
-        string resourcePackPath = null;
-
-        try
-        {
-            string basePath = TunerVariables.Persistent.IsTargetingPreview
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock Preview")
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock");
-
-            if (!Directory.Exists(basePath))
-            {
-                LogMessage("❌ Minecraft data root not found. Please make sure the game is installed or has been launched at least once.");
-                return false;
-            }
-
-            resourcePackPath = Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", InstallToDevelopmentFolder ? "development_resource_packs" : "resource_packs");
-
-            if (!Directory.Exists(resourcePackPath))
-            {
-                Directory.CreateDirectory(resourcePackPath);
-                LogMessage("📁 Shared resources directory was missing and has been created.");
-            }
-
-            // Step 1: Extract zipball to temp directory
-            tempExtractionDir = Path.Combine(resourcePackPath, "__rtxapp_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempExtractionDir);
-
-            ZipFile.ExtractToDirectory(packagePath, tempExtractionDir, overwriteFiles: true);
-            LogMessage("📦 Extracted package to temporary directory");
-
-            // Step 2: Find which packs exist in the zipball extraction
-            var extractedManifests = Directory.GetFiles(tempExtractionDir, "manifest.json", SearchOption.AllDirectories);
-
-            var packsToProcess = new List<(string uuid, string moduleUuid, string sourcePath, string finalName, string displayName, PackType packType)>();
-
-            foreach (var manifestPath in extractedManifests)
-            {
-                var uuids = await ReadManifestUUIDs(manifestPath);
-                if (uuids == null) continue;
-
-                var (headerUUID, moduleUUID) = uuids.Value;
-                var packSourcePath = Path.GetDirectoryName(manifestPath);
-
-                if (headerUUID == VANILLA_RTX_HEADER_UUID && moduleUUID == VANILLA_RTX_MODULE_UUID)
-                {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtx", "Vanilla RTX", PackType.VanillaRTX));
-                }
-                else if (headerUUID == VANILLA_RTX_NORMALS_HEADER_UUID && moduleUUID == VANILLA_RTX_NORMALS_MODULE_UUID)
-                {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxn", "Vanilla RTX Normals", PackType.VanillaRTXNormals));
-                }
-                else if (headerUUID == VANILLA_RTX_OPUS_HEADER_UUID && moduleUUID == VANILLA_RTX_OPUS_MODULE_UUID)
-                {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxo", "Vanilla RTX Opus", PackType.VanillaRTXOpus));
-                }
-            }
-
-            // Filter by target pack if specified
-            if (targetPack.HasValue)
-            {
-                packsToProcess = packsToProcess.Where(p => p.packType == targetPack.Value).ToList();
-            }
-
-            if (packsToProcess.Count == 0)
-            {
-                LogMessage(targetPack.HasValue
-                    ? $"❌ {GetPackDisplayName(targetPack.Value)} not found in the downloaded package."
-                    : "❌ No recognized Vanilla RTX packs found in the downloaded package.");
-                return false;
-            }
-
-            LogMessage($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
-
-            // Step 3: Atomic deployment for each pack
-            foreach (var pack in packsToProcess)
-            {
-                try
-                {
-                    LogMessage($"🔄 Processing {pack.displayName}...");
-
-                    await DeleteExistingPackByUUID(resourcePackPath, pack.uuid, pack.moduleUuid, pack.displayName);
-
-                    var finalDestination = GetSafeDirectoryName(resourcePackPath, pack.finalName);
-                    Directory.Move(pack.sourcePath, finalDestination);
-
-                    // Process enhancements only if enabled
-                    if (enableEnhancements)
-                    {
-                        ProcessEnhancementFolders(finalDestination);
-                    }
-                    else
-                    {
-                        // Remove enhancements folder if present
-                        RemoveEnhancementsFolder(finalDestination);
-                    }
-
-                    // Ensure empty contents.json and make TL.json
-                    try
-                    {
-                        Helpers.GenerateTexturesLists(finalDestination);
-                        var contentsPath = Path.Combine(finalDestination, "contents.json");
-                        if (File.Exists(contentsPath))
-                        {
-                            var attr = File.GetAttributes(contentsPath);
-                            if ((attr & System.IO.FileAttributes.ReadOnly) != 0)
-                                File.SetAttributes(contentsPath, attr & ~System.IO.FileAttributes.ReadOnly);
-
-                            File.Delete(contentsPath);
-                        }
-                        File.WriteAllText(contentsPath, "{}");
-                    }
-                    catch { Trace.WriteLine("Contents json or textures list creation failed."); }
-
-                    LogMessage($"✅ {pack.displayName} deployed successfully");
-                    anyPackDeployed = true;
-                }
-                catch (Exception ex)
-                {
-                    LogMessage($"❌ Failed to deploy {pack.displayName}: {ex.Message}");
-                }
-            }
-
-            return anyPackDeployed;
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ Deployment error: {ex.Message}");
-            return false;
-        }
-        finally
-        {
-            // Clean up temp extraction directory
-            if (tempExtractionDir != null && Directory.Exists(tempExtractionDir))
-            {
-                try
-                {
-                    ForceWritable(tempExtractionDir);
-                    Directory.Delete(tempExtractionDir, true);
-                    LogMessage(anyPackDeployed ? "🧹 Cleaned up" : "🧹 Cleaned up after fail");
-                }
-                catch (Exception ex)
-                {
-                    LogMessage($"⚠️ Failed to clean up temp directory: {ex.Message}");
-                }
-            }
-
-            // Clean up orphaned temp directories
-            if (resourcePackPath != null)
-            {
-                var pathsToCleanOrphans = new List<string> { resourcePackPath };
-
-                if (CleanUpTheOtherFolder)
-                {
-                    var dirInfo = new DirectoryInfo(resourcePackPath);
-                    string opposingPath = InstallToDevelopmentFolder
-                        ? dirInfo.Name.Equals("development_resource_packs", StringComparison.OrdinalIgnoreCase)
-                            ? Path.Combine(dirInfo.Parent.FullName, "resource_packs")
-                            : resourcePackPath
-                        : dirInfo.Name.Equals("resource_packs", StringComparison.OrdinalIgnoreCase)
-                            ? Path.Combine(dirInfo.Parent.FullName, "development_resource_packs")
-                            : resourcePackPath;
-
-                    if (Directory.Exists(opposingPath))
-                    {
-                        pathsToCleanOrphans.Add(opposingPath);
-                    }
-                }
-
-                var cutoff = DateTime.UtcNow.AddMinutes(-1);
-
-                foreach (var pathToClean in pathsToCleanOrphans)
-                {
-                    try
-                    {
-                        var orphanedDirs = Directory.GetDirectories(pathToClean, "__rtxapp_*", SearchOption.TopDirectoryOnly)
-                            .Where(d => Directory.GetCreationTimeUtc(d) < cutoff);
-
-                        foreach (var dir in orphanedDirs)
-                        {
-                            try
-                            {
-                                ForceWritable(dir);
-                                Directory.Delete(dir, true);
-                                LogMessage($"🧹 Cleaned up previous orphaned folder(s).");
-                            }
-                            catch { /* ignore */ }
-                        }
-                    }
-                    catch { /* ignore */ }
-                }
-            }
-        }
-    }
-
-    // ======================= Enhancement Folder Removal =======================
-
-    private void RemoveEnhancementsFolder(string rootDirectory)
-    {
-        if (string.IsNullOrEmpty(EnhancementFolderName)) return;
-
-        try
-        {
-            var enhancementFolders = Directory.GetDirectories(rootDirectory, EnhancementFolderName, SearchOption.AllDirectories);
-
-            foreach (var enhancementPath in enhancementFolders)
-            {
-                try
-                {
-                    ForceWritable(enhancementPath);
-                    Directory.Delete(enhancementPath, true);
-                    LogMessage("🗑️ Removed enhancements folder (toggle was OFF)");
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"Failed to remove enhancement folder ({enhancementPath}): {ex.Message}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Error during enhancement folder removal: {ex.Message}");
-        }
-    }
-
-    // ======================= Existing Methods (Kept for compatibility) =======================
-
-    private async Task<bool> CheckIfUpdateNeeded(string cachePath)
+    private async Task<bool> CheckIfCacheNeedsUpdate(string cachePath)
     {
         if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
         {
@@ -457,43 +260,46 @@ public class PackUpdater
             return false;
         }
 
+        // Check download cooldown
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
-        var cooldownKey = GetUpdateCheckKey();
+        var downloadKey = GetLastDownloadTimeKey();
 
-        if (localSettings.Values[cooldownKey] is string lastCheckStr &&
-            DateTimeOffset.TryParse(lastCheckStr, out var lastSuccessfulCheck))
+        if (localSettings.Values[downloadKey] is string lastDownloadStr &&
+            DateTimeOffset.TryParse(lastDownloadStr, out var lastDownload))
         {
-            if (now < lastSuccessfulCheck + UpdateCooldown)
+            if (now < lastDownload + DownloadCooldown)
             {
-                var minutesLeft = (int)Math.Ceiling((lastSuccessfulCheck + UpdateCooldown - now).TotalMinutes);
-                LogMessage($"⏳ Update check on cooldown – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
+                var minutesLeft = (int)Math.Ceiling((lastDownload + DownloadCooldown - now).TotalMinutes);
+                LogMessage($"⏳ Download cooldown active – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
                 return false;
             }
         }
 
         (JObject? rtx, JObject? normals, JObject? opus)? remote = null;
-        bool fetchSuccess = false;
 
         try
         {
             remote = await FetchRemoteManifests();
-            fetchSuccess = true;
         }
         catch (Exception ex)
         {
-            LogMessage($"Failed to contact GitHub – forcing redownload ({ex.Message})");
-        }
-
-        if (fetchSuccess && remote.HasValue)
-        {
-            localSettings.Values[cooldownKey] = now.ToString("o");
+            LogMessage($"Failed to contact GitHub ({ex.Message})");
         }
 
         if (remote == null)
-            return true;
+        {
+            LogMessage("⚠️ Could not check for updates, using cache");
+            return false;
+        }
 
         return await DoesCacheNeedUpdate(cachePath, remote.Value);
+    }
+
+    private void SaveLastDownloadTime()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        localSettings.Values[GetLastDownloadTimeKey()] = DateTimeOffset.UtcNow.ToString("o");
     }
 
     private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
@@ -644,7 +450,318 @@ public class PackUpdater
         }
     }
 
-    // ======================= Check if Pack Exists in Cached Zipball =======================
+    // ======================= Deploy Package =======================
+
+    private async Task<bool> DeployPackage(string packagePath, PackType? targetPack = null, bool enableEnhancements = true)
+    {
+        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+        {
+            LogMessage("⚠️ Minecraft is running. Please close the game while using the app.");
+        }
+
+        bool anyPackDeployed = false;
+        string tempExtractionDir = null;
+        string resourcePackPath = null;
+
+        try
+        {
+            string basePath = TunerVariables.Persistent.IsTargetingPreview
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock Preview")
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock");
+
+            if (!Directory.Exists(basePath))
+            {
+                LogMessage("❌ Minecraft data root not found. Please make sure the game is installed or has been launched at least once.");
+                return false;
+            }
+
+            resourcePackPath = Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", InstallToDevelopmentFolder ? "development_resource_packs" : "resource_packs");
+
+            if (!Directory.Exists(resourcePackPath))
+            {
+                Directory.CreateDirectory(resourcePackPath);
+                LogMessage("📁 Shared resources directory was missing and has been created.");
+            }
+
+            tempExtractionDir = Path.Combine(resourcePackPath, "__rtxapp_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempExtractionDir);
+
+            ZipFile.ExtractToDirectory(packagePath, tempExtractionDir, overwriteFiles: true);
+            LogMessage("📦 Extracted package to temporary directory");
+
+            var extractedManifests = Directory.GetFiles(tempExtractionDir, "manifest.json", SearchOption.AllDirectories);
+
+            var packsToProcess = new List<(string uuid, string moduleUuid, string sourcePath, string finalName, string displayName, PackType packType)>();
+
+            foreach (var manifestPath in extractedManifests)
+            {
+                var uuids = await ReadManifestUUIDs(manifestPath);
+                if (uuids == null) continue;
+
+                var (headerUUID, moduleUUID) = uuids.Value;
+                var packSourcePath = Path.GetDirectoryName(manifestPath);
+
+                if (headerUUID == VANILLA_RTX_HEADER_UUID && moduleUUID == VANILLA_RTX_MODULE_UUID)
+                {
+                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtx", "Vanilla RTX", PackType.VanillaRTX));
+                }
+                else if (headerUUID == VANILLA_RTX_NORMALS_HEADER_UUID && moduleUUID == VANILLA_RTX_NORMALS_MODULE_UUID)
+                {
+                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxn", "Vanilla RTX Normals", PackType.VanillaRTXNormals));
+                }
+                else if (headerUUID == VANILLA_RTX_OPUS_HEADER_UUID && moduleUUID == VANILLA_RTX_OPUS_MODULE_UUID)
+                {
+                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxo", "Vanilla RTX Opus", PackType.VanillaRTXOpus));
+                }
+            }
+
+            if (targetPack.HasValue)
+            {
+                packsToProcess = packsToProcess.Where(p => p.packType == targetPack.Value).ToList();
+            }
+
+            if (packsToProcess.Count == 0)
+            {
+                LogMessage(targetPack.HasValue
+                    ? $"❌ {GetPackDisplayName(targetPack.Value)} not found in the downloaded package."
+                    : "❌ No recognized Vanilla RTX packs found in the downloaded package.");
+                return false;
+            }
+
+            LogMessage($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
+
+            foreach (var pack in packsToProcess)
+            {
+                try
+                {
+                    LogMessage($"🔄 Processing {pack.displayName}...");
+
+                    await DeleteExistingPackByUUID(resourcePackPath, pack.uuid, pack.moduleUuid, pack.displayName);
+
+                    var finalDestination = GetSafeDirectoryName(resourcePackPath, pack.finalName);
+                    Directory.Move(pack.sourcePath, finalDestination);
+
+                    if (enableEnhancements)
+                    {
+                        ProcessEnhancementFolders(finalDestination);
+                    }
+                    else
+                    {
+                        RemoveEnhancementsFolder(finalDestination);
+                    }
+
+                    try
+                    {
+                        Helpers.GenerateTexturesLists(finalDestination);
+                        var contentsPath = Path.Combine(finalDestination, "contents.json");
+                        if (File.Exists(contentsPath))
+                        {
+                            var attr = File.GetAttributes(contentsPath);
+                            if ((attr & System.IO.FileAttributes.ReadOnly) != 0)
+                                File.SetAttributes(contentsPath, attr & ~System.IO.FileAttributes.ReadOnly);
+
+                            File.Delete(contentsPath);
+                        }
+                        File.WriteAllText(contentsPath, "{}");
+                    }
+                    catch { Trace.WriteLine("Contents json or textures list creation failed."); }
+
+                    LogMessage($"✅ {pack.displayName} deployed successfully");
+                    anyPackDeployed = true;
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"❌ Failed to deploy {pack.displayName}: {ex.Message}");
+                }
+            }
+
+            return anyPackDeployed;
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"❌ Deployment error: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (tempExtractionDir != null && Directory.Exists(tempExtractionDir))
+            {
+                try
+                {
+                    ForceWritable(tempExtractionDir);
+                    Directory.Delete(tempExtractionDir, true);
+                    LogMessage(anyPackDeployed ? "🧹 Cleaned up" : "🧹 Cleaned up after fail");
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"⚠️ Failed to clean up temp directory: {ex.Message}");
+                }
+            }
+
+            if (resourcePackPath != null)
+            {
+                CleanupOrphanedDirectories(resourcePackPath);
+            }
+        }
+    }
+
+    private void CleanupOrphanedDirectories(string resourcePackPath)
+    {
+        var pathsToCleanOrphans = new List<string> { resourcePackPath };
+
+        if (CleanUpTheOtherFolder)
+        {
+            var dirInfo = new DirectoryInfo(resourcePackPath);
+            string opposingPath = InstallToDevelopmentFolder
+                ? dirInfo.Name.Equals("development_resource_packs", StringComparison.OrdinalIgnoreCase)
+                    ? Path.Combine(dirInfo.Parent.FullName, "resource_packs")
+                    : resourcePackPath
+                : dirInfo.Name.Equals("resource_packs", StringComparison.OrdinalIgnoreCase)
+                    ? Path.Combine(dirInfo.Parent.FullName, "development_resource_packs")
+                    : resourcePackPath;
+
+            if (Directory.Exists(opposingPath))
+            {
+                pathsToCleanOrphans.Add(opposingPath);
+            }
+        }
+
+        var cutoff = DateTime.UtcNow.AddMinutes(-1);
+
+        foreach (var pathToClean in pathsToCleanOrphans)
+        {
+            try
+            {
+                var orphanedDirs = Directory.GetDirectories(pathToClean, "__rtxapp_*", SearchOption.TopDirectoryOnly)
+                    .Where(d => Directory.GetCreationTimeUtc(d) < cutoff);
+
+                foreach (var dir in orphanedDirs)
+                {
+                    try
+                    {
+                        ForceWritable(dir);
+                        Directory.Delete(dir, true);
+                    }
+                    catch { /* ignore */ }
+                }
+            }
+            catch { /* ignore */ }
+        }
+    }
+
+    // ======================= Enhancement Methods =======================
+
+    private void RemoveEnhancementsFolder(string rootDirectory)
+    {
+        if (string.IsNullOrEmpty(EnhancementFolderName)) return;
+
+        try
+        {
+            var enhancementFolders = Directory.GetDirectories(rootDirectory, EnhancementFolderName, SearchOption.AllDirectories);
+
+            foreach (var enhancementPath in enhancementFolders)
+            {
+                try
+                {
+                    ForceWritable(enhancementPath);
+                    Directory.Delete(enhancementPath, true);
+                    LogMessage("🗑️ Removed enhancements folder (toggle was OFF)");
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"Failed to remove enhancement folder ({enhancementPath}): {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Error during enhancement folder removal: {ex.Message}");
+        }
+    }
+
+    private void ProcessEnhancementFolders(string rootDirectory)
+    {
+        if (string.IsNullOrEmpty(EnhancementFolderName)) return;
+
+        var enhancementFolders = Directory.GetDirectories(rootDirectory, EnhancementFolderName, SearchOption.AllDirectories);
+        int processed = 0, failed = 0, deleteIssues = 0;
+
+        foreach (var enhancementPath in enhancementFolders)
+        {
+            try
+            {
+                var parentDirectory = Directory.GetParent(enhancementPath)!.FullName;
+
+                deleteIssues += MoveDirectoryContents(enhancementPath, parentDirectory);
+
+                try
+                {
+                    Directory.Delete(enhancementPath, false);
+                }
+                catch
+                {
+                    deleteIssues++;
+                }
+
+                processed++;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Trace.WriteLine($"Enhancement folder error ({enhancementPath}): {ex.Message}");
+            }
+        }
+
+        if (processed + failed > 0)
+        {
+            var msg = failed == 0
+                ? $"✨ Enabled Enhancements"
+                : $"⚠️ Processing {processed} failed {failed}. Delete failures: {deleteIssues}";
+
+            LogMessage(msg);
+        }
+    }
+
+    private int MoveDirectoryContents(string sourceDir, string targetDir)
+    {
+        int deleteFailures = 0;
+
+        foreach (string file in Directory.GetFiles(sourceDir))
+        {
+            string destFile = Path.Combine(targetDir, Path.GetFileName(file));
+
+            if (File.Exists(destFile))
+            {
+                try { File.Delete(destFile); }
+                catch { deleteFailures++; continue; }
+            }
+
+            try { File.Move(file, destFile); }
+            catch { deleteFailures++; }
+        }
+
+        foreach (string subDir in Directory.GetDirectories(sourceDir))
+        {
+            string destSubDir = Path.Combine(targetDir, Path.GetFileName(subDir));
+
+            if (Directory.Exists(destSubDir))
+            {
+                deleteFailures += MoveDirectoryContents(subDir, destSubDir);
+
+                try { Directory.Delete(subDir, false); }
+                catch { deleteFailures++; }
+            }
+            else
+            {
+                try { Directory.Move(subDir, destSubDir); }
+                catch { deleteFailures++; }
+            }
+        }
+
+        return deleteFailures;
+    }
+
+    // ======================= Helper Methods =======================
 
     public async Task<bool> DoesPackExistInCache(PackType packType)
     {
@@ -678,8 +795,6 @@ public class PackUpdater
             return false;
         }
     }
-
-    // ======================= Helper Methods =======================
 
     private string GetPackDisplayName(PackType packType)
     {
@@ -873,88 +988,6 @@ public class PackUpdater
         {
             return null;
         }
-    }
-
-    private void ProcessEnhancementFolders(string rootDirectory)
-    {
-        if (string.IsNullOrEmpty(EnhancementFolderName)) return;
-
-        var enhancementFolders = Directory.GetDirectories(rootDirectory, EnhancementFolderName, SearchOption.AllDirectories);
-        int processed = 0, failed = 0, deleteIssues = 0;
-
-        foreach (var enhancementPath in enhancementFolders)
-        {
-            try
-            {
-                var parentDirectory = Directory.GetParent(enhancementPath)!.FullName;
-
-                deleteIssues += MoveDirectoryContents(enhancementPath, parentDirectory);
-
-                try
-                {
-                    Directory.Delete(enhancementPath, false);
-                }
-                catch
-                {
-                    deleteIssues++;
-                }
-
-                processed++;
-            }
-            catch (Exception ex)
-            {
-                failed++;
-                Trace.WriteLine($"Enhancement folder error ({enhancementPath}): {ex.Message}");
-            }
-        }
-
-        if (processed + failed > 0)
-        {
-            var msg = failed == 0
-                ? $"✨ Enabled Enhancements"
-                : $"⚠️ Processing {processed} failed {failed}. Delete failures: {deleteIssues}";
-
-            LogMessage(msg);
-        }
-    }
-
-    private int MoveDirectoryContents(string sourceDir, string targetDir)
-    {
-        int deleteFailures = 0;
-
-        foreach (string file in Directory.GetFiles(sourceDir))
-        {
-            string destFile = Path.Combine(targetDir, Path.GetFileName(file));
-
-            if (File.Exists(destFile))
-            {
-                try { File.Delete(destFile); }
-                catch { deleteFailures++; continue; }
-            }
-
-            try { File.Move(file, destFile); }
-            catch { deleteFailures++; }
-        }
-
-        foreach (string subDir in Directory.GetDirectories(sourceDir))
-        {
-            string destSubDir = Path.Combine(targetDir, Path.GetFileName(subDir));
-
-            if (Directory.Exists(destSubDir))
-            {
-                deleteFailures += MoveDirectoryContents(subDir, destSubDir);
-
-                try { Directory.Delete(subDir, false); }
-                catch { deleteFailures++; }
-            }
-            else
-            {
-                try { Directory.Move(subDir, destSubDir); }
-                catch { deleteFailures++; }
-            }
-        }
-
-        return deleteFailures;
     }
 
     private (bool exists, string path) GetCacheInfo()
