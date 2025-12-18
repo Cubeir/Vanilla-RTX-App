@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -8,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
+using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
@@ -157,14 +157,13 @@ public sealed partial class PackUpdateWindow : Window
         }
         catch
         {
-            // Fetch failed completely, versions remain null
+            // Fetch failed completely
         }
 
         var vanillaRTXVersion = VanillaRTXVersion;
         var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
         var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
 
-        // Update UI
         VanillaRTX_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTX_AvailableVersion.Visibility = Visibility.Visible;
         VanillaRTX_AvailableVersion.Text = GetAvailabilityText(rtx, vanillaRTXVersion, source);
@@ -192,7 +191,6 @@ public sealed partial class PackUpdateWindow : Window
             return "Up-to-date";
         }
 
-        // Only show "(cached)" for zipball fallback, not for 5-min cached remote data
         return source == VersionSource.ZipballFallback ? $"{availableVersion} (cached)" : availableVersion;
     }
 
@@ -293,6 +291,9 @@ public sealed partial class PackUpdateWindow : Window
     private async Task ProcessInstallQueue()
     {
         _isInstalling = true;
+
+        // pre-check and update cache ONCE before processing any packs
+        await _updater.EnsureCacheIsUpToDate();
 
         while (_installQueue.Count > 0)
         {

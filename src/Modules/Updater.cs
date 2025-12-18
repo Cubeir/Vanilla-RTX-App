@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Windows.Storage;
@@ -39,16 +37,17 @@ public class PackUpdater
     public event Action<string>? ProgressUpdate;
     private readonly List<string> _logMessages = new();
 
-    // Separate cooldowns for different purposes
+    // Remote version cache (for UI display - doesn't affect download decisions)
     private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
     private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(5);
 
-    private const string LastDownloadTimeKey_Release = "LastPackDownloadTime_Release";
-    private const string LastDownloadTimeKey_Preview = "LastPackDownloadTime_Preview";
-    private static readonly TimeSpan DownloadCooldown = TimeSpan.FromMinutes(60);
+    // Zipball download cooldown (prevents re-downloading the entire zipball too frequently)
+    private const string LastZipballDownloadKey_Release = "LastZipballDownload_Release";
+    private const string LastZipballDownloadKey_Preview = "LastZipballDownload_Preview";
+    private static readonly TimeSpan ZipballDownloadCooldown = TimeSpan.FromMinutes(60);
 
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;
@@ -60,222 +59,82 @@ public class PackUpdater
     private string GetRemoteVersionsCacheTimeKey() => TunerVariables.Persistent.IsTargetingPreview
         ? RemoteVersionsCacheTimeKey_Preview : RemoteVersionsCacheTimeKey_Release;
 
-    private string GetLastDownloadTimeKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? LastDownloadTimeKey_Preview : LastDownloadTimeKey_Release;
+    private string GetLastZipballDownloadKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? LastZipballDownloadKey_Preview : LastZipballDownloadKey_Release;
 
-    // ======================= Individual Pack Installation =======================
+    // ======================= Monolithic Cache Update (Called ONCE per queue) =======================
 
-    public async Task<(bool Success, List<string> Logs)> UpdateSinglePackAsync(PackType packType, bool enableEnhancements)
+    /// <summary>
+    /// Call this ONCE before processing any pack installations.
+    /// Checks if ANY of the 3 packs in the zipball have updates, and downloads the entire zipball if so.
+    /// This ensures all subsequent pack installations use the latest versions.
+    /// </summary>
+    public async Task<bool> EnsureCacheIsUpToDate()
     {
-        _logMessages.Clear();
+        var cacheInfo = GetCacheInfo();
 
-        try
+        if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
         {
-            var packName = GetPackDisplayName(packType);
-            LogMessage($"🔄 Starting installation for {packName}...");
-
-            var cacheInfo = GetCacheInfo();
-            if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
-            {
-                return await HandleNoCacheScenarioForSinglePack(packType, enableEnhancements);
-            }
-            else
-            {
-                return await HandleCacheExistsScenarioForSinglePack(cacheInfo.path, packType, enableEnhancements);
-            }
-        }
-        catch (Exception ex)
-        {
-            LogMessage($"❌ Unexpected error: {ex.Message}");
-            return (false, new List<string>(_logMessages));
-        }
-    }
-
-    private async Task<(bool Success, List<string> Logs)> HandleNoCacheScenarioForSinglePack(PackType packType, bool enableEnhancements)
-    {
-        LogMessage("📦 Downloading latest version");
-
-        var (downloadSuccess, downloadPath) = await DownloadLatestPackage();
-        if (!downloadSuccess || string.IsNullOrEmpty(downloadPath))
-        {
-            LogMessage("❌ Failed: Download failed and no pre-existing cache is available.");
-            return (false, new List<string>(_logMessages));
+            LogMessage("📦 No cache exists, will download on first pack installation");
+            return false;
         }
 
-        SaveCachedZipballPath(downloadPath);
-        SaveLastDownloadTime();
-        LogMessage("✅ Download cached for quicker future redeployment");
-
-        var deploySuccess = await DeployPackage(downloadPath, packType, enableEnhancements);
-        return (deploySuccess, new List<string>(_logMessages));
-    }
-
-    private async Task<(bool Success, List<string> Logs)> HandleCacheExistsScenarioForSinglePack(string cachePath, PackType packType, bool enableEnhancements)
-    {
-        LogMessage("✅ Cache found");
-
-        var needsUpdate = await CheckIfCacheNeedsUpdate(cachePath);
+        LogMessage("🔍 Checking if cached zipball needs update...");
+        var needsUpdate = await CheckIfZipballNeedsUpdate(cacheInfo.path);
 
         if (needsUpdate)
         {
-            LogMessage("📦 Package Update available!");
+            LogMessage("📦 Update available for zipball, downloading now...");
             var (downloadSuccess, downloadPath) = await DownloadLatestPackage();
 
             if (downloadSuccess && !string.IsNullOrEmpty(downloadPath))
             {
                 SaveCachedZipballPath(downloadPath);
-                SaveLastDownloadTime();
-                LogMessage("✅ New version downloaded and cached successfully for future redeployment.");
-
-                var deploySuccess = await DeployPackage(downloadPath, packType, enableEnhancements);
-                return (deploySuccess, new List<string>(_logMessages));
+                SaveZipballDownloadTime();
+                LogMessage("✅ Zipball updated successfully - all packs will use latest versions");
+                return true;
             }
             else
             {
-                LogMessage("⚠️ Download failed: fell back to older cached version.");
-                var deploySuccess = await DeployPackage(cachePath, packType, enableEnhancements);
-                return (deploySuccess, new List<string>(_logMessages));
-            }
-        }
-        else
-        {
-            LogMessage("ℹ️ Current cached package is the latest available at the moment.");
-            var deploySuccess = await DeployPackage(cachePath, packType, enableEnhancements);
-            return (deploySuccess, new List<string>(_logMessages));
-        }
-    }
-
-    // ======================= Remote Version Fetching with Cache Fallback =======================
-
-    public async Task<(string? rtx, string? normals, string? opus, VersionSource source)> GetRemoteVersionsAsync()
-    {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        var now = DateTimeOffset.UtcNow;
-        var cacheKey = GetRemoteVersionsCacheKey();
-        var timeKey = GetRemoteVersionsCacheTimeKey();
-
-        // Try cached remote versions first (5 min cache)
-        if (localSettings.Values[timeKey] is string cacheTimeStr &&
-            DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
-            now < cacheTime + RemoteVersionCacheDuration)
-        {
-            if (localSettings.Values[cacheKey] is string cachedJson)
-            {
-                try
-                {
-                    var cached = JObject.Parse(cachedJson);
-                    return (
-                        cached["rtx"]?.ToString(),
-                        cached["normals"]?.ToString(),
-                        cached["opus"]?.ToString(),
-                        VersionSource.CachedRemote
-                    );
-                }
-                catch { /* Fall through */ }
-            }
-        }
-
-        // Try fetching fresh versions from remote
-        if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
-        {
-            try
-            {
-                var remoteManifests = await FetchRemoteManifests();
-                if (remoteManifests.HasValue)
-                {
-                    var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
-
-                    var rtxVersion = ExtractVersionFromManifest(rtxManifest);
-                    var normalsVersion = ExtractVersionFromManifest(normalsManifest);
-                    var opusVersion = ExtractVersionFromManifest(opusManifest);
-
-                    // Cache the results
-                    var cacheObj = new JObject
-                    {
-                        ["rtx"] = rtxVersion,
-                        ["normals"] = normalsVersion,
-                        ["opus"] = opusVersion
-                    };
-                    localSettings.Values[cacheKey] = cacheObj.ToString();
-                    localSettings.Values[timeKey] = now.ToString("o");
-
-                    return (rtxVersion, normalsVersion, opusVersion, VersionSource.Remote);
-                }
-            }
-            catch { /* Fall through to cache fallback */ }
-        }
-
-        // Fallback: Get versions from cached zipball
-        var cacheInfo = GetCacheInfo();
-        if (cacheInfo.exists && File.Exists(cacheInfo.path))
-        {
-            var cachedVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
-            if (cachedVersions.HasValue)
-            {
-                return (cachedVersions.Value.rtx, cachedVersions.Value.normals, cachedVersions.Value.opus, VersionSource.ZipballFallback);
-            }
-        }
-
-        return (null, null, null, VersionSource.Remote);
-    }
-
-    private async Task<(string? rtx, string? normals, string? opus)?> GetVersionsFromCachedZipball(string cachePath)
-    {
-        try
-        {
-            using var archive = ZipFile.OpenRead(cachePath);
-
-            async Task<string?> TryReadVersion(string partialPath)
-            {
-                var entry = archive.Entries.FirstOrDefault(e =>
-                    e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
-                if (entry == null) return null;
-
-                using var stream = entry.Open();
-                using var reader = new StreamReader(stream);
-                var json = await reader.ReadToEndAsync();
-                var manifest = JObject.Parse(json);
-                return ExtractVersionFromManifest(manifest);
-            }
-
-            var rtxVersion = await TryReadVersion("Vanilla-RTX/manifest.json");
-            var normalsVersion = await TryReadVersion("Vanilla-RTX-Normals/manifest.json");
-            var opusVersion = await TryReadVersion("Vanilla-RTX-Opus/manifest.json");
-
-            return (rtxVersion, normalsVersion, opusVersion);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    // ======================= Cache Update Check =======================
-
-    private async Task<bool> CheckIfCacheNeedsUpdate(string cachePath)
-    {
-        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
-        {
-            LogMessage("🛜 No network available – reusing cache.");
-            return false;
-        }
-
-        // Check download cooldown
-        var localSettings = ApplicationData.Current.LocalSettings;
-        var now = DateTimeOffset.UtcNow;
-        var downloadKey = GetLastDownloadTimeKey();
-
-        if (localSettings.Values[downloadKey] is string lastDownloadStr &&
-            DateTimeOffset.TryParse(lastDownloadStr, out var lastDownload))
-        {
-            if (now < lastDownload + DownloadCooldown)
-            {
-                var minutesLeft = (int)Math.Ceiling((lastDownload + DownloadCooldown - now).TotalMinutes);
-                LogMessage($"⏳ Download cooldown active – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
+                LogMessage("⚠️ Zipball download failed, will use existing cache");
                 return false;
             }
         }
 
+        LogMessage("✅ Cached zipball is up-to-date");
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if the zipball needs updating by comparing ALL 3 pack versions against remote.
+    /// Returns true if ANY pack has a newer version, or if unable to verify (err on side of updating).
+    /// Respects 60-minute download cooldown to prevent hammering GitHub.
+    /// </summary>
+    private async Task<bool> CheckIfZipballNeedsUpdate(string cachePath)
+    {
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            LogMessage("🛜 No network available – will use existing cache");
+            return false;
+        }
+
+        // Check 60-minute zipball download cooldown
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var now = DateTimeOffset.UtcNow;
+        var downloadKey = GetLastZipballDownloadKey();
+
+        if (localSettings.Values[downloadKey] is string lastDownloadStr &&
+            DateTimeOffset.TryParse(lastDownloadStr, out var lastDownload))
+        {
+            if (now < lastDownload + ZipballDownloadCooldown)
+            {
+                var minutesLeft = (int)Math.Ceiling((lastDownload + ZipballDownloadCooldown - now).TotalMinutes);
+                LogMessage($"⏳ Zipball download cooldown active – {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
+                return false;
+            }
+        }
+
+        // Fetch remote manifests for all 3 packs
         (JObject? rtx, JObject? normals, JObject? opus)? remote = null;
 
         try
@@ -284,25 +143,24 @@ public class PackUpdater
         }
         catch (Exception ex)
         {
-            LogMessage($"Failed to contact GitHub ({ex.Message})");
+            LogMessage($"⚠️ Failed to contact GitHub: {ex.Message}");
         }
 
         if (remote == null)
         {
-            LogMessage("⚠️ Could not check for updates, using cache");
+            LogMessage("⚠️ Could not check for updates, will use existing cache");
             return false;
         }
 
-        return await DoesCacheNeedUpdate(cachePath, remote.Value);
+        // Compare all 3 packs in cache vs remote
+        return await IsAnyPackOutdated(cachePath, remote.Value);
     }
 
-    private void SaveLastDownloadTime()
-    {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        localSettings.Values[GetLastDownloadTimeKey()] = DateTimeOffset.UtcNow.ToString("o");
-    }
-
-    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
+    /// <summary>
+    /// Returns true if ANY of the 3 packs has a newer version remotely.
+    /// If unable to determine, returns true (err on side of updating).
+    /// </summary>
+    private async Task<bool> IsAnyPackOutdated(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
     {
         try
         {
@@ -324,58 +182,247 @@ public class PackUpdater
             var normalsManifest = await TryReadManifest("Vanilla-RTX-Normals/manifest.json");
             var opusManifest = await TryReadManifest("Vanilla-RTX-Opus/manifest.json");
 
-            bool needsUpdate = false;
+            bool anyOutdated = false;
 
+            // Check Vanilla RTX
             if (remoteManifests.rtx != null)
             {
                 if (rtxManifest == null)
                 {
                     LogMessage("📦 Vanilla RTX is available remotely but missing from cache");
-                    needsUpdate = true;
+                    anyOutdated = true;
                 }
                 else if (IsRemoteVersionNewer(rtxManifest, remoteManifests.rtx))
                 {
-                    LogMessage("📦 Vanilla RTX has a newer version available!");
-                    needsUpdate = true;
+                    var cacheVer = ExtractVersionFromManifest(rtxManifest);
+                    var remoteVer = ExtractVersionFromManifest(remoteManifests.rtx);
+                    LogMessage($"📦 Vanilla RTX: {cacheVer} → {remoteVer} (update available)");
+                    anyOutdated = true;
                 }
             }
 
+            // Check Vanilla RTX Normals
             if (remoteManifests.normals != null)
             {
                 if (normalsManifest == null)
                 {
                     LogMessage("📦 Vanilla RTX Normals is available remotely but missing from cache");
-                    needsUpdate = true;
+                    anyOutdated = true;
                 }
                 else if (IsRemoteVersionNewer(normalsManifest, remoteManifests.normals))
                 {
-                    LogMessage("📦 Vanilla RTX Normals has a newer version available!");
-                    needsUpdate = true;
+                    var cacheVer = ExtractVersionFromManifest(normalsManifest);
+                    var remoteVer = ExtractVersionFromManifest(remoteManifests.normals);
+                    LogMessage($"📦 Vanilla RTX Normals: {cacheVer} → {remoteVer} (update available)");
+                    anyOutdated = true;
                 }
             }
 
+            // Check Vanilla RTX Opus
             if (remoteManifests.opus != null)
             {
                 if (opusManifest == null)
                 {
                     LogMessage("📦 Vanilla RTX Opus is available remotely but missing from cache");
-                    needsUpdate = true;
+                    anyOutdated = true;
                 }
                 else if (IsRemoteVersionNewer(opusManifest, remoteManifests.opus))
                 {
-                    LogMessage("📦 Vanilla RTX Opus has a newer version available!");
-                    needsUpdate = true;
+                    var cacheVer = ExtractVersionFromManifest(opusManifest);
+                    var remoteVer = ExtractVersionFromManifest(remoteManifests.opus);
+                    LogMessage($"📦 Vanilla RTX Opus: {cacheVer} → {remoteVer} (update available)");
+                    anyOutdated = true;
                 }
             }
 
-            return needsUpdate;
+            if (!anyOutdated)
+            {
+                LogMessage("✅ All packs in cache are up-to-date");
+            }
+
+            return anyOutdated;
         }
         catch (Exception ex)
         {
-            LogMessage($"Error reading cached package: {ex.Message}");
-            return true;
+            LogMessage($"⚠️ Error reading cached zipball: {ex.Message} - will attempt update");
+            return true; // Err on side of updating
         }
     }
+
+    // ======================= Individual Pack Installation (Simplified) =======================
+
+    public async Task<(bool Success, List<string> Logs)> UpdateSinglePackAsync(PackType packType, bool enableEnhancements)
+    {
+        _logMessages.Clear();
+
+        try
+        {
+            var packName = GetPackDisplayName(packType);
+            LogMessage($"🔄 Starting installation for {packName}...");
+
+            var cacheInfo = GetCacheInfo();
+            if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
+            {
+                LogMessage("❌ No cache available - this shouldn't happen if EnsureCacheIsUpToDate() was called");
+                LogMessage("📦 Attempting emergency download...");
+
+                var (downloadSuccess, downloadPath) = await DownloadLatestPackage();
+                if (!downloadSuccess || string.IsNullOrEmpty(downloadPath))
+                {
+                    LogMessage("❌ Download failed");
+                    return (false, new List<string>(_logMessages));
+                }
+
+                SaveCachedZipballPath(downloadPath);
+                SaveZipballDownloadTime();
+                cacheInfo = (true, downloadPath);
+            }
+
+            LogMessage("✅ Using cached zipball for deployment");
+            var deploySuccess = await DeployPackage(cacheInfo.path, packType, enableEnhancements);
+            return (deploySuccess, new List<string>(_logMessages));
+        }
+        catch (Exception ex)
+        {
+            LogMessage($"❌ Unexpected error: {ex.Message}");
+            return (false, new List<string>(_logMessages));
+        }
+    }
+
+    // ======================= Remote Version Fetching (For UI Display) =======================
+
+    public async Task<(string? rtx, string? normals, string? opus, VersionSource source)> GetRemoteVersionsAsync()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var now = DateTimeOffset.UtcNow;
+        var cacheKey = GetRemoteVersionsCacheKey();
+        var timeKey = GetRemoteVersionsCacheTimeKey();
+
+        // Step 1: Try cached remote versions (5-min cache)
+        if (localSettings.Values[timeKey] is string cacheTimeStr &&
+            DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
+            now < cacheTime + RemoteVersionCacheDuration)
+        {
+            if (localSettings.Values[cacheKey] is string cachedJson)
+            {
+                try
+                {
+                    var cached = JObject.Parse(cachedJson);
+                    return (
+                        cached["rtx"]?.ToString(),
+                        cached["normals"]?.ToString(),
+                        cached["opus"]?.ToString(),
+                        VersionSource.CachedRemote
+                    );
+                }
+                catch { /* Fall through */ }
+            }
+        }
+
+        // Step 2: Try fetching fresh versions from remote
+        if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            try
+            {
+                var remoteManifests = await FetchRemoteManifests();
+                if (remoteManifests.HasValue)
+                {
+                    var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
+
+                    var rtxVersion = ExtractVersionFromManifest(rtxManifest);
+                    var normalsVersion = ExtractVersionFromManifest(normalsManifest);
+                    var opusVersion = ExtractVersionFromManifest(opusManifest);
+
+                    // Cache the fresh results for 5 minutes
+                    var cacheObj = new JObject
+                    {
+                        ["rtx"] = rtxVersion,
+                        ["normals"] = normalsVersion,
+                        ["opus"] = opusVersion
+                    };
+                    localSettings.Values[cacheKey] = cacheObj.ToString();
+                    localSettings.Values[timeKey] = now.ToString("o");
+
+                    return (rtxVersion, normalsVersion, opusVersion, VersionSource.Remote);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Failed to fetch remote versions: {ex.Message}");
+                /* Fall through to zipball fallback */
+            }
+        }
+
+        // Step 3: Fallback to reading versions from cached zipball
+        var cacheInfo = GetCacheInfo();
+        if (cacheInfo.exists && File.Exists(cacheInfo.path))
+        {
+            try
+            {
+                var cachedVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
+                if (cachedVersions.HasValue)
+                {
+                    Trace.WriteLine("Using zipball fallback for version display");
+                    return (cachedVersions.Value.rtx, cachedVersions.Value.normals, cachedVersions.Value.opus, VersionSource.ZipballFallback);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Failed to read zipball versions: {ex.Message}");
+            }
+        }
+
+        // Step 4: Complete failure
+        Trace.WriteLine("All version sources failed");
+        return (null, null, null, VersionSource.Remote);
+    }
+
+    private async Task<(string? rtx, string? normals, string? opus)?> GetVersionsFromCachedZipball(string cachePath)
+    {
+        using var archive = ZipFile.OpenRead(cachePath);
+
+        async Task<string?> TryReadVersion(string partialPath)
+        {
+            var entry = archive.Entries.FirstOrDefault(e =>
+                e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
+            if (entry == null) return null;
+
+            using var stream = entry.Open();
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+            var manifest = JObject.Parse(json);
+            return ExtractVersionFromManifest(manifest);
+        }
+
+        var rtxVersion = await TryReadVersion("Vanilla-RTX/manifest.json");
+        var normalsVersion = await TryReadVersion("Vanilla-RTX-Normals/manifest.json");
+        var opusVersion = await TryReadVersion("Vanilla-RTX-Opus/manifest.json");
+
+        return (rtxVersion, normalsVersion, opusVersion);
+    }
+
+    // ======================= Cooldown Management =======================
+
+    public void ResetZipballDownloadCooldown()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        localSettings.Values[GetLastZipballDownloadKey()] = null;
+    }
+
+    public void ResetRemoteVersionCache()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        localSettings.Values[GetRemoteVersionsCacheKey()] = null;
+        localSettings.Values[GetRemoteVersionsCacheTimeKey()] = null;
+    }
+
+    private void SaveZipballDownloadTime()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        localSettings.Values[GetLastZipballDownloadKey()] = DateTimeOffset.UtcNow.ToString("o");
+    }
+
+    // ======================= Helper Methods =======================
 
     private bool IsRemoteVersionNewer(JObject cachedManifest, JObject remoteManifest)
     {
@@ -390,51 +437,44 @@ public class PackUpdater
         }
         catch
         {
-            return true;
+            return true; // Err on side of updating
         }
     }
 
     private async Task<(JObject? rtx, JObject? normals, JObject? opus)?> FetchRemoteManifests()
     {
-        try
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app_updater/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)");
+
+        async Task<JObject?> TryFetchManifest(string url)
         {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app_updater/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)");
-
-            async Task<JObject?> TryFetchManifest(string url)
+            try
             {
-                try
-                {
-                    var response = await client.GetStringAsync(url);
-                    return JObject.Parse(response);
-                }
-                catch
-                {
-                    return null;
-                }
+                var response = await client.GetStringAsync(url);
+                return JObject.Parse(response);
             }
-
-            var rtxTask = TryFetchManifest(VANILLA_RTX_MANIFEST_URL);
-            var normalsTask = TryFetchManifest(VANILLA_RTX_NORMALS_MANIFEST_URL);
-            var opusTask = TryFetchManifest(VANILLA_RTX_OPUS_MANIFEST_URL);
-
-            await Task.WhenAll(rtxTask, normalsTask, opusTask);
-
-            var rtx = await rtxTask;
-            var normals = await normalsTask;
-            var opus = await opusTask;
-
-            if (rtx == null && normals == null && opus == null)
+            catch
             {
                 return null;
             }
-
-            return (rtx, normals, opus);
         }
-        catch
+
+        var rtxTask = TryFetchManifest(VANILLA_RTX_MANIFEST_URL);
+        var normalsTask = TryFetchManifest(VANILLA_RTX_NORMALS_MANIFEST_URL);
+        var opusTask = TryFetchManifest(VANILLA_RTX_OPUS_MANIFEST_URL);
+
+        await Task.WhenAll(rtxTask, normalsTask, opusTask);
+
+        var rtx = await rtxTask;
+        var normals = await normalsTask;
+        var opus = await opusTask;
+
+        if (rtx == null && normals == null && opus == null)
         {
             return null;
         }
+
+        return (rtx, normals, opus);
     }
 
     private async Task<(bool Success, string? Path)> DownloadLatestPackage()
