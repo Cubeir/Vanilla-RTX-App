@@ -1978,49 +1978,54 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
+    private async void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
     {
         // The UI display text relies on this, rerun it just in case, few ms overhead worth it
-        _ = LocatePacksButton_Click();
-
-        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+        try
         {
-            Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+            await LocatePacksButton_Click();
         }
-
-        ToggleControls(this, false, true, []);
-
-        var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
-        var mainAppWindow = this.AppWindow;
-
-        packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
-
-        // Do on window closure
-        packUpdaterWindow.Closed += (s, args) =>
+        finally
         {
-            // Enable main UI buttons again
-            ToggleControls(this, true, true, []);
-
-            // Set reinstall latest packs button visuals based on cache status
-            if (_updater.HasDeployableCache())
+            if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
             {
-                UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
-                UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
-            }
-            else
-            {
-                UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
-                UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
+                Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
             }
 
-            // Trigger an automatic pack location check after update (fail or not)
-            _ = LocatePacksButton_Click(true);
-        };
+            ToggleControls(this, false, true, []);
 
-        packUpdaterWindow.Activate();
+            var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
+            var mainAppWindow = this.AppWindow;
+
+            packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+                mainAppWindow.Size.Width,
+                mainAppWindow.Size.Height));
+            packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
+
+            // Do on window closure
+            packUpdaterWindow.Closed += (s, args) =>
+            {
+                // Enable main UI buttons again
+                ToggleControls(this, true, true, []);
+
+                // Set reinstall latest packs button visuals based on cache status
+                if (_updater.HasDeployableCache())
+                {
+                    UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
+                    UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
+                }
+                else
+                {
+                    UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
+                    UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
+                }
+
+                // Trigger an automatic pack location check after update (fail or not)
+                _ = LocatePacksButton_Click(true);
+            };
+
+            packUpdaterWindow.Activate();
+        }   
     }
 
 
