@@ -66,147 +66,9 @@
                         <Grid x:Name="ShadowReceiverGrid"
                               Grid.ColumnSpan="5" />
 
-                        <!-- Panel 1: Vanilla RTX -->
+
+                        <!-- Panel 1: Vanilla RTX Normals -->
                         <Border Grid.Column="0"
-                                CornerRadius="8"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                Translation="0,0,32"
-                                MaxHeight="600">
-                            <Border.Shadow>
-                                <ThemeShadow />
-                            </Border.Shadow>
-
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-
-                                <!-- Image Section -->
-                                <Grid Grid.Row="0">
-                                    <Border CornerRadius="8,8,0,0">
-                                        <Image Source="ms-appx:///Assets/covers/regular.cover.png"
-                                               Stretch="UniformToFill"
-                                               IsHitTestVisible="False"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Top"
-                                               MaxHeight="325"
-                                               CacheMode="BitmapCache" />
-                                    </Border>
-
-                                    <!-- Overlay with title and description -->
-                                    <Border CornerRadius="0,0,0,0"
-                                            VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12">
-                                        <Border.Background>
-                                            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                                                          TintOpacity="0.0"
-                                                          TintLuminosityOpacity="0.64"
-                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
-                                        </Border.Background>
-
-                                        <StackPanel Spacing="4">
-                                            <!-- Pack Name -->
-                                            <HyperlinkButton Content="Vanilla RTX"
-                                                             FontSize="18"
-                                                             Foreground="{ThemeResource OverlayTextBrush}"
-                                                             FontWeight="SemiBold"
-                                                             Padding="0"
-                                                             HorizontalAlignment="Left"
-                                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx"
-                                                             IsTextScaleFactorEnabled="False" />
-
-                                            <!-- Description -->
-                                            <TextBlock Text="The default ray-traced Minecraft graphics, everything is covered!"
-                                                       FontSize="13"
-                                                       Foreground="{ThemeResource OverlayTextBrush}"
-                                                       Opacity="0.9"
-                                                       TextWrapping="Wrap"
-                                                       IsTextScaleFactorEnabled="False" />
-                                        </StackPanel>
-                                    </Border>
-                                </Grid>
-
-                                <!-- Info Section -->
-                                <StackPanel Grid.Row="1"
-                                            Padding="16"
-                                            Spacing="4">
-                                    <!-- Installed Version -->
-                                    <StackPanel Orientation="Horizontal"
-                                                Spacing="6">
-                                        <TextBlock Text="Installed:"
-                                                   FontSize="13"
-                                                   Opacity="0.75"
-                                                   IsTextScaleFactorEnabled="False" />
-                                        <TextBlock x:Name="VanillaRTX_InstalledVersion"
-                                                   Text="Not installed"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   IsTextScaleFactorEnabled="False" />
-                                    </StackPanel>
-
-                                    <!-- Available Version -->
-                                    <StackPanel Orientation="Horizontal"
-                                                Spacing="6">
-                                        <TextBlock Text="Available:"
-                                                   FontSize="13"
-                                                   Opacity="0.75"
-                                                   IsTextScaleFactorEnabled="False" />
-                                        <ProgressRing x:Name="VanillaRTX_AvailableLoading"
-                                                      Width="16"
-                                                      Height="16"
-                                                      IsActive="True"
-                                                      Visibility="Visible" />
-                                        <TextBlock x:Name="VanillaRTX_AvailableVersion"
-                                                   Text="Checking..."
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   IsTextScaleFactorEnabled="False"
-                                                   Visibility="Collapsed" />
-                                    </StackPanel>
-
-                                    <!-- Controls Row -->
-                                    <Grid Margin="0,16,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="8" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- Enhancement Toggle -->
-                                        <ToggleSwitch x:Name="VanillaRTX_EnhancementsToggle"
-                                                      Grid.Column="0"
-                                                      Header="Enhancements"
-                                                      IsOn="True"
-                                                      IsTextScaleFactorEnabled="False" />
-
-                                        <!-- Install Button + Loading Ring -->
-                                        <Grid Grid.Column="2"
-                                              MinWidth="100"
-                                              MinHeight="50">
-                                            <Button x:Name="VanillaRTX_InstallButton"
-                                                    Content="Install"
-                                                    FontWeight="SemiBold"
-                                                    Style="{StaticResource AccentButtonStyle}"
-                                                    HorizontalAlignment="Stretch"
-                                                    VerticalAlignment="Stretch"
-                                                    IsEnabled="False"
-                                                    IsTextScaleFactorEnabled="False" />
-                                            <ProgressRing x:Name="VanillaRTX_LoadingRing"
-                                                          Width="32"
-                                                          Height="32"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"
-                                                          Visibility="Collapsed"
-                                                          IsActive="False" />
-                                        </Grid>
-                                    </Grid>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Panel 2: Vanilla RTX Normals -->
-                        <Border Grid.Column="2"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32"
@@ -332,6 +194,144 @@
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
                                             <ProgressRing x:Name="VanillaRTXNormals_LoadingRing"
+                                                          Width="32"
+                                                          Height="32"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Visibility="Collapsed"
+                                                          IsActive="False" />
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <!-- Panel 2: Vanilla RTX -->
+                        <Border Grid.Column="2"
+                                CornerRadius="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                Translation="0,0,32"
+                                MaxHeight="600">
+                            <Border.Shadow>
+                                <ThemeShadow />
+                            </Border.Shadow>
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Image Section -->
+                                <Grid Grid.Row="0">
+                                    <Border CornerRadius="8,8,0,0">
+                                        <Image Source="ms-appx:///Assets/covers/regular.cover.png"
+                                               Stretch="UniformToFill"
+                                               IsHitTestVisible="False"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Top"
+                                               MaxHeight="325"
+                                               CacheMode="BitmapCache" />
+                                    </Border>
+
+                                    <!-- Overlay with title and description -->
+                                    <Border CornerRadius="0,0,0,0"
+                                            VerticalAlignment="Bottom"
+                                            Padding="16,10,16,12">
+                                        <Border.Background>
+                                            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                                                          TintOpacity="0.0"
+                                                          TintLuminosityOpacity="0.64"
+                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                        </Border.Background>
+
+                                        <StackPanel Spacing="4">
+                                            <!-- Pack Name -->
+                                            <HyperlinkButton Content="Vanilla RTX"
+                                                             FontSize="18"
+                                                             Foreground="{ThemeResource OverlayTextBrush}"
+                                                             FontWeight="SemiBold"
+                                                             Padding="0"
+                                                             HorizontalAlignment="Left"
+                                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx"
+                                                             IsTextScaleFactorEnabled="False" />
+
+                                            <!-- Description -->
+                                            <TextBlock Text="The default ray-traced Minecraft graphics, everything is covered!"
+                                                       FontSize="13"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Info Section -->
+                                <StackPanel Grid.Row="1"
+                                            Padding="16"
+                                            Spacing="4">
+                                    <!-- Installed Version -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="6">
+                                        <TextBlock Text="Installed:"
+                                                   FontSize="13"
+                                                   Opacity="0.75"
+                                                   IsTextScaleFactorEnabled="False" />
+                                        <TextBlock x:Name="VanillaRTX_InstalledVersion"
+                                                   Text="Not installed"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   IsTextScaleFactorEnabled="False" />
+                                    </StackPanel>
+
+                                    <!-- Available Version -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="6">
+                                        <TextBlock Text="Available:"
+                                                   FontSize="13"
+                                                   Opacity="0.75"
+                                                   IsTextScaleFactorEnabled="False" />
+                                        <ProgressRing x:Name="VanillaRTX_AvailableLoading"
+                                                      Width="16"
+                                                      Height="16"
+                                                      IsActive="True"
+                                                      Visibility="Visible" />
+                                        <TextBlock x:Name="VanillaRTX_AvailableVersion"
+                                                   Text="Checking..."
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   IsTextScaleFactorEnabled="False"
+                                                   Visibility="Collapsed" />
+                                    </StackPanel>
+
+                                    <!-- Controls Row -->
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Enhancement Toggle -->
+                                        <ToggleSwitch x:Name="VanillaRTX_EnhancementsToggle"
+                                                      Grid.Column="0"
+                                                      Header="Enhancements"
+                                                      IsOn="True"
+                                                      IsTextScaleFactorEnabled="False" />
+
+                                        <!-- Install Button + Loading Ring -->
+                                        <Grid Grid.Column="2"
+                                              MinWidth="100"
+                                              MinHeight="50">
+                                            <Button x:Name="VanillaRTX_InstallButton"
+                                                    Content="Install"
+                                                    FontWeight="SemiBold"
+                                                    Style="{StaticResource AccentButtonStyle}"
+                                                    HorizontalAlignment="Stretch"
+                                                    VerticalAlignment="Stretch"
+                                                    IsEnabled="False"
+                                                    IsTextScaleFactorEnabled="False" />
+                                            <ProgressRing x:Name="VanillaRTX_LoadingRing"
                                                           Width="32"
                                                           Height="32"
                                                           HorizontalAlignment="Center"
@@ -689,6 +689,7 @@
 
                 </StackPanel>
             </ScrollViewer>
+            
         </Grid>
     </Grid>
 </Window>
