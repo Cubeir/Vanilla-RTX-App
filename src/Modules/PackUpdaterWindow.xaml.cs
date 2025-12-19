@@ -5,9 +5,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
-using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
@@ -176,7 +174,7 @@ public sealed partial class PackUpdateWindow : Window
         VanillaRTXOpus_AvailableVersion.Visibility = Visibility.Visible;
         VanillaRTXOpus_AvailableVersion.Text = GetAvailabilityText(opus, vanillaRTXOpusVersion, source);
 
-        await UpdateAllButtonStates(rtx, normals, opus);
+        await UpdateAllButtonStates(rtx, normals, opus, vanillaRTXVersion, vanillaRTXNormalsVersion, vanillaRTXOpusVersion);
     }
 
     private string GetAvailabilityText(string? availableVersion, string? installedVersion, VersionSource source)
@@ -194,15 +192,37 @@ public sealed partial class PackUpdateWindow : Window
         return source == VersionSource.ZipballFallback ? $"{availableVersion} (cached)" : availableVersion;
     }
 
-    private async Task UpdateAllButtonStates(string? rtxRemote, string? normalsRemote, string? opusRemote)
+    private async Task UpdateAllButtonStates(
+        string? rtxRemote,
+        string? normalsRemote,
+        string? opusRemote,
+        string? rtxInstalled,
+        string? normalsInstalled,
+        string? opusInstalled)
     {
-        var vanillaRTXVersion = VanillaRTXVersion;
-        var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
-        var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
+        // Check if ANY pack needs update (installed vs remote)
+        bool anyNeedsUpdate = false;
 
-        await UpdateSingleButtonState(VanillaRTX_InstallButton, PackType.VanillaRTX, vanillaRTXVersion, rtxRemote);
-        await UpdateSingleButtonState(VanillaRTXNormals_InstallButton, PackType.VanillaRTXNormals, vanillaRTXNormalsVersion, normalsRemote);
-        await UpdateSingleButtonState(VanillaRTXOpus_InstallButton, PackType.VanillaRTXOpus, vanillaRTXOpusVersion, opusRemote);
+        if (!string.IsNullOrEmpty(rtxRemote) && _updater.IsRemoteVersionNewerThanInstalled(rtxInstalled, rtxRemote))
+            anyNeedsUpdate = true;
+
+        if (!string.IsNullOrEmpty(normalsRemote) && _updater.IsRemoteVersionNewerThanInstalled(normalsInstalled, normalsRemote))
+            anyNeedsUpdate = true;
+
+        if (!string.IsNullOrEmpty(opusRemote) && _updater.IsRemoteVersionNewerThanInstalled(opusInstalled, opusRemote))
+            anyNeedsUpdate = true;
+
+        // If ANY pack's installed version is outdated vs remote, invalidate cache
+        // This ensures we get the latest zipball when user next clicks install
+        if (anyNeedsUpdate)
+        {
+            _updater.InvalidateCache();
+            System.Diagnostics.Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
+        }
+
+        await UpdateSingleButtonState(VanillaRTX_InstallButton, PackType.VanillaRTX, rtxInstalled, rtxRemote);
+        await UpdateSingleButtonState(VanillaRTXNormals_InstallButton, PackType.VanillaRTXNormals, normalsInstalled, normalsRemote);
+        await UpdateSingleButtonState(VanillaRTXOpus_InstallButton, PackType.VanillaRTXOpus, opusInstalled, opusRemote);
     }
 
     private async Task UpdateSingleButtonState(Button button, PackType packType, string? installedVersion, string? remoteVersion)
@@ -292,9 +312,6 @@ public sealed partial class PackUpdateWindow : Window
     {
         _isInstalling = true;
 
-        // pre-check and update cache ONCE before processing any packs
-        await _updater.EnsureCacheIsUpToDate();
-
         while (_installQueue.Count > 0)
         {
             var (pack, enhancements) = _installQueue.Dequeue();
@@ -310,6 +327,10 @@ public sealed partial class PackUpdateWindow : Window
 
         try
         {
+            // The updater's UpdateSinglePackAsync now handles:
+            // 1. ValidateCacheAgainstRemote() - checks all 3 packs, invalidates if any outdated
+            // 2. Downloads fresh zipball if cache doesn't exist
+            // 3. Deploys the specific pack requested
             var (success, logs) = await Task.Run(() =>
                 _updater.UpdateSinglePackAsync(packType, enableEnhancements));
 
