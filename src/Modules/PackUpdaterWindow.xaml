@@ -7,7 +7,7 @@
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
-    
+
     <Grid>
         <!-- Light Theme Overlay -->
         <Border x:Name="LightThemeOverlay"
@@ -69,6 +69,7 @@
 
                         <!-- Panel 1: Vanilla RTX Normals -->
                         <Border Grid.Column="0"
+                                x:Name="NormalsPanel"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32"
@@ -96,9 +97,11 @@
                                     </Border>
 
                                     <!-- Overlay with title and description -->
-                                    <Border CornerRadius="0,0,0,0"
+                                    <Border x:Name="NormalsOverlay"
+                                            CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12">
+                                            Padding="16,10,16,12"
+                                            Opacity="0">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
@@ -205,8 +208,10 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
                         <!-- Panel 2: Vanilla RTX -->
                         <Border Grid.Column="2"
+                                x:Name="VanillaPanel"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32"
@@ -234,9 +239,11 @@
                                     </Border>
 
                                     <!-- Overlay with title and description -->
-                                    <Border CornerRadius="0,0,0,0"
+                                    <Border x:Name="VanillaOverlay"
+                                            CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12">
+                                            Padding="16,10,16,12"
+                                            Opacity="0">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
@@ -346,6 +353,7 @@
 
                         <!-- Panel 3: Vanilla RTX Opus -->
                         <Border Grid.Column="4"
+                                x:Name="OpusPanel"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32"
@@ -373,9 +381,11 @@
                                     </Border>
 
                                     <!-- Overlay with title and description -->
-                                    <Border CornerRadius="0,0,0,0"
+                                    <Border x:Name="OpusOverlay"
+                                            CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12">
+                                            Padding="16,10,16,12"
+                                            Opacity="0">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
@@ -496,6 +506,7 @@
 
                         <!-- Secondary Pack 1: Vanilla RTX Add-Ons -->
                         <Border Grid.Column="0"
+                                x:Name="AddOnsPanel"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32">
@@ -515,9 +526,11 @@
                                 </Border>
 
                                 <!-- Overlay with title and description -->
-                                <Border CornerRadius="0"
+                                <Border x:Name="AddOnsOverlay"
+                                        CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12">
+                                        Padding="16,10,16,12"
+                                        Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
@@ -548,6 +561,7 @@
 
                         <!-- Secondary Pack 2: Chemistry RTX -->
                         <Border Grid.Column="2"
+                                x:Name="ChemistryPanel"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32">
@@ -567,9 +581,11 @@
                                 </Border>
 
                                 <!-- Overlay with title and description -->
-                                <Border CornerRadius="0"
+                                <Border x:Name="ChemistryOverlay"
+                                        CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12">
+                                        Padding="16,10,16,12"
+                                        Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
@@ -597,9 +613,9 @@
                                 </Border>
                             </Grid>
                         </Border>
-
                         <!-- Secondary Pack 3: Creative RTX -->
                         <Border Grid.Column="4"
+                                x:Name="CreativePanel"
                                 CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 Translation="0,0,32">
@@ -619,9 +635,11 @@
                                 </Border>
 
                                 <!-- Overlay with title and description -->
-                                <Border CornerRadius="0"
+                                <Border x:Name="CreativeOverlay"
+                                        CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12">
+                                        Padding="16,10,16,12"
+                                        Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
@@ -689,7 +707,7 @@
 
                 </StackPanel>
             </ScrollViewer>
-            
+
         </Grid>
     </Grid>
 </Window>

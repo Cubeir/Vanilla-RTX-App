@@ -1198,7 +1198,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="DLSS version swapper"
+                            <TextBlock Text="DLSS swapper"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

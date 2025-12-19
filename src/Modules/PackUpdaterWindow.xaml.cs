@@ -5,6 +5,7 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Modules;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
@@ -19,9 +20,16 @@ public sealed partial class PackUpdateWindow : Window
     private readonly Queue<(PackType pack, bool enhancements)> _installQueue = new();
     private bool _isInstalling = false;
 
+    // Pane animation durations
+    private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(200);
+    private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
+
     public PackUpdateWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
+
+        InitializeHoverEffects();
+
         _mainWindow = mainWindow;
         _updater = new PackUpdater();
 
@@ -65,6 +73,63 @@ public sealed partial class PackUpdateWindow : Window
         this.Activated += PackUpdateWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }
+
+
+    private void InitializeHoverEffects()
+    {
+        // Main Panels
+        SetupPanelHoverEffect(NormalsPanel, NormalsOverlay);
+        SetupPanelHoverEffect(VanillaPanel, VanillaOverlay);
+        SetupPanelHoverEffect(OpusPanel, OpusOverlay);
+
+        // Secondary Panels
+        SetupPanelHoverEffect(AddOnsPanel, AddOnsOverlay);
+        SetupPanelHoverEffect(ChemistryPanel, ChemistryOverlay);
+        SetupPanelHoverEffect(CreativePanel, CreativeOverlay);
+    }
+    private void SetupPanelHoverEffect(Border panel, Border overlay)
+    {
+        // Mouse enter - fade in
+        panel.PointerEntered += (s, e) =>
+        {
+            AnimateOpacity(overlay, 1.0, _fadeInDuration);
+        };
+
+        // Mouse leave - fade out
+        panel.PointerExited += (s, e) =>
+        {
+            AnimateOpacity(overlay, 0.0, _fadeOutDuration);
+        };
+        panel.PointerCaptureLost += (s, e) =>
+        {
+            AnimateOpacity(overlay, 0.0, _fadeOutDuration);
+        };
+        panel.PointerCanceled += (s, e) =>
+        {
+            AnimateOpacity(overlay, 0.0, _fadeOutDuration);
+        };
+    }
+    private void AnimateOpacity(UIElement element, double toValue, TimeSpan duration)
+    {
+        var storyboard = new Storyboard();
+
+        var opacityAnimation = new DoubleAnimation
+        {
+            To = toValue,
+            Duration = new Duration(duration),
+            EasingFunction = new CubicEase
+            {
+                EasingMode = toValue > 0.5 ? EasingMode.EaseOut : EasingMode.EaseIn
+            }
+        };
+
+        Storyboard.SetTarget(opacityAnimation, element);
+        Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+
+        storyboard.Children.Add(opacityAnimation);
+        storyboard.Begin();
+    }
+
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
