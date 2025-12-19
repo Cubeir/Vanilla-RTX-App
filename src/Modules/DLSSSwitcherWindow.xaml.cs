@@ -438,6 +438,10 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var displayVersion = dll.Version.Replace(",", ".");
 
+        if (isCurrentVersion)
+        {
+            displayVersion += " (Current)";
+        }
         var versionText = new TextBlock
         {
             Text = $"DLSS {displayVersion}",
