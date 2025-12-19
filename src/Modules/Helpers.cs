@@ -346,7 +346,7 @@ public static class Helpers
             {
                 // Get everything after "LocalState"
                 string afterLocalState = fullPath.Substring(localStateIndex);
-                return $"AppData\\{afterLocalState}";
+                return $"Data\\{afterLocalState}";
             }
 
             // If LocalState not found, just return the filename and parent folder
