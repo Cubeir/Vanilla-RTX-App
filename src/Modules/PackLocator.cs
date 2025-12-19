@@ -147,7 +147,7 @@ public class PackLocator
             }
             else
             {
-                //results.Add("⚠️ Not installed: Vanilla RTX");
+                results.Add("⚠️ Not installed: Vanilla RTX");
             }
 
             if (latestVanillaRTXNormals != null)
@@ -158,7 +158,7 @@ public class PackLocator
             }
             else
             {
-                //results.Add("⚠️ Not installed: Vanilla RTX Normals");
+                results.Add("⚠️ Not installed: Vanilla RTX Normals");
             }
 
             if (latestVanillaRTXOpus != null)
@@ -169,7 +169,7 @@ public class PackLocator
             }
             else
             {
-                //results.Add("⚠️ Not installed: Vanilla RTX Opus");
+                results.Add("⚠️ Not installed: Vanilla RTX Opus");
             }
 
             return string.Join(Environment.NewLine, results);

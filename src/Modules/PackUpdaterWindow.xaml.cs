@@ -298,6 +298,7 @@ public sealed partial class PackUpdateWindow : Window
 
         if (!isInstalled)
         {
+            // _updater.InvalidateCache(); Should we do this?!?!?
             button.Content = "Install";
             button.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
             button.IsEnabled = remoteAvailable || packInCache;

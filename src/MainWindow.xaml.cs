@@ -1317,7 +1317,7 @@ public sealed partial class MainWindow : Window
     }
 
 
-
+    private string _previousStatusMessage;
     public async Task LocatePacksButton_Click(bool ShowLogs = false)
     {
         _ = BlinkingLamp(true, true, 1.0);
@@ -1347,10 +1347,12 @@ public sealed partial class MainWindow : Window
             out VanillaRTXLocation, out VanillaRTXVersion,
             out VanillaRTXNormalsLocation, out VanillaRTXNormalsVersion,
             out VanillaRTXOpusLocation, out VanillaRTXOpusVersion);
-        if (ShowLogs)
+        if (ShowLogs && statusMessage != _previousStatusMessage)
         {
             Log(statusMessage);
+            _previousStatusMessage = statusMessage;
         }
+
 
         if (!string.IsNullOrEmpty(VanillaRTXLocation) && Directory.Exists(VanillaRTXLocation))
         {
