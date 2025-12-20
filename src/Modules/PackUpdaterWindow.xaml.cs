@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -7,6 +10,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Modules;
+using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
@@ -23,6 +27,10 @@ public sealed partial class PackUpdateWindow : Window
     // Pane animation durations
     private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(200);
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
+
+    private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
+    private const int REFRESH_COOLDOWN_SECONDS = 59;
+    private DispatcherTimer _cooldownTimer;
 
     public PackUpdateWindow(MainWindow mainWindow)
     {
@@ -131,6 +139,72 @@ public sealed partial class PackUpdateWindow : Window
     }
 
 
+    private void InitializeRefreshButton()
+    {
+        UpdateRefreshButtonState();
+        _cooldownTimer = new DispatcherTimer();
+        _cooldownTimer.Interval = TimeSpan.FromSeconds(1);
+        _cooldownTimer.Tick += (s, e) => UpdateRefreshButtonState();
+        _cooldownTimer.Start();
+    }
+
+    private void UpdateRefreshButtonState()
+    {
+        try
+        {
+            var settings = ApplicationData.Current.LocalSettings;
+
+            if (settings.Values.TryGetValue(REFRESH_COOLDOWN_KEY, out var storedValue) && storedValue is long ticks)
+            {
+                var lastClickTime = new DateTime(ticks, DateTimeKind.Utc);
+                var elapsed = DateTime.UtcNow - lastClickTime;
+                var remainingSeconds = REFRESH_COOLDOWN_SECONDS - (int)elapsed.TotalSeconds;
+
+                if (remainingSeconds > 0)
+                {
+                    RefreshButton.IsEnabled = false;
+
+                    // Hide icon, show countdown text
+                    RefreshIcon.Visibility = Visibility.Collapsed;
+                    RefreshCountdownText.Visibility = Visibility.Visible;
+                    RefreshCountdownText.Text = remainingSeconds.ToString();
+
+                    return;
+                }
+            }
+
+            // Cooldown expired or never set - enable button
+            RefreshButton.IsEnabled = true;
+
+            // Show icon, hide countdown text
+            RefreshIcon.Visibility = Visibility.Visible;
+            RefreshCountdownText.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Error updating refresh button state: {ex.Message}");
+
+            // On error, default to enabled with icon visible
+            RefreshButton.IsEnabled = true;
+            RefreshIcon.Visibility = Visibility.Visible;
+            RefreshCountdownText.Visibility = Visibility.Collapsed;
+        }
+    }
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Trace.WriteLine("=== RESET BUTTON CLICKED (PACK UPDATER) ===");
+            UpdateRefreshButtonState();
+        }
+        catch(Exception ex)
+        {
+            Trace.WriteLine("💣 SOME ERROR OR SOMETHING RefreshButton_Click: " + ex);
+        }
+    }
+
+
+
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _mainWindow.Closed -= MainWindow_Closed;
@@ -157,6 +231,8 @@ public sealed partial class PackUpdateWindow : Window
 
             await InitializePackInformation();
             SetupButtonHandlers();
+
+            InitializeRefreshButton();
         }
     }
 

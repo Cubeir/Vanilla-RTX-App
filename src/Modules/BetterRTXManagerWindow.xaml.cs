@@ -43,7 +43,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 30;
+    private const int REFRESH_COOLDOWN_SECONDS = 59;
     private DispatcherTimer _cooldownTimer;
 
     public bool OperationSuccessful { get; private set; } = false;

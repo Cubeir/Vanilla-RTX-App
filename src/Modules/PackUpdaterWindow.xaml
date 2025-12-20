@@ -719,17 +719,30 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 CornerRadius="0, 0, 6, 6"
+                Click="RefreshButton_Click"
                 Translation="0,0,16"
-                IsTextScaleFactorEnabled="False">
+                IsTextScaleFactorEnabled="False"
+                ToolTipService.ToolTip="Manually invalidates cache and refreshes available and installed versions. Usage: I can't fathom why you'd need this, if this window is left open for weeks on end, the data here can become stale, in which case, what are you doing?">
             <Button.Shadow>
                 <ThemeShadow />
             </Button.Shadow>
-            <FontIcon Glyph="&#xE72C;"
-                      FontSize="16"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center"
-                      Margin="0, -3, 0, 0"
-                      IsTextScaleFactorEnabled="False" />
+            <Grid>
+                <FontIcon x:Name="RefreshIcon"
+                          Glyph="&#xE72C;"
+                          FontSize="16"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Margin="0, -3, 0, 0"
+                          IsTextScaleFactorEnabled="False" />
+                <TextBlock x:Name="RefreshCountdownText"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="0, -3, 0, 0"
+                           Visibility="Collapsed"
+                           IsTextScaleFactorEnabled="False" />
+            </Grid>
         </Button>
         
     </Grid>

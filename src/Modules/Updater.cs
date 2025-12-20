@@ -42,7 +42,7 @@ public class PackUpdater
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(15);
 
     // Cache validation check cooldown (this is separate/intentionally redundant check during installs, so we aren't fooled by the "installed" version)
     private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
