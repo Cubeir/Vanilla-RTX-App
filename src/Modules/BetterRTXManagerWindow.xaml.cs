@@ -845,6 +845,18 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
+            if (_apiPresets == null)
+            {
+                Trace.WriteLine("⚠ WARNING: _apiPresets is null in DisplayPresetsAsync!");
+                _apiPresets = new List<ApiPresetData>();
+            }
+
+            if (_localPresets == null)
+            {
+                Trace.WriteLine("⚠ WARNING: _localPresets is null in DisplayPresetsAsync!");
+                _localPresets = new Dictionary<string, LocalPresetData>();
+            }
+
             PresetListContainer.Children.Clear();
 
             // Get current game hashes (ALL Core RTX files)
