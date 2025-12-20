@@ -37,17 +37,17 @@ public class PackUpdater
     public event Action<string>? ProgressUpdate;
     private readonly List<string> _logMessages = new();
 
-    // Remote version cache (for UI display - 5 minute cache)
+    // Remote version cache
     private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(10);
 
-    // Cache validation check cooldown (60 minutes - prevents spamming GitHub)
+    // Cache validation check cooldown (this is separate/intentionally redundant check during installs, so we aren't fooled by the "installed" version)
     private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
     private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
-    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(60);
+    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(90);
 
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;
