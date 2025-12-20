@@ -30,7 +30,7 @@ public sealed partial class PackUpdateWindow : Window
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 59;
+    private const int REFRESH_COOLDOWN_SECONDS = 179;
     private DispatcherTimer _cooldownTimer;
 
     public PackUpdateWindow(MainWindow mainWindow)
@@ -195,12 +195,26 @@ public sealed partial class PackUpdateWindow : Window
     {
         try
         {
-            Trace.WriteLine("=== RESET BUTTON CLICKED (PACK UPDATER) ===");
+            Trace.WriteLine("=== REFRESH BUTTON CLICKED (PACK UPDATER) ===");
+
+            // Reset caches to force fresh data
+            _updater.ResetRemoteVersionCache();
+            _updater.ResetCacheCheckCooldown();
+
+            // Refresh installed versions and remote data
+            await _mainWindow.LocatePacksButton_Click(true);
+            UpdateInstalledVersionDisplays();
+            await FetchAndDisplayRemoteVersions();
+
+            // Set cooldown for next refresh
+            var settings = ApplicationData.Current.LocalSettings;
+            settings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
+
             UpdateRefreshButtonState();
         }
         catch (Exception ex)
         {
-            Trace.WriteLine("💣 SOME ERROR OR SOMETHING RefreshButton_Click: " + ex);
+            Trace.WriteLine("💣 ERROR AT RefreshButton_Click: " + ex);
         }
     }
 
