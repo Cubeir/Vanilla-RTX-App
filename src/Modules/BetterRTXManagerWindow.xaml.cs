@@ -43,7 +43,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 5;
+    private const int REFRESH_COOLDOWN_SECONDS = 30;
     private DispatcherTimer _cooldownTimer;
 
     public bool OperationSuccessful { get; private set; } = false;
@@ -227,8 +227,6 @@ public sealed partial class BetterRTXManagerWindow : Window
     private void InitializeRefreshButton()
     {
         UpdateRefreshButtonState();
-
-        // Set up timer to update button state every second
         _cooldownTimer = new DispatcherTimer();
         _cooldownTimer.Interval = TimeSpan.FromSeconds(1);
         _cooldownTimer.Tick += (s, e) => UpdateRefreshButtonState();
@@ -250,19 +248,34 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (remainingSeconds > 0)
                 {
                     RefreshButton.IsEnabled = false;
-                    ToolTipService.SetToolTip(RefreshButton, $"On cooldown, check back in {remainingSeconds} second{(remainingSeconds != 1 ? "s" : "")}");
+
+                    // Hide icon, show countdown text
+                    RefreshIcon.Visibility = Visibility.Collapsed;
+                    RefreshCountdownText.Visibility = Visibility.Visible;
+                    RefreshCountdownText.Text = remainingSeconds.ToString();
+
                     return;
                 }
             }
 
+            // Cooldown expired or never set - enable button
             RefreshButton.IsEnabled = true;
-            ToolTipService.SetToolTip(RefreshButton, "Refreshes the list and removes all presets, so you can obtain the latest");
+
+            // Show icon, hide countdown text
+            RefreshIcon.Visibility = Visibility.Visible;
+            RefreshCountdownText.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"Error updating refresh button state: {ex.Message}");
+
+            // On error, default to enabled with icon visible
+            RefreshButton.IsEnabled = true;
+            RefreshIcon.Visibility = Visibility.Visible;
+            RefreshCountdownText.Visibility = Visibility.Collapsed;
         }
     }
+
 
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
@@ -916,8 +929,13 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
 
             // Sort each list alphabetically
-            downloadedPresets = downloadedPresets.OrderBy(p => p.Name).ToList();
-            notDownloadedPresets = notDownloadedPresets.OrderBy(p => p.Name).ToList();
+            downloadedPresets = downloadedPresets
+                .OrderBy(p => p.Name, Comparer<string>.Create(SmartPresetSorter.ComparePresetNames))
+                .ToList();
+
+            notDownloadedPresets = notDownloadedPresets
+                .OrderBy(p => p.Name, Comparer<string>.Create(SmartPresetSorter.ComparePresetNames))
+                .ToList();
 
             // Display downloaded first, then not downloaded
             foreach (var preset in downloadedPresets)
@@ -1048,6 +1066,11 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
         }
 
+
+        if (isCurrent)
+        {
+            name += " (Current)";
+        }
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -1777,6 +1800,153 @@ public sealed partial class BetterRTXManagerWindow : Window
 }
 
 
+
+
+/// <summary>
+/// Smart preset sorter: A-Z alphabetically, but version numbers in descending order (9-1)
+/// </summary>
+public static class SmartPresetSorter
+{
+    /// <summary>
+    /// Compares two preset names with smart version sorting.
+    /// Examples:
+    ///   "BetterRTX 1.4.4" comes before "BetterRTX 1.2.0"
+    ///   "Pack 10" comes before "Pack 2"
+    ///   "Alpha Test" comes before "Beta Test" (normal A-Z)
+    /// </summary>
+    public static int ComparePresetNames(string name1, string name2)
+    {
+        // Handle null/empty cases
+        if (name1 == name2) return 0;
+        if (string.IsNullOrEmpty(name1)) return 1;
+        if (string.IsNullOrEmpty(name2)) return -1;
+
+        try
+        {
+            // Split both names into segments (alternating text and numbers)
+            var segments1 = SplitIntoSegments(name1);
+            var segments2 = SplitIntoSegments(name2);
+
+            // Compare segment by segment
+            int minLength = Math.Min(segments1.Count, segments2.Count);
+
+            for (int i = 0; i < minLength; i++)
+            {
+                var seg1 = segments1[i];
+                var seg2 = segments2[i];
+
+                // If both segments are numeric, compare numerically IN REVERSE (9→1)
+                if (seg1.IsNumeric && seg2.IsNumeric)
+                {
+                    int result = seg2.NumericValue.CompareTo(seg1.NumericValue); // Reversed!
+                    if (result != 0) return result;
+                }
+                // If one is numeric and one is text, text comes first
+                else if (seg1.IsNumeric && !seg2.IsNumeric)
+                {
+                    return 1;
+                }
+                else if (!seg1.IsNumeric && seg2.IsNumeric)
+                {
+                    return -1;
+                }
+                // Both are text - compare with culture-aware comparison for non-ASCII
+                else
+                {
+                    int result = string.Compare(seg1.Text, seg2.Text, StringComparison.CurrentCultureIgnoreCase);
+                    if (result != 0) return result;
+                }
+            }
+
+            // If all segments matched, shorter name comes first
+            return segments1.Count.CompareTo(segments2.Count);
+        }
+        catch (Exception ex)
+        {
+            // If anything goes wrong during parsing/comparison, fall back to simple ordinal comparison
+            Trace.WriteLine($"⚠ SmartPresetSorter error, falling back to simple sort: {ex.Message}");
+            return string.Compare(name1, name2, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static List<Segment> SplitIntoSegments(string name)
+    {
+        var segments = new List<Segment>();
+        var currentText = new System.Text.StringBuilder();
+        var currentNumber = new System.Text.StringBuilder();
+        bool inNumber = false;
+
+        foreach (char c in name)
+        {
+            if (char.IsDigit(c))
+            {
+                if (!inNumber && currentText.Length > 0)
+                {
+                    // Switching from text to number - save text segment
+                    segments.Add(new Segment { Text = currentText.ToString(), IsNumeric = false });
+                    currentText.Clear();
+                }
+                currentNumber.Append(c);
+                inNumber = true;
+            }
+            else
+            {
+                if (inNumber && currentNumber.Length > 0)
+                {
+                    // Switching from number to text - save number segment
+                    segments.Add(CreateNumericSegment(currentNumber.ToString()));
+                    currentNumber.Clear();
+                }
+                currentText.Append(c);
+                inNumber = false;
+            }
+        }
+
+        // Add final remaining segment
+        if (currentNumber.Length > 0)
+        {
+            segments.Add(CreateNumericSegment(currentNumber.ToString()));
+        }
+        else if (currentText.Length > 0)
+        {
+            segments.Add(new Segment { Text = currentText.ToString(), IsNumeric = false });
+        }
+
+        return segments;
+    }
+
+    private static Segment CreateNumericSegment(string numberText)
+    {
+        // Try parsing as decimal (handles very long numbers better than long)
+        // If it overflows decimal (unlikely for version numbers), treat as text
+        if (decimal.TryParse(numberText, out decimal value))
+        {
+            return new Segment
+            {
+                Text = numberText,
+                IsNumeric = true,
+                NumericValue = value
+            };
+        }
+        else
+        {
+            // Number too large to parse - treat as text (rare edge case)
+            Trace.WriteLine($"⚠ Number too large to parse, treating as text: {numberText}");
+            return new Segment
+            {
+                Text = numberText,
+                IsNumeric = false
+            };
+        }
+    }
+
+    private class Segment
+    {
+        public string Text { get; set; }
+        public bool IsNumeric { get; set; }
+        public decimal NumericValue { get; set; }
+    }
+}
 
 
 

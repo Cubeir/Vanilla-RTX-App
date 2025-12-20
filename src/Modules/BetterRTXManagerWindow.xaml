@@ -126,12 +126,23 @@
             <Button.Shadow>
                 <ThemeShadow />
             </Button.Shadow>
-            <FontIcon Glyph="&#xE72C;"
-                      FontSize="16"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center"
-                      Margin="0, -3, 0, 0"
-                      IsTextScaleFactorEnabled="False" />
+            <Grid>
+                <FontIcon x:Name="RefreshIcon"
+                          Glyph="&#xE72C;"
+                          FontSize="16"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Margin="0, -3, 0, 0"
+                          IsTextScaleFactorEnabled="False" />
+                <TextBlock x:Name="RefreshCountdownText"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="0, -3, 0, 0"
+                           Visibility="Collapsed"
+                           IsTextScaleFactorEnabled="False" />
+            </Grid>
         </Button>
     </Grid>
 </Window>
