@@ -497,8 +497,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Load local presets
         await LoadLocalPresetsAsync();
 
-        // Display everything aftyer a bit of delay
-        await Task.Delay(50);
+        // Display
         await DisplayPresetsAsync();
 
         LoadingPanel.Visibility = Visibility.Collapsed;
@@ -549,7 +548,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             string jsonData = null;
             bool loadedFromCache = false;
 
-            // Check if cache exists
+            // Check if cache exists and is valid
             if (File.Exists(_apiCachePath))
             {
                 Trace.WriteLine("✓ Loading API data from cache...");
@@ -557,14 +556,15 @@ public sealed partial class BetterRTXManagerWindow : Window
                 {
                     jsonData = await File.ReadAllTextAsync(_apiCachePath);
 
-                    // Validate that cache has actual content
                     if (!string.IsNullOrWhiteSpace(jsonData))
                     {
-                        var testParse = ParseApiData(jsonData);
-                        if (testParse != null && testParse.Count > 0)
+                        // Parse ONCE and validate
+                        var parsedPresets = ParseApiData(jsonData);
+                        if (parsedPresets != null && parsedPresets.Count > 0)
                         {
+                            _apiPresets = parsedPresets;  // ✅ Use the already-parsed result
                             loadedFromCache = true;
-                            Trace.WriteLine($"✓ Cache is valid with {testParse.Count} presets");
+                            Trace.WriteLine($"✓ Cache is valid with {_apiPresets.Count} presets");
                         }
                         else
                         {
@@ -580,8 +580,9 @@ public sealed partial class BetterRTXManagerWindow : Window
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine($"⚠ Error reading cache: {ex.Message} - will fetch fresh data");
+                    Trace.WriteLine($"⚠ Error reading/parsing cache: {ex.Message} - will fetch fresh data");
                     jsonData = null;
+                    loadedFromCache = false;
                 }
             }
 
@@ -593,10 +594,12 @@ public sealed partial class BetterRTXManagerWindow : Window
 
                 if (jsonData != null && !string.IsNullOrWhiteSpace(jsonData))
                 {
-                    // Validate before saving
-                    var testParse = ParseApiData(jsonData);
-                    if (testParse != null && testParse.Count > 0)
+                    // Parse ONCE and validate
+                    var parsedPresets = ParseApiData(jsonData);
+                    if (parsedPresets != null && parsedPresets.Count > 0)
                     {
+                        _apiPresets = parsedPresets;  // ✅ Use the already-parsed result
+
                         // Save to cache
                         try
                         {
@@ -611,26 +614,17 @@ public sealed partial class BetterRTXManagerWindow : Window
                     else
                     {
                         Trace.WriteLine("⚠ Fetched data is empty or invalid - not caching");
-                        jsonData = null;
+                        _apiPresets = new List<ApiPresetData>();
                     }
                 }
                 else
                 {
                     Trace.WriteLine("⚠ Failed to fetch API data and no valid cache available");
+                    _apiPresets = new List<ApiPresetData>();
                 }
             }
 
-            // Parse final data
-            if (jsonData != null)
-            {
-                _apiPresets = ParseApiData(jsonData);
-                Trace.WriteLine($"✓ Loaded {_apiPresets?.Count ?? 0} presets total");
-            }
-            else
-            {
-                _apiPresets = new List<ApiPresetData>();
-                Trace.WriteLine("⚠ No API data available - starting with empty list");
-            }
+            Trace.WriteLine($"✓ Loaded {_apiPresets?.Count ?? 0} presets total");
         }
         catch (Exception ex)
         {
@@ -950,7 +944,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 PresetListContainer.Children.Add(button);
             }
 
-            // Handle empty state - always show refresh button
+            // Handle empty state
             if (downloadedPresets.Count == 0 && notDownloadedPresets.Count == 0 && defaultPreset == null)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
@@ -958,18 +952,32 @@ public sealed partial class BetterRTXManagerWindow : Window
                 int apiCount = _apiPresets?.Count ?? 0;
                 int localCount = _localPresets?.Count ?? 0;
 
+                Trace.WriteLine($"📊 Empty state triggered - API: {apiCount}, Local: {localCount}");
+
                 if (apiCount == 0 && localCount == 0)
                 {
-                    EmptyStateText.Text = "No presets available. An internet connection is required to load BetterRTX presets.";
-                    Trace.WriteLine("⚠ Empty state: No API data and no local presets");
+                    // Check if we actually tried to load from API
+                    bool apiCacheExists = File.Exists(_apiCachePath);
+
+                    if (apiCacheExists)
+                    {
+                        // Cache exists but is empty/corrupt
+                        EmptyStateText.Text = "No presets available. The preset list may be corrupted - try clicking the Refresh button.";
+                        Trace.WriteLine("⚠ Empty state: Cache exists but no presets loaded (possible corruption)");
+                    }
+                    else
+                    {
+                        // No cache, probably offline
+                        EmptyStateText.Text = "No presets available. An internet connection is required to load BetterRTX presets.";
+                        Trace.WriteLine("⚠ Empty state: No cache and no presets (offline?)");
+                    }
                 }
                 else
                 {
-                    EmptyStateText.Text = "No BetterRTX presets available.";
-                    Trace.WriteLine($"⚠ Empty state: API={apiCount}, Local={localCount} but no displayable presets");
+                    // We have data but nothing to display (edge case)
+                    EmptyStateText.Text = "No BetterRTX presets could be displayed. Try clicking the Refresh button.";
+                    Trace.WriteLine($"⚠ Empty state: API={apiCount}, Local={localCount} but no displayable presets (parsing issue?)");
                 }
-
-                // Refresh button is always visible (it's in the root Grid, not in panels)
             }
             else
             {
