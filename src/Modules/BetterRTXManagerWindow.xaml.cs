@@ -1782,15 +1782,13 @@ public sealed partial class BetterRTXManagerWindow : Window
 
 
 
-// TODO: Stop trying to compute the hash of Minecraft's exe, for some reason it always throws errors
 public static class GameVersionDetector
 {
-    private const string VERSION_HASH_KEY = "MinecraftVersionHash";
     private const string CONFIG_HASH_KEY = "MinecraftConfigHash";
 
     /// <summary>
-    /// Detects if game version has changed by comparing file hashes.
-    /// Returns true if version changed, false if same or unable to determine.
+    /// Detects if game version has changed by comparing MicrosoftGame.Config hash.
+    /// Returns true if version changed OR unable to determine (safe default).
     /// </summary>
     public static async Task<bool> HasGameVersionChanged(string minecraftInstallPath)
     {
@@ -1800,149 +1798,92 @@ public static class GameVersionDetector
 
             if (string.IsNullOrEmpty(minecraftInstallPath) || !Directory.Exists(minecraftInstallPath))
             {
-                Trace.WriteLine("⚠ Invalid Minecraft install path provided to version detector");
-                return false;
+                Trace.WriteLine("⚠ Invalid Minecraft install path - INVALIDATING CACHE (safe default)");
+                Trace.WriteLine("=== GAME VERSION DETECTION END (invalid path) ===");
+                return true; // Invalidate cache when uncertain
             }
 
-            // Find the two key files
-            var exePath = FindFileRecursively(minecraftInstallPath, "Minecraft.Windows.exe", 2);
+            // Find MicrosoftGame.Config file (max 2 levels deep)
             var configPath = FindFileRecursively(minecraftInstallPath, "MicrosoftGame.Config", 2);
 
-            if (string.IsNullOrEmpty(exePath) && string.IsNullOrEmpty(configPath))
-            {
-                Trace.WriteLine("⚠ Could not find version files - unable to detect version");
-                Trace.WriteLine("=== GAME VERSION DETECTION END (no files) ===");
-                return false;
-            }
-
-            // Compute current hashes
-            string currentExeHash = null;
-            string currentConfigHash = null;
-
-            if (!string.IsNullOrEmpty(exePath))
-            {
-                currentExeHash = ComputeFileHash(exePath);
-                Trace.WriteLine($"📊 Current EXE hash: {currentExeHash}");
-            }
-            else
-            {
-                Trace.WriteLine("⚠ EXE file not found (unusual but handled)");
-            }
-
-            if (!string.IsNullOrEmpty(configPath))
-            {
-                currentConfigHash = ComputeFileHash(configPath);
-                Trace.WriteLine($"📊 Current Config hash: {currentConfigHash}");
-            }
-            else
-            {
-                Trace.WriteLine("⚠ Config file not found (unusual but handled)");
-            }
-
-            // Get stored hashes
+            // Get stored hash
             var settings = ApplicationData.Current.LocalSettings;
-            var storedExeHash = settings.Values[VERSION_HASH_KEY] as string;
             var storedConfigHash = settings.Values[CONFIG_HASH_KEY] as string;
 
-            Trace.WriteLine($"💾 Stored EXE hash: {storedExeHash ?? "NULL"}");
-            Trace.WriteLine($"💾 Stored Config hash: {storedConfigHash ?? "NULL"}");
+            Trace.WriteLine($"💾 Stored Config hash: {storedConfigHash ?? "NULL (first run or cleared)"}");
 
-            // Determine if version changed
+            // CASE 1: Config file not found
+            if (string.IsNullOrEmpty(configPath))
+            {
+                Trace.WriteLine("⚠ MicrosoftGame.Config not found in game directory");
+
+                if (!string.IsNullOrEmpty(storedConfigHash))
+                {
+                    // Had hash before, file now missing - INVALIDATE
+                    Trace.WriteLine("🔥 CONFIG FILE DISAPPEARED - CACHE INVALIDATION!");
+                    settings.Values.Remove(CONFIG_HASH_KEY);
+                    Trace.WriteLine("💾 Cleared stored config hash");
+                    Trace.WriteLine("=== GAME VERSION DETECTION END (file disappeared) ===");
+                    return true;
+                }
+                else
+                {
+                    // Never had hash, still can't find file - INVALIDATE (safe default)
+                    Trace.WriteLine("🔥 Unable to locate config file - CACHE INVALIDATION (safe default)");
+                    Trace.WriteLine("=== GAME VERSION DETECTION END (unable to determine) ===");
+                    return true;
+                }
+            }
+
+            // CASE 2: Config file exists - compute its hash
+            var currentConfigHash = ComputeFileHash(configPath);
+            Trace.WriteLine($"📊 Current Config hash: {currentConfigHash ?? "NULL (computation failed)"}");
+
+            if (string.IsNullOrEmpty(currentConfigHash))
+            {
+                // File exists but can't compute hash - INVALIDATE (safe default)
+                Trace.WriteLine("🔥 Failed to compute config hash - CACHE INVALIDATION (safe default)");
+                Trace.WriteLine("=== GAME VERSION DETECTION END (hash computation failed) ===");
+                return true;
+            }
+
+            // CASE 3: We have a valid current hash
             bool versionChanged = false;
 
-            // FIRST RUN: No stored hashes at all
-            if (string.IsNullOrEmpty(storedExeHash) && string.IsNullOrEmpty(storedConfigHash))
+            if (string.IsNullOrEmpty(storedConfigHash))
             {
-                Trace.WriteLine("✓ First run - no stored version hashes (not a change)");
+                // First run - no stored hash yet
+                Trace.WriteLine("✓ First run - storing initial config hash (not a version change)");
                 versionChanged = false;
+            }
+            else if (currentConfigHash != storedConfigHash)
+            {
+                // Hash changed - version updated
+                Trace.WriteLine("🔥 CONFIG HASH CHANGED - GAME VERSION UPDATED!");
+                Trace.WriteLine($"   Old: {storedConfigHash.Substring(0, 16)}...");
+                Trace.WriteLine($"   New: {currentConfigHash.Substring(0, 16)}...");
+                versionChanged = true;
             }
             else
             {
-                // NOT first run - we have at least one stored hash
-
-                // Check EXE file
-                if (!string.IsNullOrEmpty(currentExeHash))
-                {
-                    if (string.IsNullOrEmpty(storedExeHash))
-                    {
-                        // NEW FILE APPEARED - cache invalidation
-                        Trace.WriteLine("🔥 EXE FILE NEWLY APPEARED - CACHE INVALIDATION!");
-                        versionChanged = true;
-                    }
-                    else if (currentExeHash != storedExeHash)
-                    {
-                        // HASH CHANGED - version update
-                        Trace.WriteLine("🔥 EXE HASH CHANGED - GAME VERSION UPDATED!");
-                        versionChanged = true;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(storedExeHash))
-                {
-                    // FILE DISAPPEARED - cache invalidation
-                    Trace.WriteLine("🔥 EXE FILE DISAPPEARED - CACHE INVALIDATION!");
-                    versionChanged = true;
-                }
-
-                // Check Config file
-                if (!string.IsNullOrEmpty(currentConfigHash))
-                {
-                    if (string.IsNullOrEmpty(storedConfigHash))
-                    {
-                        // NEW FILE APPEARED - cache invalidation
-                        Trace.WriteLine("🔥 CONFIG FILE NEWLY APPEARED - CACHE INVALIDATION!");
-                        versionChanged = true;
-                    }
-                    else if (currentConfigHash != storedConfigHash)
-                    {
-                        // HASH CHANGED - version update
-                        Trace.WriteLine("🔥 CONFIG HASH CHANGED - GAME VERSION UPDATED!");
-                        versionChanged = true;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(storedConfigHash))
-                {
-                    // FILE DISAPPEARED - cache invalidation
-                    Trace.WriteLine("🔥 CONFIG FILE DISAPPEARED - CACHE INVALIDATION!");
-                    versionChanged = true;
-                }
-
-                if (!versionChanged)
-                {
-                    Trace.WriteLine("✓ All hashes match - no version change");
-                }
+                // Hash matches - no change
+                Trace.WriteLine("✓ Config hash matches - no version change");
+                versionChanged = false;
             }
 
-            // Update stored hashes with current values (even if null)
-            if (!string.IsNullOrEmpty(currentExeHash))
-            {
-                settings.Values[VERSION_HASH_KEY] = currentExeHash;
-                Trace.WriteLine("💾 Saved current EXE hash");
-            }
-            else if (storedExeHash != null)
-            {
-                settings.Values.Remove(VERSION_HASH_KEY);
-                Trace.WriteLine("💾 Removed EXE hash (file no longer exists)");
-            }
-
-            if (!string.IsNullOrEmpty(currentConfigHash))
-            {
-                settings.Values[CONFIG_HASH_KEY] = currentConfigHash;
-                Trace.WriteLine("💾 Saved current Config hash");
-            }
-            else if (storedConfigHash != null)
-            {
-                settings.Values.Remove(CONFIG_HASH_KEY);
-                Trace.WriteLine("💾 Removed Config hash (file no longer exists)");
-            }
+            // Always update stored hash with current value
+            settings.Values[CONFIG_HASH_KEY] = currentConfigHash;
+            Trace.WriteLine("💾 Saved current config hash");
 
             Trace.WriteLine($"=== GAME VERSION DETECTION END (changed: {versionChanged}) ===");
             return versionChanged;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"✗ Error detecting game version: {ex.Message}");
-            Trace.WriteLine("=== GAME VERSION DETECTION END (error) ===");
-            return false;
+            Trace.WriteLine($"✗ EXCEPTION in version detection: {ex.Message}");
+            Trace.WriteLine("🔥 Exception occurred - CACHE INVALIDATION (safe default)");
+            Trace.WriteLine("=== GAME VERSION DETECTION END (exception) ===");
+            return true; // Invalidate cache on any error (safe default)
         }
     }
 
@@ -1983,6 +1924,10 @@ public static class GameVersionDetector
                 }
             }
             catch (UnauthorizedAccessException) { }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Error accessing subdirectory: {ex.Message}");
+            }
         }
 
         return null;
@@ -2014,13 +1959,12 @@ public static class GameVersionDetector
         try
         {
             var settings = ApplicationData.Current.LocalSettings;
-            settings.Values.Remove(VERSION_HASH_KEY);
             settings.Values.Remove(CONFIG_HASH_KEY);
-            Trace.WriteLine("✓ Cleared stored version hashes");
+            Trace.WriteLine("✓ Cleared stored version hash");
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Error clearing version hashes: {ex.Message}");
+            Trace.WriteLine($"Error clearing version hash: {ex.Message}");
         }
     }
 }

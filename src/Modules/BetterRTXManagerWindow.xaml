@@ -121,7 +121,8 @@
                 CornerRadius="0, 0, 6, 6"
                 Click="RefreshButton_Click"
                 Translation="0,0,16"
-                IsTextScaleFactorEnabled="False">
+                IsTextScaleFactorEnabled="False"
+                ToolTipService.ToolTip="Manually resets the list and reretrieves the latest preset list from the API. Usage: This usually happens automatically whenever Minecraft is updated, however, in case BetterRTX delievers its updates with a delay, it is a good idea to manually refresh to ensure you're getting the latest files.">
             <Button.Shadow>
                 <ThemeShadow />
             </Button.Shadow>
