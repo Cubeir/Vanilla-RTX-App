@@ -42,9 +42,9 @@ public class PackUpdater
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(1);
 
-    // Cache validation check cooldown (this is separate/intentionally redundant check during installs, so we aren't fooled by the "installed" version)
+    // Cache validation check cooldown
     private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
     private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
     private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(90);
@@ -64,10 +64,6 @@ public class PackUpdater
 
     // ======================= Cache Invalidation (Core) =======================
 
-    /// <summary>
-    /// Invalidates the cache by deleting the file and clearing the storage key.
-    /// Call this whenever we determine the cache is outdated or corrupted.
-    /// </summary>
     public void InvalidateCache()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -92,20 +88,14 @@ public class PackUpdater
 
     // ======================= Cache Validation Check =======================
 
-    /// <summary>
-    /// Checks if the cached zipball needs updating by comparing ALL 3 packs against remote.
-    /// Returns true if cache was invalidated (needs download), false if cache is still valid.
-    /// Respects 60-minute cooldown to prevent excessive GitHub checks.
-    /// </summary>
     public async Task<bool> ValidateCacheAgainstRemote()
     {
         var cacheInfo = GetCacheInfo();
 
-        // No cache? Nothing to validate
         if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
         {
             LogMessage("📦 No cache exists - will download on first pack installation");
-            return false; // Cache already doesn't exist, no need to invalidate
+            return false;
         }
 
         if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
@@ -114,7 +104,6 @@ public class PackUpdater
             return false;
         }
 
-        // Check 60-minute cache validation cooldown
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
         var checkKey = GetLastCacheCheckKey();
@@ -130,7 +119,6 @@ public class PackUpdater
             }
         }
 
-        // Fetch remote manifests for all 3 packs
         (JObject? rtx, JObject? normals, JObject? opus)? remote = null;
 
         try
@@ -142,7 +130,6 @@ public class PackUpdater
             LogMessage($"⚠️ Failed to contact GitHub: {ex.Message}");
         }
 
-        // Update cooldown timestamp ONLY on successful check attempt
         if (remote != null)
         {
             localSettings.Values[checkKey] = now.ToString("o");
@@ -153,24 +140,19 @@ public class PackUpdater
             return false;
         }
 
-        // Compare all 3 packs in cache vs remote
         bool needsInvalidation = await DoesCacheNeedUpdate(cacheInfo.path, remote.Value);
 
         if (needsInvalidation)
         {
             LogMessage("📦 Cache is outdated - invalidating now");
             InvalidateCache();
-            return true; // Cache was invalidated
+            return true;
         }
 
         LogMessage("✅ Cache is up-to-date");
-        return false; // Cache is still valid
+        return false;
     }
 
-    /// <summary>
-    /// Compares ALL 3 packs in cache against remote manifests.
-    /// Returns true if ANY pack needs updating (lean toward updating).
-    /// </summary>
     private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
     {
         try
@@ -200,7 +182,6 @@ public class PackUpdater
             {
                 if (rtxManifest == null)
                 {
-                    // Remote exists but not in cache - definitely need update
                     LogMessage("📦 Vanilla RTX is available remotely but missing from cache");
                     anyOutdated = true;
                 }
@@ -214,7 +195,6 @@ public class PackUpdater
             }
             else if (rtxManifest != null)
             {
-                // Cache has it but remote doesn't - lean toward update
                 LogMessage("📦 Vanilla RTX exists in cache but not remotely - invalidating");
                 anyOutdated = true;
             }
@@ -273,7 +253,7 @@ public class PackUpdater
         catch (Exception ex)
         {
             LogMessage($"⚠️ Error reading cached zipball: {ex.Message} - invalidating cache");
-            return true; // Err on side of updating
+            return true;
         }
     }
 
@@ -288,10 +268,8 @@ public class PackUpdater
             var packName = GetPackDisplayName(packType);
             LogMessage($"🔄 Starting installation for {packName}...");
 
-            // Step 1: Validate cache (checks all 3 packs, invalidates if any outdated)
             await ValidateCacheAgainstRemote();
 
-            // Step 2: Get cache or download if needed
             var cacheInfo = GetCacheInfo();
             if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
             {
@@ -350,6 +328,9 @@ public class PackUpdater
         }
 
         // Step 2: Try fetching fresh versions from remote
+        string rtxVersion = null, normalsVersion = null, opusVersion = null;
+        bool anyRemoteSuccess = false;
+
         if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
         {
             try
@@ -359,41 +340,46 @@ public class PackUpdater
                 {
                     var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
 
-                    var rtxVersion = ExtractVersionFromManifest(rtxManifest);
-                    var normalsVersion = ExtractVersionFromManifest(normalsManifest);
-                    var opusVersion = ExtractVersionFromManifest(opusManifest);
+                    rtxVersion = ExtractVersionFromManifest(rtxManifest);
+                    normalsVersion = ExtractVersionFromManifest(normalsManifest);
+                    opusVersion = ExtractVersionFromManifest(opusManifest);
 
-                    // Cache the fresh results for 5 minutes
-                    var cacheObj = new JObject
-                    {
-                        ["rtx"] = rtxVersion,
-                        ["normals"] = normalsVersion,
-                        ["opus"] = opusVersion
-                    };
-                    localSettings.Values[cacheKey] = cacheObj.ToString();
-                    localSettings.Values[timeKey] = now.ToString("o");
-
-                    return (rtxVersion, normalsVersion, opusVersion, VersionSource.Remote);
+                    anyRemoteSuccess = true;
                 }
             }
             catch (Exception ex)
             {
                 Trace.WriteLine($"Failed to fetch remote versions: {ex.Message}");
-                /* Fall through to zipball fallback */
             }
         }
 
-        // Step 3: Fallback to reading versions from cached zipball (PER PACK)
+        // FIX #3: Per-pack zipball fallback for missing packs
         var cacheInfo = GetCacheInfo();
         if (cacheInfo.exists && File.Exists(cacheInfo.path))
         {
             try
             {
-                var cachedVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
-                if (cachedVersions.HasValue)
+                var zipballVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
+                if (zipballVersions.HasValue)
                 {
-                    Trace.WriteLine("Using zipball fallback for version display");
-                    return (cachedVersions.Value.rtx, cachedVersions.Value.normals, cachedVersions.Value.opus, VersionSource.ZipballFallback);
+                    // Use zipball version for any pack that's null from remote
+                    if (rtxVersion == null && zipballVersions.Value.rtx != null)
+                    {
+                        rtxVersion = zipballVersions.Value.rtx;
+                        Trace.WriteLine("Using zipball fallback for Vanilla RTX version");
+                    }
+
+                    if (normalsVersion == null && zipballVersions.Value.normals != null)
+                    {
+                        normalsVersion = zipballVersions.Value.normals;
+                        Trace.WriteLine("Using zipball fallback for Vanilla RTX Normals version");
+                    }
+
+                    if (opusVersion == null && zipballVersions.Value.opus != null)
+                    {
+                        opusVersion = zipballVersions.Value.opus;
+                        Trace.WriteLine("Using zipball fallback for Vanilla RTX Opus version");
+                    }
                 }
             }
             catch (Exception ex)
@@ -402,14 +388,25 @@ public class PackUpdater
             }
         }
 
-        // Step 4: Complete failure - return nulls for all
-        Trace.WriteLine("All version sources failed");
-        return (null, null, null, VersionSource.Remote);
+        // Cache results if we got any from remote
+        if (anyRemoteSuccess)
+        {
+            var cacheObj = new JObject
+            {
+                ["rtx"] = rtxVersion,
+                ["normals"] = normalsVersion,
+                ["opus"] = opusVersion
+            };
+            localSettings.Values[cacheKey] = cacheObj.ToString();
+            localSettings.Values[timeKey] = now.ToString("o");
+        }
+
+        // Determine source: Remote if we got any from remote, ZipballFallback if all came from zipball
+        var source = anyRemoteSuccess ? VersionSource.Remote : VersionSource.ZipballFallback;
+
+        return (rtxVersion, normalsVersion, opusVersion, source);
     }
-    /// <summary>
-    /// Reads versions from cached zipball, returning null for individual packs that don't exist.
-    /// This allows per-pack fallback behavior.
-    /// </summary>
+
     private async Task<(string? rtx, string? normals, string? opus)?> GetVersionsFromCachedZipball(string cachePath)
     {
         try
@@ -432,7 +429,7 @@ public class PackUpdater
                 }
                 catch
                 {
-                    return null; // Pack doesn't exist or manifest is corrupt
+                    return null;
                 }
             }
 
@@ -440,30 +437,22 @@ public class PackUpdater
             var normalsVersion = await TryReadVersion("Vanilla-RTX-Normals/manifest.json");
             var opusVersion = await TryReadVersion("Vanilla-RTX-Opus/manifest.json");
 
-            // Return even if some are null - allows per-pack fallback
             return (rtxVersion, normalsVersion, opusVersion);
         }
         catch
         {
-            return null; // Complete failure to read zipball
+            return null;
         }
     }
 
     // ======================= Cooldown Management =======================
 
-    /// <summary>
-    /// Resets the 60-minute cache validation check cooldown.
-    /// Use this if you want to force an immediate cache check.
-    /// </summary>
     public void ResetCacheCheckCooldown()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[GetLastCacheCheckKey()] = null;
     }
 
-    /// <summary>
-    /// Resets the 5-minute remote version cache (for UI display).
-    /// </summary>
     public void ResetRemoteVersionCache()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -486,7 +475,7 @@ public class PackUpdater
         }
         catch
         {
-            return true; // Err on side of updating
+            return true;
         }
     }
 

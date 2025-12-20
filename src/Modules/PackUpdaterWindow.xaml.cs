@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.UI;
@@ -197,7 +198,7 @@ public sealed partial class PackUpdateWindow : Window
             Trace.WriteLine("=== RESET BUTTON CLICKED (PACK UPDATER) ===");
             UpdateRefreshButtonState();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Trace.WriteLine("💣 SOME ERROR OR SOMETHING RefreshButton_Click: " + ex);
         }
@@ -325,12 +326,21 @@ public sealed partial class PackUpdateWindow : Window
             return "Not available";
         }
 
-        if (!string.IsNullOrEmpty(installedVersion) && availableVersion == installedVersion)
+        // Show version even when up-to-date
+        bool isUpToDate = !string.IsNullOrEmpty(installedVersion) && availableVersion == installedVersion;
+
+        // Build suffix based on source and up-to-date status
+        string suffix = "";
+        if (source == VersionSource.ZipballFallback)
         {
-            return "Up-to-date";
+            suffix = isUpToDate ? " (Up-to-date, Cache)" : " (Cache)";
+        }
+        else if (isUpToDate)
+        {
+            suffix = " (Up-to-date)";
         }
 
-        return source == VersionSource.ZipballFallback ? $"{availableVersion} (cached)" : availableVersion;
+        return $"{availableVersion}{suffix}";
     }
 
     private async Task UpdateAllButtonStates(
@@ -368,6 +378,12 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task UpdateSingleButtonState(Button button, PackType packType, string? installedVersion, string? remoteVersion)
     {
+        // Don't update button state if pack is in queue or currently installing
+        if (IsPackInQueue(packType) || IsPackCurrentlyInstalling(packType))
+        {
+            return;
+        }
+
         bool isInstalled = !string.IsNullOrEmpty(installedVersion);
         bool remoteAvailable = !string.IsNullOrEmpty(remoteVersion);
         bool packInCache = await _updater.DoesPackExistInCache(packType);
@@ -390,6 +406,24 @@ public sealed partial class PackUpdateWindow : Window
             button.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
             button.IsEnabled = remoteAvailable || packInCache;
         }
+    }
+
+    // Helpers to check queue/install status
+    private bool IsPackInQueue(PackType packType)
+    {
+        return _installQueue.Any(item => item.pack == packType);
+    }
+
+    private bool IsPackCurrentlyInstalling(PackType packType)
+    {
+        // Check if the pack is currently being installed (loading ring visible)
+        return packType switch
+        {
+            PackType.VanillaRTX => VanillaRTX_LoadingRing.Visibility == Visibility.Visible,
+            PackType.VanillaRTXNormals => VanillaRTXNormals_LoadingRing.Visibility == Visibility.Visible,
+            PackType.VanillaRTXOpus => VanillaRTXOpus_LoadingRing.Visibility == Visibility.Visible,
+            _ => false
+        };
     }
 
     // ======================= Button Handlers =======================
@@ -468,10 +502,6 @@ public sealed partial class PackUpdateWindow : Window
 
         try
         {
-            // The updater's UpdateSinglePackAsync now handles:
-            // 1. ValidateCacheAgainstRemote() - checks all 3 packs, invalidates if any outdated
-            // 2. Downloads fresh zipball if cache doesn't exist
-            // 3. Deploys the specific pack requested
             var (success, logs) = await Task.Run(() =>
                 _updater.UpdateSinglePackAsync(packType, enableEnhancements));
 
