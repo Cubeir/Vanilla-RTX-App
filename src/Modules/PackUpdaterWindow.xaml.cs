@@ -25,6 +25,9 @@ public sealed partial class PackUpdateWindow : Window
     private readonly Queue<(PackType pack, bool enhancements)> _installQueue = new();
     private bool _isInstalling = false;
 
+    // Track current installation state explicitly
+    private PackType? _currentlyInstallingPack = null;
+
     // Pane animation durations
     private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(200);
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
@@ -385,15 +388,25 @@ public sealed partial class PackUpdateWindow : Window
             System.Diagnostics.Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
         }
 
-        await UpdateSingleButtonState(VanillaRTX_InstallButton, PackType.VanillaRTX, rtxInstalled, rtxRemote);
-        await UpdateSingleButtonState(VanillaRTXNormals_InstallButton, PackType.VanillaRTXNormals, normalsInstalled, normalsRemote);
-        await UpdateSingleButtonState(VanillaRTXOpus_InstallButton, PackType.VanillaRTXOpus, opusInstalled, opusRemote);
+        await UpdateSingleButtonState(VanillaRTX_InstallButton, VanillaRTX_LoadingRing, VanillaRTX_EnhancementsToggle,
+            PackType.VanillaRTX, rtxInstalled, rtxRemote);
+        await UpdateSingleButtonState(VanillaRTXNormals_InstallButton, VanillaRTXNormals_LoadingRing, VanillaRTXNormals_EnhancementsToggle,
+            PackType.VanillaRTXNormals, normalsInstalled, normalsRemote);
+        await UpdateSingleButtonState(VanillaRTXOpus_InstallButton, VanillaRTXOpus_LoadingRing, VanillaRTXOpus_EnhancementsToggle,
+            PackType.VanillaRTXOpus, opusInstalled, opusRemote);
     }
 
-    private async Task UpdateSingleButtonState(Button button, PackType packType, string? installedVersion, string? remoteVersion)
+    private async Task UpdateSingleButtonState(Button button, ProgressRing loadingRing, ToggleSwitch toggle,
+        PackType packType, string? installedVersion, string? remoteVersion)
     {
-        // Don't update button state if pack is in queue or currently installing
-        if (IsPackInQueue(packType) || IsPackCurrentlyInstalling(packType))
+        // Don't update if pack is currently being installed (loading ring visible)
+        if (_currentlyInstallingPack == packType)
+        {
+            return;
+        }
+
+        // Don't update if pack is in queue
+        if (IsPackInQueue(packType))
         {
             return;
         }
@@ -401,6 +414,12 @@ public sealed partial class PackUpdateWindow : Window
         bool isInstalled = !string.IsNullOrEmpty(installedVersion);
         bool remoteAvailable = !string.IsNullOrEmpty(remoteVersion);
         bool packInCache = await _updater.DoesPackExistInCache(packType);
+
+        // Ensure button is visible and toggle is enabled (clear any queued/installing state)
+        button.Visibility = Visibility.Visible;
+        loadingRing.Visibility = Visibility.Collapsed;
+        loadingRing.IsActive = false;
+        toggle.IsEnabled = true;
 
         if (!isInstalled)
         {
@@ -422,22 +441,10 @@ public sealed partial class PackUpdateWindow : Window
         }
     }
 
-    // Helpers to check queue/install status
+    // Helper to check if pack is in queue
     private bool IsPackInQueue(PackType packType)
     {
         return _installQueue.Any(item => item.pack == packType);
-    }
-
-    private bool IsPackCurrentlyInstalling(PackType packType)
-    {
-        // Check if the pack is currently being installed (loading ring visible)
-        return packType switch
-        {
-            PackType.VanillaRTX => VanillaRTX_LoadingRing.Visibility == Visibility.Visible,
-            PackType.VanillaRTXNormals => VanillaRTXNormals_LoadingRing.Visibility == Visibility.Visible,
-            PackType.VanillaRTXOpus => VanillaRTXOpus_LoadingRing.Visibility == Visibility.Visible,
-            _ => false
-        };
     }
 
     // ======================= Button Handlers =======================
@@ -456,10 +463,13 @@ public sealed partial class PackUpdateWindow : Window
 
     private async void QueueInstallation(PackType packType, bool enableEnhancements)
     {
+        // Set queued state
         SetPanelQueuedState(packType, true);
 
+        // Add to queue
         _installQueue.Enqueue((packType, enableEnhancements));
 
+        // Start processing if not already installing
         if (!_isInstalling)
         {
             await ProcessInstallQueue();
@@ -495,6 +505,12 @@ public sealed partial class PackUpdateWindow : Window
             button.IsEnabled = false;
             toggle.IsEnabled = false;
         }
+        else
+        {
+            // Clear queued state - will be set by UpdateSingleButtonState
+            button.IsEnabled = true;
+            toggle.IsEnabled = true;
+        }
     }
 
     private async Task ProcessInstallQueue()
@@ -504,6 +520,10 @@ public sealed partial class PackUpdateWindow : Window
         while (_installQueue.Count > 0)
         {
             var (pack, enhancements) = _installQueue.Dequeue();
+
+            // Clear the queued state before starting installation
+            SetPanelQueuedState(pack, false);
+
             await InstallSinglePack(pack, enhancements);
         }
 
@@ -512,6 +532,9 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task InstallSinglePack(PackType packType, bool enableEnhancements)
     {
+        // Mark pack as currently installing
+        _currentlyInstallingPack = packType;
+
         SetPanelLoadingState(packType, true);
 
         try
@@ -528,6 +551,7 @@ public sealed partial class PackUpdateWindow : Window
                 System.Diagnostics.Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
             }
 
+            // Refresh versions - this will update button states for all packs
             await RefreshInstalledVersions();
             await FetchAndDisplayRemoteVersions();
         }
@@ -537,7 +561,47 @@ public sealed partial class PackUpdateWindow : Window
         }
         finally
         {
+            // Clear currently installing flag
+            _currentlyInstallingPack = null;
+
             SetPanelLoadingState(packType, false);
+
+            // Force a final button state update for this specific pack
+            await UpdateButtonStateForPack(packType);
+        }
+    }
+
+    private async Task UpdateButtonStateForPack(PackType packType)
+    {
+        var vanillaRTXVersion = VanillaRTXVersion;
+        var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
+        var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
+
+        string rtx = null, normals = null, opus = null;
+
+        try
+        {
+            var result = await _updater.GetRemoteVersionsAsync();
+            rtx = result.rtx;
+            normals = result.normals;
+            opus = result.opus;
+        }
+        catch { }
+
+        switch (packType)
+        {
+            case PackType.VanillaRTX:
+                await UpdateSingleButtonState(VanillaRTX_InstallButton, VanillaRTX_LoadingRing, VanillaRTX_EnhancementsToggle,
+                    packType, vanillaRTXVersion, rtx);
+                break;
+            case PackType.VanillaRTXNormals:
+                await UpdateSingleButtonState(VanillaRTXNormals_InstallButton, VanillaRTXNormals_LoadingRing, VanillaRTXNormals_EnhancementsToggle,
+                    packType, vanillaRTXNormalsVersion, normals);
+                break;
+            case PackType.VanillaRTXOpus:
+                await UpdateSingleButtonState(VanillaRTXOpus_InstallButton, VanillaRTXOpus_LoadingRing, VanillaRTXOpus_EnhancementsToggle,
+                    packType, vanillaRTXOpusVersion, opus);
+                break;
         }
     }
 
@@ -580,6 +644,7 @@ public sealed partial class PackUpdateWindow : Window
             loadingRing.IsActive = false;
             loadingRing.Visibility = Visibility.Collapsed;
             button.Visibility = Visibility.Visible;
+            button.IsEnabled = true;
             toggle.IsEnabled = true;
         }
     }
