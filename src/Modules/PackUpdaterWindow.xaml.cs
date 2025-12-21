@@ -29,7 +29,7 @@ public sealed partial class PackUpdateWindow : Window
     private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(200);
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
 
-    private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
+    private const string REFRESH_COOLDOWN_KEY = "PackUpdater_RefreshCooldown_LastClickTimestamp";
     private const int REFRESH_COOLDOWN_SECONDS = 179;
     private DispatcherTimer _cooldownTimer;
 
@@ -347,7 +347,7 @@ public sealed partial class PackUpdateWindow : Window
         string suffix = "";
         if (source == VersionSource.ZipballFallback)
         {
-            suffix = isUpToDate ? " (Up-to-date, Cache)" : " (Cache)";
+            suffix = isUpToDate ? " (Up-to-date, from offline cache)" : " (from offline cache)";
         }
         else if (isUpToDate)
         {

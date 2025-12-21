@@ -722,6 +722,7 @@
                 Click="RefreshButton_Click"
                 Translation="0,0,16"
                 IsTextScaleFactorEnabled="False"
+                Visibility="Collapsed"
                 ToolTipService.ToolTip="Manually invalidates cache and refreshes available and installed versions. Usage: I can't fathom why you'd need this, if this window is left open for weeks on end, the data here can become stale, in which case, what are you doing?">
             <Button.Shadow>
                 <ThemeShadow />
