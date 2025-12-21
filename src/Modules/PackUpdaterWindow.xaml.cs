@@ -243,7 +243,7 @@ public sealed partial class PackUpdateWindow : Window
             });
 
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Setup Vanilla RTX resource packs for {text}";
+            WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
             SetupShadows();
 
@@ -301,8 +301,9 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task FetchAndDisplayRemoteVersions()
     {
-        string rtx = null, normals = null, opus = null;
-        VersionSource source = VersionSource.Remote;
+        (string? version, VersionSource source) rtx = (null, VersionSource.Remote);
+        (string? version, VersionSource source) normals = (null, VersionSource.Remote);
+        (string? version, VersionSource source) opus = (null, VersionSource.Remote);
 
         try
         {
@@ -310,7 +311,6 @@ public sealed partial class PackUpdateWindow : Window
             rtx = result.rtx;
             normals = result.normals;
             opus = result.opus;
-            source = result.source;
         }
         catch
         {
@@ -323,17 +323,18 @@ public sealed partial class PackUpdateWindow : Window
 
         VanillaRTX_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTX_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTX_AvailableVersion.Text = GetAvailabilityText(rtx, vanillaRTXVersion, source);
+        VanillaRTX_AvailableVersion.Text = GetAvailabilityText(rtx.version, vanillaRTXVersion, rtx.source);
 
         VanillaRTXNormals_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTXNormals_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTXNormals_AvailableVersion.Text = GetAvailabilityText(normals, vanillaRTXNormalsVersion, source);
+        VanillaRTXNormals_AvailableVersion.Text = GetAvailabilityText(normals.version, vanillaRTXNormalsVersion, normals.source);
 
         VanillaRTXOpus_AvailableLoading.Visibility = Visibility.Collapsed;
         VanillaRTXOpus_AvailableVersion.Visibility = Visibility.Visible;
-        VanillaRTXOpus_AvailableVersion.Text = GetAvailabilityText(opus, vanillaRTXOpusVersion, source);
+        VanillaRTXOpus_AvailableVersion.Text = GetAvailabilityText(opus.version, vanillaRTXOpusVersion, opus.source);
 
-        await UpdateAllButtonStates(rtx, normals, opus, vanillaRTXVersion, vanillaRTXNormalsVersion, vanillaRTXOpusVersion);
+        await UpdateAllButtonStates(rtx.version, normals.version, opus.version,
+            vanillaRTXVersion, vanillaRTXNormalsVersion, vanillaRTXOpusVersion);
     }
 
     private string GetAvailabilityText(string? availableVersion, string? installedVersion, VersionSource source)
@@ -352,9 +353,13 @@ public sealed partial class PackUpdateWindow : Window
         {
             suffix = isUpToDate ? " (Up-to-date, from offline cache)" : " (from offline cache)";
         }
-        else if (isUpToDate)
+        else if (source == VersionSource.CachedRemote)
         {
-            suffix = " (Up-to-date)";
+            suffix = isUpToDate ? " (Up-to-date)*" : "";
+        }
+        else // VersionSource.Remote
+        {
+            suffix = isUpToDate ? " (Up-to-date)" : "";
         }
 
         return $"{availableVersion}{suffix}";
@@ -577,7 +582,9 @@ public sealed partial class PackUpdateWindow : Window
         var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;
         var vanillaRTXOpusVersion = VanillaRTXOpusVersion;
 
-        string rtx = null, normals = null, opus = null;
+        (string? version, VersionSource source) rtx = (null, VersionSource.Remote);
+        (string? version, VersionSource source) normals = (null, VersionSource.Remote);
+        (string? version, VersionSource source) opus = (null, VersionSource.Remote);
 
         try
         {
@@ -592,15 +599,15 @@ public sealed partial class PackUpdateWindow : Window
         {
             case PackType.VanillaRTX:
                 await UpdateSingleButtonState(VanillaRTX_InstallButton, VanillaRTX_LoadingRing, VanillaRTX_EnhancementsToggle,
-                    packType, vanillaRTXVersion, rtx);
+                    packType, vanillaRTXVersion, rtx.version);
                 break;
             case PackType.VanillaRTXNormals:
                 await UpdateSingleButtonState(VanillaRTXNormals_InstallButton, VanillaRTXNormals_LoadingRing, VanillaRTXNormals_EnhancementsToggle,
-                    packType, vanillaRTXNormalsVersion, normals);
+                    packType, vanillaRTXNormalsVersion, normals.version);
                 break;
             case PackType.VanillaRTXOpus:
                 await UpdateSingleButtonState(VanillaRTXOpus_InstallButton, VanillaRTXOpus_LoadingRing, VanillaRTXOpus_EnhancementsToggle,
-                    packType, vanillaRTXOpusVersion, opus);
+                    packType, vanillaRTXOpusVersion, opus.version);
                 break;
         }
     }

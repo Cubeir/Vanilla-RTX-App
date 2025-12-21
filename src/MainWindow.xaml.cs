@@ -1986,7 +1986,6 @@ public sealed partial class MainWindow : Window
         try
         {
             await LocatePacksButton_Click();
-            _ = BlinkingLamp(true);
         }
         finally
         {
@@ -2025,8 +2024,6 @@ public sealed partial class MainWindow : Window
 
                 // Trigger an automatic pack location check after update (fail or not)
                 _ = LocatePacksButton_Click(true);
-
-                _ = BlinkingLamp(false);
             };
 
             packUpdaterWindow.Activate();

@@ -42,12 +42,12 @@ public class PackUpdater
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(12);
 
     // Cache validation check cooldown
     private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
     private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
-    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(90);
+    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(80);
 
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;
@@ -299,14 +299,18 @@ public class PackUpdater
 
     // ======================= Remote Version Fetching (For UI Display) =======================
 
-    public async Task<(string? rtx, string? normals, string? opus, VersionSource source)> GetRemoteVersionsAsync()
+    public async Task<(
+        (string? version, VersionSource source) rtx,
+        (string? version, VersionSource source) normals,
+        (string? version, VersionSource source) opus
+    )> GetRemoteVersionsAsync()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
         var cacheKey = GetRemoteVersionsCacheKey();
         var timeKey = GetRemoteVersionsCacheTimeKey();
 
-        // Step 1: Try cached remote versions (5-min cache)
+        // Step 1: Try cached remote versions (15-min cache)
         if (localSettings.Values[timeKey] is string cacheTimeStr &&
             DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
             now < cacheTime + RemoteVersionCacheDuration)
@@ -316,11 +320,19 @@ public class PackUpdater
                 try
                 {
                     var cached = JObject.Parse(cachedJson);
+
+                    // Extract per-pack versions and sources from cache
+                    var rtxCached = cached["rtx"];
+                    var normalsCached = cached["normals"];
+                    var opusCached = cached["opus"];
+
                     return (
-                        cached["rtx"]?.ToString(),
-                        cached["normals"]?.ToString(),
-                        cached["opus"]?.ToString(),
-                        VersionSource.CachedRemote
+                        (rtxCached?["version"]?.ToString(),
+                         ParseVersionSource(rtxCached?["source"]?.ToString())),
+                        (normalsCached?["version"]?.ToString(),
+                         ParseVersionSource(normalsCached?["source"]?.ToString())),
+                        (opusCached?["version"]?.ToString(),
+                         ParseVersionSource(opusCached?["source"]?.ToString()))
                     );
                 }
                 catch { /* Fall through */ }
@@ -329,6 +341,9 @@ public class PackUpdater
 
         // Step 2: Try fetching fresh versions from remote
         string rtxVersion = null, normalsVersion = null, opusVersion = null;
+        VersionSource rtxSource = VersionSource.Remote;
+        VersionSource normalsSource = VersionSource.Remote;
+        VersionSource opusSource = VersionSource.Remote;
         bool anyRemoteSuccess = false;
 
         if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
@@ -340,11 +355,27 @@ public class PackUpdater
                 {
                     var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
 
-                    rtxVersion = ExtractVersionFromManifest(rtxManifest);
-                    normalsVersion = ExtractVersionFromManifest(normalsManifest);
-                    opusVersion = ExtractVersionFromManifest(opusManifest);
+                    // Track which packs successfully fetched from remote
+                    if (rtxManifest != null)
+                    {
+                        rtxVersion = ExtractVersionFromManifest(rtxManifest);
+                        rtxSource = VersionSource.Remote;
+                        anyRemoteSuccess = true;
+                    }
 
-                    anyRemoteSuccess = true;
+                    if (normalsManifest != null)
+                    {
+                        normalsVersion = ExtractVersionFromManifest(normalsManifest);
+                        normalsSource = VersionSource.Remote;
+                        anyRemoteSuccess = true;
+                    }
+
+                    if (opusManifest != null)
+                    {
+                        opusVersion = ExtractVersionFromManifest(opusManifest);
+                        opusSource = VersionSource.Remote;
+                        anyRemoteSuccess = true;
+                    }
                 }
             }
             catch (Exception ex)
@@ -353,7 +384,7 @@ public class PackUpdater
             }
         }
 
-        // FIX #3: Per-pack zipball fallback for missing packs
+        // Step 3: Per-pack zipball fallback for missing packs
         var cacheInfo = GetCacheInfo();
         if (cacheInfo.exists && File.Exists(cacheInfo.path))
         {
@@ -366,18 +397,21 @@ public class PackUpdater
                     if (rtxVersion == null && zipballVersions.Value.rtx != null)
                     {
                         rtxVersion = zipballVersions.Value.rtx;
+                        rtxSource = VersionSource.ZipballFallback;
                         Trace.WriteLine("Using zipball fallback for Vanilla RTX version");
                     }
 
                     if (normalsVersion == null && zipballVersions.Value.normals != null)
                     {
                         normalsVersion = zipballVersions.Value.normals;
+                        normalsSource = VersionSource.ZipballFallback;
                         Trace.WriteLine("Using zipball fallback for Vanilla RTX Normals version");
                     }
 
                     if (opusVersion == null && zipballVersions.Value.opus != null)
                     {
                         opusVersion = zipballVersions.Value.opus;
+                        opusSource = VersionSource.ZipballFallback;
                         Trace.WriteLine("Using zipball fallback for Vanilla RTX Opus version");
                     }
                 }
@@ -388,23 +422,58 @@ public class PackUpdater
             }
         }
 
-        // Cache results if we got any from remote
+        // Step 4: Cache results if we got any from remote
         if (anyRemoteSuccess)
         {
-            var cacheObj = new JObject
+            var cacheObj = new JObject();
+
+            // Cache all packs with their sources
+            if (rtxVersion != null)
             {
-                ["rtx"] = rtxVersion,
-                ["normals"] = normalsVersion,
-                ["opus"] = opusVersion
-            };
+                cacheObj["rtx"] = new JObject
+                {
+                    ["version"] = rtxVersion,
+                    ["source"] = rtxSource.ToString()
+                };
+            }
+
+            if (normalsVersion != null)
+            {
+                cacheObj["normals"] = new JObject
+                {
+                    ["version"] = normalsVersion,
+                    ["source"] = normalsSource.ToString()
+                };
+            }
+
+            if (opusVersion != null)
+            {
+                cacheObj["opus"] = new JObject
+                {
+                    ["version"] = opusVersion,
+                    ["source"] = opusSource.ToString()
+                };
+            }
+
             localSettings.Values[cacheKey] = cacheObj.ToString();
             localSettings.Values[timeKey] = now.ToString("o");
         }
 
-        // Determine source: Remote if we got any from remote, ZipballFallback if all came from zipball
-        var source = anyRemoteSuccess ? VersionSource.Remote : VersionSource.ZipballFallback;
+        return (
+            (rtxVersion, rtxSource),
+            (normalsVersion, normalsSource),
+            (opusVersion, opusSource)
+        );
+    }
 
-        return (rtxVersion, normalsVersion, opusVersion, source);
+    private VersionSource ParseVersionSource(string? sourceString)
+    {
+        if (string.IsNullOrEmpty(sourceString))
+            return VersionSource.Remote;
+
+        return Enum.TryParse<VersionSource>(sourceString, out var source)
+            ? source
+            : VersionSource.Remote;
     }
 
     private async Task<(string? rtx, string? normals, string? opus)?> GetVersionsFromCachedZipball(string cachePath)

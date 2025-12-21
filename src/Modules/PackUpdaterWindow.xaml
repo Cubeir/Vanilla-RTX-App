@@ -1,7 +1,7 @@
 <Window x:Class="Vanilla_RTX_App.PackUpdate.PackUpdateWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Update Vanilla RTX">
+        Title="Vanilla RTX">
 
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
