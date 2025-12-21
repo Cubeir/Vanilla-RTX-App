@@ -96,7 +96,7 @@
 
             <!-- Transparent drag area: covers whole titlebar except left 200px so your buttons keep receiving clicks -->
             <Border x:Name="TitleBarDragArea"
-                    Margin="145,0,0,0"
+                    Margin="196,0,0,0"
                     Height="31"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
@@ -208,21 +208,47 @@
                       CornerRadius="4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
-                        <!-- Help Button -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Spacing -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Donate Button -->
+                        <!-- Button -->
                         <ColumnDefinition Width="Auto" />
                         <!-- Separator -->
                         <ColumnDefinition Width="Auto" />
-                        <!-- Theme Button -->
+                        <!-- Button -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Separator -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Button -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Separator -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Button -->
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Help Button -->
-                    <Button x:Name="HelpButton"
+                    <!-- Chat Button -->
+                    <Button x:Name="ChatButton"
                             Grid.Column="0"
+                            FontFamily="Segoe Fluent Icons"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Content="&#xE8F2;"
+                            Width="42"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="14"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Click="ChatButton_Click"
+                            ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server."
+                            IsTextScaleFactorEnabled="False" />
+
+                    <!-- Separator -->
+                    <Border Grid.Column="1"
+                            Width="1"
+                            Margin="4,6,4,6"
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- Info/Help Button -->
+                    <Button x:Name="HelpButton"
+                            Grid.Column="2"
                             FontFamily="Segoe Fluent Icons"
                             Style="{StaticResource SubtleButtonStyle}"
                             Content="&#xE946;"
@@ -237,14 +263,14 @@
                             IsTextScaleFactorEnabled="False" />
 
                     <!-- Separator -->
-                    <Border Grid.Column="1"
+                    <Border Grid.Column="3"
                             Width="1"
                             Margin="4,6,4,6"
                             Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                     <!-- Donate Button -->
                     <Button x:Name="DonateButton"
-                            Grid.Column="2"
+                            Grid.Column="4"
                             FontFamily="Segoe Fluent Icons"
                             Style="{StaticResource SubtleButtonStyle}"
                             Content="&#xEB51;"
@@ -261,14 +287,14 @@
                             IsTextScaleFactorEnabled="False" />
 
                     <!-- Separator -->
-                    <Border Grid.Column="3"
+                    <Border Grid.Column="5"
                             Width="1"
                             Margin="4,6,4,6"
                             Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                     <!-- Theme Button -->
                     <Button x:Name="CycleThemeButton"
-                            Grid.Column="4"
+                            Grid.Column="6"
                             FontFamily="Segoe Fluent Icons"
                             Style="{StaticResource SubtleButtonStyle}"
                             Content="&#xEC46;"

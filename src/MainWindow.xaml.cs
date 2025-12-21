@@ -37,6 +37,16 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Pack updater issues:
+Button and queue states on buttons do not persist on window relaunches.
+This isn't a big issue, but exposes user to being able to queue packs over and over and over again which will continually reinstall packs
+It's their fault if they wanna fuck around, the app is still able to gracefully recover and do a full installation and clean orphaned packs
+But its best you fix this somehow, NOT something the whole thing was designed around, this came in the hindsight
+So if it is too difficult to do, forget it
+
+Also you gotta stress test it more, yes there are many scenarios for which you have accounted, edge cases are all accounted for
+but they remain UNTESTED
+
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
@@ -573,6 +583,10 @@ public sealed partial class MainWindow : Window
 
         Previewer.Instance.InitializeButton(HelpButton,
             "ms-appx:///Assets/previews/cubeir.help.png"
+        );
+
+        Previewer.Instance.InitializeButton(ChatButton,
+            "ms-appx:///Assets/previews/bonfire.png"
         );
 
         Previewer.Instance.InitializeButton(ResetButton,
@@ -1214,6 +1228,13 @@ public sealed partial class MainWindow : Window
     private async void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true);
+    }
+
+
+    private void ChatButton_Click(object sender, RoutedEventArgs e)
+    {
+        Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.Informational);
+        OpenUrl("https://discord.gg/A4wv4wwYud");
     }
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
@@ -2049,4 +2070,6 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 0.0);
         }
     }
+
+
 }
