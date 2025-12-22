@@ -47,6 +47,21 @@ So if it is too difficult to do, forget it
 Also you gotta stress test it more, yes there are many scenarios for which you have accounted, edge cases are all accounted for
 but they remain UNTESTED
 
+SHOULD NOT HAVE DONE THE QUEUING THING AT ALL.
+IT COMPLICATES THINGS.
+BUT NOW REMOVING IT IS DIFFICULT TOO.
+BUT IF YOU CAN, DO A REWRITE:
+REMOVE PACK INSTALLATION QUEUE, TRACK IF "INSTALLING PACKS" IS RUNNING IN PackUpdater
+AND IF IT IS RUNNING, DISABLE ALL INSTALL/REINSTALL BUTTONS!
+USER HAS TO WAIT FOR INSTALLATIONS TO FINISH BEFORE THEY ARE PERMITTED TO INSTALL ANOTHER PACK.
+
+YES, THAT'S THE PRICE USER PAYS FOR RELIABILITY.
+AND THAT WAY YOU'LL BE ABLE TO DISABLE BUTTONS ON STARTUP IF PACKS ARE BEING INSTALLED.
+THEN MAKE SURE THEY ENABLE THEMSELVES ONCE INSTALLATIONS ARE FINISHED.
+
+This might result in EVEN MESSEIR code just leaving this here, will reflect on it later
+
+
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
