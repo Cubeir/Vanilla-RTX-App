@@ -64,7 +64,7 @@ This is your detailed guidebook on what each option within the app does.
   Opens a new window in which you can download and install, resintall, or update the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
   Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the unofficial ongoing effort to bring the canonical default appearance of ray-traced Minecraft to life, and the app allows you to become aware of updates and automatically receive the latest updates without having to visit third party sites. 
   Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options.  
-`Available` status updates once every 15 minutes, which tells you if the packs are up-to-date.  
+  
 ![vanilla-rtx-app-ui-screenshots-packupdater](https://github.com/user-attachments/assets/38760151-64ef-4dd4-8868-6bd5869461d4)
 
 - `DLSS version swapper`
