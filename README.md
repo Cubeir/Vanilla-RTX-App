@@ -176,12 +176,10 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - Missing icons on some older Windows installations (non-critical)   
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
-- Languages other than English are not supported, there may be issues with non-English system languages. (non-critical)
-- The app is not tested for and does not work properly with Windows accessibility features. (non-critical)
+- Non-English languages are not supported, there may be issues with other system languages. (non-critical)
+- The app's appearance is not properly accounted for with Windows accessibility features. (non-critical)
 - If the pack updater window is closed and relaunched while installations are happening, it exposes the ability to queue the same pack for installation multiple times, which can result in duplicate installations that will later confuse the app. (mildly-critical)  
 The outcome of this scenario is automatically fixed the next time user attempts to reinstall that pack.
-- BetterRTX Manager might display an empty list with internet connection error for some users despite an internet connection being availble (critical)  
-Refreshing the list might solve this issue (button on the top-left corner).
 
 ### Need help?
 
@@ -193,4 +191,4 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-BetterRTX manager has been overhauled! You can now download and install presets directly from within the app, no more manual imports. Be sure to update!
+Check out the new pack updater window! You can now reinstall or update packs individually and see installed/available version statuses in one place!
