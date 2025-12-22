@@ -56,28 +56,30 @@ This is your detailed guidebook on what each option within the app does.
   [MCPE-191513](https://bugs.mojang.com/browse/MCPE/issues/MCPE-191513): Ray tracing can no longer be enabled while in the main menu.  
   [MCPE-152158](https://bugs.mojang.com/browse/MCPE/issues/MCPE-152158): PBR textures don't load properly upon enabling ray tracing after the game is freshly launched.  
   [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850): Ray Tracing performance starvation when VSync is enabled.
-> Even if the game doesn't launch, it's likely okay, this can happen if the protocol to launch Minecraft isn't assigned on your computer. Just continue to launch the game manually as the app has already done it's main job.
+> Even if the game doesn't launch, it's okay, this can happen if the protocol to launch Minecraft isn't assigned on your computer. Just continue to launch the game manually as the app has already done it's main job at correcting the options for ray tracing.  
+
+![vanilla-rtx-app-ui-screenshots](https://github.com/user-attachments/assets/09563ec6-0099-4afd-b2e5-73a3af930b02)
 
 - `Install latest RTX packages`  
-  Downloads and (re)installs the latest Vanilla RTX & Vanilla RTX Normals packages directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
-  Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the unofficial ongoing effort to bring the canonical default appearance of ray-traced Minecraft to life.  
-  Downloaded files are cached, making pack reinstalls instant unless a new update is available. This serves two main purposes: first to give a quick way reset the packs back to original state, allowing you to rapidly experiment and learn in practice what the tuning options do, and second to ensure you're always getting the latest version of Vanilla RTX, acting like an auto-updater. The updater also ensures you will only ever have one instance of each Vanilla RTX pack installed across resource packs folders.  
-  
-The app might notify you of important updates on startup, Vanilla RTX is constantly evolving and adapting to the latest release version of Minecraft, however for the most reliable and up-to-date information, check the news channel on the [Vanilla RTX Discord server](https://discord.gg/A4wv4wwYud).
-  
-![vanilla-rtx-app-ui-in-game-images (2)](https://github.com/user-attachments/assets/c83f1da5-d4ec-407d-ae7e-91a3f936e2d7)
+  Opens a new window in which you can download and install, resintall, or update the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
+  Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the unofficial ongoing effort to bring the canonical default appearance of ray-traced Minecraft to life, and the app allows you to become aware of updates and automatically receive the latest updates without having to visit third party sites. 
+  Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options.  
+`Available` status updates once every 15 minutes, which tells you if the packs are up-to-date.  
+![vanilla-rtx-app-ui-screenshots-packupdater](https://github.com/user-attachments/assets/38760151-64ef-4dd4-8868-6bd5869461d4)
 
 - `DLSS version swapper`
 Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically catalogued, so you won't lose the original dll when replacing it, allowing you to revert easily. Accepts `.dll` files and `.zip` archives containing any number of dlls. You can also remove dll files from your catalogue that you no longer need. Your currently-installed version of DLSS is always highlighted.
 > This feature is particularly essential to RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image as Minecraft's is heavily outdated. The app does not validate `.dll` files to belong to DLSS, it is your responsibility to provide valid DLSS files.
 
 - `BetterRTX manager`
-Displays an up-to-date list of all available BetterRTX presets, which you can click to download and then install. The list is long so downloaded presets are moved to the top for convenience.
+Displays an up-to-date list of all available BetterRTX presets, which you can click to download and then install. The list is long so once a preset is downloaded it is moved to the top for convenience.
 Upon installing your first ever preset, a Default RTX preset is created at the top allowing you to rollback/uninstall BetterRTX.
-> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential crashes, sometimes the bin files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never accidentally install outdated RTX files.
-You will have to redownload the presets as they may have likely been updated on the [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update.
+> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential game crashes, sometimes the bin files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never install outdated RTX files by accident.
+You will have to redownload the presets as they may have likely been updated on the [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update.  
 
-> Note: The last 2 features only support Minecraft GDK (1.21.120 and higher), and given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. If the game is relocated, the cache is invalidated.
+> In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, this won't touch your Default RTX preset, which is deleted strictly only after game updates.
+
+> Note: The last 2 features only support Minecraft GDK (1.21.120 and higher), and given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. The cache remains valid until Minecraft is relocated.
 
 - `Preview (Toggle)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
@@ -174,6 +176,12 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - Missing icons on some older Windows installations (non-critical)   
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
+- Languages other than English are not supported, there may be issues with non-English system languages. (non-critical)
+- The app is not tested for and does not work properly with Windows accessibility features. (non-critical)
+- If the pack updater window is closed and relaunched while installations are happening, it exposes the ability to queue the same pack for installation multiple times, which can result in duplicate installations that will later confuse the app. (mildly-critical)  
+The outcome of this scenario is automatically fixed the next time user attempts to reinstall that pack.
+- BetterRTX Manager might display an empty list with internet connection error for some users despite an internet connection being availble (critical)  
+Refreshing the list might solve this issue (button on the top-left corner).
 
 ### Need help?
 
