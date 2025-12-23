@@ -1043,15 +1043,15 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             isDownloaded = true;
             name = localPreset.Name;
-            description = Helpers.SanitizePathForDisplay(localPreset.PresetPath);
             icon = localPreset.Icon;
             uuid = localPreset.Uuid;
 
-            // Compare ALL hashes
+            // Compare ALL hashes to see if it is current
             if (localPreset.FileHashes != null && AreHashesMatching(currentInstalledHashes, localPreset.FileHashes))
             {
                 isCurrent = true;
             }
+            description = isCurrent ? Helpers.SanitizePathForDisplay(localPreset.PresetPath) : "Click to install";
         }
         else if (presetData is DisplayPresetData displayPreset)
         {
@@ -1061,9 +1061,18 @@ public sealed partial class BetterRTXManagerWindow : Window
             icon = displayPreset.Icon;
 
             // Dynamic description based on download status
-            if (displayPreset.IsDownloaded)
+            if (isDownloaded)
             {
-                description = Helpers.SanitizePathForDisplay(displayPreset.PresetPath);
+                if (displayPreset.FileHashes != null && AreHashesMatching(currentInstalledHashes, displayPreset.FileHashes))
+                {
+                    isCurrent = true;
+                    description = Helpers.SanitizePathForDisplay(displayPreset.PresetPath);
+                }
+                else
+                {
+                    isCurrent = false;
+                    description = "Click to install";
+                }
             }
             else
             {
@@ -1080,13 +1089,6 @@ public sealed partial class BetterRTXManagerWindow : Window
                     DownloadStatus.Downloading => "Download in progress...",
                     _ => "Click to download"
                 };
-            }
-
-            // Compare ALL hashes
-            if (isDownloaded && displayPreset.FileHashes != null &&
-                AreHashesMatching(currentInstalledHashes, displayPreset.FileHashes))
-            {
-                isCurrent = true;
             }
         }
 

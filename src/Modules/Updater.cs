@@ -42,10 +42,8 @@ public class PackUpdater
     private const string InstallationInProgressKey_Preview = "PackUpdater_InstallationInProgress_Preview";
     private const string CurrentInstallingPackKey_Release = "PackUpdater_CurrentInstallingPack_Release";
     private const string CurrentInstallingPackKey_Preview = "PackUpdater_CurrentInstallingPack_Preview";
-
     private string GetInstallationInProgressKey() => TunerVariables.Persistent.IsTargetingPreview
         ? InstallationInProgressKey_Preview : InstallationInProgressKey_Release;
-
     private string GetCurrentInstallingPackKey() => TunerVariables.Persistent.IsTargetingPreview
         ? CurrentInstallingPackKey_Preview : CurrentInstallingPackKey_Release;
 
