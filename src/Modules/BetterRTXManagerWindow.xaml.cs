@@ -6,7 +6,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
@@ -17,6 +16,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
@@ -281,7 +282,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            Trace.WriteLine("=== RESET BUTTON CLICKED ===");
+            Trace.WriteLine("=== BETTERRTX RESET BUTTON CLICKED ===");
 
             // Set cooldown timestamp
             var settings = ApplicationData.Current.LocalSettings;
@@ -353,24 +354,25 @@ public sealed partial class BetterRTXManagerWindow : Window
                                 try
                                 {
                                     var manifestJson = await File.ReadAllTextAsync(manifestFiles[0]);
-                                    using var doc = JsonDocument.Parse(manifestJson, new JsonDocumentOptions
-                                    {
-                                        AllowTrailingCommas = true,
-                                        CommentHandling = JsonCommentHandling.Skip
-                                    });
 
-                                    if (doc.RootElement.TryGetProperty("header", out var header) &&
-                                        header.TryGetProperty("uuid", out var uuidElement))
-                                    {
-                                        var folderUuid = uuidElement.GetString();
+                                    var root = JObject.Parse(manifestJson);
+                                    var header = root["header"];
 
-                                        if (string.Equals(folderUuid, uuid, StringComparison.OrdinalIgnoreCase))
+                                    if (header != null)
+                                    {
+                                        var uuidToken = header["uuid"];
+                                        if (uuidToken != null)
                                         {
-                                            // This is the folder we want to delete
-                                            Directory.Delete(folder, true);
-                                            deletedCount++;
-                                            Trace.WriteLine($"  ✓ Deleted: {Path.GetFileName(folder)}");
-                                            break; // Found and deleted, move to next UUID
+                                            var folderUuid = uuidToken.Value<string>();
+
+                                            if (string.Equals(folderUuid, uuid, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                // This is the folder we want to delete
+                                                Directory.Delete(folder, true);
+                                                deletedCount++;
+                                                Trace.WriteLine($"  ✓ Deleted: {Path.GetFileName(folder)}");
+                                                break; // Found and deleted, move to next UUID
+                                            }
                                         }
                                     }
                                 }
@@ -678,12 +680,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 return new List<ApiPresetData>();
             }
 
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            var presets = JsonSerializer.Deserialize<List<ApiPresetData>>(jsonData, options);
+            var presets = JsonConvert.DeserializeObject<List<ApiPresetData>>(jsonData, JsonSettings);
             return presets ?? new List<ApiPresetData>();
         }
         catch (Exception ex)
@@ -692,6 +689,15 @@ public sealed partial class BetterRTXManagerWindow : Window
             return new List<ApiPresetData>();
         }
     }
+    private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
+    {
+        ContractResolver = new Newtonsoft.Json.Serialization.DefaultContractResolver
+        {
+            NamingStrategy = new Newtonsoft.Json.Serialization.DefaultNamingStrategy()
+        },
+        MissingMemberHandling = MissingMemberHandling.Ignore,
+        NullValueHandling = NullValueHandling.Ignore
+    };
 
     private async Task LoadLocalPresetsAsync()
     {
@@ -744,27 +750,25 @@ public sealed partial class BetterRTXManagerWindow : Window
             var manifestDir = Path.GetDirectoryName(manifestPath);
 
             var json = await File.ReadAllTextAsync(manifestPath);
-            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
-            {
-                AllowTrailingCommas = true,
-                CommentHandling = JsonCommentHandling.Skip
-            });
-
-            var root = doc.RootElement;
+            var root = JObject.Parse(json);
 
             string uuid = null;
             string name = Path.GetFileName(presetFolder);
 
-            if (root.TryGetProperty("header", out var header))
+            // Try to get header.uuid
+            var header = root["header"];
+            if (header != null)
             {
-                if (header.TryGetProperty("uuid", out var uuidElement))
+                var uuidToken = header["uuid"];
+                if (uuidToken != null)
                 {
-                    uuid = uuidElement.GetString();
+                    uuid = uuidToken.Value<string>();
                 }
 
-                if (header.TryGetProperty("name", out var nameElement))
+                var nameToken = header["name"];
+                if (nameToken != null)
                 {
-                    var parsedName = nameElement.GetString();
+                    var parsedName = nameToken.Value<string>();
                     if (!string.IsNullOrWhiteSpace(parsedName))
                         name = parsedName;
                 }
