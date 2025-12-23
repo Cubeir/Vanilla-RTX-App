@@ -185,7 +185,7 @@ public sealed partial class PackUpdateWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"Error setting drag region: {ex.Message}");
+                Trace.WriteLine($"Error setting drag region: {ex.Message}");
             }
         }
     }
@@ -316,7 +316,7 @@ public sealed partial class PackUpdateWindow : Window
                 if (remainingMinutes > 0)
                 {
                     canInvalidate = false;
-                    System.Diagnostics.Trace.WriteLine($"Cache invalidation on cooldown - {remainingMinutes} minute(s) remaining");
+                    Trace.WriteLine($"Cache invalidation on cooldown - {remainingMinutes} minute(s) remaining");
                 }
             }
 
@@ -324,7 +324,7 @@ public sealed partial class PackUpdateWindow : Window
             {
                 _updater.InvalidateCache();
                 settings.Values[CACHE_INVALIDATION_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
-                System.Diagnostics.Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
+                Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
             }
         }
 
@@ -339,27 +339,6 @@ public sealed partial class PackUpdateWindow : Window
     private async Task UpdateSingleButtonState(Button button, ToggleSwitch toggle,
         PackType packType, string? installedVersion, string? remoteVersion)
     {
-        // If installation is in progress, handle separately
-        if (_updater.IsInstallationInProgress())
-        {
-            var currentlyInstalling = _updater.GetCurrentlyInstallingPack();
-            if (currentlyInstalling == packType)
-            {
-                // This pack is being installed - show Installing... with animation
-                button.IsEnabled = false;
-                toggle.IsEnabled = false;
-                // Animation is handled by timer
-                return;
-            }
-            else
-            {
-                // Different pack is being installed - disable this button
-                button.IsEnabled = false;
-                toggle.IsEnabled = false;
-                return;
-            }
-        }
-
         bool isInstalled = !string.IsNullOrEmpty(installedVersion);
         bool remoteAvailable = !string.IsNullOrEmpty(remoteVersion);
         bool packInCache = await _updater.DoesPackExistInCache(packType);
@@ -384,6 +363,28 @@ public sealed partial class PackUpdateWindow : Window
             button.Content = "Reinstall";
             button.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
             button.IsEnabled = remoteAvailable || packInCache;
+        }
+
+
+        // If installation is in progress, handle differently
+        if (_updater.IsInstallationInProgress())
+        {
+            var currentlyInstalling = _updater.GetCurrentlyInstallingPack();
+            if (currentlyInstalling == packType)
+            {
+                // This pack is being installed - show Installing... with animation
+                button.IsEnabled = false;
+                toggle.IsEnabled = false;
+                // Animation is handled by timer
+                return;
+            }
+            else
+            {
+                // Different pack is being installed - disable this button
+                button.IsEnabled = false;
+                toggle.IsEnabled = false;
+                return;
+            }
         }
     }
 
@@ -503,7 +504,7 @@ public sealed partial class PackUpdateWindow : Window
         // Check if installation is already running
         if (_updater.IsInstallationInProgress())
         {
-            System.Diagnostics.Trace.WriteLine("Installation already in progress - ignoring button click");
+            Trace.WriteLine("Installation already in progress - ignoring button click");
             return;
         }
 
@@ -533,16 +534,16 @@ public sealed partial class PackUpdateWindow : Window
 
             if (success)
             {
-                System.Diagnostics.Trace.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
+                Trace.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
             }
             else
             {
-                System.Diagnostics.Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
+                Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
+            Trace.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
         }
         finally
         {
