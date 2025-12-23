@@ -37,15 +37,8 @@ public class PackUpdater
     public event Action<string>? ProgressUpdate;
     private readonly List<string> _logMessages = new();
 
-    // Installation state tracking (for persistence across window relaunches)
-    private const string InstallationInProgressKey_Release = "PackUpdater_InstallationInProgress_Release";
-    private const string InstallationInProgressKey_Preview = "PackUpdater_InstallationInProgress_Preview";
-    private const string CurrentInstallingPackKey_Release = "PackUpdater_CurrentInstallingPack_Release";
-    private const string CurrentInstallingPackKey_Preview = "PackUpdater_CurrentInstallingPack_Preview";
-    private string GetInstallationInProgressKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? InstallationInProgressKey_Preview : InstallationInProgressKey_Release;
-    private string GetCurrentInstallingPackKey() => TunerVariables.Persistent.IsTargetingPreview
-        ? CurrentInstallingPackKey_Preview : CurrentInstallingPackKey_Release;
+    private bool _installationInProgress = false;
+    private PackType? _currentInstallingPack = null;
 
     // Remote version cache
     private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
@@ -76,26 +69,18 @@ public class PackUpdater
 
     public bool IsInstallationInProgress()
     {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        return localSettings.Values[GetInstallationInProgressKey()] as bool? ?? false;
+        return _installationInProgress;
     }
 
     public PackType? GetCurrentlyInstallingPack()
     {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        var packName = localSettings.Values[GetCurrentInstallingPackKey()] as string;
-
-        if (string.IsNullOrEmpty(packName))
-            return null;
-
-        return Enum.TryParse<PackType>(packName, out var packType) ? packType : null;
+        return _currentInstallingPack;
     }
 
     private void SetInstallationState(bool isInstalling, PackType? pack = null)
     {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        localSettings.Values[GetInstallationInProgressKey()] = isInstalling;
-        localSettings.Values[GetCurrentInstallingPackKey()] = pack?.ToString();
+        _installationInProgress = isInstalling;
+        _currentInstallingPack = pack;
     }
 
     private void ClearInstallationState()
@@ -115,7 +100,7 @@ public class PackUpdater
             try
             {
                 File.Delete(cachedPath);
-                LogMessage("🗑️ Deleted outdated cache file");
+                Trace.WriteLine("🗑️ Deleted outdated cache file");
             }
             catch (Exception ex)
             {
@@ -124,7 +109,7 @@ public class PackUpdater
         }
 
         localSettings.Values["CachedZipballPath"] = null;
-        LogMessage("❌ Cache invalidated - will download fresh on next install");
+        Trace.WriteLine("❌ Cache invalidated - will download fresh on next install");
     }
 
     // ======================= Cache Validation Check =======================
@@ -135,13 +120,13 @@ public class PackUpdater
 
         if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
         {
-            LogMessage("📦 No cache exists - will download on first pack installation");
+            Trace.WriteLine("📦 No cache exists - will download on first pack installation");
             return false;
         }
 
         if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
         {
-            LogMessage("🛜 No network available - will use existing cache");
+            Trace.WriteLine("🛜 No network available - will use existing cache");
             return false;
         }
 
@@ -155,7 +140,7 @@ public class PackUpdater
             if (now < lastCheck + CacheCheckCooldown)
             {
                 var minutesLeft = (int)Math.Ceiling((lastCheck + CacheCheckCooldown - now).TotalMinutes);
-                LogMessage($"⏳ Cache check on cooldown - {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
+                Trace.WriteLine($"⏳ Cache check on cooldown - {minutesLeft} minute{(minutesLeft == 1 ? "" : "s")} left");
                 return false;
             }
         }
@@ -168,7 +153,7 @@ public class PackUpdater
         }
         catch (Exception ex)
         {
-            LogMessage($"⚠️ Failed to contact GitHub: {ex.Message}");
+            Trace.WriteLine($"⚠️ Failed to contact GitHub: {ex.Message}");
         }
 
         if (remote != null)
@@ -177,7 +162,7 @@ public class PackUpdater
         }
         else
         {
-            LogMessage("⚠️ Could not validate cache - will use existing cache");
+            Trace.WriteLine("⚠️ Could not validate cache - will use existing cache");
             return false;
         }
 
@@ -185,12 +170,12 @@ public class PackUpdater
 
         if (needsInvalidation)
         {
-            LogMessage("📦 Cache is outdated - invalidating now");
+            Trace.WriteLine("📦 Cache is outdated - invalidating now");
             InvalidateCache();
             return true;
         }
 
-        LogMessage("✅ Cache is up-to-date");
+        Trace.WriteLine("✅ Cache is up-to-date");
         return false;
     }
 
@@ -222,20 +207,20 @@ public class PackUpdater
             {
                 if (rtxManifest == null)
                 {
-                    LogMessage("📦 Vanilla RTX is available remotely but missing from cache");
+                    Trace.WriteLine("📦 Vanilla RTX is available remotely but missing from cache");
                     anyOutdated = true;
                 }
                 else if (IsRemoteVersionNewer(rtxManifest, remoteManifests.rtx))
                 {
                     var cacheVer = ExtractVersionFromManifest(rtxManifest);
                     var remoteVer = ExtractVersionFromManifest(remoteManifests.rtx);
-                    LogMessage($"📦 Vanilla RTX: {cacheVer} → {remoteVer} (update available)");
+                    Trace.WriteLine($"📦 Vanilla RTX: {cacheVer} → {remoteVer} (update available)");
                     anyOutdated = true;
                 }
             }
             else if (rtxManifest != null)
             {
-                LogMessage("📦 Vanilla RTX exists in cache but not remotely - invalidating");
+                Trace.WriteLine("📦 Vanilla RTX exists in cache but not remotely - invalidating");
                 anyOutdated = true;
             }
 
@@ -243,20 +228,20 @@ public class PackUpdater
             {
                 if (normalsManifest == null)
                 {
-                    LogMessage("📦 Vanilla RTX Normals is available remotely but missing from cache");
+                    Trace.WriteLine("📦 Vanilla RTX Normals is available remotely but missing from cache");
                     anyOutdated = true;
                 }
                 else if (IsRemoteVersionNewer(normalsManifest, remoteManifests.normals))
                 {
                     var cacheVer = ExtractVersionFromManifest(normalsManifest);
                     var remoteVer = ExtractVersionFromManifest(remoteManifests.normals);
-                    LogMessage($"📦 Vanilla RTX Normals: {cacheVer} → {remoteVer} (update available)");
+                    Trace.WriteLine($"📦 Vanilla RTX Normals: {cacheVer} → {remoteVer} (update available)");
                     anyOutdated = true;
                 }
             }
             else if (normalsManifest != null)
             {
-                LogMessage("📦 Vanilla RTX Normals exists in cache but not remotely - invalidating");
+                Trace.WriteLine("📦 Vanilla RTX Normals exists in cache but not remotely - invalidating");
                 anyOutdated = true;
             }
 
@@ -264,33 +249,33 @@ public class PackUpdater
             {
                 if (opusManifest == null)
                 {
-                    LogMessage("📦 Vanilla RTX Opus is available remotely but missing from cache");
+                    Trace.WriteLine("📦 Vanilla RTX Opus is available remotely but missing from cache");
                     anyOutdated = true;
                 }
                 else if (IsRemoteVersionNewer(opusManifest, remoteManifests.opus))
                 {
                     var cacheVer = ExtractVersionFromManifest(opusManifest);
                     var remoteVer = ExtractVersionFromManifest(remoteManifests.opus);
-                    LogMessage($"📦 Vanilla RTX Opus: {cacheVer} → {remoteVer} (update available)");
+                    Trace.WriteLine($"📦 Vanilla RTX Opus: {cacheVer} → {remoteVer} (update available)");
                     anyOutdated = true;
                 }
             }
             else if (opusManifest != null)
             {
-                LogMessage("📦 Vanilla RTX Opus exists in cache but not remotely - invalidating");
+                Trace.WriteLine("📦 Vanilla RTX Opus exists in cache but not remotely - invalidating");
                 anyOutdated = true;
             }
 
             if (!anyOutdated)
             {
-                LogMessage("✅ All packs in cache are up-to-date");
+                Trace.WriteLine("✅ All packs in cache are up-to-date");
             }
 
             return anyOutdated;
         }
         catch (Exception ex)
         {
-            LogMessage($"⚠️ Error reading cached zipball: {ex.Message} - invalidating cache");
+            Trace.WriteLine($"⚠️ Error reading cached zipball: {ex.Message} - invalidating cache");
             return true;
         }
     }
@@ -304,7 +289,7 @@ public class PackUpdater
         // Check if another installation is already running
         if (IsInstallationInProgress())
         {
-            LogMessage("⚠️ Another installation is already in progress");
+            Trace.WriteLine("⚠️ Another installation is already in progress");
             return (false, new List<string>(_logMessages));
         }
 
@@ -314,19 +299,19 @@ public class PackUpdater
             SetInstallationState(true, packType);
 
             var packName = GetPackDisplayName(packType);
-            LogMessage($"🔄 Starting installation for {packName}...");
+            Trace.WriteLine($"🔄 Starting installation for {packName}...");
 
             await ValidateCacheAgainstRemote();
 
             var cacheInfo = GetCacheInfo();
             if (!cacheInfo.exists || !File.Exists(cacheInfo.path))
             {
-                LogMessage("📦 No cache available - downloading now...");
+                Trace.WriteLine("📦 No cache available - downloading now...");
 
                 var (downloadSuccess, downloadPath) = await DownloadLatestPackage();
                 if (!downloadSuccess || string.IsNullOrEmpty(downloadPath))
                 {
-                    LogMessage("❌ Download failed");
+                    Trace.WriteLine("❌ Download failed");
                     return (false, new List<string>(_logMessages));
                 }
 
@@ -334,13 +319,13 @@ public class PackUpdater
                 cacheInfo = (true, downloadPath);
             }
 
-            LogMessage("✅ Using cached zipball for deployment");
+            Trace.WriteLine("✅ Using cached zipball for deployment");
             var deploySuccess = await DeployPackage(cacheInfo.path, packType, enableEnhancements);
             return (deploySuccess, new List<string>(_logMessages));
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Unexpected error: {ex.Message}");
+            Trace.WriteLine($"❌ Unexpected error: {ex.Message}");
             return (false, new List<string>(_logMessages));
         }
         finally
@@ -632,12 +617,12 @@ public class PackUpdater
     {
         try
         {
-            LogMessage("📦 Downloading latest zipball from GitHub...");
+            Trace.WriteLine("📦 Downloading latest zipball from GitHub...");
             return await Helpers.Download(VANILLA_RTX_REPO_ZIPBALL_URL);
         }
         catch (Exception ex)
         {
-            LogMessage($"Download error: {ex.Message}");
+            Trace.WriteLine($"Download error: {ex.Message}");
             return (false, null);
         }
     }
@@ -648,7 +633,7 @@ public class PackUpdater
     {
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
-            LogMessage("⚠️ Minecraft is running. Please close the game while using the app.");
+            Trace.WriteLine("⚠️ Minecraft is running. Please close the game while using the app.");
         }
 
         bool anyPackDeployed = false;
@@ -663,7 +648,7 @@ public class PackUpdater
 
             if (!Directory.Exists(basePath))
             {
-                LogMessage("❌ Minecraft data root not found. Please make sure the game is installed or has been launched at least once.");
+                Trace.WriteLine("❌ Minecraft data root not found. Please make sure the game is installed or has been launched at least once.");
                 return false;
             }
 
@@ -672,14 +657,14 @@ public class PackUpdater
             if (!Directory.Exists(resourcePackPath))
             {
                 Directory.CreateDirectory(resourcePackPath);
-                LogMessage("📁 Shared resources directory was missing and has been created.");
+                Trace.WriteLine("📁 Shared resources directory was missing and has been created.");
             }
 
             tempExtractionDir = Path.Combine(resourcePackPath, "__rtxapp_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempExtractionDir);
 
             ZipFile.ExtractToDirectory(packagePath, tempExtractionDir, overwriteFiles: true);
-            LogMessage("📦 Extracted package to temporary directory");
+            Trace.WriteLine("📦 Extracted package to temporary directory");
 
             var extractedManifests = Directory.GetFiles(tempExtractionDir, "manifest.json", SearchOption.AllDirectories);
 
@@ -714,19 +699,19 @@ public class PackUpdater
 
             if (packsToProcess.Count == 0)
             {
-                LogMessage(targetPack.HasValue
+                Trace.WriteLine(targetPack.HasValue
                     ? $"❌ {GetPackDisplayName(targetPack.Value)} not found in the downloaded package."
                     : "❌ No recognized Vanilla RTX packs found in the downloaded package.");
                 return false;
             }
 
-            LogMessage($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
+            Trace.WriteLine($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
 
             foreach (var pack in packsToProcess)
             {
                 try
                 {
-                    LogMessage($"🔄 Processing {pack.displayName}...");
+                    Trace.WriteLine($"🔄 Processing {pack.displayName}...");
 
                     await DeleteExistingPackByUUID(resourcePackPath, pack.uuid, pack.moduleUuid, pack.displayName);
 
@@ -758,12 +743,12 @@ public class PackUpdater
                     }
                     catch { Trace.WriteLine("Contents json or textures list creation failed."); }
 
-                    LogMessage($"✅ {pack.displayName} deployed successfully");
+                    Trace.WriteLine($"✅ {pack.displayName} deployed successfully");
                     anyPackDeployed = true;
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"❌ Failed to deploy {pack.displayName}: {ex.Message}");
+                    Trace.WriteLine($"❌ Failed to deploy {pack.displayName}: {ex.Message}");
                 }
             }
 
@@ -771,7 +756,7 @@ public class PackUpdater
         }
         catch (Exception ex)
         {
-            LogMessage($"❌ Deployment error: {ex.Message}");
+            Trace.WriteLine($"❌ Deployment error: {ex.Message}");
             return false;
         }
         finally
@@ -782,11 +767,11 @@ public class PackUpdater
                 {
                     ForceWritable(tempExtractionDir);
                     Directory.Delete(tempExtractionDir, true);
-                    LogMessage(anyPackDeployed ? "🧹 Cleaned up" : "🧹 Cleaned up after fail");
+                    Trace.WriteLine(anyPackDeployed ? "🧹 Cleaned up" : "🧹 Cleaned up after fail");
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"⚠️ Failed to clean up temp directory: {ex.Message}");
+                    Trace.WriteLine($"⚠️ Failed to clean up temp directory: {ex.Message}");
                 }
             }
 
@@ -857,7 +842,7 @@ public class PackUpdater
                 {
                     ForceWritable(enhancementPath);
                     Directory.Delete(enhancementPath, true);
-                    LogMessage("🗑️ Removed enhancements folder (toggle was OFF)");
+                    Trace.WriteLine("🗑️ Removed enhancements folder (toggle was OFF)");
                 }
                 catch (Exception ex)
                 {
@@ -910,7 +895,7 @@ public class PackUpdater
                 ? $"✨ Enabled Enhancements"
                 : $"⚠️ Processing {processed} failed {failed}. Delete failures: {deleteIssues}";
 
-            LogMessage(msg);
+            Trace.WriteLine(msg);
         }
     }
 
@@ -1136,7 +1121,7 @@ public class PackUpdater
                     {
                         ForceWritable(topLevelFolder);
                         Directory.Delete(topLevelFolder, true);
-                        LogMessage($"🗑️ Removed previous installation of: {packName}");
+                        Trace.WriteLine($"🗑️ Removed previous installation of: {packName}");
                     }
                 }
             }
@@ -1195,7 +1180,7 @@ public class PackUpdater
             }
             catch
             {
-                LogMessage("⚠️ Cached package is corrupted, proceeding as if no cache was available.");
+                Trace.WriteLine("⚠️ Cached package is corrupted, proceeding as if no cache was available.");
                 exists = false;
                 cachedPath = null;
             }
@@ -1231,12 +1216,6 @@ public class PackUpdater
         }
 
         return null;
-    }
-
-    private void LogMessage(string message)
-    {
-        _logMessages.Add($"{message}");
-        ProgressUpdate?.Invoke(message);
     }
 }
 

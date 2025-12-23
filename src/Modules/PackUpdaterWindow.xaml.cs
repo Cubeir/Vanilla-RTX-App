@@ -26,9 +26,8 @@ public sealed partial class PackUpdateWindow : Window
     private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(200);
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
 
-    private const string REFRESH_COOLDOWN_KEY = "PackUpdater_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 179;
-    private DispatcherTimer? _cooldownTimer;
+    private const string CACHE_INVALIDATION_COOLDOWN_KEY = "PackUpdater_CacheInvalidation_LastTimestamp";
+    private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 6;
 
     private string? _currentInstallActionType;
 
@@ -43,7 +42,8 @@ public sealed partial class PackUpdateWindow : Window
         InitializeHoverEffects();
 
         _mainWindow = mainWindow;
-        _updater = new PackUpdater();
+        _updater = mainWindow._updater ?? new PackUpdater(); // Make it same as main window's updater, avoid making new instances
+        // Which is both pointless, and causes issues/conflicts between instances doing the same thing
 
         // Theme
         var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
@@ -141,79 +141,10 @@ public sealed partial class PackUpdateWindow : Window
         storyboard.Begin();
     }
 
-    private void InitializeRefreshButton()
-    {
-        UpdateRefreshButtonState();
-        _cooldownTimer = new DispatcherTimer();
-        _cooldownTimer.Interval = TimeSpan.FromSeconds(1);
-        _cooldownTimer.Tick += (s, e) => UpdateRefreshButtonState();
-        _cooldownTimer.Start();
-    }
-
-    private void UpdateRefreshButtonState()
-    {
-        try
-        {
-            var settings = ApplicationData.Current.LocalSettings;
-
-            if (settings.Values.TryGetValue(REFRESH_COOLDOWN_KEY, out var storedValue) && storedValue is long ticks)
-            {
-                var lastClickTime = new DateTime(ticks, DateTimeKind.Utc);
-                var elapsed = DateTime.UtcNow - lastClickTime;
-                var remainingSeconds = REFRESH_COOLDOWN_SECONDS - (int)elapsed.TotalSeconds;
-
-                if (remainingSeconds > 0)
-                {
-                    RefreshButton.IsEnabled = false;
-                    RefreshIcon.Visibility = Visibility.Collapsed;
-                    RefreshCountdownText.Visibility = Visibility.Visible;
-                    RefreshCountdownText.Text = remainingSeconds.ToString();
-                    return;
-                }
-            }
-
-            RefreshButton.IsEnabled = true;
-            RefreshIcon.Visibility = Visibility.Visible;
-            RefreshCountdownText.Visibility = Visibility.Collapsed;
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Error updating refresh button state: {ex.Message}");
-            RefreshButton.IsEnabled = true;
-            RefreshIcon.Visibility = Visibility.Visible;
-            RefreshCountdownText.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Trace.WriteLine("=== REFRESH BUTTON CLICKED (PACK UPDATER) ===");
-
-            _updater.ResetRemoteVersionCache();
-            _updater.ResetCacheCheckCooldown();
-
-            await _mainWindow.LocatePacksButton_Click(true);
-            UpdateInstalledVersionDisplays();
-            await FetchAndDisplayRemoteVersions();
-
-            var settings = ApplicationData.Current.LocalSettings;
-            settings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
-
-            UpdateRefreshButtonState();
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine("💣 ERROR AT RefreshButton_Click: " + ex);
-        }
-    }
-
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _mainWindow.Closed -= MainWindow_Closed;
         _installingAnimationTimer?.Stop();
-        _cooldownTimer?.Stop();
         this.Close();
     }
 
@@ -237,8 +168,6 @@ public sealed partial class PackUpdateWindow : Window
 
             await InitializePackInformation();
             SetupButtonHandlers();
-
-            InitializeRefreshButton();
 
             // Check if installation is in progress and update UI accordingly
             CheckAndHandleOngoingInstallation();
@@ -375,8 +304,28 @@ public sealed partial class PackUpdateWindow : Window
 
         if (anyNeedsUpdate)
         {
-            _updater.InvalidateCache();
-            System.Diagnostics.Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
+            var settings = ApplicationData.Current.LocalSettings;
+            bool canInvalidate = true;
+
+            if (settings.Values.TryGetValue(CACHE_INVALIDATION_COOLDOWN_KEY, out var storedValue) && storedValue is long ticks)
+            {
+                var lastInvalidation = new DateTime(ticks, DateTimeKind.Utc);
+                var elapsed = DateTime.UtcNow - lastInvalidation;
+                var remainingMinutes = CACHE_INVALIDATION_COOLDOWN_MINUTES - (int)elapsed.TotalMinutes;
+
+                if (remainingMinutes > 0)
+                {
+                    canInvalidate = false;
+                    System.Diagnostics.Trace.WriteLine($"Cache invalidation on cooldown - {remainingMinutes} minute(s) remaining");
+                }
+            }
+
+            if (canInvalidate)
+            {
+                _updater.InvalidateCache();
+                settings.Values[CACHE_INVALIDATION_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
+                System.Diagnostics.Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
+            }
         }
 
         await UpdateSingleButtonState(VanillaRTX_InstallButton, VanillaRTX_EnhancementsToggle,
@@ -470,9 +419,17 @@ public sealed partial class PackUpdateWindow : Window
             _animationDots = (_animationDots + 1) % 4;
             var dots = new string('.', _animationDots);
 
-            // Use the captured action type, or default to "Install"
-            var actionWord = _currentInstallActionType ?? "Install";
-            var buttonText = $"{actionWord}ing{dots}";
+
+            var actionWord = _currentInstallActionType ?? "Installing";
+            var actionIng = actionWord switch
+            {
+                "Update" => "Updating",
+                "Install" => "Installing",
+                "Reinstall" => "Reinstalling",
+                _ => "Installing"
+            };
+
+            var buttonText = $"{actionIng}{dots}";
 
             switch (packType.Value)
             {

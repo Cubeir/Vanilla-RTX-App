@@ -197,7 +197,7 @@ public sealed partial class MainWindow : Window
 
     private readonly ProgressBarManager _progressManager;
 
-    private readonly PackUpdater _updater = new();
+    public readonly PackUpdater _updater = new();
 
     private static CancellationTokenSource? _lampBlinkCts;
     private static readonly Dictionary<string, BitmapImage> _imageCache = new();
