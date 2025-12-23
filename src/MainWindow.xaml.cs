@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -37,6 +38,17 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Stop looking for hardlinks during Phase 1 of locating Minecraft
+Common locations + Systemwide search with exclusi0ons and depth limit are ENOUGH. IT'LL WORK.
+
+bettertx manager:
+- Error parsing API data: Reflection-based serialization has been disabled for this application. Either use the source generator APIs or explicitly configure the 'JsonSerializerOptions.TypeInfoResolver' property.
+
+- Are there any other places you're using system.text.json? if so, switch them too
+
+- Exporter:
+Exports what? the toplevel folder where manifest is? No good, zip folder contents instead.
+
 - Pack updater issues:
 Button and queue states on buttons do not persist on window relaunches.
 This isn't a big issue, but exposes user to being able to queue packs over and over and over again which will continually reinstall packs
@@ -61,6 +73,13 @@ THEN MAKE SURE THEY ENABLE THEMSELVES ONCE INSTALLATIONS ARE FINISHED.
 
 This might result in EVEN MESSEIR code just leaving this here, will reflect on it later
 
+Also:
+Removing the "loading" rings when packs are being installed, and instead just disabling the buttons with a
+installing[3dot animation] is a much less confusing way of dealing with it.
+and it lets you implement the above, status persistence, easier.
+its clearer to user as well, like, button disappears, wtf? how long will this go? but if it shows installing ..., people are more likely to understand they must be WAITING
+
+===
 
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
@@ -737,7 +756,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75)
     {
         const double initialDelayMs = 900;
@@ -1139,7 +1157,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-
     public async void UpdateUI(double animationDurationSeconds = 0.15)
     {
         // Suppress Previewer Updates
@@ -1240,9 +1257,68 @@ public sealed partial class MainWindow : Window
     }
     #endregion -------------------------------
 
+
+    // ------- Titlebar stuff
     private async void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
-        _ = BlinkingLamp(true, true);
+        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+        if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+        {
+            try
+            {
+                // TODO: make it return status and values some specific controls as well for easier debugging where you should've used bindings
+                if (!string.IsNullOrEmpty(SidebarLog.Text))
+                {
+                    var sb = new StringBuilder();
+
+                    // Original sidebar log (important status messages)
+                    sb.AppendLine("===== Sidebar Log (UI-shown Messages)");
+                    sb.AppendLine(SidebarLog.Text);
+                    sb.AppendLine();
+
+                    // Tuner variables
+                    sb.AppendLine("===== Tuner Variables");
+                    var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+                    foreach (var field in fields)
+                    {
+                        var value = field.GetValue(null);
+                        sb.AppendLine($"{field.Name}: {value ?? "null"}");
+                    }
+                    sb.AppendLine();
+
+                    // Persistent variables
+                    sb.AppendLine("===== Persistent Variables");
+                    var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+                    foreach (var field in persistentFields)
+                    {
+                        var value = field.GetValue(null);
+                        sb.AppendLine($"{field.Name}: {value ?? "null"}");
+                    }
+                    sb.AppendLine();
+
+                    // Trace logs
+                    sb.AppendLine(TraceManager.GetAllTraceLogs());
+
+                    var dataPackage = new DataPackage();
+                    dataPackage.SetText(sb.ToString());
+                    Clipboard.SetContent(dataPackage);
+
+                    Log("Copied debug logs to clipboard.", LogLevel.Success);
+
+                    // Lamp off single flash
+                    _ = BlinkingLamp(true, true, 0.0);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Error during lamp interaction debug copy: {ex}");
+            }
+        }
+        else
+        {
+            _ = BlinkingLamp(true, true);
+        }
     }
 
 
@@ -1251,6 +1327,7 @@ public sealed partial class MainWindow : Window
         Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.Informational);
         OpenUrl("https://discord.gg/A4wv4wwYud");
     }
+
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1351,6 +1428,9 @@ public sealed partial class MainWindow : Window
 
         ToolTipService.SetToolTip(btn, "Theme: " + mode);
     }
+
+
+    // -------
 
 
     private string _previousStatusMessage;
@@ -1473,53 +1553,6 @@ public sealed partial class MainWindow : Window
             }
         }
         BetterRTXPresetManagerButton.IsEnabled = true;
-    }
-
-
-    // TODO: make it return status and values some specific controls as well for easier debugging where you should've used bindings
-    private void LogCopyButton_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
-    {
-        if (!string.IsNullOrEmpty(SidebarLog.Text))
-        {
-            var sb = new StringBuilder();
-
-            // Original sidebar log (important status messages)
-            sb.AppendLine("===== Sidebar Log (UI-shown Messages)");
-            sb.AppendLine(SidebarLog.Text);
-            sb.AppendLine();
-
-            // Tuner variables
-            sb.AppendLine("===== Tuner Variables");
-            var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
-            foreach (var field in fields)
-            {
-                var value = field.GetValue(null);
-                sb.AppendLine($"{field.Name}: {value ?? "null"}");
-            }
-            sb.AppendLine();
-
-            // Persistent variables
-            sb.AppendLine("===== Persistent Variables");
-            var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
-            foreach (var field in persistentFields)
-            {
-                var value = field.GetValue(null);
-                sb.AppendLine($"{field.Name}: {value ?? "null"}");
-            }
-            sb.AppendLine();
-
-            // Trace logs
-            sb.AppendLine(TraceManager.GetAllTraceLogs());
-
-            var dataPackage = new DataPackage();
-            dataPackage.SetText(sb.ToString());
-            Clipboard.SetContent(dataPackage);
-
-            Log("Copied debug logs to clipboard.", LogLevel.Success);
-
-            // Lamp off single flash
-            _ = BlinkingLamp(true, true, 0.0);
-        }
     }
 
 

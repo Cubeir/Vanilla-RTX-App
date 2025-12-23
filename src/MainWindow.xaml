@@ -417,34 +417,6 @@
                          Padding="12,12,12,138"
                          IsTextScaleFactorEnabled="False"
                          ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn the user while using the app. Double click the art area to copy logs to clipboard." />
-
-                <!-- Invisible Log Copy Button -->
-                <Button x:Name="LogCopyButton"
-                        Margin="17,0,0,17"
-                        Width="250"
-                        Height="100"
-                        VerticalAlignment="Bottom"
-                        HorizontalAlignment="Center"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        IsTabStop="False"
-                        ToolTipService.ToolTip="Double-tap to copy all logs to clipboard."
-                        DoubleTapped="LogCopyButton_DoubleTapped">
-
-                    <Button.Resources>
-                        <!-- Keep invisible at all costs!! -->
-                        <SolidColorBrush x:Key="ButtonBackgroundPointerOver"
-                                         Color="Transparent" />
-                        <SolidColorBrush x:Key="ButtonBackgroundPressed"
-                                         Color="Transparent" />
-                        <SolidColorBrush x:Key="ButtonBackgroundDisabled"
-                                         Color="Transparent" />
-                        <SolidColorBrush x:Key="ButtonBorderBrushDisabled"
-                                         Color="Transparent" />
-                        <SolidColorBrush x:Key="ButtonForegroundDisabled"
-                                         Color="Transparent" />
-                    </Button.Resources>
-                </Button>
             </Grid>
 
             <!-- Progress Bar -->

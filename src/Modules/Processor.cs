@@ -140,7 +140,7 @@ public class Processor
 
         if (!fogDirectories.Any() && !processWaterOnly)
         {
-            MainWindow.Log($"{pack.Name}: does not contain fog files.");
+            MainWindow.Log($"{pack.Name}: does not contain any fog files.", MainWindow.LogLevel.Informational);
             return;
         }
 

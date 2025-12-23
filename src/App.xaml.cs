@@ -110,7 +110,6 @@ public partial class App : Application
 
 /// <summary>
 /// Custom TraceListener that captures all Trace.WriteLine calls
-/// Thread-safe and memory-efficient with rolling buffer
 /// </summary>
 public class InMemoryTraceListener : TraceListener
 {
@@ -149,7 +148,7 @@ public class InMemoryTraceListener : TraceListener
     public string GetAllEntries()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("===== Trace Log (Chronological)");
+        sb.AppendLine("===== Trace Logs");
 
         foreach (var entry in _entries)
         {
@@ -171,17 +170,13 @@ public class InMemoryTraceListener : TraceListener
         public int ThreadId { get; set; }
     }
 }
-
-/// <summary>
-/// Initialize this in your App startup (App.xaml.cs constructor or OnLaunched)
-/// </summary>
 public static class TraceManager
 {
     private static InMemoryTraceListener? _listener;
 
     public static void Initialize()
     {
-        // Remove if we don't want debugger output...
+        // Enable if we don't want debugger output...
         // Trace.Listeners.Clear();
 
         _listener = new InMemoryTraceListener(maxEntries: 25000);
