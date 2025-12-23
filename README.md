@@ -63,9 +63,9 @@ This is your detailed guidebook on what each option within the app does.
 - `Install latest RTX packages`  
   Opens a new window in which you can download and install, resintall, or update the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
   Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the unofficial ongoing effort to bring the canonical default appearance of ray-traced Minecraft to life, and the app allows you to become aware of updates and automatically receive the latest updates without having to visit third party sites. 
-  Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options.  
+  Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options.
   
-![vanilla-rtx-app-ui-screenshots-packupdater](https://github.com/user-attachments/assets/38760151-64ef-4dd4-8868-6bd5869461d4)
+  ![vanilla-rtx-app-ui-image](https://github.com/user-attachments/assets/65affd06-3396-4302-aca5-07952d593942)
 
 - `DLSS version swapper`
 Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically catalogued, so you won't lose the original dll when replacing it, allowing you to revert easily. Accepts `.dll` files and `.zip` archives containing any number of dlls. You can also remove dll files from your catalogue that you no longer need. Your currently-installed version of DLSS is always highlighted.
@@ -81,7 +81,7 @@ You will have to redownload the presets as they may have likely been updated on 
 
 > Note: The last 2 features only support Minecraft GDK (1.21.120 and higher), and given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. The cache remains valid until Minecraft is relocated.
 
-- `Preview (Toggle)`  
+- `Preview (Togglable)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
 
 - `Export selection`  
@@ -149,7 +149,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 
 - `Wipe / Hard reset (Hold Shift + Reset)`  
   Wipes all of app's storage, as well as any temporary data, including: cache timestamps (like update check cooldowns), tuning options, cached pack locations or game locations, DLSS and BetterRTX catalogues, PSA messages, and more..., then restarts the app.
-  Effectively making it as if the app was just freshly installed on your system, removing all traces in a way that Windows settings' "reset" button doesn't.
+  Effectively making it as if the app was just freshly installed on your system, removing all traces in the most comprehensive way.
 
 ## Miscellaneous
 
@@ -158,7 +158,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - Hovering any control in the app displays a unique pixel art communicating its function in the bottom left side of the app, for instance, sliders show how they should impact the visuals seen in-game as you change them, toggles show before/after, and buttons/other controls display a mildly artistic interpretation of what the they do!
   In combination with descriptive tooltips, this is meant to help make the app less intimidating and more beginner-friendly.  
   
-- Double-clicking the art artwork area will copy the logs for debugging, it may also be helpful to attach these when reporting issues.
+- Holding shift while clicking the lamp icon at the top will copy logs to your clipboard for debugging, it may be helpful to attach these when reporting issues.
 
 - The following settings persist between sessions: tuning options/slider values, Preview toggle, theme choice, and game install locations.
   Allowing you to keep your personal favorite values and quickly re-tune newer versions without having to remember everything, or come back to the app and swap DLSS again or reinstall your BetterRTX preset quickly in case of a Minecraft update.
@@ -178,8 +178,6 @@ If you see missing icons (boxes/squares instead of symbols), your system is miss
 https://aka.ms/SegoeFluentIcons
 - Non-English languages are not supported, there may be issues with other system languages. (non-critical)
 - The app's appearance is not properly accounted for with Windows accessibility features. (non-critical)
-- If the pack updater window is closed and relaunched while installations are happening, it exposes the ability to queue the same pack for installation multiple times, which can result in duplicate installations that will later confuse the app. (mildly-critical)  
-The outcome of this scenario is automatically fixed the next time user attempts to reinstall that pack.
 
 ### Need help?
 
