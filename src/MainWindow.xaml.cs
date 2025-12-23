@@ -41,9 +41,6 @@ namespace Vanilla_RTX_App;
 - Stop looking for hardlinks during Phase 1 of locating Minecraft
 Common locations + Systemwide search with exclusi0ons and depth limit are ENOUGH. IT'LL WORK.
 
-- Exporter:
-Exports what? the toplevel folder where manifest is? No good, zip folder contents instead.
-
 - Pack updater issues:
 Button and queue states on buttons do not persist on window relaunches.
 This isn't a big issue, but exposes user to being able to queue packs over and over and over again which will continually reinstall packs
