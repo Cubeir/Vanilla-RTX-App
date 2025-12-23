@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -10,9 +9,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Vanilla_RTX_App.Core;
-using Windows.Storage;
 using WinRT.Interop;
+using Newtonsoft.Json.Linq;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
@@ -43,8 +41,8 @@ public sealed partial class PackBrowserWindow : Window
         var hWnd = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
-
         _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsResizable = true;
@@ -76,14 +74,11 @@ public sealed partial class PackBrowserWindow : Window
         this.Close();
     }
 
-
     private async void PackBrowserWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         await Task.Delay(25);
-
         if (args.WindowActivationState != WindowActivationState.Deactivated)
         {
-
             // Unsub
             this.Activated -= PackBrowserWindow_Activated;
 
@@ -94,7 +89,7 @@ public sealed partial class PackBrowserWindow : Window
             });
 
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Select from compatible local {text} resource packs";
+            WindowTitle.Text = $"Select from local {text} resource packs";
 
             await LoadPacksAsync();
 
@@ -132,9 +127,7 @@ public sealed partial class PackBrowserWindow : Window
         try
         {
             System.Diagnostics.Trace.WriteLine("Starting pack scan...");
-
             var packs = await ScanForCompatiblePacksAsync();
-
             System.Diagnostics.Trace.WriteLine($"Found {packs.Count} packs");
 
             LoadingPanel.Visibility = Visibility.Collapsed;
@@ -144,14 +137,20 @@ public sealed partial class PackBrowserWindow : Window
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
                 EmptyStateText.Text = TunerVariables.Persistent.IsTargetingPreview
-                    ? "No compatible packs found in Minecraft Preview data directory."
-                    : "No compatible packs found in Minecraft data directory.";
+                    ? "No packs found in Minecraft Preview data directory."
+                    : "No packs found in Minecraft data directory.";
                 return;
             }
 
-            foreach (var pack in packs)
+            // Sort: compatible packs first (alphabetically), then incompatible packs (alphabetically)
+            var sortedPacks = packs
+                .OrderByDescending(p => p.IsCompatible)
+                .ThenBy(p => p.PackName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var pack in sortedPacks)
             {
-                System.Diagnostics.Trace.WriteLine($"Creating button for: {pack.PackName}");
+                System.Diagnostics.Trace.WriteLine($"Creating button for: {pack.PackName} (Compatible: {pack.IsCompatible})");
                 var packButton = CreatePackButton(pack);
                 PackListContainer.Children.Add(packButton);
             }
@@ -161,7 +160,6 @@ public sealed partial class PackBrowserWindow : Window
         catch (Exception ex)
         {
             System.Diagnostics.Trace.WriteLine($"EXCEPTION in LoadPacksAsync: {ex}");
-
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
             EmptyStatePanel.Visibility = Visibility.Visible;
@@ -180,7 +178,8 @@ public sealed partial class PackBrowserWindow : Window
             CornerRadius = new CornerRadius(5),
             Tag = pack,
             IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32) // shadow
+            Translation = new System.Numerics.Vector3(0, 0, 32), // shadow
+            IsEnabled = pack.IsCompatible // Disable button if not compatible
         };
 
         // Add shadow to button
@@ -209,10 +208,11 @@ public sealed partial class PackBrowserWindow : Window
             CornerRadius = new CornerRadius(5),
             Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
                 Microsoft.UI.Colors.Gray),
-            Translation = new System.Numerics.Vector3(0, 0, 48)
+            Translation = new System.Numerics.Vector3(0, 0, 48),
+            Opacity = pack.IsCompatible ? 1.0 : 0.5 // Dim icon if not compatible
         };
 
-        // Shadow for teh icon
+        // Shadow for the icon
         var iconShadow = new ThemeShadow();
         iconBorder.Shadow = iconShadow;
         iconBorder.Loaded += (s, e) =>
@@ -253,7 +253,6 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-
         Grid.SetColumn(iconBorder, 0);
         grid.Children.Add(iconBorder);
 
@@ -268,14 +267,15 @@ public sealed partial class PackBrowserWindow : Window
             Text = pack.PackName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Opacity = pack.IsCompatible ? 1.0 : 0.6
         };
 
         var descriptionText = new TextBlock
         {
             Text = pack.PackDescription,
             FontSize = 12,
-            Opacity = 0.75,
+            Opacity = pack.IsCompatible ? 0.75 : 0.5,
             Margin = new Thickness(0, 2, 0, 0),
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis
@@ -283,7 +283,6 @@ public sealed partial class PackBrowserWindow : Window
 
         infoPanel.Children.Add(nameText);
         infoPanel.Children.Add(descriptionText);
-
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
@@ -297,10 +296,13 @@ public sealed partial class PackBrowserWindow : Window
 
         foreach (var tag in pack.CapabilityTags)
         {
+            var isNotCompatible = tag == "Incompatible";
             var tagBorder = new Border
             {
                 Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                    Microsoft.UI.ColorHelper.FromArgb(105, 35, 35, 35)),
+                    isNotCompatible
+                        ? Microsoft.UI.ColorHelper.FromArgb(105, 70, 35, 35) // Reddish tint for incompatible
+                        : Microsoft.UI.ColorHelper.FromArgb(105, 35, 35, 35)),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(8, 4, 8, 4)
             };
@@ -311,7 +313,9 @@ public sealed partial class PackBrowserWindow : Window
                 FontSize = 12,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                    Microsoft.UI.ColorHelper.FromArgb(255, 250, 240, 240))
+                    isNotCompatible
+                        ? Microsoft.UI.ColorHelper.FromArgb(255, 255, 200, 200) // Light red for incompatible
+                        : Microsoft.UI.ColorHelper.FromArgb(255, 250, 240, 240))
             };
 
             tagBorder.Child = tagText;
@@ -331,17 +335,21 @@ public sealed partial class PackBrowserWindow : Window
     {
         if (sender is Button button && button.Tag is PackData packData)
         {
-            TunerVariables.CustomPackLocation = packData.PackPath;
-            TunerVariables.CustomPackDisplayName = packData.PackName;
-            this.Close();
+            // Only allow selection of compatible packs
+            if (packData.IsCompatible)
+            {
+                TunerVariables.CustomPackLocation = packData.PackPath;
+                TunerVariables.CustomPackDisplayName = packData.PackName;
+                this.Close();
+            }
         }
     }
 
     private async Task<List<PackData>> ScanForCompatiblePacksAsync()
     {
         var packs = new List<PackData>();
-
         string basePath;
+
         if (TunerVariables.Persistent.IsTargetingPreview)
         {
             basePath = Path.Combine(
@@ -359,8 +367,8 @@ public sealed partial class PackBrowserWindow : Window
 
         var scanPaths = new[]
         {
-        Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "resource_packs"),
-        Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "development_resource_packs")
+            Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "resource_packs"),
+            Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "development_resource_packs")
         };
 
         foreach (var scanPath in scanPaths)
@@ -383,7 +391,7 @@ public sealed partial class PackBrowserWindow : Window
                     if (packData != null)
                         packs.Add(packData);
                 }
-                catch (JsonException jsonEx)
+                catch (Newtonsoft.Json.JsonException jsonEx)
                 {
                     System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
                     // Skip this pack - likely encrypted marketplace content
@@ -395,77 +403,35 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        packs.Sort((a, b) => string.Compare(a.PackName, b.PackName, StringComparison.OrdinalIgnoreCase));
         return packs;
     }
 
     private async Task<PackData> ParsePackAsync(string packDir, string manifestPath)
     {
         var json = await File.ReadAllTextAsync(manifestPath);
-
-        using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
-        {
-            AllowTrailingCommas = true,
-            CommentHandling = JsonCommentHandling.Skip
-        });
-
-        var root = doc.RootElement;
+        var root = JObject.Parse(json);
 
         // Extract UUIDs to check if this is a Vanilla RTX pack
-        string headerUUID = null;
-        string moduleUUID = null;
-
-        if (root.TryGetProperty("header", out var header))
-        {
-            if (header.TryGetProperty("uuid", out var headerUuidElement))
-                headerUUID = headerUuidElement.GetString();
-        }
-
-        if (root.TryGetProperty("modules", out var modules))
-        {
-            foreach (var module in modules.EnumerateArray())
-            {
-                if (module.TryGetProperty("uuid", out var moduleUuidElement))
-                {
-                    moduleUUID = moduleUuidElement.GetString();
-                    break; // Get first module UUID
-                }
-            }
-        }
-
-        // Filter out Vanilla RTX packs (we instead filter duplicate paths during tuning, this way older versions of Vanilla RTX remain tunable by Tuner)
-        // Despite the latest being selected automatically by packlocator
-        /*
-        if (!string.IsNullOrEmpty(headerUUID) && !string.IsNullOrEmpty(moduleUUID))
-        {
-            if ((string.Equals(headerUUID, PackLocator.VANILLA_RTX_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
-                 string.Equals(moduleUUID, PackLocator.VANILLA_RTX_MODULE_UUID, StringComparison.OrdinalIgnoreCase)) ||
-                (string.Equals(headerUUID, PackLocator.VANILLA_RTX_NORMALS_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
-                 string.Equals(moduleUUID, PackLocator.VANILLA_RTX_NORMALS_MODULE_UUID, StringComparison.OrdinalIgnoreCase)) ||
-                (string.Equals(headerUUID, PackLocator.VANILLA_RTX_OPUS_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
-                 string.Equals(moduleUUID, PackLocator.VANILLA_RTX_OPUS_MODULE_UUID, StringComparison.OrdinalIgnoreCase)))
-            {
-                System.Diagnostics.Trace.WriteLine($"Skipping Vanilla RTX pack: {packDir}");
-                return null; // Skip this pack
-            }
-        }
-        */
+        string headerUUID = root["header"]?["uuid"]?.ToString();
+        string moduleUUID = root["modules"]?.FirstOrDefault()?["uuid"]?.ToString();
 
         // Check capabilities
         var capabilityTags = new List<string>();
+        bool isCompatible = false;
 
-        if (root.TryGetProperty("capabilities", out var capabilities))
+        var capabilities = root["capabilities"];
+        if (capabilities != null && capabilities.Type == JTokenType.Array)
         {
             bool hasRaytraced = false;
             bool hasPbr = false;
 
-            foreach (var cap in capabilities.EnumerateArray())
+            foreach (var cap in capabilities)
             {
-                var capValue = cap.GetString();
-                if (capValue != null)
+                var capValue = cap.ToString();
+                if (!string.IsNullOrEmpty(capValue))
                 {
                     var capLower = capValue.ToLowerInvariant();
-                    if (capLower == "raytraced" || capLower == "ray_traced")
+                    if (capLower == "raytraced")
                     {
                         hasRaytraced = true;
                     }
@@ -477,34 +443,27 @@ public sealed partial class PackBrowserWindow : Window
             }
 
             if (hasRaytraced)
+            {
                 capabilityTags.Add("RTX");
+                isCompatible = true;
+            }
             if (hasPbr)
+            {
                 capabilityTags.Add("Vibrant Visuals");
+                isCompatible = true;
+            }
         }
 
-        if (capabilityTags.Count == 0)
+        // If no compatible capabilities found, mark as incompatible
+        if (!isCompatible)
         {
-            System.Diagnostics.Trace.WriteLine($"Pack {packDir} has no compatible capabilities");
-            return null;
+            capabilityTags.Add("Incompatible");
         }
 
         // Get pack name and description
-        string packName = "pack.name";
-        string packDescription = "pack.description";
-
-        if (header.TryGetProperty("name", out var nameElement))
-        {
-            var name = nameElement.GetString();
-            if (!string.IsNullOrWhiteSpace(name))
-                packName = name;
-        }
-
-        if (header.TryGetProperty("description", out var descElement))
-        {
-            var desc = descElement.GetString();
-            if (!string.IsNullOrWhiteSpace(desc))
-                packDescription = desc;
-        }
+        var header = root["header"];
+        string packName = header?["name"]?.ToString() ?? "pack.name";
+        string packDescription = header?["description"]?.ToString() ?? "pack.description";
 
         // If localization keys detected, try to load from lang files
         if (packName == "pack.name" || packDescription == "pack.description")
@@ -513,12 +472,10 @@ public sealed partial class PackBrowserWindow : Window
             if (Directory.Exists(langFolder))
             {
                 var langData = await TryLoadLangFileAsync(langFolder);
-
                 if (langData != null)
                 {
                     if (packName == "pack.name" && langData.ContainsKey("pack.name"))
                         packName = langData["pack.name"];
-
                     if (packDescription == "pack.description" && langData.ContainsKey("pack.description"))
                         packDescription = langData["pack.description"];
                 }
@@ -539,7 +496,8 @@ public sealed partial class PackBrowserWindow : Window
             PackDescription = packDescription,
             PackPath = packDir,
             Icon = icon,
-            CapabilityTags = capabilityTags
+            CapabilityTags = capabilityTags,
+            IsCompatible = isCompatible
         };
     }
 
@@ -587,7 +545,7 @@ public sealed partial class PackBrowserWindow : Window
 
     private async Task<BitmapImage> LoadIconAsync(string packDir)
     {
-        // Case-insensitive icon search
+        // Icon search
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
             .Where(f =>
             {
@@ -602,19 +560,16 @@ public sealed partial class PackBrowserWindow : Window
             {
                 System.Diagnostics.Trace.WriteLine($"Loading icon: {iconPath}");
                 var bitmap = new BitmapImage();
-
                 using (var fileStream = File.OpenRead(iconPath))
                 {
                     using (var memoryStream = new MemoryStream())
                     {
                         await fileStream.CopyToAsync(memoryStream);
                         memoryStream.Position = 0;
-
                         var randomAccessStream = memoryStream.AsRandomAccessStream();
                         await bitmap.SetSourceAsync(randomAccessStream);
                     }
                 }
-
                 return bitmap;
             }
             catch (Exception ex)
@@ -628,25 +583,11 @@ public sealed partial class PackBrowserWindow : Window
 
     private class PackData
     {
-        public string PackName
-        {
-            get; set;
-        }
-        public string PackDescription
-        {
-            get; set;
-        }
-        public string PackPath
-        {
-            get; set;
-        }
-        public BitmapImage Icon
-        {
-            get; set;
-        }
-        public List<string> CapabilityTags
-        {
-            get; set;
-        }
+        public string PackName { get; set; }
+        public string PackDescription { get; set; }
+        public string PackPath { get; set; }
+        public BitmapImage Icon { get; set; }
+        public List<string> CapabilityTags { get; set; }
+        public bool IsCompatible { get; set; }
     }
 }
