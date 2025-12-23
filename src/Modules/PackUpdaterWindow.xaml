@@ -184,10 +184,10 @@
                                                       IsOn="True"
                                                       IsTextScaleFactorEnabled="False" />
 
-                                        <!-- Install Button + Loading Ring -->
+                                        <!-- Install Button -->
                                         <Grid Grid.Column="2"
-                                              MinWidth="100"
-                                              MinHeight="50">
+                                              MinWidth="120"
+                                              MinHeight="60">
                                             <Button x:Name="VanillaRTXNormals_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -319,10 +319,10 @@
                                                       IsOn="True"
                                                       IsTextScaleFactorEnabled="False" />
 
-                                        <!-- Install Button + Loading Ring -->
+                                        <!-- Install Button -->
                                         <Grid Grid.Column="2"
-                                              MinWidth="100"
-                                              MinHeight="50">
+                                              MinWidth="120"
+                                              MinHeight="60">
                                             <Button x:Name="VanillaRTX_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -454,10 +454,10 @@
                                                       IsOn="True"
                                                       IsTextScaleFactorEnabled="False" />
 
-                                        <!-- Install Button + Loading Ring -->
+                                        <!-- Install Button -->
                                         <Grid Grid.Column="2"
-                                              MinWidth="100"
-                                              MinHeight="50">
+                                              MinWidth="120"
+                                              MinHeight="60">
                                             <Button x:Name="VanillaRTXOpus_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
