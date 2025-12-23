@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
-using static Vanilla_RTX_App.TunerVariables;
+using static Vanilla_RTX_App.TunerVariables; // For Public Pack version variables, if null or empty = not installed
 
 namespace Vanilla_RTX_App.PackUpdate;
 

@@ -308,20 +308,28 @@ public sealed partial class PackBrowserWindow : Window
             {
                 Text = tag,
                 FontSize = 12,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             };
 
-            if (isIncompatible)
+            if (tag == "Incompatible")
             {
-                // Use system button colors for incompatible
-                tagBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ButtonBackground"];
-                tagText.Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+                tagText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
+                tagBorder.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 7, 0));
             }
-            else
+            else if (tag == "RTX")
             {
-                // Use accent colors for compatible tags
-                tagBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
-                tagText.Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+                tagText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
+                tagBorder.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 110, 175, 0));
+            }
+            else if (tag == "Vibrant Visuals")
+            {
+                tagText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
+                tagBorder.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 75, 0));
+            }
+            else // Fallback
+            {
+                tagText.Foreground = new SolidColorBrush(Colors.White);
+                tagBorder.Background = new SolidColorBrush(Colors.Black);
             }
 
             tagBorder.Child = tagText;

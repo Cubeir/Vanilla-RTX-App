@@ -38,41 +38,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Stop looking for hardlinks during Phase 1 of locating Minecraft
-Common locations + Systemwide search with exclusi0ons and depth limit are ENOUGH. IT'LL WORK.
-
-- Pack updater issues:
-Button and queue states on buttons do not persist on window relaunches.
-This isn't a big issue, but exposes user to being able to queue packs over and over and over again which will continually reinstall packs
-It's their fault if they wanna fuck around, the app is still able to gracefully recover and do a full installation and clean orphaned packs
-But its best you fix this somehow, NOT something the whole thing was designed around, this came in the hindsight
-So if it is too difficult to do, forget it
-
-Also you gotta stress test it more, yes there are many scenarios for which you have accounted, edge cases are all accounted for
-but they remain UNTESTED
-
-SHOULD NOT HAVE DONE THE QUEUING THING AT ALL.
-IT COMPLICATES THINGS.
-BUT NOW REMOVING IT IS DIFFICULT TOO.
-BUT IF YOU CAN, DO A REWRITE:
-REMOVE PACK INSTALLATION QUEUE, TRACK IF "INSTALLING PACKS" IS RUNNING IN PackUpdater
-AND IF IT IS RUNNING, DISABLE ALL INSTALL/REINSTALL BUTTONS!
-USER HAS TO WAIT FOR INSTALLATIONS TO FINISH BEFORE THEY ARE PERMITTED TO INSTALL ANOTHER PACK.
-
-YES, THAT'S THE PRICE USER PAYS FOR RELIABILITY.
-AND THAT WAY YOU'LL BE ABLE TO DISABLE BUTTONS ON STARTUP IF PACKS ARE BEING INSTALLED.
-THEN MAKE SURE THEY ENABLE THEMSELVES ONCE INSTALLATIONS ARE FINISHED.
-
-This might result in EVEN MESSEIR code just leaving this here, will reflect on it later
-
-Also:
-Removing the "loading" rings when packs are being installed, and instead just disabling the buttons with a
-installing[3dot animation] is a much less confusing way of dealing with it.
-and it lets you implement the above, status persistence, easier.
-its clearer to user as well, like, button disappears, wtf? how long will this go? but if it shows installing ..., people are more likely to understand they must be WAITING
-
-===
-
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
