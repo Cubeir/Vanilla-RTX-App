@@ -37,6 +37,18 @@ public class PackUpdater
     public event Action<string>? ProgressUpdate;
     private readonly List<string> _logMessages = new();
 
+    // Installation state tracking (for persistence across window relaunches)
+    private const string InstallationInProgressKey_Release = "PackUpdater_InstallationInProgress_Release";
+    private const string InstallationInProgressKey_Preview = "PackUpdater_InstallationInProgress_Preview";
+    private const string CurrentInstallingPackKey_Release = "PackUpdater_CurrentInstallingPack_Release";
+    private const string CurrentInstallingPackKey_Preview = "PackUpdater_CurrentInstallingPack_Preview";
+
+    private string GetInstallationInProgressKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? InstallationInProgressKey_Preview : InstallationInProgressKey_Release;
+
+    private string GetCurrentInstallingPackKey() => TunerVariables.Persistent.IsTargetingPreview
+        ? CurrentInstallingPackKey_Preview : CurrentInstallingPackKey_Release;
+
     // Remote version cache
     private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
@@ -61,6 +73,37 @@ public class PackUpdater
 
     private string GetLastCacheCheckKey() => TunerVariables.Persistent.IsTargetingPreview
         ? LastCacheCheckKey_Preview : LastCacheCheckKey_Release;
+
+    // ======================= Installation State Management =======================
+
+    public bool IsInstallationInProgress()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        return localSettings.Values[GetInstallationInProgressKey()] as bool? ?? false;
+    }
+
+    public PackType? GetCurrentlyInstallingPack()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var packName = localSettings.Values[GetCurrentInstallingPackKey()] as string;
+
+        if (string.IsNullOrEmpty(packName))
+            return null;
+
+        return Enum.TryParse<PackType>(packName, out var packType) ? packType : null;
+    }
+
+    private void SetInstallationState(bool isInstalling, PackType? pack = null)
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        localSettings.Values[GetInstallationInProgressKey()] = isInstalling;
+        localSettings.Values[GetCurrentInstallingPackKey()] = pack?.ToString();
+    }
+
+    private void ClearInstallationState()
+    {
+        SetInstallationState(false, null);
+    }
 
     // ======================= Cache Invalidation (Core) =======================
 
@@ -177,7 +220,6 @@ public class PackUpdater
 
             bool anyOutdated = false;
 
-            // Check Vanilla RTX
             if (remoteManifests.rtx != null)
             {
                 if (rtxManifest == null)
@@ -199,7 +241,6 @@ public class PackUpdater
                 anyOutdated = true;
             }
 
-            // Check Vanilla RTX Normals
             if (remoteManifests.normals != null)
             {
                 if (normalsManifest == null)
@@ -221,7 +262,6 @@ public class PackUpdater
                 anyOutdated = true;
             }
 
-            // Check Vanilla RTX Opus
             if (remoteManifests.opus != null)
             {
                 if (opusManifest == null)
@@ -263,8 +303,18 @@ public class PackUpdater
     {
         _logMessages.Clear();
 
+        // Check if another installation is already running
+        if (IsInstallationInProgress())
+        {
+            LogMessage("⚠️ Another installation is already in progress");
+            return (false, new List<string>(_logMessages));
+        }
+
         try
         {
+            // Mark installation as in progress
+            SetInstallationState(true, packType);
+
             var packName = GetPackDisplayName(packType);
             LogMessage($"🔄 Starting installation for {packName}...");
 
@@ -295,6 +345,11 @@ public class PackUpdater
             LogMessage($"❌ Unexpected error: {ex.Message}");
             return (false, new List<string>(_logMessages));
         }
+        finally
+        {
+            // Always clear installation state when done
+            ClearInstallationState();
+        }
     }
 
     // ======================= Remote Version Fetching (For UI Display) =======================
@@ -310,7 +365,6 @@ public class PackUpdater
         var cacheKey = GetRemoteVersionsCacheKey();
         var timeKey = GetRemoteVersionsCacheTimeKey();
 
-        // Step 1: Try cached remote versions (15-min cache)
         if (localSettings.Values[timeKey] is string cacheTimeStr &&
             DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
             now < cacheTime + RemoteVersionCacheDuration)
@@ -320,8 +374,6 @@ public class PackUpdater
                 try
                 {
                     var cached = JObject.Parse(cachedJson);
-
-                    // Extract per-pack versions and sources from cache
                     var rtxCached = cached["rtx"];
                     var normalsCached = cached["normals"];
                     var opusCached = cached["opus"];
@@ -339,7 +391,6 @@ public class PackUpdater
             }
         }
 
-        // Step 2: Try fetching fresh versions from remote
         string rtxVersion = null, normalsVersion = null, opusVersion = null;
         VersionSource rtxSource = VersionSource.Remote;
         VersionSource normalsSource = VersionSource.Remote;
@@ -355,7 +406,6 @@ public class PackUpdater
                 {
                     var (rtxManifest, normalsManifest, opusManifest) = remoteManifests.Value;
 
-                    // Track which packs successfully fetched from remote
                     if (rtxManifest != null)
                     {
                         rtxVersion = ExtractVersionFromManifest(rtxManifest);
@@ -384,7 +434,6 @@ public class PackUpdater
             }
         }
 
-        // Step 3: Per-pack zipball fallback for missing packs
         var cacheInfo = GetCacheInfo();
         if (cacheInfo.exists && File.Exists(cacheInfo.path))
         {
@@ -393,7 +442,6 @@ public class PackUpdater
                 var zipballVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
                 if (zipballVersions.HasValue)
                 {
-                    // Use zipball version for any pack that's null from remote
                     if (rtxVersion == null && zipballVersions.Value.rtx != null)
                     {
                         rtxVersion = zipballVersions.Value.rtx;
@@ -422,12 +470,10 @@ public class PackUpdater
             }
         }
 
-        // Step 4: Cache results if we got any from remote
         if (anyRemoteSuccess)
         {
             var cacheObj = new JObject();
 
-            // Cache all packs with their sources
             if (rtxVersion != null)
             {
                 cacheObj["rtx"] = new JObject

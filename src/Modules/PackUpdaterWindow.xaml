@@ -196,13 +196,6 @@
                                                     VerticalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
-                                            <ProgressRing x:Name="VanillaRTXNormals_LoadingRing"
-                                                          Width="32"
-                                                          Height="32"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"
-                                                          Visibility="Collapsed"
-                                                          IsActive="False" />
                                         </Grid>
                                     </Grid>
                                 </StackPanel>
@@ -338,13 +331,6 @@
                                                     VerticalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
-                                            <ProgressRing x:Name="VanillaRTX_LoadingRing"
-                                                          Width="32"
-                                                          Height="32"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"
-                                                          Visibility="Collapsed"
-                                                          IsActive="False" />
                                         </Grid>
                                     </Grid>
                                 </StackPanel>
@@ -480,13 +466,6 @@
                                                     VerticalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
-                                            <ProgressRing x:Name="VanillaRTXOpus_LoadingRing"
-                                                          Width="32"
-                                                          Height="32"
-                                                          HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center"
-                                                          Visibility="Collapsed"
-                                                          IsActive="False" />
                                         </Grid>
                                     </Grid>
                                 </StackPanel>
