@@ -65,7 +65,7 @@
                               Margin="0,-5,0,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Auto">
+                              HorizontalScrollBarVisibility="Disabled">
                     <StackPanel x:Name="PackListContainer"
                                 Spacing="8" />
                 </ScrollViewer>

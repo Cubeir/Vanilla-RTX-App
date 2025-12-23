@@ -179,7 +179,8 @@ public sealed partial class PackBrowserWindow : Window
             Tag = pack,
             IsTextScaleFactorEnabled = false,
             Translation = new System.Numerics.Vector3(0, 0, 32), // shadow
-            IsEnabled = pack.IsCompatible // Disable button if not compatible
+            IsEnabled = pack.IsCompatible, // Disable button if not compatible
+            MinHeight = 115 // Minimum height, can grow if content wraps
         };
 
         // Add shadow to button
@@ -266,7 +267,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             Text = pack.PackName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
             Opacity = pack.IsCompatible ? 1.0 : 0.6
         };
@@ -277,7 +278,7 @@ public sealed partial class PackBrowserWindow : Window
             FontSize = 12,
             Opacity = pack.IsCompatible ? 0.75 : 0.5,
             Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
 
@@ -296,13 +297,9 @@ public sealed partial class PackBrowserWindow : Window
 
         foreach (var tag in pack.CapabilityTags)
         {
-            var isNotCompatible = tag == "Incompatible";
+            var isIncompatible = tag == "Incompatible";
             var tagBorder = new Border
             {
-                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                    isNotCompatible
-                        ? Microsoft.UI.ColorHelper.FromArgb(105, 70, 35, 35) // Reddish tint for incompatible
-                        : Microsoft.UI.ColorHelper.FromArgb(105, 35, 35, 35)),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(8, 4, 8, 4)
             };
@@ -311,12 +308,21 @@ public sealed partial class PackBrowserWindow : Window
             {
                 Text = tag,
                 FontSize = 12,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                    isNotCompatible
-                        ? Microsoft.UI.ColorHelper.FromArgb(255, 255, 200, 200) // Light red for incompatible
-                        : Microsoft.UI.ColorHelper.FromArgb(255, 250, 240, 240))
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
             };
+
+            if (isIncompatible)
+            {
+                // Use system button colors for incompatible
+                tagBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ButtonBackground"];
+                tagText.Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+            }
+            else
+            {
+                // Use accent colors for compatible tags
+                tagBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+                tagText.Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+            }
 
             tagBorder.Child = tagText;
             tagsPanel.Children.Add(tagBorder);
@@ -411,11 +417,9 @@ public sealed partial class PackBrowserWindow : Window
         var json = await File.ReadAllTextAsync(manifestPath);
         var root = JObject.Parse(json);
 
-        // Extract UUIDs to check if this is a Vanilla RTX pack
         string headerUUID = root["header"]?["uuid"]?.ToString();
         string moduleUUID = root["modules"]?.FirstOrDefault()?["uuid"]?.ToString();
 
-        // Check capabilities
         var capabilityTags = new List<string>();
         bool isCompatible = false;
 
