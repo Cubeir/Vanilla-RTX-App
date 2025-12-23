@@ -30,6 +30,8 @@ public sealed partial class PackUpdateWindow : Window
     private const int REFRESH_COOLDOWN_SECONDS = 179;
     private DispatcherTimer? _cooldownTimer;
 
+    private string? _currentInstallActionType;
+
     // For button text animation
     private DispatcherTimer? _installingAnimationTimer;
     private int _animationDots = 0;
@@ -468,8 +470,9 @@ public sealed partial class PackUpdateWindow : Window
             _animationDots = (_animationDots + 1) % 4;
             var dots = new string('.', _animationDots);
 
-
-            var buttonText = $"Installing{dots}";
+            // Use the captured action type, or default to "Install"
+            var actionWord = _currentInstallActionType ?? "Install";
+            var buttonText = $"{actionWord}ing{dots}";
 
             switch (packType.Value)
             {
@@ -546,6 +549,19 @@ public sealed partial class PackUpdateWindow : Window
             System.Diagnostics.Trace.WriteLine("Installation already in progress - ignoring button click");
             return;
         }
+
+        _currentInstallActionType = GetButtonForPackType(packType)?.Content?.ToString();
+        Button? GetButtonForPackType(PackType packType)
+        {
+            return packType switch
+            {
+                PackType.VanillaRTX => VanillaRTX_InstallButton,
+                PackType.VanillaRTXNormals => VanillaRTXNormals_InstallButton,
+                PackType.VanillaRTXOpus => VanillaRTXOpus_InstallButton,
+                _ => null
+            };
+        }
+
 
         // Disable all buttons immediately
         DisableAllInstallButtons();
