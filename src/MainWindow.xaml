@@ -237,7 +237,7 @@
                             Background="Transparent"
                             BorderBrush="Transparent"
                             Click="ChatButton_Click"
-                            ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server."
+                            ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server"
                             IsTextScaleFactorEnabled="False" />
 
                     <!-- Separator -->

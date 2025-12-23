@@ -33,7 +33,7 @@ public sealed partial class PackUpdateWindow : Window
 
     private const string REFRESH_COOLDOWN_KEY = "PackUpdater_RefreshCooldown_LastClickTimestamp";
     private const int REFRESH_COOLDOWN_SECONDS = 179;
-    private DispatcherTimer _cooldownTimer;
+    private DispatcherTimer? _cooldownTimer;
 
     public PackUpdateWindow(MainWindow mainWindow)
     {

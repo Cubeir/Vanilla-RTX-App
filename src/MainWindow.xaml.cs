@@ -41,11 +41,6 @@ namespace Vanilla_RTX_App;
 - Stop looking for hardlinks during Phase 1 of locating Minecraft
 Common locations + Systemwide search with exclusi0ons and depth limit are ENOUGH. IT'LL WORK.
 
-bettertx manager:
-- Error parsing API data: Reflection-based serialization has been disabled for this application. Either use the source generator APIs or explicitly configure the 'JsonSerializerOptions.TypeInfoResolver' property.
-
-- Are there any other places you're using system.text.json? if so, switch them too
-
 - Exporter:
 Exports what? the toplevel folder where manifest is? No good, zip folder contents instead.
 
