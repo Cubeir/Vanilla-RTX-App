@@ -837,15 +837,16 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             return await Task.Run(() =>
             {
-                using (var powerShell = PowerShell.Create())
-                {
-                    var script = $"Copy-Item -Path '{sourceDllPath}' -Destination '{_gameDllPath}' -Force";
-                    powerShell.AddScript(script);
+                var batchScript = $"@echo off\r\ncopy /Y \"{sourceDllPath}\" \"{_gameDllPath}\" >nul 2>&1\r\nexit %ERRORLEVEL%";
+                var tempBatchPath = Path.Combine(Path.GetTempPath(), $"dlss_dll_{Guid.NewGuid():N}.bat");
 
+                File.WriteAllText(tempBatchPath, batchScript);
+
+                try
+                {
                     var startInfo = new ProcessStartInfo
                     {
-                        FileName = "powershell.exe",
-                        Arguments = $"-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"{script}\"",
+                        FileName = tempBatchPath,
                         Verb = "runas",
                         UseShellExecute = true,
                         CreateNoWindow = true,
@@ -859,8 +860,16 @@ public sealed partial class DLSSSwitcherWindow : Window
                         Trace.WriteLine($"DLL replacement completed with exit code: {process.ExitCode}");
                         return process.ExitCode == 0;
                     }
-
                     return false;
+                }
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(tempBatchPath))
+                            File.Delete(tempBatchPath);
+                    }
+                    catch { }
                 }
             });
         }

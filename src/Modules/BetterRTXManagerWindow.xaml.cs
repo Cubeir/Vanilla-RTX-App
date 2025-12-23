@@ -1570,7 +1570,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             return false;
         }
     }
-
     private async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace)
     {
         try
@@ -1578,34 +1577,48 @@ public sealed partial class BetterRTXManagerWindow : Window
             return await Task.Run(() =>
             {
                 var scriptLines = new List<string>();
+                scriptLines.Add("@echo off");
 
                 foreach (var (sourcePath, destPath) in filesToReplace)
                 {
-                    var escapedSource = sourcePath.Replace("'", "''");
-                    var escapedDest = destPath.Replace("'", "''");
-                    scriptLines.Add($"Copy-Item -Path '{escapedSource}' -Destination '{escapedDest}' -Force");
+                    scriptLines.Add($"copy /Y \"{sourcePath}\" \"{destPath}\" >nul 2>&1");
                 }
 
-                var script = string.Join("; ", scriptLines);
+                scriptLines.Add("exit %ERRORLEVEL%");
 
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"{script}\"",
-                    Verb = "runas",
-                    UseShellExecute = true,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                };
+                var batchScript = string.Join("\r\n", scriptLines);
+                var tempBatchPath = Path.Combine(Path.GetTempPath(), $"betterrtx_install_{Guid.NewGuid():N}.bat");
+                File.WriteAllText(tempBatchPath, batchScript);
 
-                var process = Process.Start(startInfo);
-                if (process != null)
+                try
                 {
-                    process.WaitForExit();
-                    return process.ExitCode == 0;
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = tempBatchPath,
+                        Verb = "runas",
+                        UseShellExecute = true,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    };
+
+                    var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        process.WaitForExit();
+                        return process.ExitCode == 0;
+                    }
+
+                    return false;
                 }
-
-                return false;
+                finally
+                {
+                    try
+                    {
+                        if (File.Exists(tempBatchPath))
+                            File.Delete(tempBatchPath);
+                    }
+                    catch { }
+                }
             });
         }
         catch (Exception ex)
@@ -1614,6 +1627,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             return false;
         }
     }
+
 
     private string ComputeFileHash(string filePath)
     {
