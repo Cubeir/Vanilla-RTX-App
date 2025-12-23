@@ -453,7 +453,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var pathText = new TextBlock
         {
-            Text = Helpers.SanitizePathForDisplay(dll.FilePath),
+            Text = isCurrentVersion ? Helpers.SanitizePathForDisplay(dll.FilePath) : "Click to swap to this version",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
