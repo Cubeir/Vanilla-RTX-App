@@ -1,7 +1,7 @@
 # Vanilla-RTX-App
 Everything you'll ever need to easily acesss Minecraft RTX and unlock its full potential brought together in one place.  
 
-All-in-one Vanilla RTX app lets you automatically update ray tracing packages for the latest Minecraft releases, tune various aspects of Vanilla RTX resource packs to your preferences, easily enable Minecraft's ray tracing, manage and install BetterRTX presets, swap or upgrade DLSS, and more...   
+All-in-one Vanilla RTX app lets you automatically update the ray tracing packages for the latest Minecraft releases, tune various aspects of Vanilla RTX resource packs to your preferences, easily enable Minecraft's ray tracing, manage and install BetterRTX shader mods, swap or upgrade DLSS, and more...   
 Ensuring ray tracing is accessible to new players, and frictionless for existing users—despite years of neglect from Mojang.
 <!-- Microsoft Store badge -->
 <p align="center">
@@ -69,17 +69,15 @@ This is your detailed guidebook on what each option within the app does.
 
 - `DLSS version swapper`
 Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically catalogued, so you won't lose the original dll when replacing it, allowing you to revert easily. Accepts `.dll` files and `.zip` archives containing any number of dlls. You can also remove dll files from your catalogue that you no longer need. Your currently-installed version of DLSS is always highlighted.
-> This feature is particularly essential to RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image as Minecraft's is heavily outdated. The app does not validate `.dll` files to belong to DLSS, it is your responsibility to provide valid DLSS files.
+> This feature is particularly essential to GeForce RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image as Minecraft's is heavily outdated.
 
 - `BetterRTX manager`
 Displays an up-to-date list of all available BetterRTX presets, which you can click to download and then install. The list is long so once a preset is downloaded it is moved to the top for convenience.
 Upon installing your first ever preset, a Default RTX preset is created at the top allowing you to rollback/uninstall BetterRTX.
-> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential game crashes, sometimes the bin files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never install outdated RTX files by accident.
-You will have to redownload the presets as they may have likely been updated on the [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update.  
+> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential game crashes, sometimes the files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never install outdated RTX files by accident.
+You will have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update. In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, refresh button won't touch your Default RTX preset, which is cleared strictly after game updates.  
 
-> In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, this won't touch your Default RTX preset, which is deleted strictly only after game updates.
-
-> Note: The last 2 features only support Minecraft GDK (1.21.120 and higher), and given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. The cache remains valid until Minecraft is relocated.
+> Note: Given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. The cache remains valid until Minecraft is relocated.
 
 - `Preview (Togglable)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
@@ -94,7 +92,7 @@ The Vanilla RTX App includes tools to tune Vanilla RTX or any other RTX or Vibra
 ![vanilla-rtx-app-pack-selection-menu](https://github.com/user-attachments/assets/0b2dadce-a7ac-4d08-b44c-5c93618bcd02)
 
 Upon launch, the app automatically scans for already-installed Vanilla RTX packs, available packs become selectable for tuning or export, you can also select up to one additional custom pack at a time.
->  If Vanilla RTX packs are installed or reinstalled through the app, or if `Preview` button is toggled, checkboxes refresh. If multiple versions of the same Vanilla RTX variant are present, the newest will be picked, you can still select older versions manually from the list of local packs.
+>  Any activity within the app that could result in pack stasus change refreshes the checkboxes automatically (such as toggling Preview or updating/reinstalling packs) if multiple versions of the same Vanilla RTX variant are present, the newest will be picked, you can still select older versions manually from the list of local packs.
 
 - `Select a local pack`  
   Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select one pack to be tuned alongside any of the 3 primary Vanilla RTX variants.
@@ -170,7 +168,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   - Donate: Opens the developer's Ko-Fi page.  
     > When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain Vanilla RTX projects thanks to them. Consider becoming a supporter and have your name up there?!
 
-- The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will be shown on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc...
+- The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will occasionally show up on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc...
 
 ### Known Issues
 - Missing icons on some older Windows installations (non-critical)   
@@ -189,4 +187,4 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Check out the new pack updater window! You can now reinstall or update packs individually and see installed/available version statuses in one place!
+Vanilla RTX has turned 5 years old and Opus will become available soon! 🎉   — Merry Christmas! 
