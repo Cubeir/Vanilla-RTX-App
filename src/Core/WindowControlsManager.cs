@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -20,10 +20,11 @@ public class WindowControlsManager
         {
             "HelpButton",
             "DonateButton",
+            "ChatButton",
+            "CycleThemeButton",
+            "LampInteractionButton",
             "SidebarLog",
             "SidelogProgressBar",
-            "CycleThemeButton",
-            "LogCopyButton"
         };
 
     // Static dictionary to track states for multiple windows
