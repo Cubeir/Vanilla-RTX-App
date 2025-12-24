@@ -45,12 +45,12 @@ public class PackUpdater
     private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
     private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
     private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(12);
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(10);
 
     // Cache validation check cooldown
     private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
     private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
-    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(80);
+    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(60);
 
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;

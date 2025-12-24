@@ -27,7 +27,7 @@ public sealed partial class PackUpdateWindow : Window
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
 
     private const string CACHE_INVALIDATION_COOLDOWN_KEY = "PackUpdater_CacheInvalidation_LastTimestamp";
-    private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 6;
+    private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 2;
 
     private string? _currentInstallActionType;
 
