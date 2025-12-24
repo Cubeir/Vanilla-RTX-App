@@ -26,6 +26,62 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
 
+
+internal enum DownloadStatus
+{
+    NotDownloaded,
+    Queued,
+    Downloading,
+    Downloaded
+}
+
+internal class DownloadQueueItem
+{
+    public DownloadQueueItem() { }
+
+    public string Uuid { get; set; }
+    public string Name { get; set; }
+}
+
+internal class ApiPresetData
+{
+    public ApiPresetData() { }
+
+    public string Uuid { get; set; }
+    public string Slug { get; set; }
+    public string Name { get; set; }
+    public string Stub { get; set; }
+    public string Tonemapping { get; set; }
+    public string Bloom { get; set; }
+}
+
+internal class LocalPresetData
+{
+    public LocalPresetData() { }
+
+    public string Uuid { get; set; }
+    public string Name { get; set; }
+    public string PresetPath { get; set; }
+    public BitmapImage Icon { get; set; }
+    public List<string> BinFiles { get; set; }
+    public Dictionary<string, string> FileHashes { get; set; }
+}
+
+internal class DisplayPresetData
+{
+    public DisplayPresetData() { }
+
+    public string Uuid { get; set; }
+    public string Name { get; set; }
+    public bool IsDownloaded { get; set; }
+    public BitmapImage Icon { get; set; }
+    public string PresetPath { get; set; }
+    public List<string> BinFiles { get; set; }
+    public Dictionary<string, string> FileHashes { get; set; }
+}
+
+
+
 public sealed partial class BetterRTXManagerWindow : Window
 {
     private readonly AppWindow _appWindow;
@@ -680,8 +736,24 @@ public sealed partial class BetterRTXManagerWindow : Window
                 return new List<ApiPresetData>();
             }
 
-            var presets = JsonConvert.DeserializeObject<List<ApiPresetData>>(jsonData, JsonSettings);
-            return presets ?? new List<ApiPresetData>();
+            var presets = new List<ApiPresetData>();
+            var jsonArray = JArray.Parse(jsonData);
+
+            foreach (var item in jsonArray)
+            {
+                var preset = new ApiPresetData
+                {
+                    Uuid = item["uuid"]?.Value<string>(),
+                    Slug = item["slug"]?.Value<string>(),
+                    Name = item["name"]?.Value<string>(),
+                    Stub = item["stub"]?.Value<string>(),
+                    Tonemapping = item["tonemapping"]?.Value<string>(),
+                    Bloom = item["bloom"]?.Value<string>()
+                };
+                presets.Add(preset);
+            }
+
+            return presets;
         }
         catch (Exception ex)
         {
@@ -696,7 +768,10 @@ public sealed partial class BetterRTXManagerWindow : Window
             NamingStrategy = new Newtonsoft.Json.Serialization.DefaultNamingStrategy()
         },
         MissingMemberHandling = MissingMemberHandling.Ignore,
-        NullValueHandling = NullValueHandling.Ignore
+        NullValueHandling = NullValueHandling.Ignore,
+        MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+        TypeNameHandling = TypeNameHandling.None, 
+        ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor 
     };
 
     private async Task LoadLocalPresetsAsync()
@@ -1790,52 +1865,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             sanitized = sanitized.Substring(0, 150).TrimEnd('_', ' ', '.');
 
         return sanitized;
-    }
-
-    // Data classes
-    private enum DownloadStatus
-    {
-        NotDownloaded,
-        Queued,
-        Downloading,
-        Downloaded
-    }
-
-    private class DownloadQueueItem
-    {
-        public string Uuid { get; set; }
-        public string Name { get; set; }
-    }
-
-    private class ApiPresetData
-    {
-        public string Uuid { get; set; }
-        public string Slug { get; set; }
-        public string Name { get; set; }
-        public string Stub { get; set; }
-        public string Tonemapping { get; set; }
-        public string Bloom { get; set; }
-    }
-
-    private class LocalPresetData
-    {
-        public string Uuid { get; set; }
-        public string Name { get; set; }
-        public string PresetPath { get; set; }
-        public BitmapImage Icon { get; set; }
-        public List<string> BinFiles { get; set; }
-        public Dictionary<string, string> FileHashes { get; set; }
-    }
-
-    private class DisplayPresetData
-    {
-        public string Uuid { get; set; }
-        public string Name { get; set; }
-        public bool IsDownloaded { get; set; }
-        public BitmapImage Icon { get; set; }
-        public string PresetPath { get; set; }
-        public List<string> BinFiles { get; set; }
-        public Dictionary<string, string> FileHashes { get; set; }
     }
 }
 
