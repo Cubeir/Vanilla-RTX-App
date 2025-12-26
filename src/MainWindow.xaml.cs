@@ -38,6 +38,32 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Once everwinter is released
+Make a Panel for it that appears between main and secondary in PackUpdater window
+a slightly larger panel with decorations on the sides
+Make it appear from Dec 15th to Jan 15th every year
+
+- Fix startup splash animations
+And fix special occasions not using their own halo texture
+
+- Fix
+https://github.com/Cubeir/Vanilla-RTX-App/issues/2
+Maybe change both emissivity and fog sliders to be in PERCENTAGE
+instead, work with ints exclusively
+50% to 900% for emissivity
+0% to 900% for fog
+
+- Experiment with acrylic background settings for non primary windows, less solid might look better
+
+- Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
+
+- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
+Especially release builds
+
+- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
+Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
+Some overrides now disable it while they should not.
+
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
@@ -199,8 +225,30 @@ public sealed partial class MainWindow : Window
 
     public readonly PackUpdater _updater = new();
 
-    private static CancellationTokenSource? _lampBlinkCts;
-    private static readonly Dictionary<string, BitmapImage> _imageCache = new();
+    private LampAnimator _titlebarLampAnimator;
+    private LampAnimator _splashLampAnimator;
+
+    // Initialize in your constructor or OnLoaded:
+    private void InitializeLampAnimators()
+    {
+        // Titlebar lamp
+        _titlebarLampAnimator = new LampAnimator(
+            LampAnimator.LampContext.Titlebar,
+            baseImage: iconImageBox,
+            overlayImage: iconOverlayImageBox,
+            haloImage: iconHaloImageBox
+        );
+
+        // Splash lamp
+        _splashLampAnimator = new LampAnimator(
+            LampAnimator.LampContext.Splash,
+            baseImage: SplashLamp,
+            overlayImage: null, // Splash doesn't use overlay
+            haloImage: SplashLampHalo,
+            superImage: SplashLampSuper // Splash uses separate super image
+        );
+    }
+
 
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
@@ -208,11 +256,14 @@ public sealed partial class MainWindow : Window
     private Dictionary<FrameworkElement, string> _originalTexts = new();
     private bool _shiftPressed = false;
 
+    // ---------------------------------------| | | | | | | | | | |-------------------------------------------- \\
+
     public MainWindow()
     {
         // Properties to set before it is rendered
         SetMainWindowProperties();
         InitializeComponent();
+        InitializeLampAnimators();
 
         // Titlebar drag region
         SetTitleBar(TitleBarDragArea);
@@ -333,10 +384,14 @@ public sealed partial class MainWindow : Window
             }
         });
 
+
+        // Calling it last since it might add a bit of delay as it searches a few dirs and files
+        MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
+
         // Brief delay to ensure everything is fully rendered, then fade out splash screen
         await Task.Delay(750);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and what you want seen AFTER ======================= 
-        await FadeOutSplash();
+        await FadeOutSplashScreen();
 
         // Warning if MC is running
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -345,13 +400,10 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app, when finished, launch the game using {buttonName} button.", LogLevel.Warning);
         }
 
-        // Calling it last since it might add a bit of delay as it searches a few dirs and files
-        MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
-
         // Show Leave a Review prompt, has a 10 sec cd built in
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
-        async Task FadeOutSplash()
+        async Task FadeOutSplashScreen()
         {
             if (SplashOverlay == null) return;
 
@@ -715,405 +767,12 @@ public sealed partial class MainWindow : Window
 
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75)
     {
-        const double initialDelayMs = 900;
-        const double minDelayMs = 150;
-        const double minRampSec = 1;
-        const double maxRampSec = 8;
-        const double fadeAnimationMs = 75;
-
-        var onPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.small.png");
-        var superOnPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.super.small.png");
-        var offPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.off.small.png");
-
-        var today = DateTime.Today;
-        string specialPath = null;
-        bool isSpecial = false;
-
-        if (today.Month == 4 && today.Day >= 21 && today.Day <= 23)
-        {
-            specialPath = Path.Combine(AppContext.BaseDirectory, "Assets", "special", "happybirthdayme.png");
-            isSpecial = true;
-        }
-        else if (today.Month == 10 && (today.DayOfWeek == DayOfWeek.Saturday || today.DayOfWeek == DayOfWeek.Sunday))
-        {
-            onPath = Path.Combine(AppContext.BaseDirectory, "Assets", "special", "pumpkin.on.png");
-            offPath = Path.Combine(AppContext.BaseDirectory, "Assets", "special", "pumpkin.off.png");
-            superOnPath = Path.Combine(AppContext.BaseDirectory, "Assets", "special", "pumpkin.super.png");
-            isSpecial = false;
-        }
-        else if (today.Month == 12 && today.Day >= 25)
-        {
-            specialPath = Path.Combine(AppContext.BaseDirectory, "Assets", "special", "gingerman.png");
-            isSpecial = true;
-        }
-
-        var imagesToPreload = new List<string> { onPath, superOnPath, offPath };
-        if (specialPath != null) imagesToPreload.Add(specialPath);
-
-        await Task.WhenAll(imagesToPreload.Select(GetCachedImageAsync));
-
-        var random = new Random();
-        _lampBlinkCts?.Cancel();
-        _lampBlinkCts = null;
-
-        if (singleFlash)
-        {
-            await ExecuteSingleFlash(random, onPath, superOnPath, offPath);
-            return;
-        }
-
-        if (enable)
-        {
-            _lampBlinkCts = new CancellationTokenSource();
-
-            if (isSpecial && !string.IsNullOrEmpty(specialPath))
-            {
-                await SetImageAsync(iconImageBox, specialPath);
-                iconOverlayImageBox.Opacity = 0;
-                await AnimateOpacity(iconHaloImageBox, 0, fadeAnimationMs);
-                return;
-            }
-
-            _ = BlinkLoop(_lampBlinkCts.Token, onPath, superOnPath, offPath);
-        }
-        else
-        {
-            await SetImageAsync(iconImageBox, onPath);
-            iconOverlayImageBox.Opacity = 0;
-            await AnimateOpacity(iconHaloImageBox, 0.25, fadeAnimationMs);
-        }
-
-        async Task ExecuteSingleFlash(Random rng, string onPath, string superOnPath, string offPath)
-        {
-            await SetImageAsync(iconImageBox, onPath);
-            await SetImageAsync(iconOverlayImageBox, offPath);
-
-            bool doSuperFlash = rng.NextDouble() < singleFlashOnChance;
-
-            if (doSuperFlash)
-            {
-                await SetImageAsync(iconImageBox, superOnPath);
-                iconOverlayImageBox.Opacity = 0;
-
-                var superBaseTask = AnimateOpacity(iconImageBox, 1.0, fadeAnimationMs);
-                var superHaloTask = AnimateOpacity(iconHaloImageBox, 0.6, fadeAnimationMs);
-                await Task.WhenAll(superBaseTask, superHaloTask);
-
-                await Task.Delay(rng.Next(300, 800));
-            }
-            else
-            {
-                iconImageBox.Opacity = 1.0;
-                iconOverlayImageBox.Opacity = 0.0;
-
-                var overlayTask = AnimateOpacity(iconOverlayImageBox, 1.0, fadeAnimationMs);
-                var haloTask = AnimateOpacity(iconHaloImageBox, 0.025, fadeAnimationMs);
-                await Task.WhenAll(overlayTask, haloTask);
-
-                await Task.Delay(rng.Next(300, 800));
-            }
-
-            await SetImageAsync(iconImageBox, onPath);
-            iconOverlayImageBox.Opacity = 0.0;
-            iconImageBox.Opacity = 1.0;
-            await AnimateOpacity(iconHaloImageBox, 0.25, fadeAnimationMs);
-        }
-
-        async Task BlinkLoop(CancellationToken token, string onPath, string superOnPath, string offPath)
-        {
-            try
-            {
-                await SetImageAsync(iconImageBox, onPath);
-                await SetImageAsync(iconOverlayImageBox, offPath);
-
-                iconImageBox.Opacity = 1.0;
-                iconOverlayImageBox.Opacity = 0.0;
-
-                bool state = true;
-                double phaseTime = 0;
-                bool rampingUp = true;
-                double currentRampDuration = GetRandomRampDuration();
-                var rampStartTime = DateTime.UtcNow;
-                var nextSuperFlash = DateTime.UtcNow;
-
-                while (!token.IsCancellationRequested)
-                {
-                    var now = DateTime.UtcNow;
-
-                    if (now >= nextSuperFlash)
-                    {
-                        bool isRapidFlash = random.NextDouble() < 0.20;
-
-                        if (isRapidFlash)
-                        {
-                            var flashCount = random.Next(1, 6);
-                            var flashSpeed = random.Next(50, 100);
-
-                            for (int i = 0; i < flashCount; i++)
-                            {
-                                await SetImageAsync(iconImageBox, superOnPath);
-                                iconOverlayImageBox.Opacity = 0;
-                                var superTask = AnimateOpacity(iconHaloImageBox, 0.6, fadeAnimationMs);
-                                await Task.Delay(75, token);
-
-                                await SetImageAsync(iconImageBox, onPath);
-                                var normalTask = AnimateOpacity(iconHaloImageBox, 0.5, fadeAnimationMs);
-                                await Task.Delay(flashSpeed, token);
-                            }
-                        }
-                        else
-                        {
-                            var superFlashDuration = random.Next(300, 1500);
-
-                            await SetImageAsync(iconImageBox, superOnPath);
-                            iconOverlayImageBox.Opacity = 0;
-
-                            var superBaseTask = AnimateOpacity(iconImageBox, 1.0, fadeAnimationMs);
-                            var superHaloTask = AnimateOpacity(iconHaloImageBox, 0.6, fadeAnimationMs);
-                            await Task.WhenAll(superBaseTask, superHaloTask);
-
-                            await Task.Delay(superFlashDuration, token);
-                        }
-
-                        await SetImageAsync(iconImageBox, onPath);
-                        await SetImageAsync(iconOverlayImageBox, offPath);
-
-                        var resetHaloTask = AnimateOpacity(iconHaloImageBox, 0.025, fadeAnimationMs);
-                        var resetOverlayTask = AnimateOpacity(iconOverlayImageBox, 1.0, fadeAnimationMs);
-
-                        await Task.WhenAll(resetOverlayTask, resetHaloTask);
-
-                        state = false;
-                        rampingUp = true;
-                        currentRampDuration = GetRandomRampDuration();
-                        rampStartTime = DateTime.UtcNow;
-                        nextSuperFlash = DateTime.UtcNow.AddSeconds(random.NextDouble() * 5 + 4);
-                        continue;
-                    }
-
-                    phaseTime = (now - rampStartTime).TotalSeconds;
-                    double progress = Math.Clamp(phaseTime / currentRampDuration, 0, 1);
-                    double eased = EaseInOut(progress);
-
-                    double delay = rampingUp
-                        ? initialDelayMs - (initialDelayMs - minDelayMs) * eased
-                        : minDelayMs + (initialDelayMs - minDelayMs) * eased;
-
-                    double overlayOpacity = state ? 0.0 : 1.0;
-                    double normalHaloOpacity = state ? 0.5 : 0.025;
-
-                    var overlayTask = AnimateOpacity(iconOverlayImageBox, overlayOpacity, fadeAnimationMs);
-                    var normalHaloTask = AnimateOpacity(iconHaloImageBox, normalHaloOpacity, fadeAnimationMs);
-
-                    await Task.WhenAll(overlayTask, normalHaloTask);
-
-                    state = !state;
-
-                    if (progress >= 1.0)
-                    {
-                        rampingUp = !rampingUp;
-                        rampStartTime = DateTime.UtcNow;
-                        currentRampDuration = GetRandomRampDuration();
-                    }
-
-                    await Task.Delay((int)delay, token);
-                }
-            }
-            finally
-            {
-                try
-                {
-                    if (!token.IsCancellationRequested)
-                    {
-                        await PerformFinalSuperFlash(onPath, superOnPath, random.Next(450, 900));
-                    }
-                    else
-                    {
-                        await PerformFinalSuperFlash(onPath, superOnPath, 400);
-                    }
-                }
-                catch (OperationCanceledException) { }
-                catch { }
-
-                await SetImageAsync(iconImageBox, onPath);
-                iconOverlayImageBox.Opacity = 0.0;
-                iconImageBox.Opacity = 1.0;
-                await AnimateOpacity(iconHaloImageBox, 0.25, fadeAnimationMs);
-            }
-
-            async Task PerformFinalSuperFlash(string onPath, string superOnPath, int duration)
-            {
-                await SetImageAsync(iconImageBox, superOnPath);
-                iconOverlayImageBox.Opacity = 0;
-
-                var superBaseTask = AnimateOpacity(iconImageBox, 1.0, fadeAnimationMs);
-                var superHaloTask = AnimateOpacity(iconHaloImageBox, 0.6, fadeAnimationMs);
-                await Task.WhenAll(superBaseTask, superHaloTask);
-
-                await Task.Delay(duration, CancellationToken.None);
-            }
-        }
-
-        double GetRandomRampDuration()
-            => random.NextDouble() * (maxRampSec - minRampSec) + minRampSec;
-
-        double EaseInOut(double t)
-            => t < 0.5 ? 2 * t * t : 1 - Math.Pow(-2 * t + 2, 2) / 2;
-
-        async Task<BitmapImage> GetCachedImageAsync(string path)
-        {
-            if (_imageCache.TryGetValue(path, out var cachedImage))
-            {
-                return cachedImage;
-            }
-
-            using var stream = File.OpenRead(path);
-            var bmp = new BitmapImage();
-            await bmp.SetSourceAsync(stream.AsRandomAccessStream());
-            _imageCache[path] = bmp;
-            return bmp;
-        }
-
-        async Task SetImageAsync(Image imageControl, string path)
-        {
-            imageControl.Source = await GetCachedImageAsync(path);
-        }
-
-        async Task AnimateOpacity(FrameworkElement element, double targetOpacity, double durationMs, CancellationToken ct = default)
-        {
-            if (ct.IsCancellationRequested)
-            {
-                element.Opacity = targetOpacity;
-                return;
-            }
-
-            var storyboard = new Storyboard();
-            var animation = new DoubleAnimation
-            {
-                To = targetOpacity,
-                Duration = TimeSpan.FromMilliseconds(durationMs),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-
-            Storyboard.SetTarget(animation, element);
-            Storyboard.SetTargetProperty(animation, "Opacity");
-            storyboard.Children.Add(animation);
-
-            var tcs = new TaskCompletionSource<bool>();
-            storyboard.Completed += (s, e) => tcs.SetResult(true);
-
-            storyboard.Begin();
-
-            var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(-1, ct));
-
-            if (ct.IsCancellationRequested)
-            {
-                storyboard.Stop();
-                element.Opacity = targetOpacity;
-            }
-        }
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
-        if (SplashLamp == null || SplashLampSuper == null || SplashLampHalo == null)
-            return;
-
-        const double fadeAnimationMs = 100;
-        const double minFlashDuration = 300;
-        const double maxFlashDuration = 700;
-
-        var random = new Random();
-        var today = DateTime.Today;
-
-        // Easter egg detection
-        string specialImagePath = null;
-        bool isSpecialStatic = false;
-
-        if (today.Month == 4 && today.Day >= 21 && today.Day <= 23)
-        {
-            // Birthday - static special image
-            specialImagePath = "ms-appx:///Assets/special/happybirthdayme.png";
-            isSpecialStatic = true;
-        }
-        else if (today.Month == 10 && (today.DayOfWeek == DayOfWeek.Saturday || today.DayOfWeek == DayOfWeek.Sunday))
-        {
-            // Halloween pumpkins - use themed flash animation
-            SplashLampSuper.Source = new BitmapImage(new Uri(random.NextDouble() < 0.25
-                ? "ms-appx:///Assets/special/pumpkin.off.png"
-                : "ms-appx:///Assets/special/pumpkin.super.png"));
-        }
-        else if (today.Month == 12 && today.Day >= 25)
-        {
-            // Christmas/Holiday - static special image
-            specialImagePath = "ms-appx:///Assets/special/gingerman.png";
-            isSpecialStatic = true;
-        }
-
-        // If it's a static special occasion, just show the image and skip animation
-        if (isSpecialStatic && !string.IsNullOrEmpty(specialImagePath))
-        {
-            SplashLampSuper.Source = new BitmapImage(new Uri(specialImagePath));
-            SplashLampSuper.Opacity = 1.0;
-            SplashLampHalo.Opacity = 0.0;
-            return;
-        }
-
-        // Normal animation logic (or themed animation for Halloween)
-        bool isOffFlash = random.NextDouble() < 0.25;
-
-        if (specialImagePath == null) // Only set default images if not using special themed ones
-        {
-            if (isOffFlash)
-            {
-                SplashLampSuper.Source = new BitmapImage(new Uri("ms-appx:///Assets/icons/SplashScreen.Off.png"));
-            }
-            // else: Keep default Super image
-        }
-
-        double targetSuperOpacity = 1.0;
-        double targetHaloOpacity = isOffFlash ? 0.01 : 0.75;
-
-        // Calculate flash timing
-        double availableTime = splashDurationMs - 400;
-        double flashStart = Math.Max(200, availableTime * 0.3);
-        double flashDuration = Math.Clamp(availableTime * 0.4, minFlashDuration, maxFlashDuration);
-
-        // Wait for flash start
-        await Task.Delay((int)flashStart);
-
-        // Flash in
-        var superFadeIn = AnimateOpacitySplash(SplashLampSuper, targetSuperOpacity, fadeAnimationMs);
-        var haloChange = AnimateOpacitySplash(SplashLampHalo, targetHaloOpacity, fadeAnimationMs);
-        await Task.WhenAll(superFadeIn, haloChange);
-
-        // Hold the flash
-        await Task.Delay((int)flashDuration);
-
-        // Fade back to normal
-        var superFadeOut = AnimateOpacitySplash(SplashLampSuper, 0.0, fadeAnimationMs);
-        var haloNormal = AnimateOpacitySplash(SplashLampHalo, 0.175, fadeAnimationMs);
-        await Task.WhenAll(superFadeOut, haloNormal);
-
-        async Task AnimateOpacitySplash(FrameworkElement element, double targetOpacity, double durationMs)
-        {
-            var storyboard = new Storyboard();
-            var animation = new DoubleAnimation
-            {
-                To = targetOpacity,
-                Duration = TimeSpan.FromMilliseconds(durationMs),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-            };
-            Storyboard.SetTarget(animation, element);
-            Storyboard.SetTargetProperty(animation, "Opacity");
-            storyboard.Children.Add(animation);
-            var tcs = new TaskCompletionSource<bool>();
-            storyboard.Completed += (s, e) => tcs.SetResult(true);
-            storyboard.Begin();
-            await tcs.Task;
-        }
+        await _splashLampAnimator.AnimateSplash(splashDurationMs);
     }
-
-
     public async void UpdateUI(double animationDurationSeconds = 0.15)
     {
         // Suppress Previewer Updates
@@ -1262,7 +921,6 @@ public sealed partial class MainWindow : Window
 
                     Log("Copied debug logs to clipboard.", LogLevel.Success);
 
-                    // Lamp off single flash
                     _ = BlinkingLamp(true, true, 0.0);
                 }
 
@@ -1444,15 +1102,6 @@ public sealed partial class MainWindow : Window
     }
     private void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
-        var shiftPressed = Microsoft.UI.Input.InputKeyboardSource
-                                .GetKeyStateForCurrentThread(VirtualKey.Shift)
-                                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-        if (shiftPressed)
-        {
-            _ = LocatePacksButton_Click(shiftPressed);
-            return;
-        }
-
         ToggleControls(this, false, true, []);
 
         var packBrowserWindow = new Vanilla_RTX_App.PackBrowser.PackBrowserWindow(this);

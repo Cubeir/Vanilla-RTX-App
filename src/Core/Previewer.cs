@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media.Animation;
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Core;
 public class Previewer
 {
     private static Previewer? _instance;
@@ -486,7 +486,7 @@ public class Previewer
 
     private void HandleControlChange(FrameworkElement newControl)
     {
-        bool isControlChange = (_activeControl != newControl && _activeControl != null);
+        bool isControlChange = _activeControl != newControl && _activeControl != null;
         _activeControl = newControl;
 
         if (isControlChange)
@@ -651,8 +651,8 @@ public class Previewer
 
         bool needsTransition = allowTransition && (forcedByControlChange ||
             bottomImageChanged || topImageChanged ||
-            (bottomOpacityChanged && (_bottomVessel.Opacity == 0.0 || bottomOpacity == 0.0)) ||
-            (topOpacityChanged && (_topVessel.Opacity == 0.0 || topOpacity == 0.0)));
+            bottomOpacityChanged && (_bottomVessel.Opacity == 0.0 || bottomOpacity == 0.0) ||
+            topOpacityChanged && (_topVessel.Opacity == 0.0 || topOpacity == 0.0));
 
         if (!needsTransition)
         {
