@@ -43,9 +43,6 @@ Make a Panel for it that appears between main and secondary in PackUpdater windo
 a slightly larger panel with decorations on the sides
 Make it appear from Dec 15th to Jan 15th every year
 
-- Fix startup splash animations
-And fix special occasions not using their own halo texture
-
 - Fix
 https://github.com/Cubeir/Vanilla-RTX-App/issues/2
 Maybe change both emissivity and fog sliders to be in PERCENTAGE
@@ -79,7 +76,7 @@ the URLs the app sends requests to + the hardcoded Minecraft paths
 
 Additionally, while going through params, 
 Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
-All settled there? ensure there isn't a way the app can ddos github
+All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
 
 - Do the TODOs scattered in the code
 
@@ -875,23 +872,20 @@ public sealed partial class MainWindow : Window
 
 
     // ------- Titlebar stuff
-    private async void LampInteraction_Click(object sender, RoutedEventArgs e)
+    private void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
         var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
         if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
         {
             try
             {
-                // TODO: make it return status and values some specific controls as well for easier debugging where you should've used bindings
                 if (!string.IsNullOrEmpty(SidebarLog.Text))
                 {
                     var sb = new StringBuilder();
-
                     // Original sidebar log (important status messages)
                     sb.AppendLine("===== Sidebar Log (UI-shown Messages)");
                     sb.AppendLine(SidebarLog.Text);
                     sb.AppendLine();
-
                     // Tuner variables
                     sb.AppendLine("===== Tuner Variables");
                     var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
@@ -901,7 +895,6 @@ public sealed partial class MainWindow : Window
                         sb.AppendLine($"{field.Name}: {value ?? "null"}");
                     }
                     sb.AppendLine();
-
                     // Persistent variables
                     sb.AppendLine("===== Persistent Variables");
                     var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
@@ -911,19 +904,20 @@ public sealed partial class MainWindow : Window
                         sb.AppendLine($"{field.Name}: {value ?? "null"}");
                     }
                     sb.AppendLine();
-
                     // Trace logs
                     sb.AppendLine(TraceManager.GetAllTraceLogs());
+
+                    // UI Controls State
+                    sb.AppendLine();
+                    sb.AppendLine("===== UI Controls State");
+                    CollectUIControlsState(sb);
 
                     var dataPackage = new DataPackage();
                     dataPackage.SetText(sb.ToString());
                     Clipboard.SetContent(dataPackage);
-
                     Log("Copied debug logs to clipboard.", LogLevel.Success);
-
                     _ = BlinkingLamp(true, true, 0.0);
                 }
-
             }
             catch (Exception ex)
             {
@@ -934,7 +928,77 @@ public sealed partial class MainWindow : Window
         {
             _ = BlinkingLamp(true, true);
         }
+
+        void CollectUIControlsState(StringBuilder sb)
+        {
+            var fields = this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (var field in fields)
+            {
+                var value = field.GetValue(this);
+                if (value == null) continue;
+
+                var type = value.GetType();
+                var name = field.Name;
+
+                // Toggle-type controls
+                if (value is ToggleButton toggleBtn)
+                {
+                    sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
+                }
+                else if (value is CheckBox checkBox)
+                {
+                    sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
+                }
+                else if (value is ToggleSwitch toggleSwitch)
+                {
+                    sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
+                }
+                else if (value is RadioButton radioBtn)
+                {
+                    sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
+                }
+                // Value controls
+                else if (value is Slider slider)
+                {
+                    sb.AppendLine($"{name} (Slider): {slider.Value}");
+                }
+                else if (value is NumberBox numberBox)
+                {
+                    sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
+                }
+                else if (value is ComboBox comboBox)
+                {
+                    sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
+                }
+                else if (value is TextBox textBox)
+                {
+                    var text = textBox.Text;
+                    if (!string.IsNullOrEmpty(text) && text.Length > 50)
+                        text = text.Substring(0, 50) + "...";
+                    sb.AppendLine($"{name} (TextBox): \"{text}\"");
+                }
+                else if (value is RatingControl rating)
+                {
+                    sb.AppendLine($"{name} (RatingControl): {rating.Value}");
+                }
+                else if (value is ColorPicker colorPicker)
+                {
+                    sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
+                }
+                else if (value is DatePicker datePicker)
+                {
+                    sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
+                }
+                else if (value is TimePicker timePicker)
+                {
+                    sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
+                }
+            }
+        }
     }
+
+
 
 
     private void ChatButton_Click(object sender, RoutedEventArgs e)
