@@ -32,6 +32,7 @@
                      Stretch="Uniform">
                 <Grid Width="256"
                       Height="256">
+                    <!-- Halo - Bottom layer -->
                     <Image x:Name="SplashLampHalo"
                            Source="ms-appx:///Assets/icons/SplashScreen.Halo.png"
                            Width="1280"
@@ -39,20 +40,25 @@
                            Margin="-512,-512,-512,-512"
                            Opacity="0.175"
                            Stretch="Uniform"
+                           Canvas.ZIndex="1"
                            CacheMode="BitmapCache" />
+                    <!-- Base "On" - Middle layer -->
                     <Image x:Name="SplashLamp"
                            Source="ms-appx:///Assets/icons/SplashScreen.Regular.png"
                            Width="192"
                            Height="192"
                            Opacity="1.0"
                            Stretch="Uniform"
+                           Canvas.ZIndex="2"
                            CacheMode="BitmapCache" />
+                    <!-- Super/Off overlay - Top layer -->
                     <Image x:Name="SplashLampSuper"
                            Source="ms-appx:///Assets/icons/SplashScreen.Super.png"
                            Width="192"
                            Height="192"
                            Opacity="0.0"
                            Stretch="Uniform"
+                           Canvas.ZIndex="3"
                            CacheMode="BitmapCache" />
                 </Grid>
             </Viewbox>

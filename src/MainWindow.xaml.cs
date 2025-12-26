@@ -227,8 +227,6 @@ public sealed partial class MainWindow : Window
 
     private LampAnimator _titlebarLampAnimator;
     private LampAnimator _splashLampAnimator;
-
-    // Initialize in your constructor or OnLoaded:
     private void InitializeLampAnimators()
     {
         // Titlebar lamp
@@ -771,8 +769,10 @@ public sealed partial class MainWindow : Window
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
-        await _splashLampAnimator.AnimateSplash(splashDurationMs);
+        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs);
     }
+
+
     public async void UpdateUI(double animationDurationSeconds = 0.15)
     {
         // Suppress Previewer Updates
