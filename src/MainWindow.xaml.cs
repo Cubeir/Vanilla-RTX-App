@@ -43,6 +43,8 @@ namespace Vanilla_RTX_App;
 
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
 Especially release builds
+Game detection and cache invalidation could be improved for both
+PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
 
 - Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
