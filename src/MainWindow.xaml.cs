@@ -92,7 +92,7 @@ A variable is getting constantly updated with new logs, a worker in main UI thre
 
 ^ yeah lets dedicate more code clutter to visual things
 
-- Set random preview arts on startup, featuring locations from Vanilla RTX's history
+- Set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
 Or simple pixel arts you'd like to make in the same style
 Have 5-10 made
 
