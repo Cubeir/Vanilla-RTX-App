@@ -29,6 +29,7 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -523,6 +524,8 @@ public sealed partial class MainWindow : Window
 
     private void SetPreviews()
     {
+        var date = DateTime.Today;
+
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,
             "ms-appx:///Assets/previews/fog.default.png",
             "ms-appx:///Assets/previews/fog.min.png",
@@ -578,11 +581,18 @@ public sealed partial class MainWindow : Window
         Previewer.Instance.InitializeCheckBox(VanillaRTXCheckBox,
             "ms-appx:///Assets/previews/checkbox.regular.ticked.png",
             "ms-appx:///Assets/previews/checkbox.regular.unticked.png"
-        ); 
-        Previewer.Instance.InitializeCheckBox(NormalsCheckBox,
-            "ms-appx:///Assets/previews/checkbox.normals.ticked.png",
-            "ms-appx:///Assets/previews/checkbox.normals.unticked.png"
         );
+        if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
+        {
+            Previewer.Instance.InitializeCheckBox(NormalsCheckBox, "ms-appx:///Assets/previews/checkbox.normals.ticked.birthday.png", "ms-appx:///Assets/previews/checkbox.normals.unticked.birthday.png");
+        }
+        else
+        {
+            Previewer.Instance.InitializeCheckBox(NormalsCheckBox,
+               "ms-appx:///Assets/previews/checkbox.normals.ticked.png",
+               "ms-appx:///Assets/previews/checkbox.normals.unticked.png"
+            );
+        }
         Previewer.Instance.InitializeCheckBox(OpusCheckBox,
             "ms-appx:///Assets/previews/checkbox.opus.ticked.png",
             "ms-appx:///Assets/previews/checkbox.opus.unticked.png"
@@ -596,9 +606,18 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/chest.export.png"
         );
 
-        Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
-            "ms-appx:///Assets/previews/version.checker.png"
-        );
+        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
+        {
+            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
+                "ms-appx:///Assets/previews/version.checker.christmas.png"
+            );
+        }
+        else
+        {
+            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
+                "ms-appx:///Assets/previews/version.checker.png"
+            );
+        }
 
         Previewer.Instance.InitializeButton(TuneSelectionButton,
             "ms-appx:///Assets/previews/table.tune.png"
