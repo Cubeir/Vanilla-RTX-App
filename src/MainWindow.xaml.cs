@@ -38,11 +38,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Fix
-https://github.com/Cubeir/Vanilla-RTX-App/issues/2
-
-- Experiment with acrylic background settings for non primary windows, less solid might look better
-
 - Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
 
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
@@ -57,6 +52,11 @@ pack updater, pack locator, pack browser, launcher, they deal with hardcoded pat
 
 For finding the game, GDKLocator kit handles it system-wide, all good
 **For Minecraft's USER DATA however, you better expose those, apparently some third party launchers use different paths!!!**
+
+For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
+Actually don't expose anything, the overhead and the risk, instead, make them globally-available constants that can easily be changed
+so in the event of Minecraft files restructuing, you can quickly release an update without having to do much testing, make the code clear, basically
+This Applies to this older todo below as well:
 
 - Expose as many params as you can to a json in app's root
 the URLs the app sends requests to + the hardcoded Minecraft paths
@@ -215,7 +215,7 @@ public sealed partial class MainWindow : Window
 
     private LampAnimator _titlebarLampAnimator;
     private LampAnimator _splashLampAnimator;
-    private void InitializeLampAnimators()
+    private async void InitializeLampAnimators()
     {
         // Titlebar lamp
         _titlebarLampAnimator = new LampAnimator(
@@ -229,9 +229,15 @@ public sealed partial class MainWindow : Window
         _splashLampAnimator = new LampAnimator(
             LampAnimator.LampContext.Splash,
             baseImage: SplashLamp,
-            overlayImage: null, // Splash doesn't use overlay
+            overlayImage: null,
             haloImage: SplashLampHalo,
-            superImage: SplashLampSuper // Splash uses separate super image
+            superImage: SplashLampSuper
+        );
+
+        // Initialize both immediately to preload and set special occasion images
+        await Task.WhenAll(
+            _titlebarLampAnimator.InitializeAsync(),
+            _splashLampAnimator.InitializeAsync()
         );
     }
 

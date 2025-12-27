@@ -502,7 +502,7 @@
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"
                                            IsTextScaleFactorEnabled="False" />
-                                <TextBlock Text="Get in the holiday spirit and jolly up Vanilla RTX with this special seasonal extension! Transform the world into a winter wonderland with frost-covered blocks, a freezing-cold Nether plus lots of other festive changes! Have fun!
+                                <TextBlock Text="Get in the holiday spirit and jolly up Vanilla RTX with this special seasonal extension! Transform the world into a winter wonderland with frost-covered blocks, a freezing-cold Nether plus lots of other festive changes! Ho, ho, ho!
                                            — Cubeir Claus"
                                            FontSize="13"
                                            Opacity="0.9"

@@ -11,9 +11,6 @@ using Windows.Storage.Streams;
 
 namespace Vanilla_RTX_App.Core;
 
-// TODO: images seem to load a little late, like a few milisecs but its visible, especially on slower systems
-// i.e. at startup, WHILE it is out to decide what images to pick, there is a small delay
-
 /// <summary>
 /// Unified lamp animation system for both titlebar and splash screen contexts.
 /// Handles special occasion theming as alternative texture sets.
@@ -72,6 +69,18 @@ public class LampAnimator
         _offPath = paths.off;
         _superPath = paths.super;
         _haloPath = paths.halo;
+    }
+
+    /// <summary>
+    /// Initializes the animator by preloading images and setting special occasion textures.
+    /// Call this immediately after construction to avoid delays on first animation.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        if (_isInitialized)
+            return;
+
+        await EnsureInitialized();
     }
 
     /// <summary>
@@ -216,7 +225,6 @@ public class LampAnimator
 
         return null;
 #endif
-
     }
 
     /// <summary>
