@@ -102,6 +102,9 @@
     <PackageReference Include="System.Management.Automation" Version="7.5.4" />
   </ItemGroup>
   <ItemGroup>
+    <Content Update="Assets\covers\everwinter.cover.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Update="Assets\covers\normals.blur.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

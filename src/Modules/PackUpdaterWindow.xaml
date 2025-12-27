@@ -473,6 +473,94 @@
                         </Border>
                     </Grid>
 
+                    <!-- SPECIAL PANEL -->
+                    <Border x:Name="SpecialOccasionPanel"
+                            CornerRadius="8"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            Translation="0,0,32"
+                            MaxHeight="325"
+                            Visibility="Collapsed">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <!-- Description section: 1 panel width -->
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="12" />
+                                <!-- Image section: 2 panels + 1 gap width -->
+                                <ColumnDefinition Width="2.1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Description Section -->
+                            <StackPanel Grid.Column="0"
+                                        Padding="16"
+                                        Spacing="10"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="❄️ Merry Christmas! ❄"
+                                           FontSize="20"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                                <TextBlock Text="Get in the holiday spirit and jolly up Vanilla RTX with this special seasonal extension! Transform the world into a winter wonderland with frost-covered blocks, a freezing-cold Nether plus lots of other festive changes! Have fun!
+                                           — Cubeir Claus"
+                                           FontSize="13"
+                                           Opacity="0.9"
+                                           TextWrapping="Wrap"
+                                           IsTextScaleFactorEnabled="False" />
+                                <!-- Download Button -->
+                                <HyperlinkButton Content="Download Everwinter"
+                                                 FontSize="18"
+                                                 FontWeight="SemiBold"
+                                                 HorizontalAlignment="Center"
+                                                 Margin="0,8,0,0"
+                                                 NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/everwinter"
+                                                 IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+
+                            <!-- Image Section with Overlay -->
+                            <Grid Grid.Column="2">
+                                <Border CornerRadius="0,8,8,0">
+                                    <Image Source="ms-appx:///Assets/covers/everwinter.cover.png"
+                                           Stretch="UniformToFill"
+                                           IsHitTestVisible="False"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           CacheMode="BitmapCache" />
+                                </Border>
+                                <!-- Overlay -->
+                                <Border x:Name="SpecialOccasionOverlay"
+                                        CornerRadius="0"
+                                        VerticalAlignment="Center"
+                                        Padding="16,10,16,12"
+                                        Opacity="0">
+                                    <Border.Background>
+                                        <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                                                      TintOpacity="0.0"
+                                                      TintLuminosityOpacity="0.64"
+                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                    </Border.Background>
+                                    <StackPanel Spacing="4">
+                                        <HyperlinkButton Content="Vanilla RTX: Everwinter Extension"
+                                                         FontSize="20"
+                                                         Foreground="{ThemeResource OverlayTextBrush}"
+                                                         FontWeight="SemiBold"
+                                                         Padding="0"
+                                                         HorizontalAlignment="Left"
+                                                         NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/everwinter"
+                                                         IsTextScaleFactorEnabled="False" />
+                                        <TextBlock Text="An extension for the Vanilla RTX resource pack, all blocks are covered in frost! Featuring unyielding cold!"
+                                                   FontSize="14"
+                                                   Foreground="{ThemeResource OverlayTextBrush}"
+                                                   Opacity="0.9"
+                                                   TextWrapping="Wrap"
+                                                   IsTextScaleFactorEnabled="False" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
                     <!-- Secondary Packs Section -->
                     <Grid MaxHeight="325">
                         <Grid.ColumnDefinitions>
