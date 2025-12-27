@@ -514,7 +514,7 @@
                                                  FontWeight="SemiBold"
                                                  HorizontalAlignment="Center"
                                                  Margin="0,8,0,0"
-                                                 NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/everwinter"
+                                                 NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
                                                  IsTextScaleFactorEnabled="False" />
                             </StackPanel>
 
@@ -547,7 +547,7 @@
                                                          FontWeight="SemiBold"
                                                          Padding="0"
                                                          HorizontalAlignment="Left"
-                                                         NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/everwinter"
+                                                         NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
                                                          IsTextScaleFactorEnabled="False" />
                                         <TextBlock Text="An extension for the Vanilla RTX resource pack, all blocks are covered in frost! Featuring unyielding cold!"
                                                    FontSize="14"
