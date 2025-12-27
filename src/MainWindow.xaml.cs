@@ -40,10 +40,6 @@ namespace Vanilla_RTX_App;
 
 - Fix
 https://github.com/Cubeir/Vanilla-RTX-App/issues/2
-Maybe change both emissivity and fog sliders to be in PERCENTAGE
-instead, work with ints exclusively
-50% to 900% for emissivity
-0% to 900% for fog
 
 - Experiment with acrylic background settings for non primary windows, less solid might look better
 
@@ -1272,12 +1268,26 @@ public sealed partial class MainWindow : Window
 
         string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
         if (textBox != null && textBox.FocusState == FocusState.Unfocused)
-            textBox.Text = roundedValue.ToString(format, CultureInfo.InvariantCulture);
+        {
+            // Use CurrentCulture so weirdos see "1,50" not "1.50"
+            textBox.Text = roundedValue.ToString(format, CultureInfo.CurrentCulture);
+        }
     }
 
     private void HandleDoubleTextBoxLostFocus(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
     {
-        if (double.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+        // Try parsing with user's culture first (respects comma vs period)
+        bool parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
+                                       CultureInfo.CurrentCulture, out double val);
+
+        // Fallback to invariant culture if that fails (for copy-paste scenarios)
+        if (!parsed)
+        {
+            parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
+                                    CultureInfo.InvariantCulture, out val);
+        }
+
+        if (parsed)
         {
             val = Math.Clamp(val, slider.Minimum, slider.Maximum);
             double roundedVal = Math.Round(val, decimalPlaces);
@@ -1285,12 +1295,14 @@ public sealed partial class MainWindow : Window
             slider.Value = roundedVal;
 
             string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
-            textBox.Text = roundedVal.ToString(format, CultureInfo.InvariantCulture);
+            // Display with user's culture
+            textBox.Text = roundedVal.ToString(format, CultureInfo.CurrentCulture);
         }
         else
         {
+            // Restore the last valid value with user's culture
             string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
-            textBox.Text = property.ToString(format, CultureInfo.InvariantCulture);
+            textBox.Text = property.ToString(format, CultureInfo.CurrentCulture);
         }
     }
 

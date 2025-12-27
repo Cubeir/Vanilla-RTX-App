@@ -11,6 +11,9 @@ using Windows.Storage.Streams;
 
 namespace Vanilla_RTX_App.Core;
 
+// TODO: images seem to load a little late, like a few milisecs but its visible, especially on slower systems
+// i.e. at startup, WHILE it is out to decide what images to pick, there is a small delay
+
 /// <summary>
 /// Unified lamp animation system for both titlebar and splash screen contexts.
 /// Handles special occasion theming as alternative texture sets.
@@ -168,7 +171,7 @@ public class LampAnimator
         var today = DateTime.Today;
         string specialName = GetSpecialOccasionName(today);
 
-        if (specialName != null)
+        if (!string.IsNullOrEmpty(specialName))
         {
             string baseDir = Path.Combine(AppContext.BaseDirectory, "Assets", "special");
             return (
@@ -200,7 +203,7 @@ public class LampAnimator
     private string GetSpecialOccasionName(DateTime date)
     {
 #if DEBUG
-        return null;
+        return "";
 #else
         if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
             return "birthday";
@@ -230,7 +233,7 @@ public class LampAnimator
         // Always preload images for instant access during animations
         var loadTasks = new List<Task>();
 
-        if (specialName != null)
+        if (!string.IsNullOrEmpty(specialName))
         {
             // Special occasion - preload AND set images
             loadTasks.Add(GetCachedImageAsync(_onPath));
