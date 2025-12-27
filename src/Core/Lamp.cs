@@ -199,6 +199,9 @@ public class LampAnimator
 
     private string GetSpecialOccasionName(DateTime date)
     {
+#if DEBUG
+        return null;
+#else
         if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
             return "birthday";
 
@@ -209,6 +212,8 @@ public class LampAnimator
             return "pumpkin";
 
         return null;
+#endif
+
     }
 
     /// <summary>

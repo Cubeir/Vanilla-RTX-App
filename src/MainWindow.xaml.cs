@@ -38,11 +38,6 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
-- Once everwinter is released
-Make a Panel for it that appears between main and secondary in PackUpdater window
-a slightly larger panel with decorations on the sides
-Make it appear from Dec 15th to Jan 15th every year
-
 - Fix
 https://github.com/Cubeir/Vanilla-RTX-App/issues/2
 Maybe change both emissivity and fog sliders to be in PERCENTAGE
