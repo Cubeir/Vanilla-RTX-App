@@ -100,7 +100,9 @@ Upon launch, the app automatically scans for already-installed Vanilla RTX packs
 - `Fog multiplier`  
   Updates all fog densities by a given factor — e.g., `0.5` to halve, `3.0` to triple, or `0` to effectively disable air fog. If a fog density is already at 0, the multiplier is instead converted into an acceptable literal number between `0.0-1.0`.
   If fog density is at maximum, excess of the multiplier will be used to scatter more light in the atmosphere. Underwater fog is also affected partially (to a much lesser degree to avoid exposing excessive underwater view distance).
-  
+
+> Recommendation: When using a default Vanilla RTX resource pack with BetterRTX installed, because of how differently fog appears compared to unmodded Minecraft RTX, it is recommended to tune fog with a `0.5-0.7` multiplier.
+
   ![fog-panel](https://github.com/user-attachments/assets/a013dc6a-bd46-41f1-b980-0620f0514588)
 
 - `Emissivity multiplier`  
