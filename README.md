@@ -128,7 +128,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   
 - `Lazify surface normals`  
   Uses a modified color texture to make heightmaps/normal maps less refined. The given number determines effectiveness `(0 = no change, 255 = fully lazy)`. For normal maps, not all original detail is lost even at 255, instead it is partially blended and overlayed, the final normal map always retains the same overall intensity as the starting normal map.
-  > Note: Assuming the pack isn't already shoddy, a value of 1-10 can add a subtle layer of organic detailing to the textures.
+  > This option works only if the normal map or heightmap resolution matches the color texture; therefore, it has no impact on Opus variant of Vanilla RTX.
 
 - `Material grain offset`  
   Creates grainy materials by adding a layer of noise, input value determines the maximum allowed deviation.
