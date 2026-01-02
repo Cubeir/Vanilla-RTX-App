@@ -924,7 +924,7 @@
                                 Grid.Row="4"
                                 Spacing="2"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="Rougheness Control"
+                        <TextBlock Text="Roughness Control"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Adjust roughness of materials, higher values result in overall fewer glossy surfaces and metallic metals, negative values strengthen glossy or metallic surfaces, uses a decaying curve to impact values that are relevant." />
