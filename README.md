@@ -36,16 +36,16 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 1. **Install the app from the Microsoft Store, open the app.**  
 2. Click **`Install latest RTX packages`**  
-   - This installs the latest version of official Vanilla RTX resource packs (or updates it for you if an update is available)  
-3. Then click **`Launch Minecraft RTX`**  
+   - This opens a menu which allows you to swiftly install (or update) Vanilla RTX.
+3. After Vanilla RTX's installation finishes, click **`Launch Minecraft RTX`**  
    - Starts the game with ray tracing enabled.
 4. In Minecraft → **Settings → Global Resources → Enable one of the provided Vanilla RTX resource packs.**
 5. Enter your world.
 
 And you're done!  
-Now ray tracing is enabled properly, you have the latest version of [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX), which is kept updated for the latest version of Minecraft, with [bug fixes](https://minecraftrtx.net/enhancements) for as many issues as possible.  
-This guide was for users who don't want any technical breakdown and just want to get RTX working quickly.  
-Below you'll find an up-to-date list of features & documentation of functionalities included in the app.   
+Now ray tracing is enabled properly, you have the latest version of [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX), which is kept up-to-date for the latest version of Minecraft, with [bug fixes](https://minecraftrtx.net/enhancements) for as many issues as possible.  
+This was a bare-bones guide for users who don't want any technical details and just want to get RTX working quickly.  
+Below you'll find the full list of features & documentation of functionalities included in the app if you wish to take things further.  
 
 ## Documentation
 
@@ -62,46 +62,46 @@ This is your detailed guidebook on what each option within the app does.
 
 - `Install latest RTX packages`  
   Opens a new window in which you can download and install, resintall, or update the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
-  Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the unofficial ongoing effort to bring the canonical default appearance of ray-traced Minecraft to life, and the app allows you to become aware of updates and automatically receive the latest updates without having to visit third party sites. 
-  Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options.
+  Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. The app allows you to become aware of updates and automatically receive the latest updates without having to visit third party sites. 
+  Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options expanded on later in this document.
   
   ![vanilla-rtx-app-ui-image](https://github.com/user-attachments/assets/65affd06-3396-4302-aca5-07952d593942)
 
 - `DLSS version swapper`
 Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically catalogued, so you won't lose the original dll when replacing it, allowing you to revert easily. Accepts `.dll` files and `.zip` archives containing any number of dlls. You can also remove dll files from your catalogue that you no longer need. Your currently-installed version of DLSS is always highlighted.
-> This feature is particularly essential to GeForce RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image as Minecraft's is heavily outdated.
+> This feature is particularly essential to GeForce RTX 50 series users, as the current bundled DLSS version in Minecraft no longer works on their GPUs, for others upgrading to the latest version of DLSS gives you sharper image quality and fewer artifacts.
 
 - `BetterRTX manager`
 Displays an up-to-date list of all available BetterRTX presets, which you can click to download and then install. The list is long so once a preset is downloaded it is moved to the top for convenience.
 Upon installing your first ever preset, a Default RTX preset is created at the top allowing you to rollback/uninstall BetterRTX.
 > All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential game crashes, sometimes the files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never install outdated RTX files by accident.
-You will have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update. In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, refresh button won't touch your Default RTX preset, which is cleared strictly after game updates.  
+You will have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update. In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, refresh button won't touch your Default RTX preset, which is only ever cleared after game updates, opening space for a new Default preset which gets made from the latest game files.  
 
 > Note: Given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. The cache remains valid until Minecraft is relocated.
 
 - `Preview (Togglable)`  
   All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
-
+  
 - `Export selection`  
   Exports selected packs. Useful for backing up your snapshot of the pack before making further changes, or to share your tuned version of Vanilla RTX (or another PBR resource pack) with friends! Since the app doesn't come with any quick way to reset PBR resource packs other than Vanilla RTX, it is recommended that you save them using this feature before tuning.
   
 ## Tuner
 
-The Vanilla RTX App includes tools to tune Vanilla RTX or any other RTX or Vibrant Visuals resource pack according to your preferences. Tuning options each use algorithms designed to preserve the PBR textures, making it difficult to derail the pack's intended look while nudging it in your preferred direction. The whole tuning process works together with the app's other features to keep the experience streamlined and reversible.  
+The Vanilla RTX App includes tools to tune Vanilla RTX or any other RTX or Vibrant Visuals resource pack according to your preferences. Tuning options each use algorithms designed to preserve the PBR textures' composition, making it difficult to derail the pack's intended look while nudging it in your preferred direction. The whole tuning process works together with the app's other features to keep the experience streamlined and reversible.  
 
 ![vanilla-rtx-app-pack-selection-menu](https://github.com/user-attachments/assets/0b2dadce-a7ac-4d08-b44c-5c93618bcd02)
 
 Upon launch, the app automatically scans for already-installed Vanilla RTX packs, available packs become selectable for tuning or export, you can also select up to one additional custom pack at a time.
->  Any activity within the app that could result in pack stasus change refreshes the checkboxes automatically (such as toggling Preview or updating/reinstalling packs) if multiple versions of the same Vanilla RTX variant are present, the newest will be picked, you can still select older versions manually from the list of local packs.
+>  Any action within the app that could result in pack stasus change refreshes the checkboxes automatically (such as toggling Preview or updating/reinstalling packs) if multiple versions of the same Vanilla RTX variant are present, the newest will be picked, you can still select older versions manually from the list of local packs.
 
 - `Select a local pack`  
   Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select one pack to be tuned alongside any of the 3 primary Vanilla RTX variants.
   
 - `Fog multiplier`  
   Updates all fog densities by a given factor — e.g., `0.5` to halve, `3.0` to triple, or `0` to effectively disable air fog. If a fog density is already at 0, the multiplier is instead converted into an acceptable literal number between `0.0-1.0`.
-  If fog density is at maximum, excess of the multiplier will be used to scatter more light in the atmosphere. Underwater fog is also affected partially (to a much lesser degree to avoid exposing excessive underwater view distance).
+  If fog density is at maximum, excess of the multiplier will be used to scatter more light in the atmosphere. Underwater fog is also affected partially (to a much lesser degree to avoid messing underwater view distance or the delicate colors in Vanilla RTX).
 
-> Recommendation: When using a default Vanilla RTX resource pack with BetterRTX installed, because of how differently fog appears compared to unmodded Minecraft RTX, it is recommended to tune fog with a `0.5-0.7` multiplier.
+> Recommendation: When using a Vanilla RTX resource pack with BetterRTX installed, because of how differently fog appears compared to unmodded Minecraft RTX, it is recommended to tune fog with a `0.5-0.7` multiplier.
 
   ![fog-panel](https://github.com/user-attachments/assets/a013dc6a-bd46-41f1-b980-0620f0514588)
 
@@ -115,7 +115,7 @@ Upon launch, the app automatically scans for already-installed Vanilla RTX packs
 Adds a small amount of emissivity to all surfaces, effectively increasing ambient light with ray tracing. This will result in a nightvision effect if made too strong.   
 This option can work in conjunction with the Emissivity Multiplier — higher initial multipliers (e.g. 6.0) will amplify the effect.
 Because changes stack on each tuning attempt, only use this once on freshly installed packs, and avoid setting higher emissivity multipliers than `1.0` on further consecutive tuning attempts.  
-> For this reason, `Emissivity Multiplier` is automatically reset to default (1.0) if previous tuning attempt has had this option enabled, making it harder to break packs.
+> For this reason, `Emissivity Multiplier` is automatically reset to default (1.0) if previous tuning attempt has had this option enabled, making it harder to break packs unlesss you're deliberately trying to.
 
 ![ambient-lighting](https://github.com/user-attachments/assets/e44fe5f8-06d0-4d43-978c-fc954f5d83e8)
 
@@ -124,10 +124,10 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 
 - `Roughness control`  
   Increases roughness on materials using a decaying curve function to impact glossy surfaces more than already-rough surfaces, for example, high positive values allow alignment with Vibrant Visuals' PBR artstyle.
-  Metalness is slightly reduced in relation to how much roughness is boosted. For negative values, extremely rough surfaces are instead made less rough, and metalness is amplified in relation to how much roughness boost would've taken place if the given value was a positive.
+  Metalness is slightly reduced in relation to how much roughness is boosted. With negative values, extremely rough surfaces are instead made less rough, and metalness is amplified in relation to how much roughness boost would've taken place if the given value was a positive.
   
 - `Lazify surface normals`  
-  Uses a modified color texture to make heightmaps/normal maps less refined. The given number determines effectiveness `(0 = no change, 255 = fully lazy)`. For normal maps, not all original detail is lost even at 255, instead it is partially blended and overlayed, the final normal map always retains the same overall intensity as the starting normal map.
+  Uses a modified color texture to make heightmaps/normal maps less refined. The given number determines effectiveness `(0 = no change, 255 = fully lazy)`. For normal maps in particular, not all original detail is lost even at 255, instead it is partially blended and overlayed, the final normal map always retains the same overall intensity as the starting normal map.
   > Note: Assuming the resource pack isn't already shoddy, a tame value of 1-10 can be beneficial by adding a subtle layer of organic detail.  
   > This option works only if the normal map or heightmap resolution matches the color texture; therefore, it has no impact on Opus variant of Vanilla RTX.
 
@@ -149,7 +149,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   Resets tuning values and options to their defaults — this does not reset the pack back to its default state, to do that, you must reinstall the packages via the `(Re)install latest RTX packs` or if it is a custom pack, manually reimport the original pack to Minecraft.
 
 - `Wipe / Hard reset (Hold Shift + Reset)`  
-  Wipes all of app's storage, as well as any temporary data, including: cache timestamps (like update check cooldowns), tuning options, cached pack locations or game locations, DLSS and BetterRTX catalogues, PSA messages, and more..., then restarts the app.
+  Wipes all of app's storage, as well as any temporary data, including: cached timestamps (like update check cooldowns), tuning options, cached pack locations or game locations, DLSS and BetterRTX catalogues, PSA messages, and more..., then restarts the app.
   Effectively making it as if the app was just freshly installed on your system, removing all traces in the most comprehensive way.
 
 ## Miscellaneous
@@ -165,20 +165,20 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   Allowing you to keep your personal favorite values and quickly re-tune newer versions without having to remember everything, or come back to the app and swap DLSS again or reinstall your BetterRTX preset quickly in case of a Minecraft update.
 
 - Top-left titlebar buttons in order:
-  - Check Vanilla RTX installation status and update availability: Logs which Vanilla RTX packs you have installed, and if so lists their version, then checks against remote to see if an update is available and lets you know the results.  
-  - Cycle themes: Change between dark, light, or system theme.
-  - Help: Opens this page, which will hold up-to-date information about the app.
+  - Cycle themes: Change between dark, light, or system theme.  
+  - Help: Opens this page, which will hold up-to-date information about the app.  
   - Donate: Opens the developer's Ko-Fi page.  
-    > When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain Vanilla RTX projects thanks to them. Consider becoming a supporter and have your name up there?!
+    > When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain Vanilla RTX projects thanks to them. Consider becoming a supporter and have your name up there?!  
+  - Invitation to the Vanilla RTX Discord server.
 
 - The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will occasionally show up on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc...
 
 ### Known Issues
-- Missing icons on some older Windows installations (non-critical)   
+- Missing icons on some older Windows installations (limitation, non-critical)   
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
 https://aka.ms/SegoeFluentIcons
-- Non-English languages are not supported, there may be issues with other system languages. (non-critical)
-- The app's appearance is not properly accounted for with Windows accessibility features. (non-critical)
+- Non-English languages are not supported, there may be issues with other system languages. (untested, non-critical)
+- The app's appearance is not properly accounted for with Windows accessibility features. (untested, non-critical)
 
 ### Need help?
 
@@ -190,4 +190,4 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Vanilla RTX has turned 5 years old, to celberate Vanilla RTX Opus has been released and can now be installed from the pack update menu!
+Happy new year! Vanilla RTX has also turned 5 years old, to celebrate Vanilla RTX Opus has been released and can now be installed from the pack update menu!
