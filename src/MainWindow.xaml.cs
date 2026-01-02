@@ -39,6 +39,15 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- https://discord.com/channels/721377277480402985/1455281964138369054/1455548708123840604
+Does the app stop working if Minecraft, for whatever the reason, is named weirdly?
+Should the GDKLocator's behavior be updated to: just find the game's exe?
+But then, how do we differentiate preview and release?
+
+Investigate, and after all changes, TEST the whole thing again
+locator, manual locator, all steps, on diff drives, deep in subfolders up to 9, on a busy last drive/worst case
+And lastly the CACHE invalidator, will it continue to work well with it (betterrtx cache invalidator)
+
 - Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
 
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.

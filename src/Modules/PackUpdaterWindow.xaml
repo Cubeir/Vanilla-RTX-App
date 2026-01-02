@@ -497,7 +497,7 @@
                                         Padding="16"
                                         Spacing="10"
                                         VerticalAlignment="Center">
-                                <TextBlock Text="❄️ Merry Christmas! ❄"
+                                <TextBlock Text="Merry Christmas!"
                                            FontSize="20"
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"
@@ -509,7 +509,7 @@
                                            TextWrapping="Wrap"
                                            IsTextScaleFactorEnabled="False" />
                                 <!-- Download Button -->
-                                <HyperlinkButton Content="Download Everwinter"
+                                <HyperlinkButton Content="Get the Extension"
                                                  FontSize="18"
                                                  FontWeight="SemiBold"
                                                  HorizontalAlignment="Center"
@@ -549,7 +549,7 @@
                                                          HorizontalAlignment="Left"
                                                          NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
                                                          IsTextScaleFactorEnabled="False" />
-                                        <TextBlock Text="An extension for the Vanilla RTX resource pack, all blocks are covered in frost! Featuring unyielding cold!"
+                                        <TextBlock Text="An extension of the Vanilla RTX resource pack, everything is covered in frost! Featuring unyielding cold!"
                                                    FontSize="14"
                                                    Foreground="{ThemeResource OverlayTextBrush}"
                                                    Opacity="0.9"
