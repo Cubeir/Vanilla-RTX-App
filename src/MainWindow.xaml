@@ -289,7 +289,7 @@
                             Click="DonateButton_Click"
                             PointerEntered="DonateButton_PointerEntered"
                             PointerExited="DonateButton_PointerExited"
-                            ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it this way!"
+                            ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it that way!"
                             IsTextScaleFactorEnabled="False" />
 
                     <!-- Separator -->

@@ -19,13 +19,20 @@ public static class ProcessorVariables
 }
 
 
-// TODO: Idea was to refactor the processor so it loads all files first, then processes them in multiple passes in memory instead of
+/* TODO: Idea was to refactor the processor so it loads all files first, then processes them in multiple passes in memory instead of
 // constantly loading and saving, but the tuning already happens quite fast (with the files being raw tgas) so it may not be worth
 // the added complexity of defining which textures will be needed to be retrieved and all that
 // Still, if a kind soul out there wants to take a stab at it, be my guest.
 // The issue is that, you'd have to load everything in memory regardless for that to happen
 // Right now the processors, if called, GET WHAT THEY WANT, the mutliple individual passes can be beneficial
+// Here's a refined version of what you want:
+Get ALL texture sets in FULL, i.e. ALL 3 parameters, it returns BUNDLES of texture sets, 2d arrays, each bundle containing all types of textures that were AVAILABLE in the texture set
+Then, for each processor, you pass the BUNDLE, and it processes only what it needs from there.
+Load texture set jsons once. load files once, process in multiple passes, save. bye bye, could be 10-20% faster overall.
 
+the bundles have marks on what types of textures they have, so processors can pick what they need. normally : first is color, second is mer, third is mers, fourh is normal, fifth is heightmap, etc...
+if a texture map isn't present, its spot in the list will be left empty! **A COHERENT abstraction** can be formed and used SAFELY.
+*/
 public class Processor
 {
     private struct PackInfo
@@ -607,7 +614,8 @@ public class Processor
     }
 
 
-
+    // This has some redundant code, like the double-normal checking thingy
+    // We are using the texture set helper proper are we not?!
     private static void ProcessNormalIntensity(PackInfo pack)
     {
         if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))

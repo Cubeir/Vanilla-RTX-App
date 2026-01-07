@@ -39,10 +39,27 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
+watchya doing?
+
+- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
+Give it special treatment same as default preset and avoid changing existing logic
+they appear at the bottom
+expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
+basically, instead of changing the current pipeline, integerate this/build it on top of it
+that way it'll surely work without fucking things up
+
+- Do what you promised:
+https://github.com/Cubeir/Vanilla-RTX/issues/60
+
 - https://discord.com/channels/721377277480402985/1455281964138369054/1455548708123840604
 Does the app stop working if Minecraft, for whatever the reason, is named weirdly?
 Should the GDKLocator's behavior be updated to: just find the game's exe?
 But then, how do we differentiate preview and release?
+
+and
+- https://discord.com/channels/721377277480402985/1453451223599546399
+there were some more reports on Discord
 
 Investigate, and after all changes, TEST the whole thing again
 locator, manual locator, all steps, on diff drives, deep in subfolders up to 9, on a busy last drive/worst case
