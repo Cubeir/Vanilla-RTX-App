@@ -90,9 +90,9 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.10.0" />
-    <PackageReference Include="Magick.NET.Core" Version="14.10.0" />
-    <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.13" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.10.1" />
+    <PackageReference Include="Magick.NET.Core" Version="14.10.1" />
+    <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.14" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
     <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7175" />
