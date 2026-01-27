@@ -49,8 +49,8 @@
 
                 <!-- Light theme -->
                 <ResourceDictionary x:Key="Light">
-                    <Color x:Key="FakeSplitButtonDarkBorderColor">#4AFAFAFA</Color>
-                    <Color x:Key="FakeSplitButtonBrightBorderColor">#FAFEFEFE</Color>
+                    <Color x:Key="FakeSplitButtonDarkBorderColor">#7AFAFAFA</Color>
+                    <Color x:Key="FakeSplitButtonBrightBorderColor">#F5FEFEFE</Color>
                     <Visibility x:Key="LightThemeBackgroundVisibility">Visible</Visibility>
                     <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
                                      Color="#37FFFFFF" />

@@ -173,7 +173,7 @@ public static class Helpers
 
     public static readonly HttpClient SharedHttpClient = new()
     {
-        Timeout = TimeSpan.FromSeconds(59)
+        Timeout = TimeSpan.FromSeconds(30)
     };
     static Helpers()
     {

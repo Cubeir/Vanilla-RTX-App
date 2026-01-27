@@ -39,6 +39,12 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Reduce cache retry timers for PACK UPDATER version retrieval
+it hangs too long trying to get from remote
+the whole deal is that user quickly gets access to the cached version if no internet is available
+this defeats the purpose if they gotta wait 59 or 30 seconds
+Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
+
 - Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
 watchya doing?
 
@@ -394,8 +400,8 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
-            // lazy credits and PSA retriever, credits are saved for donate hover event, PSA is shown when ready
-            _ = CreditsUpdater.GetCredits(false);
+        // lazy credits and PSA retriever, credits are saved for donate hover event, PSA is shown when ready
+        _ = CreditsUpdater.GetCredits(false);
         _ = Task.Run(async () =>
         {
             var psa = await PSAUpdater.GetPSAAsync();
@@ -970,7 +976,7 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            _ = BlinkingLamp(true, true);
+            _ = BlinkingLamp(true, true, 1.0);
         }
 
         void CollectUIControlsState(StringBuilder sb)
