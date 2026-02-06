@@ -188,6 +188,3 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 ### Disclaimer
 
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
-
-### PSA
-Happy new year! Vanilla RTX has also turned 5 years old, to celebrate Vanilla RTX Opus has been released and can now be installed from the pack update menu!
