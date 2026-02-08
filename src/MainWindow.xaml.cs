@@ -161,8 +161,8 @@ public static class TunerVariables
 
     public static string HaveDeployableCache = "";
 
-    // These variables are saved and loaded, they persist
-    public static class Persistent
+
+    public static class Persistent // These are saved and reloaded on app launch
     {
         public static bool IsTargetingPreview = Defaults.IsTargetingPreview;
 
@@ -180,8 +180,7 @@ public static class TunerVariables
         public static string AppThemeMode = "Dark";
     }
 
-    // Defaults are backed up to be used as a compass by other classes
-    public static class Defaults
+    public static class Defaults // These are backed up to be used as a compass by other classes
     {
         public const bool IsTargetingPreview = false;
         public const double FogMultiplier = 1.0;
