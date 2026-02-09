@@ -188,3 +188,6 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 ### Disclaimer
 
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
+
+### PSA
+Just saying hi!
