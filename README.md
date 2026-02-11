@@ -190,4 +190,4 @@ You can also alert @cubeir on [Minecraft RTX Community Discord](https://discord.
 Vanilla RTX App (formely known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
 
 ### PSA
-Just saying hi!
+If your game crashes after installing a BetterRTX preset, it's because BetterRTX API hasn't been updated or your game is outdated, go back to your default preset or update the game, hit the refresh button in the top left of the window to clear API's preset cache, so you can get the fresh version that works for the latest Minecraft update!
