@@ -39,6 +39,10 @@ namespace Vanilla_RTX_App;
 /*
 ### GENERAL TODO & IDEAS ###
 
+- Tuning is very slow on certain AMD CPUs, there were some reports on Disc
+
+- We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
+
 - Reduce cache retry timers for PACK UPDATER version retrieval
 it hangs too long trying to get from remote
 the whole deal is that user quickly gets access to the cached version if no internet is available

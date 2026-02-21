@@ -34,7 +34,7 @@
                 <ThemeShadow />
             </Border.Shadow>
 
-            <!-- Elevation for shadow to work -->
+            <!-- Elevation for shadow to work, ignore the VS2026 error -->
             <Border.Translation>0,0,64</Border.Translation>
 
             <StackPanel Spacing="16">
