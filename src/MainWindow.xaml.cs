@@ -37,7 +37,25 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 namespace Vanilla_RTX_App;
 
 /*
-### GENERAL TODO & IDEAS ###
+### BACKLOG ###
+
+- Fix secondary windows' shadows
+the container/host is too small! it is cutting off at the edges
+ESPECIALLY visible in light theme
+
+- Start creating and developnig on a Beta branch on GitHub
+And in app, leave an option to get the zipball from that branch instead
+use that branch to test releases more easily.
+
+Vanilla RTX github repo must have a PREVIEW branch
+Preview branch is where the pack is developed, main pulls its changes upon releases -- u can push more rapidly this way without affecting release!
+makes testing easy
+
+Vanilla RTX App uses Preview branch URLs if toggle preview is ON
+This could be implemented very straightforwardedly
+Then,
+expose ALL URLs and hardcoded shit like that to a json file to make the app usabale in the event of your death
+
 
 - Tuning is very slow on certain AMD CPUs, there were some reports on Disc
 
