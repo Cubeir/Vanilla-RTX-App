@@ -33,9 +33,9 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.10.2" />
-    <PackageReference Include="Magick.NET.Core" Version="14.10.2" />
-    <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.15" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.10.3" />
+    <PackageReference Include="Magick.NET.Core" Version="14.10.3" />
+    <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.16" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
     <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.3" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
