@@ -39,6 +39,11 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- A modified Minecraft RTX sky.png and water normal map/lookup tables can be dramatically more beautiful
+A one-click solution, similar to BetterRTX manager, to swap these with better defaults would be great.
+just log the idea for later, for now keep using your own script to replace it with game updates
+but maybe, if other people like it too, put those in the app
+
 - Fix secondary windows' shadows
 the container/host is too small! it is cutting off at the edges
 ESPECIALLY visible in light theme
