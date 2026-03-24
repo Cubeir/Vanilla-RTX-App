@@ -39,11 +39,6 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
-- A modified Minecraft RTX sky.png and water normal map/lookup tables can be dramatically more beautiful
-A one-click solution, similar to BetterRTX manager, to swap these with better defaults would be great.
-just log the idea for later, for now keep using your own script to replace it with game updates
-but maybe, if other people like it too, put those in the app
-
 - Fix secondary windows' shadows
 the container/host is too small! it is cutting off at the edges
 ESPECIALLY visible in light theme
@@ -60,7 +55,6 @@ Vanilla RTX App uses Preview branch URLs if toggle preview is ON
 This could be implemented very straightforwardedly
 Then,
 expose ALL URLs and hardcoded shit like that to a json file to make the app usabale in the event of your death
-
 
 - Tuning is very slow on certain AMD CPUs, there were some reports on Disc
 
@@ -130,6 +124,27 @@ the URLs the app sends requests to + the hardcoded Minecraft paths
 Additionally, while going through params, 
 Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
+
+- Large feature update idea:
+2 more buttons are added in the 3x2 grid
+Install Vanilla RTX - Extra Add-Ons
+Default RTX mods - BetterRTX manager
+two of these are new, this is the layout
+
+Default RTX modifier opens a page that allows user to modularly install modifications to minecraft
+uses hash of files to know if it is installed or not, they're basically YOUR ideal modifications
+but can make default mcrtx look a whole lot better
+the window has before/after, and install bottons, neatly... listed one after another
+
+addons page... details are unclear
+but it gives a way for user to install addons? maybe?
+
+
+- A modified Minecraft RTX sky.png and water normal map/lookup tables can be dramatically more beautiful
+A one-click solution, similar to BetterRTX manager, to swap these with better defaults would be great.
+just log the idea for later, for now keep using your own script to replace it with game updates
+but maybe, if other people like it too, put those in the app
+
 
 - Do the TODOs scattered in the code
 
