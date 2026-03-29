@@ -1131,18 +1131,18 @@
                         </StackPanel>
                     </Button>
 
-                    <!--  NEW BUTTON -->
-                    <Button x:Name="BetterRTXPresetManagerButton_COPYTEMP"
+                    <!--  Default RTX Modifier Window -->
+                    <Button x:Name="DefaultRTXModifiersButton"
                             Grid.Row="0"
                             Grid.Column="2"
-                            Click="BetterRTXPresetManagerButton_Click"
+                            Click="DefaultRTXModifiersButton_Click"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             CornerRadius="0, 6, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Temp">
+                            ToolTipService.ToolTip="Click to learn more, this a simpler, more reliable alternative to BetterRTX that works across all game versions by modifying RTX's default color look up tables.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE794;"

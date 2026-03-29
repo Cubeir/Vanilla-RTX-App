@@ -34,6 +34,10 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- pack version logger should keep logging the versions as long as it is NOT the latest message
+ur current method causes to avoid logging if preview and release versions are the same.
+u see, just whether what was logged was the latest status message or not should be the deciding factor...!!
+
 - Fix secondary windows' shadows
 the container/host is too small! it is cutting off at the edges
 ESPECIALLY visible in light theme
@@ -1882,5 +1886,39 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void DefaultRTXModifiersButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleControls(this, false, true, []);
+
+        var rtxWindow = new Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        rtxWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        rtxWindow.AppWindow.Move(mainAppWindow.Position);
+
+        rtxWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true, true, []);
+
+            if (rtxWindow.OperationSuccessful)
+            {
+                Log(rtxWindow.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(rtxWindow.StatusMessage))
+            {
+                Log(rtxWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        rtxWindow.Activate();
+    }
 
 }

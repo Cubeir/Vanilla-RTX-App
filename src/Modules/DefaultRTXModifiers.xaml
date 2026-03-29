@@ -1,0 +1,190 @@
+<Window x:Class="Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Vanilla_RTX_App.RTXDefaults"
+        Title="Default RTX Modifiers">
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+    <Grid>
+        <Border x:Name="LightThemeOverlay"
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
+                Canvas.ZIndex="-1">
+            <Border.Background>
+                <SolidColorBrush Color="#17373737" />
+            </Border.Background>
+        </Border>
+
+        <!-- Loading Screen -->
+        <Grid x:Name="LoadingPanel"
+              Visibility="Visible"
+              Background="Transparent">
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="20">
+                <ProgressRing IsActive="True"
+                              Width="100"
+                              Height="100" />
+                <Button x:Name="ManualSelectionButton"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Center"
+                        Padding="20,12,20,12"
+                        Click="ManualSelectionButton_Click">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="System-wide scan is in progress"
+                                   FontSize="14"
+                                   HorizontalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                        <TextBlock x:Name="ManualSelectionText"
+                                   Text="If this is taking too long, click to manually locate the game folder."
+                                   FontSize="12"
+                                   Opacity="0.75"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="400"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main UI -->
+        <Grid x:Name="MainPanel"
+              Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <!-- Title bar -->
+                <RowDefinition Height="35" />
+                <!-- Content -->
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <Grid Grid.Row="0"
+                  x:Name="TitleBarArea"
+                  Background="Transparent">
+                <Grid HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+                    <TextBlock x:Name="WindowTitle"
+                               Text="Default RTX Modifiers"
+                               Margin="0,6,0,5"
+                               VerticalAlignment="Center"
+                               IsTextScaleFactorEnabled="False"
+                               IsHitTestVisible="False" />
+                </Grid>
+            </Grid>
+
+            <!-- Content rows -->
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <!-- Row 1: Image LEFT, text RIGHT -->
+                    <RowDefinition Height="*" />
+                    <!-- Row 2: text LEFT, Image RIGHT -->
+                    <RowDefinition Height="*" />
+                    <!-- Row 3: Install button strip -->
+                    <RowDefinition Height="80" />
+                </Grid.RowDefinitions>
+
+                <!-- ═══════════════════════════════════════════════════════════
+                     ROW 1 — Image on the LEFT, description text on the RIGHT
+                     ═══════════════════════════════════════════════════════════ -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <!-- Image takes the larger share -->
+                        <ColumnDefinition Width="3*" />
+                        <!-- Text -->
+                        <ColumnDefinition Width="2*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Image — clips cleanly to its cell, no border/panel -->
+                    <Image x:Name="Card1Image"
+                           Grid.Column="0"
+                           Stretch="UniformToFill"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Stretch" />
+
+                    <!-- Text block — left-aligned inside its column -->
+                    <StackPanel Grid.Column="1"
+                                Padding="32,28,28,28"
+                                VerticalAlignment="Center"
+                                Spacing="10">
+                        <TextBlock x:Name="Card1Title"
+                                   Text="Placeholder Title 1"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   TextWrapping="Wrap"
+                                   IsTextScaleFactorEnabled="False" />
+                        <TextBlock x:Name="Card1Description"
+                                   Text="Placeholder description for the first visual. Replace with your actual explanation."
+                                   FontSize="13"
+                                   Opacity="0.75"
+                                   TextWrapping="Wrap"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- ═══════════════════════════════════════════════════════════
+                     ROW 2 — description text on the LEFT, Image on the RIGHT
+                     ═══════════════════════════════════════════════════════════ -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <!-- Text -->
+                        <ColumnDefinition Width="2*" />
+                        <!-- Image takes the larger share -->
+                        <ColumnDefinition Width="3*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Text block -->
+                    <StackPanel Grid.Column="0"
+                                Padding="28,28,32,28"
+                                VerticalAlignment="Center"
+                                Spacing="10">
+                        <!-- Slightly larger title for the second card as requested -->
+                        <TextBlock x:Name="Card2Title"
+                                   Text="Default RTX Modifiers"
+                                   FontWeight="SemiBold"
+                                   FontSize="18"
+                                   TextWrapping="Wrap"
+                                   IsTextScaleFactorEnabled="False" />
+                        <TextBlock x:Name="Card2Description"
+                                   Text="Placeholder description for the second visual. Replace with your actual explanation."
+                                   FontSize="13"
+                                   Opacity="0.75"
+                                   TextWrapping="Wrap"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
+
+                    <!-- Image -->
+                    <Image x:Name="Card2Image"
+                           Grid.Column="1"
+                           Stretch="UniformToFill"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Stretch" />
+                </Grid>
+
+                <!-- ═══════════════════════════════════════════════════════════
+                     ROW 3 — Install / Revert button
+                     ═══════════════════════════════════════════════════════════ -->
+                <Grid Grid.Row="2"
+                      Padding="20,12,20,16">
+                    <Button x:Name="InstallButton"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="8"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            IsTextScaleFactorEnabled="False"
+                            Click="InstallButton_Click">
+                        <TextBlock x:Name="InstallButtonText"
+                                   Text="Install"
+                                   IsTextScaleFactorEnabled="False" />
+                    </Button>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
