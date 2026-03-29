@@ -1034,6 +1034,8 @@
     <Description>The Official Vanilla RTX App</Description>
     <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
     <DefaultLanguage>en-US</DefaultLanguage>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <DebugType>none</DebugType>

@@ -491,13 +491,13 @@
                     <!-- Spacing -->
                     <RowDefinition Height="16" />
                     <!-- Sliders Grid -->
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                     <!-- Spacing -->
-                    <RowDefinition Height="16" />
+                    <RowDefinition Height="2" />
                     <!-- Tune & Export grid -->
                     <RowDefinition Height="Auto" />
                     <!-- Spacing -->
-                    <RowDefinition Height="16" />
+                    <RowDefinition Height="*" />
                     <!-- 3x2 Button Grid -->
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
@@ -957,12 +957,10 @@
                 </Grid>
                 <!-- =============== End of Sliders Grid =============== -->
 
-
-
                 <!-- Tune and Export button block -->
                 <Border x:Name="TuneAndExportShadowHost"
                         Grid.Row="4"
-                        Margin="8,0,16,0"
+                        Margin="16,0,24,0"
                         Height="45"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Top"
@@ -975,7 +973,7 @@
                 </Border>
 
                 <Grid Grid.Row="4"
-                      Margin="8,0,16,0"
+                      Margin="16,0,24,0"
                       Height="45"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Top"
@@ -984,9 +982,9 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.667*" />
+                        <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Tune Button (Top-Left) -->
@@ -1030,7 +1028,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Export"
+                            <TextBlock Text="Export selection"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -1066,7 +1064,6 @@
                     </Grid>
 
                 </Grid>
-
 
                 <!-- Bottom Buttons Grid 3x2 with shadow -->
                 <Border x:Name="BottomButtonsShadowHost"
@@ -1181,7 +1178,7 @@
                                       VerticalAlignment="Center"
                                       x:Name="UpdateVanillaRTXGlyph_COPYTEMP"
                                       x:FieldModifier="public" />
-                            <TextBlock Text="Add-Ons"
+                            <TextBlock Text="Add-ons and Extras"
                                        VerticalAlignment="Center"
                                        x:Name="UpdateVanillaRTXButtonText_COPYTEMP"
                                        x:FieldModifier="public" />

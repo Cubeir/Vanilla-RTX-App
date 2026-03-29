@@ -4,16 +4,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -21,7 +18,6 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
@@ -29,7 +25,6 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -414,7 +409,7 @@ public sealed partial class MainWindow : Window
         CycleThemeButton_Click(null, null);
 
 
-        // Set reinstall latest packs button visuals based on cache status
+        // Set reinstall latest packs button visuals based on cache status (TODO: COULD maybe have a third "Update to latest" stat, but it requires checking remote on startup)
         if (_updater.HasDeployableCache())
         {
             UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
