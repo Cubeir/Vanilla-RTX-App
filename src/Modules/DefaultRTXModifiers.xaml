@@ -101,25 +101,25 @@
 
                     <!-- Image — clips cleanly to its cell, no border/panel -->
                     <Image x:Name="Card1Image"
-                           Grid.Column="0"
+                           Grid.Column="1"
                            Stretch="UniformToFill"
                            HorizontalAlignment="Stretch"
                            VerticalAlignment="Stretch" />
 
                     <!-- Text block — left-aligned inside its column -->
-                    <StackPanel Grid.Column="1"
+                    <StackPanel Grid.Column="0"
                                 Padding="32,28,28,28"
                                 VerticalAlignment="Center"
                                 Spacing="10">
                         <TextBlock x:Name="Card1Title"
-                                   Text="Placeholder Title 1"
+                                   Text="Improved RTX Luts"
                                    FontWeight="SemiBold"
-                                   FontSize="15"
+                                   FontSize="16"
                                    TextWrapping="Wrap"
                                    IsTextScaleFactorEnabled="False" />
                         <TextBlock x:Name="Card1Description"
-                                   Text="Placeholder description for the first visual. Replace with your actual explanation."
-                                   FontSize="13"
+                                   Text="This is a simpler, more reliable way of improving Minecraft RTX's visuals through LUTs (look-up-tables)"
+                                   FontSize="14"
                                    Opacity="0.75"
                                    TextWrapping="Wrap"
                                    IsTextScaleFactorEnabled="False" />
@@ -138,20 +138,20 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Text block -->
-                    <StackPanel Grid.Column="0"
+                    <StackPanel Grid.Column="1"
                                 Padding="28,28,32,28"
                                 VerticalAlignment="Center"
                                 Spacing="10">
                         <!-- Slightly larger title for the second card as requested -->
                         <TextBlock x:Name="Card2Title"
-                                   Text="Default RTX Modifiers"
+                                   Text="Always accessible, easily reversible"
                                    FontWeight="SemiBold"
-                                   FontSize="18"
+                                   FontSize="16"
                                    TextWrapping="Wrap"
                                    IsTextScaleFactorEnabled="False" />
                         <TextBlock x:Name="Card2Description"
-                                   Text="Placeholder description for the second visual. Replace with your actual explanation."
-                                   FontSize="13"
+                                   Text="Unlike BetterRTX, these modifications won't require you to keep up-to-date and will continue to work without having to check whether BetterRTX is updated for the latest version of the game or not. These modifications are not compatible with BetterRTX. Click the install button below to install, click again to revert."
+                                   FontSize="14"
                                    Opacity="0.75"
                                    TextWrapping="Wrap"
                                    IsTextScaleFactorEnabled="False" />
@@ -159,7 +159,7 @@
 
                     <!-- Image -->
                     <Image x:Name="Card2Image"
-                           Grid.Column="1"
+                           Grid.Column="0"
                            Stretch="UniformToFill"
                            HorizontalAlignment="Stretch"
                            VerticalAlignment="Stretch" />

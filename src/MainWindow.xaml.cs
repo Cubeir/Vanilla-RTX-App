@@ -34,6 +34,20 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- Come up with Previewer art pieces for the new Lut Modifier and Add-Ons windows,
+Finish their implementation at least for now:
+
+- Move the xaml of addons and extensions to the new addons menu for now, that's all it does, for now, for the release of 3.0
+Put a warning sign thingy say automated updates will come later, consider help supporting development to see more new exciting features arrive faster!
+copy pasted the warning panel same as current install packs menu...
+
+Keep the warning sign in install packs menu, change its text to something... informative
+Better yet, make it PULL a PSA and display it from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
+this is a really cool idea, maybe other windows could use it too... general psas are in logs, feature-specific PSAs THAT MIGHT need it in their windows!
+
+make the panels in install packs menu taller as a result
+
+
 - pack version logger should keep logging the versions as long as it is NOT the latest message
 ur current method causes to avoid logging if preview and release versions are the same.
 u see, just whether what was logged was the latest status message or not should be the deciding factor...!!
@@ -123,26 +137,6 @@ the URLs the app sends requests to + the hardcoded Minecraft paths
 Additionally, while going through params, 
 Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
-
-- Large feature update idea:
-2 more buttons are added in the 3x2 grid
-Install Vanilla RTX - Extra Add-Ons
-Default RTX mods - BetterRTX manager
-two of these are new, this is the layout
-
-Default RTX modifier opens a page that allows user to modularly install modifications to minecraft
-uses hash of files to know if it is installed or not, they're basically YOUR ideal modifications
-but can make default mcrtx look a whole lot better
-the window has before/after, and install bottons, neatly... listed one after another
-
-addons page... details are unclear
-but it gives a way for user to install addons? maybe?
-
-
-- A modified Minecraft RTX sky.png and water normal map/lookup tables can be dramatically more beautiful
-A one-click solution, similar to BetterRTX manager, to swap these with better defaults would be great.
-just log the idea for later, for now keep using your own script to replace it with game updates
-but maybe, if other people like it too, put those in the app
 
 
 - Do the TODOs scattered in the code

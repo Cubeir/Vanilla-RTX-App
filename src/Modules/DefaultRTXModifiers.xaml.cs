@@ -22,6 +22,13 @@ namespace Vanilla_RTX_App.RTXDefaults;
 // Or better yet. come up with a Preset system, have several lut presets made, matrix, grey, ultra bright, etc... let users swap between them
 // This is actually a better idea than anything, include the default lut, have a few default lut presets
 
+// Like dlss swapper, mends the game automatically IF our defaults cache is corrupt AND the game files are corrupt too, it will treat the app's lut as the default and mend the game with it
+// Maybe the logic isn't entirely sound, think about it...
+
+// Yup, definitely add a preset system.
+// The images can change, the texts remain the same across presets
+// It'll be relatively simple to do, claude can do.
+
 public sealed partial class DefaultRTXModifiersWindow : Window
 {
     private const string FnLut = "look_up_tables.png";
