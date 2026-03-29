@@ -235,10 +235,10 @@ public static class TunerVariables
     }
 
     // Set Window size default for all windows
-    public const int WindowSizeX = 1105;
-    public const int WindowSizeY = 555;
-    public const int WindowMinSizeX = 970;
-    public const int WindowMinSizeY = 555;
+    public const int WindowSizeX = 1115;
+    public const int WindowSizeY = 615;
+    public const int WindowMinSizeX = 950;
+    public const int WindowMinSizeY = 615;
 
     // Saves persistent variables
     public static void SaveSettings()
@@ -289,8 +289,8 @@ public sealed partial class MainWindow : Window
 
     public readonly PackUpdater _updater = new();
 
-    private LampAnimator _titlebarLampAnimator;
-    private LampAnimator _splashLampAnimator;
+    private LampAnimator? _titlebarLampAnimator;
+    private LampAnimator? _splashLampAnimator;
     private async void InitializeLampAnimators()
     {
         // Titlebar lamp
@@ -748,17 +748,8 @@ public sealed partial class MainWindow : Window
 
         // Right column shadows
         PackOptionsShadow.Receivers.Add(RightShadowReceiver);
-        SlidersGridShadow.Receivers.Add(RightShadowReceiver);
         ClearResetShadow.Receivers.Add(RightShadowReceiver);
         BottomButtonsShadow.Receivers.Add(RightShadowReceiver);
-
-        // Individual textbox shadows
-        FogMultiplierBoxShadow.Receivers.Add(RightShadowReceiver);
-        EmissivityMultiplierBoxShadow.Receivers.Add(RightShadowReceiver);
-        NormalIntensityBoxShadow.Receivers.Add(RightShadowReceiver);
-        MaterialNoiseBoxShadow.Receivers.Add(RightShadowReceiver);
-        RoughenUpBoxShadow.Receivers.Add(RightShadowReceiver);
-        LazifyNormalsBoxShadow.Receivers.Add(RightShadowReceiver);
     }
 
 
@@ -1203,7 +1194,7 @@ public sealed partial class MainWindow : Window
     // -------
 
 
-    private string _previousStatusMessage;
+    private string? _previousStatusMessage;
     public async Task LocatePacksButton_Click(bool ShowLogs = false)
     {
         _ = BlinkingLamp(true, true, 1.0);

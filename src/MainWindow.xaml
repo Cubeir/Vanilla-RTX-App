@@ -15,7 +15,7 @@
     <Grid x:Name="MainGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
-            <ColumnDefinition Width="3.8*" />
+            <ColumnDefinition Width="3.75*" />
         </Grid.ColumnDefinitions>
 
         <!-- Splash Blocker -->
@@ -203,15 +203,13 @@
                     VerticalAlignment="Top"
                     Height="34"
                     Width="Auto"
-                    Translation="0,0,0"
-                    CornerRadius="4">
+                    Translation="0,0,0">
                 <Border.Shadow>
                     <ThemeShadow x:Name="CommandBarShadow" />
                 </Border.Shadow>
                 <Grid Background="Transparent"
                       BorderBrush="Transparent"
-                      BorderThickness="1"
-                      CornerRadius="4">
+                      BorderThickness="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <!-- Button -->
@@ -322,7 +320,7 @@
                     VerticalAlignment="Top"
                     Height="40"
                     Translation="0,0,32"
-                    CornerRadius="4">
+                    CornerRadius="6">
                 <Border.Shadow>
                     <ThemeShadow x:Name="BrowsePacksShadow" />
                 </Border.Shadow>
@@ -340,7 +338,7 @@
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             FontWeight="SemiBold"
-                            CornerRadius="4,0,0,4"
+                            CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Select a pack from your local PBR-enabled resource packs for tuning or export. Hold shift and press to see detailed status of Vanilla RTX resource pack installations">
@@ -362,7 +360,7 @@
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch"
                                   FontWeight="SemiBold"
-                                  CornerRadius="0,4,4,0"
+                                  CornerRadius="0,6,6,0"
                                   BorderThickness="0"
                                   Checked="TargetPreviewToggle_Checked"
                                   Unchecked="TargetPreviewToggle_Unchecked"
@@ -488,16 +486,20 @@
             <!-- Main layout grid with defined rows -->
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <!-- Pack Selection -->
-                    <RowDefinition Height="16" />
-                    <!-- Spacing -->
-                    <RowDefinition Height="*" />
-                    <!-- Sliders Grid (stretches) -->
-                    <RowDefinition Height="16" />
-                    <!-- Spacing -->
                     <RowDefinition Height="Auto" />
+                    <!-- Spacing -->
+                    <RowDefinition Height="16" />
+                    <!-- Sliders Grid -->
+                    <RowDefinition Height="*" />
+                    <!-- Spacing -->
+                    <RowDefinition Height="16" />
+                    <!-- Tune & Export grid -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Spacing -->
+                    <RowDefinition Height="16" />
                     <!-- 3x2 Button Grid -->
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- Pack Selection Options with shadow -->
@@ -509,7 +511,7 @@
                         VerticalAlignment="Top"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderThickness="0"
-                        CornerRadius="5"
+                        CornerRadius="6"
                         Translation="0,0,32"
                         ToolTipService.ToolTip="Select from the list of installed Vanilla RTX resource packs for tuning or export.">
                     <Border.Shadow>
@@ -578,18 +580,6 @@
                 </Border>
 
                 <!-- =============== Sliders Grid =============== -->
-                <Border x:Name="SlidersGridShadowHost"
-                        Grid.Row="2"
-                        Margin="16,0,24,0"
-                        Translation="0,0,0"
-                        BorderBrush="Transparent"
-                        BorderThickness="1"
-                        CornerRadius="6">
-                    <Border.Shadow>
-                        <ThemeShadow x:Name="SlidersGridShadow" />
-                    </Border.Shadow>
-                </Border>
-
                 <Grid x:Name="SlidersGrid"
                       Grid.Row="2"
                       Margin="16,0,24,0"
@@ -622,7 +612,7 @@
                             Height="40"
                             VerticalAlignment="Bottom"
                             Translation="0,0,32"
-                            CornerRadius="4">
+                            CornerRadius="6">
                         <Border.Shadow>
                             <ThemeShadow x:Name="ClearResetShadow" />
                         </Border.Shadow>
@@ -645,7 +635,7 @@
                                 Click="ClearButton_Click"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
-                                CornerRadius="4,0,0,4"
+                                CornerRadius="6,0,0,6"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Clears">
@@ -668,7 +658,7 @@
                                 FontWeight="SemiBold"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
-                                CornerRadius="0,4,4,0"
+                                CornerRadius="0,6,6,0"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Resets tuning options back to their default values. Hold Shift and press to perform a hard reset of app's data.">
@@ -727,14 +717,6 @@
                                     Value="1"
                                     ValueChanged="FogMultiplierSlider_ValueChanged" />
 
-                            <Border Grid.Column="2"
-                                    Translation="0,0,0"
-                                    CornerRadius="4">
-                                <Border.Shadow>
-                                    <ThemeShadow x:Name="FogMultiplierBoxShadow" />
-                                </Border.Shadow>
-                            </Border>
-
                             <TextBox x:Name="FogMultiplierBox"
                                      Grid.Column="2"
                                      Width="60"
@@ -770,14 +752,6 @@
                                     SmallChange="0.1"
                                     Value="1"
                                     ValueChanged="EmissivityMultiplierSlider_ValueChanged" />
-
-                            <Border Grid.Column="2"
-                                    Translation="0,0,0"
-                                    CornerRadius="4">
-                                <Border.Shadow>
-                                    <ThemeShadow x:Name="EmissivityMultiplierBoxShadow" />
-                                </Border.Shadow>
-                            </Border>
 
                             <TextBox x:Name="EmissivityMultiplierBox"
                                      Grid.Column="2"
@@ -853,14 +827,6 @@
                                     Value="100"
                                     ValueChanged="NormalIntensity_ValueChanged" />
 
-                            <Border Grid.Column="2"
-                                    Translation="0,0,0"
-                                    CornerRadius="4">
-                                <Border.Shadow>
-                                    <ThemeShadow x:Name="NormalIntensityBoxShadow" />
-                                </Border.Shadow>
-                            </Border>
-
                             <TextBox x:Name="NormalIntensityBox"
                                      Grid.Column="2"
                                      Width="60"
@@ -899,14 +865,6 @@
                                     SmallChange="1"
                                     Value="0"
                                     ValueChanged="MaterialNoise_ValueChanged" />
-
-                            <Border Grid.Column="2"
-                                    Translation="0,0,0"
-                                    CornerRadius="4">
-                                <Border.Shadow>
-                                    <ThemeShadow x:Name="MaterialNoiseBoxShadow" />
-                                </Border.Shadow>
-                            </Border>
 
                             <TextBox x:Name="MaterialNoiseBox"
                                      Grid.Column="2"
@@ -948,14 +906,6 @@
                                     Value="0"
                                     ValueChanged="RoughenUp_ValueChanged" />
 
-                            <Border Grid.Column="2"
-                                    Translation="0,0,0"
-                                    CornerRadius="4">
-                                <Border.Shadow>
-                                    <ThemeShadow x:Name="RoughenUpBoxShadow" />
-                                </Border.Shadow>
-                            </Border>
-
                             <TextBox x:Name="RoughenUpBox"
                                      Grid.Column="2"
                                      Width="60"
@@ -995,14 +945,6 @@
                                     Value="0"
                                     ValueChanged="LazifyNormals_ValueChanged" />
 
-                            <Border Grid.Column="2"
-                                    Translation="0,0,0"
-                                    CornerRadius="4">
-                                <Border.Shadow>
-                                    <ThemeShadow x:Name="LazifyNormalsBoxShadow" />
-                                </Border.Shadow>
-                            </Border>
-
                             <TextBox x:Name="LazifyNormalsBox"
                                      Grid.Column="2"
                                      Width="60"
@@ -1017,43 +959,35 @@
 
 
 
-                <!-- Bottom Buttons Grid 3x2 with shadow -->
-                <Border x:Name="BottomButtonsShadowHost"
+                <!-- Tune and Export button block -->
+                <Border x:Name="TuneAndExportShadowHost"
                         Grid.Row="4"
-                        Margin="8,0,16,16"
-                        Height="136"
+                        Margin="8,0,16,0"
+                        Height="45"
                         HorizontalAlignment="Stretch"
-                        VerticalAlignment="Bottom"
-                        Translation="0,0,48"
+                        VerticalAlignment="Top"
+                        Translation="0,0,32"
                         CornerRadius="6"
                         BorderThickness="0">
                     <Border.Shadow>
-                        <ThemeShadow x:Name="BottomButtonsShadow" />
+                        <ThemeShadow x:Name="TuneAndExportShadow" />
                     </Border.Shadow>
                 </Border>
 
                 <Grid Grid.Row="4"
-                      Margin="8,0,16,16"
+                      Margin="8,0,16,0"
+                      Height="45"
                       HorizontalAlignment="Stretch"
-                      VerticalAlignment="Bottom"
-                      Height="136"
+                      VerticalAlignment="Top"
                       BorderThickness="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="6" />
-                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="1.667*" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-
-                    <!-- ============================================ -->
-                    <!-- ROW 1: Tune Selection & Export Selection -->
-                    <!-- ============================================ -->
 
                     <!-- Tune Button (Top-Left) -->
                     <Button x:Name="TuneSelectionButton"
@@ -1063,7 +997,7 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="6,0,0,0"
+                            CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Begins the tuning process based on selected packs and given parameters. Make sure Minecraft is closed while tuning.">
@@ -1086,7 +1020,7 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0,6,0,0"
+                            CornerRadius="0,6,6,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Exports selected packages.">
@@ -1096,24 +1030,92 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Export selection"
+                            <TextBlock Text="Export"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 2: Install Latest RTX & DLSS Switcher -->
+                    <!-- OVERLAY BORDERS FOR VISUAL SPLITS -->
+                    <!-- ============================================ -->
+
+                    <!-- LEFT VERTICAL DIVIDER (dark line on right edge of left column) -->
+                    <Grid Grid.Row="0"
+                          Grid.Column="0"
+                          Grid.RowSpan="5"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                    <!-- RIGHT VERTICAL DIVIDER (bright line on left edge of right column) -->
+                    <Grid Grid.Row="0"
+                          Grid.Column="2"
+                          Grid.RowSpan="5"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                </Grid>
+
+
+                <!-- Bottom Buttons Grid 3x2 with shadow -->
+                <Border x:Name="BottomButtonsShadowHost"
+                        Grid.Row="6"
+                        Margin="8,0,16,16"
+                        Height="136"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Bottom"
+                        Translation="0,0,34"
+                        CornerRadius="6"
+                        BorderThickness="0">
+                    <Border.Shadow>
+                        <ThemeShadow x:Name="BottomButtonsShadow" />
+                    </Border.Shadow>
+                </Border>
+
+                <Grid Grid.Row="6"
+                      Margin="8,0,16,16"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Bottom"
+                      Height="136"
+                      BorderThickness="0">
+                    <Grid.RowDefinitions>
+                        <!-- First is button row, second is the divider space between them, so on so forth -->
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ============================================ -->
+                    <!-- ROW 1: Install Latest RTX & BRTX manager -->
                     <!-- ============================================ -->
 
                     <!-- Install Latest RTX Button (Middle-Left) -->
                     <Button x:Name="UpdateVanillaRTXButton"
                             Click="UpdateVanillaRTXButton_Click"
-                            Grid.Row="2"
+                            Grid.Row="0"
                             Grid.Column="0"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0"
+                            CornerRadius="6, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="See installation information and update availability, install, update, or simply reinstall each Vanilla RTX resource pack.">
@@ -1132,6 +1134,60 @@
                         </StackPanel>
                     </Button>
 
+                    <!--  NEW BUTTON -->
+                    <Button x:Name="BetterRTXPresetManagerButton_COPYTEMP"
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            Click="BetterRTXPresetManagerButton_Click"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0, 6, 0 ,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Temp">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE794;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Default RTX modifiers"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ============================================ -->
+                    <!-- ROW 2: Default RTX Modifier and Add-Ons      -->
+                    <!-- ============================================ -->
+
+                    <!-- NEW BUTTON -->
+                    <Button x:Name="UpdateVanillaRTXButton_COPYTEMP"
+                            Click="UpdateVanillaRTXButton_Click"
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0, 0, 0 ,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="TEMP">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xEFDA;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center"
+                                      x:Name="UpdateVanillaRTXGlyph_COPYTEMP"
+                                      x:FieldModifier="public" />
+                            <TextBlock Text="Add-Ons"
+                                       VerticalAlignment="Center"
+                                       x:Name="UpdateVanillaRTXButtonText_COPYTEMP"
+                                       x:FieldModifier="public" />
+                        </StackPanel>
+                    </Button>
+
                     <!--  Better RTX Manager (Middle-Right) -->
                     <Button x:Name="BetterRTXPresetManagerButton"
                             Grid.Row="2"
@@ -1140,13 +1196,13 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0"
+                            CornerRadius="0, 0, 0, 0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Manage BetterRTX presets">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE794;"
+                            <FontIcon Glyph="&#xF196;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
@@ -1156,15 +1212,15 @@
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 3: Launch Minecraft & BetterRTX -->
+                    <!-- ROW 3: Launch Minecraft & DLSS -->
                     <!-- ============================================ -->
 
-                    <!-- Launch Button (Bottom-Left) -->
+                    <!-- Launch Button -->
                     <Button x:Name="LaunchButton"
                             Click="LaunchButton_Click"
                             BorderBrush="#40404040"
                             BorderThickness="0"
-                            Grid.Row="4"
+                            Grid.Row="6"
                             Grid.Column="0"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
@@ -1186,7 +1242,7 @@
 
                     <!-- DLSS Version Switcher (Bottom-Right) -->
                     <Button x:Name="DLSSVersionSwitcherButton"
-                            Grid.Row="4"
+                            Grid.Row="6"
                             Grid.Column="2"
                             Click="DLSSVersionSwitcherButton_Click"
                             HorizontalAlignment="Stretch"
