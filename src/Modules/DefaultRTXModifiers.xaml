@@ -80,110 +80,161 @@
             <!-- Content rows -->
             <Grid Grid.Row="1">
                 <Grid.RowDefinitions>
-                    <!-- Row 1: Image LEFT, text RIGHT -->
-                    <RowDefinition Height="*" />
-                    <!-- Row 2: text LEFT, Image RIGHT -->
-                    <RowDefinition Height="*" />
-                    <!-- Row 3: Install button strip -->
-                    <RowDefinition Height="80" />
+                    <!-- Row 0: Install button strip -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Row 1: Text -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Row 2: Image -->
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
+
                 <!-- ═══════════════════════════════════════════════════════════
-                     ROW 1 — Image on the LEFT, description text on the RIGHT
+                     ROW 0 — Install Preset Dropdown Double Button
                      ═══════════════════════════════════════════════════════════ -->
-                <Grid Grid.Row="0">
+
+
+                <Grid Grid.Row="0"
+                      Height="90"
+                      VerticalAlignment="Top"
+                      Padding="20,12,20,16"
+                      CornerRadius="6">
                     <Grid.ColumnDefinitions>
-                        <!-- Image takes the larger share -->
-                        <ColumnDefinition Width="3*" />
-                        <!-- Text -->
-                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="2.25*" />
+                        <!-- 6px gap between buttons -->
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Image — clips cleanly to its cell, no border/panel -->
-                    <Image x:Name="Card1Image"
-                           Grid.Column="1"
-                           Stretch="UniformToFill"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Stretch" />
+                    <DropDownButton x:Name="SelectPresetMenu"
+                                    Grid.Column="0"
+                                    Content="Selected lut preset: Default"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    FontWeight="SemiBold"
+                                    CornerRadius="4,0,0,4"
+                                    BorderThickness="0"
+                                    IsTextScaleFactorEnabled="False"
+                                    ToolTipService.ToolTip="Select a LUT preset">
+                        <DropDownButton.Flyout>
+                            <MenuFlyout Placement="Bottom">
+                                <MenuFlyoutItem Text="Default"
+                                                Click="SelectPresetMenu_Click" />
+                                <MenuFlyoutItem Text="Example Preset"
+                                                Click="SelectPresetMenu_Click" />
+                                <MenuFlyoutItem Text="Example Preset 2"
+                                                Click="SelectPresetMenu_Click" />
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
 
-                    <!-- Text block — left-aligned inside its column -->
-                    <StackPanel Grid.Column="0"
-                                Padding="32,28,28,28"
-                                VerticalAlignment="Center"
-                                Spacing="10">
-                        <TextBlock x:Name="Card1Title"
-                                   Text="Improved RTX Luts"
-                                   FontWeight="SemiBold"
-                                   FontSize="16"
-                                   TextWrapping="Wrap"
-                                   IsTextScaleFactorEnabled="False" />
-                        <TextBlock x:Name="Card1Description"
-                                   Text="This is a simpler, more reliable way of improving Minecraft RTX's visuals through LUTs (look-up-tables)"
-                                   FontSize="14"
-                                   Opacity="0.75"
-                                   TextWrapping="Wrap"
-                                   IsTextScaleFactorEnabled="False" />
-                    </StackPanel>
+
+                    <Button x:Name="InstallButton"
+                            Grid.Column="2"
+                            Content="Install preset"
+                            Click="InstallButton_Click"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0,6,6,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Install the selected preset.">
+                    </Button>
+
+                    <!-- Overlay borders for the visual split -->
+                    <!-- Dark border on RIGHT edge of left button -->
+                    <Grid Grid.Column="0"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                    <!-- Bright border on LEFT edge of right button -->
+                    <Grid Grid.Column="2"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
                 </Grid>
-
+                
                 <!-- ═══════════════════════════════════════════════════════════
-                     ROW 2 — description text on the LEFT, Image on the RIGHT
+                     ROW 1 — Text
                      ═══════════════════════════════════════════════════════════ -->
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <!-- Text -->
-                        <ColumnDefinition Width="2*" />
-                        <!-- Image takes the larger share -->
-                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <!-- Text -->
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="1*" />
+                    </Grid.RowDefinitions>
 
-                    <!-- Text block -->
-                    <StackPanel Grid.Column="1"
-                                Padding="28,28,32,28"
+
+                    <StackPanel Grid.Column="0"
+                                Padding="20,8,20,8"
                                 VerticalAlignment="Center"
                                 Spacing="10">
-                        <!-- Slightly larger title for the second card as requested -->
-                        <TextBlock x:Name="Card2Title"
-                                   Text="Always accessible, easily reversible"
-                                   FontWeight="SemiBold"
-                                   FontSize="16"
+                        <TextBlock x:Name="Description"
+                                   Text="This tool provides a simple, reliable way of customizing and improving Minecraft RTX's visuals through LUTs (look-up-tables), select from the list of available presets and press Install."
+                                   FontSize="14"
+                                   TextAlignment="Left"
+                                   Opacity="1.0"
                                    TextWrapping="Wrap"
                                    IsTextScaleFactorEnabled="False" />
-                        <TextBlock x:Name="Card2Description"
-                                   Text="Unlike BetterRTX, these modifications won't require you to keep up-to-date and will continue to work without having to check whether BetterRTX is updated for the latest version of the game or not. These modifications are not compatible with BetterRTX. Click the install button below to install, click again to revert."
+                        <TextBlock x:Name="Description2"
+                                   Text="You can always revert back to defaults by installing the Default preset. This tool also won't work if you're using a BetterRTX preset."
                                    FontSize="14"
+                                   TextAlignment="Left"
                                    Opacity="0.75"
                                    TextWrapping="Wrap"
                                    IsTextScaleFactorEnabled="False" />
                     </StackPanel>
-
-                    <!-- Image -->
-                    <Image x:Name="Card2Image"
-                           Grid.Column="0"
-                           Stretch="UniformToFill"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Stretch" />
                 </Grid>
+
 
                 <!-- ═══════════════════════════════════════════════════════════
-                     ROW 3 — Install / Revert button
+                     ROW 2 — Image
                      ═══════════════════════════════════════════════════════════ -->
+                <Border x:Name="ImageShadowHost"
+                        Grid.Row="2"
+                        Height="100"
+                        VerticalAlignment="Top"
+                        Padding="20"
+                        CornerRadius="6"
+                        Translation="0,0,62">
+                    <Border.Shadow>
+                        <ThemeShadow x:Name="ImageShadow" />
+                    </Border.Shadow>
+                </Border>
+                
                 <Grid Grid.Row="2"
-                      Padding="20,12,20,16">
-                    <Button x:Name="InstallButton"
-                            HorizontalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            VerticalAlignment="Stretch"
-                            CornerRadius="8"
-                            FontSize="15"
-                            FontWeight="SemiBold"
-                            IsTextScaleFactorEnabled="False"
-                            Click="InstallButton_Click">
-                        <TextBlock x:Name="InstallButtonText"
-                                   Text="Install"
-                                   IsTextScaleFactorEnabled="False" />
-                    </Button>
+                      Padding="20, 8, 20, 0"
+                      VerticalAlignment="Bottom"
+                      HorizontalAlignment="Stretch">
+                            
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Image Source="ms-appx:///Assets/icons/SplashScreen.Regular.png"
+                           Stretch="None"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Bottom"
+                           NineGrid="10, 10 , 10, 10"/>
+
                 </Grid>
+
             </Grid>
         </Grid>
     </Grid>

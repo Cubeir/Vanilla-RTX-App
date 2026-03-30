@@ -16,6 +16,10 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.RTXDefaults;
 
+
+// What you have right now is a good concept, develop it...
+// Do the mainwindow items, and you'll have something really great on your hands to share for 3.0
+
 // TODO: add a note, Not compatible with BetterRTX
 // Also an idea, expand on it GREATLY, color pickers and sliders...!! let user adjust the Luts easily?
 // Or you could keep it simple and user friendly as it is, and give your own favorite LUT to everyone
@@ -28,6 +32,16 @@ namespace Vanilla_RTX_App.RTXDefaults;
 // Yup, definitely add a preset system.
 // The images can change, the texts remain the same across presets
 // It'll be relatively simple to do, claude can do.
+
+// Install button should have accent colors
+
+// Fix the shadows, implement all of it, make adding new presets as quick as making a new folder in ray_tracing folder, its name will become preset name
+// i.e. automate ALL of it.
+
+// On window startup it must detect which preset is currently selected, if it doesn't know, it defaults to default
+
+// still, make sure default preset is constructed from game files, dont risk including game files.
+
 
 public sealed partial class DefaultRTXModifiersWindow : Window
 {
@@ -127,7 +141,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             var target = TunerVariables.Persistent.IsTargetingPreview
                 ? "Minecraft Preview"
                 : "Minecraft Release";
-            WindowTitle.Text = $"Default RTX Modifiers - {target}";
+            WindowTitle.Text = $"RTX look up tables manager - {target}";
 
             ManualSelectionText.Text =
                 "If this is taking too long, click to manually locate the game folder. " +
@@ -323,14 +337,15 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         _ = this.DispatcherQueue.TryEnqueue(() =>
         {
+            // yeah no we aren't doing this anymore, previously, it was one button doing install and reversion, since we only had a default cache and 1 ray_tracing preset to install from app path...
             if (installed)
             {
-                InstallButtonText.Text = "Revert to Defaults";
+                InstallButton.Content = "Revert to Defaults";
                 InstallButton.Style = null;
             }
             else
             {
-                InstallButtonText.Text = "Install";
+                InstallButton.Content = "Install";
                 InstallButton.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
             }
         });

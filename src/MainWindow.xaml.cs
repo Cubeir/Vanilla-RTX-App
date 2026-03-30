@@ -34,6 +34,8 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- Make sure dlss swapper searches recursively for dlls in the zips it is given?
+
 - Come up with Previewer art pieces for the new Lut Modifier and Add-Ons windows,
 Finish their implementation at least for now:
 
