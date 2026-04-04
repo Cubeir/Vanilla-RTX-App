@@ -20,16 +20,7 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.RTXDefaults;
 
-// todo:
-// add a note, a info pane similar to Get RTX packs window,
-// One that points out it isn't compatible with BetterRTX
-// Another that points users to the resource where they can submit LUTS
-// And another at the top that is the main description pane explaining what this feature even is.
-
-// Take the actual default and demo images in VANILLA RTX world, take wide angle shots!
-// they can fit perfectly here.
-
-// draw something with transparent background for PLACEHOLDER, maybe a pixelated text in a cave
+// Make the click here text take user to that place with open URL
 
 public sealed partial class DefaultRTXModifiersWindow : Window
 {

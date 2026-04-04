@@ -194,14 +194,14 @@
                         <FontIcon Grid.Column="0"
                                   Glyph="&#xE946;"
                                   FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                  FontSize="20"
+                                  FontSize="18"
                                   VerticalAlignment="Center"
                                   Margin="0,2,12,0"
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                         <TextBlock Grid.Column="1"
                                    Grid.Row="0"
                                    TextWrapping="Wrap"
-                                   FontSize="13"
+                                   FontSize="12"
                                    Opacity="0.9"
                                    TextAlignment="Left"
                                    VerticalAlignment="Center"
@@ -214,14 +214,14 @@
                                   Grid.Row="2"
                                   Glyph="&#xE946;"
                                   FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                  FontSize="20"
+                                  FontSize="18"
                                   VerticalAlignment="Center"
                                   Margin="0,2,12,0"
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                         <TextBlock Grid.Column="2"
                                    Grid.Row="2"
                                    TextWrapping="Wrap"
-                                   FontSize="13"
+                                   FontSize="12"
                                    Opacity="0.9"
                                    TextAlignment="Left"
                                    VerticalAlignment="Center"
@@ -229,6 +229,8 @@
                                    Text="This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!" />
                     </Grid>
                 </Border>
+
+
 
                 <!-- ═══════════════════════════════════════════════
                      ROW 2 — Preset preview image (crossfade vessels)
@@ -242,7 +244,7 @@
                                Height="6"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Top"
-                               Canvas.ZIndex="998"
+                               Canvas.ZIndex="996"
                                CacheMode="BitmapCache"
                                Opacity="1.0">
                         
@@ -251,11 +253,31 @@
                                Height="3"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Top"
-                               Canvas.ZIndex="999"
+                               Canvas.ZIndex="997"
                                CacheMode="BitmapCache"
                                Opacity="1.0">
-
                     </Rectangle>
+
+                    
+                    <Rectangle Fill="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                               Height="3"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Bottom"
+                               Canvas.ZIndex="999"
+                               CacheMode="BitmapCache"
+                               Margin="0, 0, 0, 30"
+                               Opacity="0.1">
+                    </Rectangle>
+                    <HyperlinkButton Content="Learn to create and submit your own lut presets for everyone to see them here!"
+                                     NavigateUri="https://github.com/cubeir/Vanilla-RTX-App/main"
+                                     Foreground="{StaticResource SystemAccentColorLight3}"
+                                     Background="#80000000" 
+                                     Padding="6"
+                                     CornerRadius="0"
+                                     FontSize="14"
+                                     VerticalAlignment="Bottom"
+                                     HorizontalAlignment="Stretch"
+                                     Canvas.ZIndex="998"/>
 
                     <!-- Bottom vessel — holds the settled (current) image -->
                     <Image x:Name="PresetImageBottom"
