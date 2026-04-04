@@ -1131,7 +1131,7 @@
                         </StackPanel>
                     </Button>
 
-                    <!--  Default RTX Modifier Window -->
+                    <!--  Lut Manager Button -->
                     <Button x:Name="DefaultRTXModifiersButton"
                             Grid.Row="0"
                             Grid.Column="2"
@@ -1155,12 +1155,12 @@
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 2:                                       -->
+                    <!-- ROW 2: RTX Reactor and BetterRTX Mananger    -->
                     <!-- ============================================ -->
 
                     <!-- NEW BUTTON -->
-                    <Button x:Name="UpdateVanillaRTXButton_COPYTEMP"
-                            Click="UpdateVanillaRTXButton_Click"
+                    <Button x:Name="RTXReactorButton"
+                            Click="RTXReactorButton_Click"
                             Grid.Row="2"
                             Grid.Column="0"
                             FontWeight="SemiBold"
@@ -1180,7 +1180,7 @@
                                       x:FieldModifier="public" />
                             <TextBlock Text="PBR Alchemist"
                                        VerticalAlignment="Center"
-                                       x:Name="UpdateVanillaRTXButtonText_COPYTEMP"
+                                       x:Name="RTXReactorButtonText"
                                        x:FieldModifier="public" />
                         </StackPanel>
                     </Button>
