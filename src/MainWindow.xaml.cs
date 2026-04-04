@@ -34,21 +34,43 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- BIG CHANGE OF PLANS:
+PBR Alchemist, Reworked RTX Reactor, coming to the app!
+It is the spritual successor to RTX Reactor.
+Forget both VVA and Reactor, PBR Alchemist...
+combine the two projects into one and bring it to the app
+the app is already a full suite, it lets you export whatever.
+Generating PBR textures properly where the non-PBR pack is already installed is a much better way of doing it
+It's not like all people keep MCPACKS around? they delete them after importing!
+And now, the app lets you generate PBR textures for IMPORTED apps?
+
+This is going to be a long term plan, for now, for 3.0, mention these plans in a window when the button is clicked
+the feature will be coming... some time, when you got more time, but for now the idea itself is pretty exciting...!
+
+Leave addons be as it is, the app automating it isn't too useful, its clunky, complex, and a waste overall
+they can already be modularly activated in game, that's very good already.
+imagine having to reinstall the entire pack just because you merged down the wrong addon, all tunings done? gone!
+KEEP THE PACKS SEPARATE, thats the way
+aside from some personal workflows where you merge BtU extensions down into Vanilla RTX for that special variant, this is a bad idea
+Sepearte Extensions/Add-ons are good. Don't try to complicate it with the app.
+
+- come up with art for PBR Alchemist (let the theme be the same as RTX Reactor, classic)
+and for LUT manager, relate it to COLORS, paint some random colored concrete falling? like the defrag icon for windows, lol
+
+Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
+hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
+
+implement the preset thingy, two is enough for now, default, and yours, make the psa pane thingy say people can make their own
+and submit it to you to be bundled with the app.
+Include a short guide maybe, a link to a readme guide, in that guide, say what each row of pixels do in the LUT.
+also what does the fourth row actually do? is it related to ambience, Nether, or End?!
+
+- BetterRTX API now gives icons, maybe worth displaying, maybe not, not worth the slowdown
+
 - Make sure dlss swapper searches recursively for dlls in the zips it is given?
 
-- Come up with Previewer art pieces for the new Lut Modifier and Add-Ons windows,
-Finish their implementation at least for now:
-
-- Move the xaml of addons and extensions to the new addons menu for now, that's all it does, for now, for the release of 3.0
-Put a warning sign thingy say automated updates will come later, consider help supporting development to see more new exciting features arrive faster!
-copy pasted the warning panel same as current install packs menu...
-
-Keep the warning sign in install packs menu, change its text to something... informative
-Better yet, make it PULL a PSA and display it from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
+make psa panes pull them from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
 this is a really cool idea, maybe other windows could use it too... general psas are in logs, feature-specific PSAs THAT MIGHT need it in their windows!
-
-make the panels in install packs menu taller as a result
-
 
 - pack version logger should keep logging the versions as long as it is NOT the latest message
 ur current method causes to avoid logging if preview and release versions are the same.
@@ -195,8 +217,6 @@ public static class TunerVariables
     public static bool IsVanillaRTXEnabled = false;
     public static bool IsNormalsEnabled = false;
     public static bool IsOpusEnabled = false;
-
-    public static string HaveDeployableCache = "";
 
 
     public static class Persistent // These are saved and reloaded on app launch
@@ -413,14 +433,12 @@ public sealed partial class MainWindow : Window
         if (_updater.HasDeployableCache())
         {
             UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
-            UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packs";
-            HaveDeployableCache = "Reinstallation";
+            UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
         }
         else
         {
             UpdateVanillaRTXGlyph.Glyph = "\uEBD3"; // Default cloud icon
-            UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
-            HaveDeployableCache = "Installation";
+            UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
         }
 
         // Slower UI update override for a smoother startup
@@ -547,7 +565,7 @@ public sealed partial class MainWindow : Window
                 ? Color.FromArgb(40, 0, 0, 0)
                 : Color.FromArgb(60, 255, 255, 255);
 
-            // Color of that little border next to the button 🍝
+            // 🍝 Color of that little border next to the Preview button 🍝
             if (IsTargetingPreview)
             {
                 LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources["SystemAccentColorLight3"]);
@@ -1692,6 +1710,42 @@ public sealed partial class MainWindow : Window
         dlssSwitcherWindow.Activate();
     }
 
+    private void DefaultRTXModifiersButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleControls(this, false, true, []);
+
+        var rtxWindow = new Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        rtxWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        rtxWindow.AppWindow.Move(mainAppWindow.Position);
+
+        rtxWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true, true, []);
+
+            if (rtxWindow.OperationSuccessful)
+            {
+                Log(rtxWindow.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(rtxWindow.StatusMessage))
+            {
+                Log(rtxWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        rtxWindow.Activate();
+    }
+
+
 
 
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
@@ -1846,12 +1900,12 @@ public sealed partial class MainWindow : Window
                 if (_updater.HasDeployableCache())
                 {
                     UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
-                    UpdateVanillaRTXButtonText.Text = "Reinstall latest RTX packages";
+                    UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
                 }
                 else
                 {
                     UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
-                    UpdateVanillaRTXButtonText.Text = "Install latest RTX packages";
+                    UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
                 }
 
                 // Trigger an automatic pack location check after update (fail or not)
@@ -1880,41 +1934,6 @@ public sealed partial class MainWindow : Window
         {
             _ = BlinkingLamp(true, true, 0.0);
         }
-    }
-
-    private void DefaultRTXModifiersButton_Click(object sender, RoutedEventArgs e)
-    {
-        ToggleControls(this, false, true, []);
-
-        var rtxWindow = new Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow(this);
-        var mainAppWindow = this.AppWindow;
-
-        rtxWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        rtxWindow.AppWindow.Move(mainAppWindow.Position);
-
-        rtxWindow.Closed += (s, args) =>
-        {
-            ToggleControls(this, true, true, []);
-
-            if (rtxWindow.OperationSuccessful)
-            {
-                Log(rtxWindow.StatusMessage, LogLevel.Success);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(rtxWindow.StatusMessage))
-            {
-                Log(rtxWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        rtxWindow.Activate();
     }
 
 }

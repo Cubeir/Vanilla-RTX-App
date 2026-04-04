@@ -1124,7 +1124,7 @@
                                       VerticalAlignment="Center"
                                       x:Name="UpdateVanillaRTXGlyph"
                                       x:FieldModifier="public" />
-                            <TextBlock Text="Install latest RTX packages"
+                            <TextBlock Text="Get latest RTX packs"
                                        VerticalAlignment="Center"
                                        x:Name="UpdateVanillaRTXButtonText"
                                        x:FieldModifier="public" />
@@ -1145,7 +1145,7 @@
                             ToolTipService.ToolTip="Click to learn more, this a simpler, more reliable alternative to BetterRTX that works across all game versions by modifying RTX's default color look up tables.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE794;"
+                            <FontIcon Glyph="&#xE790;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
@@ -1155,7 +1155,7 @@
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 2: Default RTX Modifier and Add-Ons      -->
+                    <!-- ROW 2:                                       -->
                     <!-- ============================================ -->
 
                     <!-- NEW BUTTON -->
@@ -1172,13 +1172,13 @@
                             ToolTipService.ToolTip="TEMP">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xEFDA;"
+                            <FontIcon Glyph="&#xF196;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center"
                                       x:Name="UpdateVanillaRTXGlyph_COPYTEMP"
                                       x:FieldModifier="public" />
-                            <TextBlock Text="Add-ons and Extras"
+                            <TextBlock Text="PBR Alchemist"
                                        VerticalAlignment="Center"
                                        x:Name="UpdateVanillaRTXButtonText_COPYTEMP"
                                        x:FieldModifier="public" />
@@ -1199,7 +1199,7 @@
                             ToolTipService.ToolTip="Manage BetterRTX presets">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xF196;"
+                            <FontIcon Glyph="&#xE794;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
