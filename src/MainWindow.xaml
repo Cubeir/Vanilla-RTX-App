@@ -1158,7 +1158,7 @@
                     <!-- ROW 2: RTX Reactor and BetterRTX Mananger    -->
                     <!-- ============================================ -->
 
-                    <!-- NEW BUTTON -->
+                    <!-- RTX Reactor / PBR Alchemist Button -->
                     <Button x:Name="RTXReactorButton"
                             Click="RTXReactorButton_Click"
                             Grid.Row="2"

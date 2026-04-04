@@ -26,6 +26,11 @@ namespace Vanilla_RTX_App.RTXDefaults;
 // Another that points users to the resource where they can submit LUTS
 // And another at the top that is the main description pane explaining what this feature even is.
 
+// Take the actual default and demo images in VANILLA RTX world, take wide angle shots!
+// they can fit perfectly here.
+
+// draw something with transparent background for PLACEHOLDER, maybe a pixelated text in a cave
+
 public sealed partial class DefaultRTXModifiersWindow : Window
 {
     // -------------------------------------------------------------------------
@@ -165,7 +170,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             var target = TunerVariables.Persistent.IsTargetingPreview
                 ? "Minecraft Preview"
                 : "Minecraft Release";
-            WindowTitle.Text = $"RTX lut (look-up-tables) manager - {target}";
+            WindowTitle.Text = $"RTX lut manager - {target}";
 
             ManualSelectionText.Text =
                 "If this is taking too long, click to manually locate the game folder. " +
@@ -567,9 +572,12 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             ? $"Installed Preset: {preset.Name}"
             : $"Selected Preset: {preset.Name}";
 
-        // Install button — always just "Install"
+
+        // Install button content
         InstallButton.IsEnabled = preset.IsComplete;
-        InstallButton.Content = "Install";
+        InstallButton.Content = isInstalled
+            ? $"Reinstall"
+            : $"Install";
 
         UpdatePresetImage(preset);
     }
@@ -743,8 +751,13 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         {
             _ = this.DispatcherQueue.TryEnqueue(() =>
             {
+                bool isInstalled = _selectedPreset != null &&
+                                    string.Equals(preset.Name, _selectedPreset.Name, StringComparison.OrdinalIgnoreCase);
+
                 InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
-                InstallButton.Content = "Install";
+                InstallButton.Content = isInstalled
+                    ? $"Reinstall"
+                    : $"Install";
             });
         }
     }

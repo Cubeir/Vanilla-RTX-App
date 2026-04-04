@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Vanilla_RTX_App.RTXDefaults"
-        Title="Default RTX Modifiers">
+        Title="RTX Lut Manager">
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
@@ -84,6 +84,8 @@
                     <RowDefinition Height="Auto" />
                     <!-- Row 2: Preset preview image -->
                     <RowDefinition Height="*" />
+                    <!-- Row 3: More desc pains -->
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- ═══════════════════════════════════════════════
@@ -97,12 +99,14 @@
 
                 <Grid x:Name="ButtonRowGrid"
                       Grid.Row="0"
-                      Height="90"
-                      Padding="20,12,20,16"
+                      Height="50"
+                      Margin="20,14,20,0"
+                      VerticalAlignment="Top"
+                      HorizontalAlignment="Stretch"
                       Translation="0,0,32"
                       Loaded="ButtonRowGrid_Loaded">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2.25*" />
+                        <ColumnDefinition Width="2.15*" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
@@ -161,23 +165,70 @@
                 <!-- ═══════════════════════════════════════════════
                      ROW 1 — Description text
                      ═══════════════════════════════════════════════ -->
-                <StackPanel Grid.Row="1"
-                            Padding="20,8,20,8"
-                            Spacing="10">
-                    <TextBlock x:Name="Description"
-                               Text="This tool provides a simple, reliable way of customizing and improving Minecraft RTX's visuals through LUTs (look-up-tables), select from the list of available presets and press Install."
-                               FontSize="14"
-                               TextAlignment="Left"
-                               TextWrapping="Wrap"
-                               IsTextScaleFactorEnabled="False" />
-                    <TextBlock x:Name="Description2"
-                               Text="You can always revert back to defaults by installing the Default preset. This tool also won't work if you're using a BetterRTX preset."
-                               FontSize="14"
-                               TextAlignment="Left"
-                               Opacity="0.75"
-                               TextWrapping="Wrap"
-                               IsTextScaleFactorEnabled="False" />
-                </StackPanel>
+                <!-- Info Panel -->
+                <Border CornerRadius="8"
+                        Grid.Row="1"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        Padding="16"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Top"
+                        Margin="20, -12, 20, 0"
+                        Translation="0,0,32">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="8" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+
+                        <!-- Info -->
+                        <FontIcon Grid.Column="0"
+                                  Glyph="&#xE946;"
+                                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                  FontSize="20"
+                                  VerticalAlignment="Center"
+                                  Margin="0,2,12,0"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Grid.Column="1"
+                                   Grid.Row="0"
+                                   TextWrapping="Wrap"
+                                   FontSize="13"
+                                   Opacity="0.9"
+                                   TextAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False"
+                                   Text="Look up tables are a simple way to modify and improve and further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset." />
+
+
+                        <!-- Info Icon -->
+                        <FontIcon Grid.Column="0"
+                                  Grid.Row="2"
+                                  Glyph="&#xE946;"
+                                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                  FontSize="20"
+                                  VerticalAlignment="Center"
+                                  Margin="0,2,12,0"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Grid.Column="2"
+                                   Grid.Row="2"
+                                   TextWrapping="Wrap"
+                                   FontSize="13"
+                                   Opacity="0.9"
+                                   TextAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False"
+                                   Text="This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!" />
+                    </Grid>
+                </Border>
 
                 <!-- ═══════════════════════════════════════════════
                      ROW 2 — Preset preview image (crossfade vessels)
@@ -185,17 +236,39 @@
                      Top vessel:    incoming image, fades in over bottom
                      ═══════════════════════════════════════════════ -->
                 <Grid Grid.Row="2"
-                      Padding="20,8,20,20">
+                      Padding="0,16,0,0">
+
+                    <Rectangle Fill="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                               Height="6"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Top"
+                               Canvas.ZIndex="998"
+                               CacheMode="BitmapCache"
+                               Opacity="1.0">
+                        
+                    </Rectangle>
+                    <Rectangle Fill="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                               Height="3"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Top"
+                               Canvas.ZIndex="999"
+                               CacheMode="BitmapCache"
+                               Opacity="1.0">
+
+                    </Rectangle>
+
                     <!-- Bottom vessel — holds the settled (current) image -->
                     <Image x:Name="PresetImageBottom"
-                           Stretch="Uniform"
+                           CacheMode="BitmapCache"
+                           Stretch="UniformToFill"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Opacity="1" />
 
                     <!-- Top vessel — fades in the incoming image over the bottom -->
                     <Image x:Name="PresetImageTop"
-                           Stretch="Uniform"
+                           CacheMode="BitmapCache"
+                           Stretch="UniformToFill"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Opacity="0">
@@ -204,6 +277,8 @@
                         </Image.Transitions>
                     </Image>
                 </Grid>
+
+                
             </Grid>
         </Grid>
     </Grid>
