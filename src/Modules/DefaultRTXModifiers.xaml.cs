@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,9 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
@@ -16,63 +20,68 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.RTXDefaults;
 
-
-// What you have right now is a good concept, develop it...
-// Do the mainwindow items, and you'll have something really great on your hands to share for 3.0
-
-// TODO: add a note, Not compatible with BetterRTX
-// Also an idea, expand on it GREATLY, color pickers and sliders...!! let user adjust the Luts easily?
-// Or you could keep it simple and user friendly as it is, and give your own favorite LUT to everyone
-// Or better yet. come up with a Preset system, have several lut presets made, matrix, grey, ultra bright, etc... let users swap between them
-// This is actually a better idea than anything, include the default lut, have a few default lut presets
-
-// Like dlss swapper, mends the game automatically IF our defaults cache is corrupt AND the game files are corrupt too, it will treat the app's lut as the default and mend the game with it
-// Maybe the logic isn't entirely sound, think about it...
-
-// Yup, definitely add a preset system.
-// The images can change, the texts remain the same across presets
-// It'll be relatively simple to do, claude can do.
-
-// Install button should have accent colors
-
-// Fix the shadows, implement all of it, make adding new presets as quick as making a new folder in ray_tracing folder, its name will become preset name
-// i.e. automate ALL of it.
-
-// On window startup it must detect which preset is currently selected, if it doesn't know, it defaults to default
-
-// still, make sure default preset is constructed from game files, dont risk including game files.
-
+// todo:
+// add a note, a info pane similar to Get RTX packs window,
+// One that points out it isn't compatible with BetterRTX
+// Another that points users to the resource where they can submit LUTS
+// And another at the top that is the main description pane explaining what this feature even is.
 
 public sealed partial class DefaultRTXModifiersWindow : Window
 {
+    // -------------------------------------------------------------------------
+    // File name constants (same across every preset folder)
+    // -------------------------------------------------------------------------
+
     private const string FnLut = "look_up_tables.png";
     private const string FnSky = "sky.png";
     private const string FnWater = "water_n.tga";
+    private const string FnPreviewImg = "image.png";
+    private const string FnPlaceholder = "placeholder.png"; // For unknown presets
+    private const string FnDefaultImg = "default.png";    // UI image for the Default preset
 
     private static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
 
-    private static string SrcLut => Path.Combine(AppDir, "Assets", "ray_tracing", FnLut);
-    private static string SrcSky => Path.Combine(AppDir, "Assets", "ray_tracing", FnSky);
-    private static string SrcWater => Path.Combine(AppDir, "Assets", "ray_tracing", FnWater);
+    // -------------------------------------------------------------------------
+    // Fields
+    // -------------------------------------------------------------------------
 
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
 
-    private string _minecraftRoot;
-    private string _backupFolder;
+    private string _minecraftRoot;      // e.g. C:\Program Files\Microsoft Games\Minecraft for Windows
+    private string _defaultsFolder;     // LocalAppData\<pkg>\Lut_Defaults  — the Default preset's files
+    private string _lutRootFolder;      // AppDir\Assets\lut
+    private string _placeholderImagePath;
+    private string _defaultImagePath;   // AppDir\Assets\lut\Default.png
+
+    private List<LutPreset> _presets = new();
+    private LutPreset _selectedPreset;   // currently highlighted in the dropdown
+    private LutPreset _installedPreset;  // what is actually on disk right now
+
     private CancellationTokenSource _scanCancellationTokenSource;
+
+    // Crossfade state
+    private bool _crossfadeInProgress = false;
 
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
-    // Destination paths — built fresh from _minecraftRoot each access
+    // -------------------------------------------------------------------------
+    // Destination path helpers  (always derived fresh from _minecraftRoot)
+    // -------------------------------------------------------------------------
+
     private string DstLut => Path.Combine(_minecraftRoot, "Content", "data", "ray_tracing", FnLut);
     private string DstSky => Path.Combine(_minecraftRoot, "Content", "data", "ray_tracing", FnSky);
     private string DstWater => Path.Combine(_minecraftRoot, "Content", "data", "ray_tracing", FnWater);
 
-    private string BackupLut => Path.Combine(_backupFolder, FnLut);
-    private string BackupSky => Path.Combine(_backupFolder, FnSky);
-    private string BackupWater => Path.Combine(_backupFolder, FnWater);
+    // Default preset sources live in LocalAppData\Lut_Defaults
+    private string DefaultLut => Path.Combine(_defaultsFolder, FnLut);
+    private string DefaultSky => Path.Combine(_defaultsFolder, FnSky);
+    private string DefaultWater => Path.Combine(_defaultsFolder, FnWater);
+
+    // -------------------------------------------------------------------------
+    // Constructor
+    // -------------------------------------------------------------------------
 
     public DefaultRTXModifiersWindow(MainWindow mainWindow)
     {
@@ -119,6 +128,21 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         _mainWindow.Closed += MainWindow_Closed;
     }
 
+    // -------------------------------------------------------------------------
+    // Shadow setup
+    // -------------------------------------------------------------------------
+
+    private void ButtonRowGrid_Loaded(object sender, RoutedEventArgs e)
+    {
+        var shadow = new ThemeShadow();
+        ButtonRowGrid.Shadow = shadow;
+        shadow.Receivers.Add(ButtonShadowReceiver);
+    }
+
+    // -------------------------------------------------------------------------
+    // Window lifecycle
+    // -------------------------------------------------------------------------
+
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
@@ -141,7 +165,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             var target = TunerVariables.Persistent.IsTargetingPreview
                 ? "Minecraft Preview"
                 : "Minecraft Release";
-            WindowTitle.Text = $"RTX look up tables manager - {target}";
+            WindowTitle.Text = $"RTX lut (look-up-tables) manager - {target}";
 
             ManualSelectionText.Text =
                 "If this is taking too long, click to manually locate the game folder. " +
@@ -170,10 +194,14 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"Error setting drag region: {ex.Message}");
+                Trace.WriteLine($"LUTM: Error setting drag region: {ex.Message}");
             }
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Initialization
+    // -------------------------------------------------------------------------
 
     private async Task InitializeAsync()
     {
@@ -188,14 +216,14 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
             if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
             {
-                Trace.WriteLine($"RTXW: Using cached path: {cachedPath}");
+                Trace.WriteLine($"LUTM: Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;
             }
             else
             {
                 if (!string.IsNullOrEmpty(cachedPath))
                 {
-                    Trace.WriteLine("RTXW: Cache became invalid, clearing");
+                    Trace.WriteLine("LUTM: Cache became invalid, clearing");
                     if (isPreview)
                         TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
                     else
@@ -211,7 +239,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
                 if (minecraftPath == null)
                 {
-                    Trace.WriteLine("RTXW: System search cancelled or failed");
+                    Trace.WriteLine("LUTM: System search cancelled or failed");
                     return;
                 }
             }
@@ -220,7 +248,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"RTXW EXCEPTION in InitializeAsync: {ex}");
+            Trace.WriteLine($"LUTM EXCEPTION in InitializeAsync: {ex}");
             StatusMessage = $"Initialization error: {ex.Message}";
             this.Close();
         }
@@ -229,27 +257,40 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private async Task ContinueInitializationWithPath(string minecraftPath)
     {
         _minecraftRoot = minecraftPath;
+        _lutRootFolder = Path.Combine(AppDir, "Assets", "lut");
+        _placeholderImagePath = Path.Combine(_lutRootFolder, FnPlaceholder);
+        _defaultImagePath = Path.Combine(_lutRootFolder, FnDefaultImg);
 
-        Trace.WriteLine($"RTXW: Game root  : {_minecraftRoot}");
-        Trace.WriteLine($"RTXW: AppDir     : {AppDir}");
-        Trace.WriteLine($"RTXW: SrcLut     : {SrcLut}  exists={File.Exists(SrcLut)}");
-        Trace.WriteLine($"RTXW: SrcSky     : {SrcSky}  exists={File.Exists(SrcSky)}");
-        Trace.WriteLine($"RTXW: SrcWater   : {SrcWater}  exists={File.Exists(SrcWater)}");
-        Trace.WriteLine($"RTXW: DstLut     : {DstLut}  exists={File.Exists(DstLut)}");
-        Trace.WriteLine($"RTXW: DstSky     : {DstSky}  exists={File.Exists(DstSky)}");
-        Trace.WriteLine($"RTXW: DstWater   : {DstWater}  exists={File.Exists(DstWater)}");
+        Trace.WriteLine($"LUTM: Root     : {_minecraftRoot}");
+        Trace.WriteLine($"LUTM: AppDir   : {AppDir}");
+        Trace.WriteLine($"LUTM: LutRoot  : {_lutRootFolder}");
+        Trace.WriteLine($"LUTM: DstLut   : {DstLut}   exists={File.Exists(DstLut)}");
+        Trace.WriteLine($"LUTM: DstSky   : {DstSky}   exists={File.Exists(DstSky)}");
+        Trace.WriteLine($"LUTM: DstWater : {DstWater}  exists={File.Exists(DstWater)}");
 
-        _backupFolder = EstablishBackupFolder();
-        if (_backupFolder == null)
+        // Step 1: Establish the LocalAppData defaults folder (Lut_Defaults)
+        _defaultsFolder = EstablishDefaultsFolder();
+        if (_defaultsFolder == null)
         {
-            StatusMessage = "Could not establish backup folder";
+            StatusMessage = "Could not establish defaults folder";
             this.Close();
             return;
         }
 
+        // Step 2: Back up game defaults into Lut_Defaults — all-or-none
         await EnsureDefaultsBackedUpAsync();
-        await RefreshInstallButtonStateAsync();
 
+        // Step 3: Discover all presets (Default first, then Assets\lut\ subfolders)
+        LoadPresets();
+
+        // Step 4: Detect which preset is currently installed
+        _installedPreset = await DetectCurrentPresetAsync();
+        Trace.WriteLine($"LUTM: Detected preset: {_installedPreset?.Name ?? "Unknown"}");
+
+        // Step 5: Populate dropdown and settle the UI
+        PopulateDropdown(_installedPreset);
+
+        // Step 6: Show main UI
         _ = this.DispatcherQueue.TryEnqueue(() =>
         {
             LoadingPanel.Visibility = Visibility.Collapsed;
@@ -265,9 +306,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
 
         if (path != null)
-        {
             await ContinueInitializationWithPath(path);
-        }
         else
         {
             StatusMessage = "No valid Minecraft installation selected";
@@ -275,184 +314,458 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         }
     }
 
-    private string EstablishBackupFolder()
+    // -------------------------------------------------------------------------
+    // Defaults folder  (LocalAppData\<pkg>\Lut_Defaults)
+    // -------------------------------------------------------------------------
+
+    private string EstablishDefaultsFolder()
     {
         try
         {
-            var backupLocation = Path.Combine(ApplicationData.Current.LocalFolder.Path, "RTX_Defaults");
-            Directory.CreateDirectory(backupLocation);
-            Trace.WriteLine($"RTXW: Backup folder: {backupLocation}");
-            return backupLocation;
+            var location = Path.Combine(ApplicationData.Current.LocalFolder.Path, "Lut_Defaults");
+            Directory.CreateDirectory(location);
+            Trace.WriteLine($"LUTM: Defaults folder: {location}");
+            return location;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"RTXW: Failed to create backup folder: {ex.Message}");
+            Trace.WriteLine($"LUTM: Failed to create defaults folder: {ex.Message}");
             return null;
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Ensure game defaults are backed up into Lut_Defaults.
+    // Mirrors the old code's logic exactly:
+    //   - All three backups present → skip (originals are preserved forever).
+    //   - Game files present        → copy them (all-or-none, overwrite partials).
+    //   - Game files missing        → mend from best available bundled preset.
+    // -------------------------------------------------------------------------
+
     private async Task EnsureDefaultsBackedUpAsync()
     {
         bool allBackupsPresent =
-            File.Exists(BackupLut) && File.Exists(BackupSky) && File.Exists(BackupWater);
+            File.Exists(DefaultLut) && File.Exists(DefaultSky) && File.Exists(DefaultWater);
 
         if (allBackupsPresent)
         {
-            Trace.WriteLine("RTXW: All default backups already present");
+            Trace.WriteLine("LUTM: Default backup already complete - skipping");
             return;
         }
 
-        Trace.WriteLine("RTXW: Backup(s) missing - checking game files");
+        Trace.WriteLine("LUTM: Default backup incomplete - attempting from game files");
 
         bool allGameFilesPresent =
             File.Exists(DstLut) && File.Exists(DstSky) && File.Exists(DstWater);
 
         if (allGameFilesPresent)
         {
+            // All-or-none: overwrite any partial backup to keep the set consistent
             await Task.Run(() =>
             {
                 try
                 {
-                    if (!File.Exists(BackupLut)) { File.Copy(DstLut, BackupLut, overwrite: false); Trace.WriteLine($"RTXW: Backed up {FnLut}"); }
-                    if (!File.Exists(BackupSky)) { File.Copy(DstSky, BackupSky, overwrite: false); Trace.WriteLine($"RTXW: Backed up {FnSky}"); }
-                    if (!File.Exists(BackupWater)) { File.Copy(DstWater, BackupWater, overwrite: false); Trace.WriteLine($"RTXW: Backed up {FnWater}"); }
+                    File.Copy(DstLut, DefaultLut, overwrite: true);
+                    File.Copy(DstSky, DefaultSky, overwrite: true);
+                    File.Copy(DstWater, DefaultWater, overwrite: true);
+                    Trace.WriteLine("LUTM: Default backup created from game files");
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine($"RTXW: Error during backup: {ex.Message}");
+                    Trace.WriteLine($"LUTM: Backup error: {ex.Message}");
                 }
             });
         }
         else
         {
-            Trace.WriteLine("RTXW: Game RTX files missing - mending from app assets");
-            bool mended = await ReplaceRtxFilesWithElevation(SrcLut, SrcSky, SrcWater);
-            Trace.WriteLine(mended ? "RTXW: Game mended" : "RTXW: Mend failed or cancelled");
-        }
-    }
+            // Game files missing — mend from a bundled preset so the player isn't left broken.
+            // Priority: "Gamescom 2019 Demo" (always bundled) → first complete preset alphabetically.
+            Trace.WriteLine("LUTM: Game files missing - mending from bundled preset");
 
-    private async Task RefreshInstallButtonStateAsync()
-    {
-        bool installed = await AreOurFilesInstalledAsync();
+            string mendLut = null, mendSky = null, mendWater = null;
 
-        _ = this.DispatcherQueue.TryEnqueue(() =>
-        {
-            // yeah no we aren't doing this anymore, previously, it was one button doing install and reversion, since we only had a default cache and 1 ray_tracing preset to install from app path...
-            if (installed)
+            if (Directory.Exists(_lutRootFolder))
             {
-                InstallButton.Content = "Revert to Defaults";
-                InstallButton.Style = null;
+                const string PreferredMendPreset = "Gamescom 2019 Demo";
+                var preferred = Path.Combine(_lutRootFolder, PreferredMendPreset);
+                var prefLut = Path.Combine(preferred, FnLut);
+                var prefSky = Path.Combine(preferred, FnSky);
+                var prefWater = Path.Combine(preferred, FnWater);
+
+                if (File.Exists(prefLut) && File.Exists(prefSky) && File.Exists(prefWater))
+                {
+                    mendLut = prefLut;
+                    mendSky = prefSky;
+                    mendWater = prefWater;
+                    Trace.WriteLine("LUTM: Mending with preferred preset [" + PreferredMendPreset + "]");
+                }
+
+                if (mendLut == null)
+                {
+                    foreach (var dir in Directory.GetDirectories(_lutRootFolder)
+                                                 .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+                    {
+                        var lut = Path.Combine(dir, FnLut);
+                        var sky = Path.Combine(dir, FnSky);
+                        var water = Path.Combine(dir, FnWater);
+                        if (File.Exists(lut) && File.Exists(sky) && File.Exists(water))
+                        {
+                            mendLut = lut;
+                            mendSky = sky;
+                            mendWater = water;
+                            Trace.WriteLine("LUTM: Mending with fallback preset [" + Path.GetFileName(dir) + "]");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (mendLut != null)
+            {
+                bool mended = await ReplaceRtxFilesWithElevation(mendLut, mendSky, mendWater);
+                Trace.WriteLine(mended ? "LUTM: Game mended" : "LUTM: Mend failed or cancelled");
             }
             else
             {
-                InstallButton.Content = "Install";
-                InstallButton.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
+                Trace.WriteLine("LUTM: No complete presets found for mending - user must install manually");
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Preset discovery
+    // Default preset is always first, sourced from _defaultsFolder.
+    // Its UI image comes from Assets\lut\Default.png (optional, falls back to placeholder).
+    // All other presets come from Assets\lut\ subfolders, sorted alphabetically.
+    // -------------------------------------------------------------------------
+
+    private void LoadPresets()
+    {
+        _presets.Clear();
+
+        // Default preset — always first, RTX files live in Lut_Defaults
+        var defaultPreset = new LutPreset("Default", _defaultsFolder, _defaultImagePath, isDefault: true);
+        _presets.Add(defaultPreset);
+        Trace.WriteLine($"LUTM: Default preset — complete={defaultPreset.IsComplete}  folder={_defaultsFolder}");
+
+        // Additional presets from Assets\lut\ subfolders
+        if (Directory.Exists(_lutRootFolder))
+        {
+            foreach (var dir in Directory.GetDirectories(_lutRootFolder)
+                                         .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            {
+                var name = Path.GetFileName(dir);
+                var preset = new LutPreset(name, dir);
+                _presets.Add(preset);
+                Trace.WriteLine($"LUTM: Preset [{name}] complete={preset.IsComplete} folder={dir}");
+            }
+        }
+        else
+        {
+            Trace.WriteLine($"LUTM: LUT folder not found: {_lutRootFolder}");
+        }
+
+        Trace.WriteLine($"LUTM: {_presets.Count} preset(s) loaded");
+    }
+
+    // -------------------------------------------------------------------------
+    // Detect currently installed preset by SHA-256 hashing all 3 game files.
+    // Returns null if game files are missing or don't match any preset.
+    // -------------------------------------------------------------------------
+
+    private async Task<LutPreset> DetectCurrentPresetAsync()
+    {
+        if (!File.Exists(DstLut) || !File.Exists(DstSky) || !File.Exists(DstWater))
+        {
+            Trace.WriteLine("LUTM: One or more game files missing - cannot detect preset");
+            return null;
+        }
+
+        return await Task.Run(() =>
+        {
+            foreach (var preset in _presets.Where(p => p.IsComplete))
+            {
+                if (HashesMatch(DstLut, preset.LutPath) &&
+                    HashesMatch(DstSky, preset.SkyPath) &&
+                    HashesMatch(DstWater, preset.WaterPath))
+                {
+                    return preset;
+                }
+            }
+            return null;
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Dropdown population
+    // -------------------------------------------------------------------------
+
+    private void PopulateDropdown(LutPreset installedPreset)
+    {
+        _ = this.DispatcherQueue.TryEnqueue(() =>
+        {
+            var flyout = SelectPresetMenu.Flyout as MenuFlyout;
+            if (flyout == null) return;
+            flyout.Items.Clear();
+
+            foreach (var preset in _presets)
+            {
+                var item = new MenuFlyoutItem
+                {
+                    Text = preset.IsComplete ? preset.Name : $"{preset.Name} (incomplete)",
+                    Tag = preset,
+                    IsEnabled = preset.IsComplete
+                };
+                item.Click += PresetMenuItem_Click;
+                flyout.Items.Add(item);
+            }
+
+            if (installedPreset != null)
+            {
+                // Auto-select the currently installed preset so dropdown and image match reality
+                ApplySelection(installedPreset);
+            }
+            else
+            {
+                // Nothing matched — prompt user to pick
+                _selectedPreset = null;
+                SelectPresetMenu.Content = "Select a preset...";
+                InstallButton.IsEnabled = false;
+                UpdatePresetImage(null);
             }
         });
     }
 
-    private async Task<bool> AreOurFilesInstalledAsync()
+    private void PresetMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            return await Task.Run(() =>
-            {
-                if (!File.Exists(DstLut) || !File.Exists(SrcLut)) return false;
-                if (!File.Exists(DstSky) || !File.Exists(SrcSky)) return false;
-                if (!File.Exists(DstWater) || !File.Exists(SrcWater)) return false;
-                return HashesMatch(DstLut, SrcLut) && HashesMatch(DstSky, SrcSky) && HashesMatch(DstWater, SrcWater);
-            });
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"RTXW: Error comparing hashes: {ex.Message}");
-            return false;
-        }
+        if (sender is MenuFlyoutItem item && item.Tag is LutPreset preset)
+            ApplySelection(preset);
     }
 
-    private static bool HashesMatch(string pathA, string pathB)
+    /// <summary>
+    /// Central method for changing the active selection.
+    /// Updates _selectedPreset, the dropdown label, the install button, and the preview image.
+    /// The dropdown label reads "Installed Preset: X" when X is currently on disk,
+    /// or "Selected Preset: X" otherwise.
+    /// </summary>
+    private void ApplySelection(LutPreset preset)
     {
-        using var sha = SHA256.Create();
-        using var streamA = File.OpenRead(pathA);
-        var hashA = sha.ComputeHash(streamA);
-        sha.Initialize();
-        using var streamB = File.OpenRead(pathB);
-        var hashB = sha.ComputeHash(streamB);
-        return System.MemoryExtensions.SequenceEqual(
-            (System.ReadOnlySpan<byte>)hashA,
-            (System.ReadOnlySpan<byte>)hashB);
+        _selectedPreset = preset;
+
+        if (preset == null)
+        {
+            SelectPresetMenu.Content = "Select a preset...";
+            InstallButton.IsEnabled = false;
+            UpdatePresetImage(null);
+            return;
+        }
+
+        // Dropdown label
+        bool isInstalled = _installedPreset != null &&
+                           string.Equals(preset.Name, _installedPreset.Name, StringComparison.OrdinalIgnoreCase);
+        SelectPresetMenu.Content = isInstalled
+            ? $"Installed Preset: {preset.Name}"
+            : $"Selected Preset: {preset.Name}";
+
+        // Install button — always just "Install"
+        InstallButton.IsEnabled = preset.IsComplete;
+        InstallButton.Content = "Install";
+
+        UpdatePresetImage(preset);
     }
+
+    // -------------------------------------------------------------------------
+    // Preset preview image — crossfade between two layered Image vessels.
+    //
+    // State: both vessels start transparent/empty.
+    //
+    // First call (both empty):
+    //   Load image into Top, fade both Bottom and Top to 1.
+    //   After fade: copy source to Bottom, reset Top opacity to 0.
+    //
+    // Subsequent calls (Bottom holds the current image):
+    //   Load new image into Top, fade Top from 0 → 1.
+    //   After fade: copy source to Bottom, reset Top to 0.
+    //
+    // Result: the viewer always sees a smooth 0.2s crossfade with no flash.
+    // -------------------------------------------------------------------------
+
+    private string _currentImagePath = null;   // path settled in Bottom vessel
+
+    private void UpdatePresetImage(LutPreset preset)
+    {
+        string imagePath = null;
+
+        if (preset != null)
+        {
+            // For the Default preset, use _defaultImagePath; otherwise use the preset's own image
+            imagePath = preset.IsDefault ? _defaultImagePath : preset.ImagePath;
+
+            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                imagePath = _placeholderImagePath;
+        }
+        else
+        {
+            imagePath = _placeholderImagePath;
+        }
+
+        // Avoid redundant crossfades when the image hasn't changed
+        if (string.Equals(imagePath, _currentImagePath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _ = this.DispatcherQueue.TryEnqueue(() => CrossfadeToImage(imagePath));
+    }
+
+    private void CrossfadeToImage(string newImagePath)
+    {
+        if (_crossfadeInProgress)
+        {
+            // Queue will catch the next call naturally; skip to avoid stacking animations
+            return;
+        }
+
+        BitmapImage newBitmap = null;
+
+        if (!string.IsNullOrEmpty(newImagePath) && File.Exists(newImagePath))
+        {
+            try { newBitmap = new BitmapImage(new Uri(newImagePath)); }
+            catch (Exception ex) { Trace.WriteLine($"LUTM: Image load error: {ex.Message}"); }
+        }
+
+        bool bottomIsEmpty = _currentImagePath == null;
+
+        // Load the incoming image into the Top vessel (currently transparent)
+        PresetImageTop.Source = newBitmap;
+        PresetImageTop.Opacity = 0;
+
+        _crossfadeInProgress = true;
+
+        var storyboard = new Storyboard();
+
+        if (bottomIsEmpty)
+        {
+            // First image ever — fade both vessels in together so there is no pop
+            var fadeInBottom = MakeOpacityAnimation(PresetImageBottom, from: 0, to: 1, duration: 0.2);
+            var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: 0.2);
+            storyboard.Children.Add(fadeInBottom);
+            storyboard.Children.Add(fadeInTop);
+
+            // Prime Bottom with the same image so the vessels are in sync
+            PresetImageBottom.Source = newBitmap;
+            PresetImageBottom.Opacity = 0;
+        }
+        else
+        {
+            // Normal transition — just fade the Top vessel in over the settled Bottom
+            var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: 0.2);
+            storyboard.Children.Add(fadeInTop);
+        }
+
+        storyboard.Completed += (s, e) =>
+        {
+            // Settle: copy the new image into Bottom, hide Top
+            PresetImageBottom.Source = newBitmap;
+            PresetImageBottom.Opacity = 1;
+            PresetImageTop.Opacity = 0;
+            PresetImageTop.Source = null;
+
+            _currentImagePath = newImagePath;
+            _crossfadeInProgress = false;
+        };
+
+        storyboard.Begin();
+    }
+
+    /// <summary>Creates a DoubleAnimation targeting UIElement.Opacity and wires the Storyboard targets.</summary>
+    private static DoubleAnimation MakeOpacityAnimation(UIElement target, double from, double to, double duration)
+    {
+        var anim = new DoubleAnimation
+        {
+            From = from,
+            To = to,
+            Duration = new Duration(TimeSpan.FromSeconds(duration)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+        };
+        Storyboard.SetTarget(anim, target);
+        Storyboard.SetTargetProperty(anim, "Opacity");
+        return anim;
+    }
+
+    // -------------------------------------------------------------------------
+    // Install button
+    // -------------------------------------------------------------------------
 
     private async void InstallButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_selectedPreset == null || !_selectedPreset.IsComplete)
+        {
+            Trace.WriteLine("LUTM: InstallButton_Click with no valid preset - ignoring");
+            return;
+        }
+
+        var preset = _selectedPreset;   // capture before async yields
         InstallButton.IsEnabled = false;
 
         try
         {
-            bool installed = await AreOurFilesInstalledAsync();
+            Trace.WriteLine($"LUTM: Installing preset [{preset.Name}]");
 
-            if (installed)
+            bool success = await ReplaceRtxFilesWithElevation(
+                preset.LutPath, preset.SkyPath, preset.WaterPath);
+
+            if (success)
             {
-                if (!File.Exists(BackupLut) || !File.Exists(BackupSky) || !File.Exists(BackupWater))
-                {
-                    Trace.WriteLine("RTXW: Cannot revert - backup files missing");
-                    StatusMessage = "Cannot revert: original game file backups are missing.";
-                    return;
-                }
+                OperationSuccessful = true;
+                StatusMessage = $"Installed LUT preset: {preset.Name}";
+                Trace.WriteLine($"LUTM: Preset [{preset.Name}] installed");
 
-                bool success = await ReplaceRtxFilesWithElevation(BackupLut, BackupSky, BackupWater);
-                if (success)
+                // Re-detect to confirm what is now on disk, then refresh the dropdown label
+                _installedPreset = await DetectCurrentPresetAsync();
+                Trace.WriteLine("LUTM: Post-install detection: " + (_installedPreset?.Name ?? "Unknown"));
+
+                _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
-                    OperationSuccessful = true;
-                    StatusMessage = "Reverted RTX files to game defaults";
-                    Trace.WriteLine("RTXW: Reverted to game defaults");
-                }
-                else
-                {
-                    Trace.WriteLine("RTXW: Revert cancelled or failed");
-                }
+                    // Refresh the dropdown label without changing the selection
+                    if (_selectedPreset != null)
+                        ApplySelection(_selectedPreset);
+                });
             }
             else
             {
-                bool success = await ReplaceRtxFilesWithElevation(SrcLut, SrcSky, SrcWater);
-                if (success)
-                {
-                    OperationSuccessful = true;
-                    StatusMessage = "Installed Default RTX Modifiers";
-                    Trace.WriteLine("RTXW: Files installed");
-                }
-                else
-                {
-                    Trace.WriteLine("RTXW: Install cancelled or failed");
-                }
+                Trace.WriteLine($"LUTM: Install of [{preset.Name}] failed or was cancelled");
             }
-
-            await RefreshInstallButtonStateAsync();
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"RTXW: Error in InstallButton_Click: {ex.Message}");
+            Trace.WriteLine($"LUTM: Error in InstallButton_Click: {ex.Message}");
         }
         finally
         {
-            _ = this.DispatcherQueue.TryEnqueue(() => InstallButton.IsEnabled = true);
+            _ = this.DispatcherQueue.TryEnqueue(() =>
+            {
+                InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
+                InstallButton.Content = "Install";
+            });
         }
     }
 
-    // Convenience wrapper - validates sources, logs all paths, then delegates
+    // -------------------------------------------------------------------------
+    // Elevated file replacement — all-or-none, one UAC prompt
+    // -------------------------------------------------------------------------
+
     private Task<bool> ReplaceRtxFilesWithElevation(string srcLut, string srcSky, string srcWater)
     {
-        Trace.WriteLine("RTXW: ReplaceRtxFilesWithElevation");
-        Trace.WriteLine($"  srcLut  ={srcLut}  exists={File.Exists(srcLut)}");
-        Trace.WriteLine($"  srcSky  ={srcSky}  exists={File.Exists(srcSky)}");
-        Trace.WriteLine($"  srcWater={srcWater}  exists={File.Exists(srcWater)}");
-        Trace.WriteLine($"  dstLut  ={DstLut}");
-        Trace.WriteLine($"  dstSky  ={DstSky}");
-        Trace.WriteLine($"  dstWater={DstWater}");
+        Trace.WriteLine("LUTM: ReplaceRtxFilesWithElevation");
+        Trace.WriteLine("  srcLut  =" + srcLut + "  exists=" + File.Exists(srcLut));
+        Trace.WriteLine("  srcSky  =" + srcSky + "  exists=" + File.Exists(srcSky));
+        Trace.WriteLine("  srcWater=" + srcWater + "  exists=" + File.Exists(srcWater));
+        Trace.WriteLine("  dstLut  =" + DstLut);
+        Trace.WriteLine("  dstSky  =" + DstSky);
+        Trace.WriteLine("  dstWater=" + DstWater);
 
-        if (!File.Exists(srcLut)) { Trace.WriteLine("RTXW: Aborting - srcLut missing"); return Task.FromResult(false); }
-        if (!File.Exists(srcSky)) { Trace.WriteLine("RTXW: Aborting - srcSky missing"); return Task.FromResult(false); }
-        if (!File.Exists(srcWater)) { Trace.WriteLine("RTXW: Aborting - srcWater missing"); return Task.FromResult(false); }
+        if (!File.Exists(srcLut)) { Trace.WriteLine("LUTM: Aborting - srcLut missing"); return Task.FromResult(false); }
+        if (!File.Exists(srcSky)) { Trace.WriteLine("LUTM: Aborting - srcSky missing"); return Task.FromResult(false); }
+        if (!File.Exists(srcWater)) { Trace.WriteLine("LUTM: Aborting - srcWater missing"); return Task.FromResult(false); }
 
         var files = new List<(string, string)>
         {
@@ -463,10 +776,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         return ReplaceFilesWithElevation(files);
     }
 
-    // Battle-tested core - identical pattern to DLSSSwitcherWindow.ReplaceDllWithElevation
-    // but accepts a list so all three files go in one UAC prompt.
-    // Uses cmd.exe /c so WaitForExit() tracks the batch process itself,
-    // not the UAC broker shell that would return before the copies finish.
     private async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace)
     {
         try
@@ -475,39 +784,39 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             {
                 var scriptLines = new List<string> { "@echo off" };
                 foreach (var (sourcePath, destPath) in filesToReplace)
-                {
                     scriptLines.Add("copy /Y \"" + sourcePath + "\" \"" + destPath + "\" >nul 2>&1");
-                }
                 scriptLines.Add("exit %ERRORLEVEL%");
 
                 var batchScript = string.Join("\r\n", scriptLines);
-                var tempBatchPath = Path.Combine(Path.GetTempPath(), $"rtx_defaults_{Guid.NewGuid():N}.bat");
+                var tempBatchPath = Path.Combine(
+                    Path.GetTempPath(),
+                    "rtx_defaults_" + Guid.NewGuid().ToString("N") + ".bat");
                 File.WriteAllText(tempBatchPath, batchScript);
 
-                Trace.WriteLine($"RTXW: Batch written to {tempBatchPath}");
-                Trace.WriteLine($"RTXW: Batch contents:\n{batchScript}");
+                Trace.WriteLine("LUTM: Batch: " + tempBatchPath);
+                Trace.WriteLine("LUTM: Contents:\n" + batchScript);
 
                 try
                 {
-                    var startInfo = new ProcessStartInfo
+                    var startInfo = new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = "cmd.exe",
                         Arguments = "/c \"" + tempBatchPath + "\"",
                         Verb = "runas",
                         UseShellExecute = true,
                         CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden
+                        WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
                     };
 
-                    var process = Process.Start(startInfo);
+                    var process = System.Diagnostics.Process.Start(startInfo);
                     if (process != null)
                     {
                         process.WaitForExit();
-                        Trace.WriteLine($"RTXW: Batch exit code: {process.ExitCode}");
+                        Trace.WriteLine("LUTM: Exit code: " + process.ExitCode);
                         return process.ExitCode == 0;
                     }
 
-                    Trace.WriteLine("RTXW: Process.Start returned null");
+                    Trace.WriteLine("LUTM: Process.Start returned null");
                     return false;
                 }
                 finally
@@ -523,8 +832,69 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"RTXW: Error in ReplaceFilesWithElevation: {ex.Message}");
+            Trace.WriteLine("LUTM: Error in ReplaceFilesWithElevation: " + ex.Message);
             return false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Hash comparison  (SHA-256)
+    // -------------------------------------------------------------------------
+
+    private static bool HashesMatch(string pathA, string pathB)
+    {
+        using var sha = SHA256.Create();
+        using var streamA = File.OpenRead(pathA);
+        var hashA = sha.ComputeHash(streamA);
+        sha.Initialize();
+        using var streamB = File.OpenRead(pathB);
+        var hashB = sha.ComputeHash(streamB);
+        return System.MemoryExtensions.SequenceEqual(
+            (System.ReadOnlySpan<byte>)hashA,
+            (System.ReadOnlySpan<byte>)hashB);
+    }
+
+    // -------------------------------------------------------------------------
+    // LutPreset  — a folder containing the 3 required RTX files + optional image
+    //
+    // For the Default preset:
+    //   FolderPath = LocalAppData\Lut_Defaults
+    //   ImagePath  = overridden to Assets\lut\Default.png  (passed via constructor)
+    //
+    // For all other presets:
+    //   FolderPath = Assets\lut\<PresetName>
+    //   ImagePath  = Assets\lut\<PresetName>\image.png  (optional)
+    // -------------------------------------------------------------------------
+
+    private sealed class LutPreset
+    {
+        public string Name { get; }
+        public string FolderPath { get; }
+        public bool IsDefault { get; }
+
+        // RTX file paths are always inside FolderPath
+        public string LutPath => Path.Combine(FolderPath, "look_up_tables.png");
+        public string SkyPath => Path.Combine(FolderPath, "sky.png");
+        public string WaterPath => Path.Combine(FolderPath, "water_n.tga");
+
+        // UI image: for Default the caller supplies an override path; others use image.png in folder
+        private readonly string _imagePathOverride;
+        public string ImagePath => _imagePathOverride ?? Path.Combine(FolderPath, "image.png");
+
+        public bool IsComplete =>
+            File.Exists(LutPath) && File.Exists(SkyPath) && File.Exists(WaterPath);
+
+        /// <param name="imagePathOverride">
+        ///   Optional override for the preview image path (used by the Default preset
+        ///   so its UI image can live in Assets\lut\ rather than in Lut_Defaults).
+        /// </param>
+        public LutPreset(string name, string folderPath,
+                         string imagePathOverride = null, bool isDefault = false)
+        {
+            Name = name;
+            FolderPath = folderPath;
+            IsDefault = isDefault;
+            _imagePathOverride = imagePathOverride;
         }
     }
 }
