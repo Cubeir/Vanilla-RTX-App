@@ -34,18 +34,35 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- Make sure dlss swapper searches recursively for dlls in the zips it is given?
+- Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
+hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
+
+Include a short guide maybe, a link to a readme guide, in that guide, say what each row of pixels do in the LUT.
+Write up the readme and upload it, link it for now.
+Finalize the guide, put it in the readme.md at the last minute as a subsection, or a secondary section at the very very bottom, assuminng you also rework the PSA retrieve
+
+link the guide's precise section .
+update PSA URLs
+test.
+roll.
+
+
 - BIG CHANGE OF PLANS:
 PBR Alchemist, Reworked RTX Reactor, coming to the app!
 It is the spritual successor to RTX Reactor.
-Forget both VVA and Reactor, PBR Alchemist...
-combine the two projects into one and bring it to the app
-the app is already a full suite, it lets you export whatever.
+Vibrant Visuals Alchemist project is dead, so is RTX Reactor effectively, PBR Alchemist combines the ideas from both into something better.
+
 Generating PBR textures properly where the non-PBR pack is already installed is a much better way of doing it
 It's not like all people keep MCPACKS around? they delete them after importing!
-And now, the app lets you generate PBR textures for IMPORTED apps?
+So, indeed, giving people the ability to do it from here instead makes a lot more sense from a UX perspective.
 
-This is going to be a long term plan, for now, for 3.0, mention these plans in a window when the button is clicked
-the feature will be coming... some time, when you got more time, but for now the idea itself is pretty exciting...!
+Just gotta make it so incompatible packs are selectable now, 
+then implement something to make tuning NOT work for these packs, a sort of marker or something will do
+Call the Non-PBR packs "Likely suitable for PBR Alchemist"
+A blue card!
+
+This is going to be a long term plan, implement as much of it as you can for 3.0
 
 Leave addons be as it is, the app automating it isn't too useful, its clunky, complex, and a waste overall
 they can already be modularly activated in game, that's very good already.
@@ -54,20 +71,9 @@ KEEP THE PACKS SEPARATE, thats the way
 aside from some personal workflows where you merge BtU extensions down into Vanilla RTX for that special variant, this is a bad idea
 Sepearte Extensions/Add-ons are good. Don't try to complicate it with the app.
 
-- come up with art for PBR Alchemist (let the theme be the same as RTX Reactor, classic)
-and for LUT manager, relate it to COLORS, paint some random colored concrete falling? like the defrag icon for windows, lol
 
-Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
-hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
-
-implement the preset thingy, two is enough for now, default, and yours, make the psa pane thingy say people can make their own
-and submit it to you to be bundled with the app.
-Include a short guide maybe, a link to a readme guide, in that guide, say what each row of pixels do in the LUT.
-also what does the fourth row actually do? is it related to ambience, Nether, or End?!
-
-- BetterRTX API now gives icons, maybe worth displaying, maybe not, not worth the slowdown
-
-- Make sure dlss swapper searches recursively for dlls in the zips it is given?
+- BetterRTX API now gives icons, maybe worth displaying, maybe not,
+Probably not worth the slowdown for slower internet connections. This follows prior design philosphy where you keep all functions WORKING even without internet as much as possible.
 
 make psa panes pull them from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
 this is a really cool idea, maybe other windows could use it too... general psas are in logs, feature-specific PSAs THAT MIGHT need it in their windows!
@@ -748,7 +754,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(DefaultRTXModifiersButton,
-            "ms-appx:///Assets/previews/locate.png"
+            "ms-appx:///Assets/previews/lut.png"
         );
 
         Previewer.Instance.InitializeButton(RTXReactorButton,

@@ -190,8 +190,9 @@
                         </Grid.RowDefinitions>
 
 
-                        <!-- Info -->
+                        <!-- Info & Text -->
                         <FontIcon Grid.Column="0"
+                                  Grid.Row="0"
                                   Glyph="&#xE946;"
                                   FontFamily="{StaticResource SymbolThemeFontFamily}"
                                   FontSize="18"
@@ -206,10 +207,11 @@
                                    TextAlignment="Left"
                                    VerticalAlignment="Center"
                                    IsTextScaleFactorEnabled="False"
-                                   Text="Look up tables are a simple way to modify and improve and further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset." />
+                                   Text="Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset." />
 
+                        <!-- Static Space -->
 
-                        <!-- Info Icon -->
+                        <!-- Info & Text -->
                         <FontIcon Grid.Column="0"
                                   Grid.Row="2"
                                   Glyph="&#xE946;"
@@ -218,7 +220,7 @@
                                   VerticalAlignment="Center"
                                   Margin="0,2,12,0"
                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                        <TextBlock Grid.Column="2"
+                        <TextBlock Grid.Column="1"
                                    Grid.Row="2"
                                    TextWrapping="Wrap"
                                    FontSize="12"

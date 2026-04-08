@@ -20,7 +20,6 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.RTXDefaults;
 
-// Make the click here text take user to that place with open URL
 
 public sealed partial class DefaultRTXModifiersWindow : Window
 {
