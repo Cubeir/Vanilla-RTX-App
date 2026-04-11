@@ -1155,12 +1155,12 @@
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 2: RTX Reactor and BetterRTX Mananger    -->
+                    <!-- ROW 2: Alchitex and BetterRTX Mananger    -->
                     <!-- ============================================ -->
 
-                    <!-- RTX Reactor / PBR Alchemist Button -->
-                    <Button x:Name="RTXReactorButton"
-                            Click="RTXReactorButton_Click"
+                    <!-- Alchitex Button -->
+                    <Button x:Name="AlchitexButton"
+                            Click="AlchitexButton_Click"
                             Grid.Row="2"
                             Grid.Column="0"
                             FontWeight="SemiBold"
@@ -1175,13 +1175,9 @@
                             <FontIcon Glyph="&#xF196;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
-                                      VerticalAlignment="Center"
-                                      x:Name="UpdateVanillaRTXGlyph_COPYTEMP"
-                                      x:FieldModifier="public" />
-                            <TextBlock Text="PBR Alchemist"
-                                       VerticalAlignment="Center"
-                                       x:Name="RTXReactorButtonText"
-                                       x:FieldModifier="public" />
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Alchitex (Beta)"
+                                       VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 

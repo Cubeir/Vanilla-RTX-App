@@ -14,6 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Modules\Alchemist.xaml" />
+    <None Remove="Modules\Alchitex\Alchitex.xaml" />
     <None Remove="Modules\BetterRTXManagerWindow.xaml" />
     <None Remove="Modules\DefaultRTXModifiers.xaml" />
     <None Remove="Modules\DLSSSwitcherWindow.xaml" />
@@ -856,6 +858,21 @@
     <None Update="Assets\Wide310x150Logo.scale-400.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Page Update="Modules\Alchitex\Alchitex.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <None Update="Modules\Alchitex\ALCHITEX_LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Page Update="Modules\Alchemist\Alchemist.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <None Update="Modules\Alchemist\ALCHEMIST_LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Page Update="Modules\Alchemist.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Update="Modules\DefaultRTXModifiers.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

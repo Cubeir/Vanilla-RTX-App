@@ -35,6 +35,7 @@ namespace Vanilla_RTX_App;
 ### BACKLOG ###
 
 - Make sure dlss swapper searches recursively for dlls in the zips it is given?
+
 - Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
 hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
 
@@ -757,7 +758,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/lut.png"
         );
 
-        Previewer.Instance.InitializeButton(RTXReactorButton,
+        Previewer.Instance.InitializeButton(AlchitexButton,
             "ms-appx:///Assets/previews/reactor.promo.tile.png"
         );
 
@@ -1760,61 +1761,11 @@ public sealed partial class MainWindow : Window
     }
 
 
-    int ReactorClickCounter = 0;
-    private void RTXReactorButton_Click(object sender, RoutedEventArgs e)
+    private void AlchitexButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] comingSoonMessages =
-         [
-             "Coming soon!",
-             "Coming soon!!",
-             "Coming soon!",
-             "Yes, I said it is coming soon!",
-             "You can't believe it! Neither can I!",
-             "I can't keep writing interesting messages for you forever you know?",
-             "Stay tuned? I guess",
-             "In development... Cubeir is working super hard (he swears)",
-             "On its way! I believe.",
-             "Almost there...",
-             "Just around the corner, honest!",
-             "This is gonna be great!",
-             "But not quite yet!",
-             "Patience you young grasshopper... or old one. No judgment.",
-             "In the works... I already told you that!",
-             "You're not helping anyone by clicking here, please, do something more productive, like some quality gaming!",
-             "This is getting old isn't it?",
-             "Well then, let me tell you what PBR alchemist is",
-             "First, look up RTX Reactor, this project is its revival! That's all you're getting from me here.",
-             "...",
-             "....",
-             ".....!!!",
-            "Basically, this project is going to give PBR textures to non-PBR resource packs, to make them look a whole lot nicer with VV and compatible with RTX",
-            "The pipeline is still in the the pipeline... (A very long pipe, apparently, or just a bit of a narrow one, aka Cubeir)",
-            "RTX Reactor began in 2023.",
-            "It saw good development during 2024 with a nice custom UI in August",
-            "But it died off towards the end of 2025, as RTX needed a cane to walk, and I had to build it: The Vanilla RTX App",
-            "I've been wanting to revive the project ever since, with newer ideas and extensive rewrites.",
-            "The idea to merge it into the Vanilla RTX App came out of nowhere, but it is so natural!",
-            "Initially, the idea was to build another RTX Reactor from ground up called Vibrant Visuals Alchemist.",
-            "That project died off before seeing the light of the day.",
-            "So here are!",
-            "PBR Alchemist will be the scrapped VV Alchemist ideas and RTX Reactor merged together, put inside the RTX App, what better place?",
-            "I was seriously considering selling it you know? But I just think these tools are more useful when available to the general public",
-            "Because to be frank, my real goal from doing all of this is 90% personal, 9% financial, and 1% out of spite.",
-            "But I still appreciate all of the support that has come over the years more than you know!",
-            "So..",
-            "Thank you."
-        ];
 
-        if (ReactorClickCounter < comingSoonMessages.Length)
-        {
-            Log(comingSoonMessages[ReactorClickCounter], LogLevel.Warning);
-            ReactorClickCounter++;
-        }
-        else
-        {
-            Log("Error at: comingSoonMessages[index]", LogLevel.Error);
-        }
     }
+
 
 
 
@@ -2006,4 +1957,6 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 0.0);
         }
     }
+
+
 }
