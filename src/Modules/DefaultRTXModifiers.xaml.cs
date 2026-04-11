@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -565,9 +566,25 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         // Install button content
         InstallButton.IsEnabled = preset.IsComplete;
-        InstallButton.Content = isInstalled
-            ? $"Reinstall"
-            : $"Install";
+        if (isInstalled)
+        {
+            InstallButton.Content = "Reinstall";
+            InstallButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
+
+            // Pane thingy
+            var theme = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Dark ? "Dark" : "Light";
+            var themeDict = Application.Current.Resources.ThemeDictionaries[theme] as ResourceDictionary;
+            var color = (Windows.UI.Color)themeDict["FakeSplitButtonBrightBorderColor"];
+            LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(color);
+        }
+        else
+        {
+            InstallButton.Content = "Install";
+            InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+
+            // Pane thingy
+            LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources["SystemAccentColorLight3"]);
+        }
 
         UpdatePresetImage(preset);
     }
@@ -745,10 +762,27 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                                     string.Equals(preset.Name, _selectedPreset.Name, StringComparison.OrdinalIgnoreCase);
 
                 InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
-                InstallButton.Content = isInstalled
-                    ? $"Reinstall"
-                    : $"Install";
-            });
+                // Install button content
+                if (isInstalled)
+                {
+                    InstallButton.Content = "Reinstall";
+                    InstallButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
+
+                    // Pane thingy
+                    var theme = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Dark ? "Dark" : "Light";
+                    var themeDict = Application.Current.Resources.ThemeDictionaries[theme] as ResourceDictionary;
+                    var color = (Windows.UI.Color)themeDict["FakeSplitButtonBrightBorderColor"];
+                    LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(color);
+                }
+                else
+                {
+                    InstallButton.Content = "Install";
+                    InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+
+                    // Pane thingy
+                    LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources["SystemAccentColorLight3"]);
+                }
+            }); 
         }
     }
 
@@ -899,5 +933,10 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             IsDefault = isDefault;
             _imagePathOverride = imagePathOverride;
         }
+    }
+
+    private void Button_Click(object sender, RoutedEventArgs e)
+    {
+        MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#LUT-Tutorial");
     }
 }

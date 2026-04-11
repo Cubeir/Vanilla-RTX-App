@@ -158,7 +158,8 @@
                           IsHitTestVisible="False">
                         <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
                         <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
-                                BorderThickness="3,0,0,0" />
+                                BorderThickness="3,0,0,0"
+                                x:Name="LeftEdgeOfInstallButton"/>
                     </Grid>
                 </Grid>
 
@@ -260,8 +261,27 @@
                                Opacity="1.0">
                     </Rectangle>
 
-                    
-                    <Rectangle Fill="{ThemeResource FakeSplitButtonBrightBorderColor}"
+
+
+                    <Button Content="Learn to create and submit your own lut presets for everyone to see them here!"
+                            Opacity="0.84"
+                            Padding="6"
+                            CornerRadius="0"
+                            FontSize="14"
+                            VerticalAlignment="Bottom"
+                            MinHeight="34"
+                            Foreground="White"
+                            Margin="-0.5"
+                            HorizontalAlignment="Stretch"
+                            Click="Button_Click"
+                            Canvas.ZIndex="998">
+                        <Button.Background>
+                            <AcrylicBrush TintColor="{ThemeResource SystemAltHighColor}"
+                                          TintOpacity="0.0"
+                                          FallbackColor="{ThemeResource SystemAccentColor}" />
+                        </Button.Background>
+                    </Button>
+                    <Rectangle Fill="#FFFFFFFF"
                                Height="3"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Bottom"
@@ -270,16 +290,6 @@
                                Margin="0, 0, 0, 30"
                                Opacity="0.1">
                     </Rectangle>
-                    <HyperlinkButton Content="Learn to create and submit your own lut presets for everyone to see them here!"
-                                     NavigateUri="https://github.com/cubeir/Vanilla-RTX-App/main"
-                                     Foreground="{StaticResource SystemAccentColorLight3}"
-                                     Background="#80000000" 
-                                     Padding="6"
-                                     CornerRadius="0"
-                                     FontSize="14"
-                                     VerticalAlignment="Bottom"
-                                     HorizontalAlignment="Stretch"
-                                     Canvas.ZIndex="998"/>
 
                     <!-- Bottom vessel — holds the settled (current) image -->
                     <Image x:Name="PresetImageBottom"
