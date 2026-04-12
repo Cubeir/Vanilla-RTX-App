@@ -386,8 +386,8 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         // Parse version for minimum check (versions are stored as "3,7,0,0" style)
         var normalizedVersion = dll.Version.Replace(",", ".");
-        bool isTooOld = dll.Version == "Unknown" ||
-            (Version.TryParse(normalizedVersion, out var parsedVersion) && parsedVersion < new Version(2, 0, 0, 0));
+        bool isValidVersion = Version.TryParse(normalizedVersion, out var parsedVersion);
+        bool isTooOld = dll.Version == "Unknown" || !isValidVersion || parsedVersion < new Version(2, 0, 0, 0);
 
         var button = new Button
         {
