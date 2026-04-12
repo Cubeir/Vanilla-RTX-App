@@ -759,8 +759,10 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         {
             _ = this.DispatcherQueue.TryEnqueue(() =>
             {
-                bool isInstalled = _selectedPreset != null &&
-                                    string.Equals(preset.Name, _selectedPreset.Name, StringComparison.OrdinalIgnoreCase);
+                // Use _installedPreset — only updated by DetectCurrentPresetAsync on success.
+                // If UAC was denied, _installedPreset still reflects what was on disk before.
+                bool isInstalled = _installedPreset != null &&
+                                   string.Equals(_installedPreset.Name, preset.Name, StringComparison.OrdinalIgnoreCase);
 
                 InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
                 // Install button content

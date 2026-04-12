@@ -70,10 +70,6 @@ KEEP THE PACKS SEPARATE, thats the way
 aside from some personal workflows where you merge BtU extensions down into Vanilla RTX for that special variant, this is a bad idea
 Sepearte Extensions/Add-ons are good. Don't try to complicate it with the app.
 
-
-- BetterRTX API now gives icons, maybe worth displaying, maybe not,
-Probably not worth the slowdown for slower internet connections. This follows prior design philosphy where you keep all functions WORKING even without internet as much as possible.
-
 make psa panes pull them from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
 this is a really cool idea, maybe other windows could use it too... general psas are in logs, feature-specific PSAs THAT MIGHT need it in their windows!
 
