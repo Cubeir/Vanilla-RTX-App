@@ -575,7 +575,8 @@ public sealed partial class MainWindow : Window
             // 🍝 Color of that little border next to the Preview button 🍝
             if (IsTargetingPreview)
             {
-                LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources["SystemAccentColorLight3"]);
+                var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
+                LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
             }
             else
             {
@@ -1311,8 +1312,9 @@ public sealed partial class MainWindow : Window
         IsTargetingPreview = true;
         _ = LocatePacksButton_Click();
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
-
-        LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources["SystemAccentColorLight3"]);
+        var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
+        var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
+        LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
         BetterRTXPresetManagerButton.IsEnabled = false;
     }
     private void TargetPreviewToggle_Unchecked(object sender, RoutedEventArgs e)

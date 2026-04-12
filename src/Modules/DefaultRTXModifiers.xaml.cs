@@ -583,7 +583,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
 
             // Pane thingy
-            LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources["SystemAccentColorLight3"]);
+            var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
+            LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
         }
 
         UpdatePresetImage(preset);
@@ -780,7 +781,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
 
                     // Pane thingy
-                    LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources["SystemAccentColorLight3"]);
+                    var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
+                    LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
                 }
             }); 
         }
