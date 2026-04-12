@@ -1217,7 +1217,7 @@ public sealed partial class MainWindow : Window
     // -------
 
 
-    private string? _previousStatusMessage;
+    private Dictionary<bool, string?> _previousStatusMessages = new();
     public async Task LocatePacksButton_Click(bool ShowLogs = false)
     {
         _ = BlinkingLamp(true, true, 1.0);
@@ -1243,16 +1243,19 @@ public sealed partial class MainWindow : Window
         VanillaRTXOpusVersion = string.Empty;
         CustomPackDisplayName = string.Empty;
 
+        // Status message
         var statusMessage = PackLocator.LocatePacks(IsTargetingPreview,
             out VanillaRTXLocation, out VanillaRTXVersion,
             out VanillaRTXNormalsLocation, out VanillaRTXNormalsVersion,
             out VanillaRTXOpusLocation, out VanillaRTXOpusVersion);
-        if (ShowLogs && statusMessage != _previousStatusMessage)
+
+        _previousStatusMessages.TryGetValue(IsTargetingPreview, out var previousMessage);
+        if (ShowLogs && statusMessage != previousMessage)
         {
             Log(statusMessage);
-            _previousStatusMessage = statusMessage;
+            _previousStatusMessages[IsTargetingPreview] = statusMessage;
         }
-
+        // Status message
 
         if (!string.IsNullOrEmpty(VanillaRTXLocation) && Directory.Exists(VanillaRTXLocation))
         {
