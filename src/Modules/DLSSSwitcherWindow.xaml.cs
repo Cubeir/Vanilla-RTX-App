@@ -8,6 +8,7 @@ using System.Management.Automation;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -326,10 +327,17 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
     }
 
-    private async Task LoadDllsAsync()
+    private async Task LoadDllsAsync(bool IsCalledByAddDLSSVersion = false)
     {
         try
         {
+
+            // Delete old dlls if it isn't called using whatever that adds the dlls
+            if (!IsCalledByAddDLSSVersion)
+            {
+                await CleanupOldDllsAsync();
+            }
+
             DllListContainer.Children.Clear();
 
             var dllFiles = Directory.GetFiles(_cacheFolder, "*.dll")
@@ -376,8 +384,14 @@ public sealed partial class DLSSSwitcherWindow : Window
     {
         bool isCurrentVersion = dll.Version == _currentInstalledVersion;
 
+        // Parse version for minimum check (versions are stored as "3,7,0,0" style)
+        var normalizedVersion = dll.Version.Replace(",", ".");
+        bool isTooOld = dll.Version == "Unknown" ||
+            (Version.TryParse(normalizedVersion, out var parsedVersion) && parsedVersion < new Version(2, 0, 0, 0));
+
         var button = new Button
         {
+            IsEnabled = !isTooOld,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(16, 20, 38, 20),
@@ -453,7 +467,11 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var pathText = new TextBlock
         {
-            Text = isCurrentVersion ? Helpers.SanitizePathForDisplay(dll.FilePath) : "Click to swap to this version",
+            Text = isCurrentVersion
+        ? Helpers.SanitizePathForDisplay(dll.FilePath)
+        : isTooOld
+            ? "Incompatible DLSS version. Only import 2.0.0.0 or higher!\nThis version will be auto removed."
+            : "Click to swap to this version",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -696,7 +714,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                     }
                 }
 
-                await LoadDllsAsync();
+                await LoadDllsAsync(true);
             }
         }
         catch (Exception ex)
@@ -732,7 +750,7 @@ public sealed partial class DLSSSwitcherWindow : Window
                     await ProcessDllFileAsync(file.Path);
                 }
 
-                await LoadDllsAsync();
+                await LoadDllsAsync(true);
             }
         }
         catch (Exception ex)
@@ -745,6 +763,12 @@ public sealed partial class DLSSSwitcherWindow : Window
     {
         try
         {
+            if (!Path.GetFileName(dllPath).EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                Trace.WriteLine($"Skipped non-DLL file: {dllPath}");
+                return;
+            }
+
             var versionInfo = FileVersionInfo.GetVersionInfo(dllPath);
             var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
             var cacheFileName = $"{version}.dll";
@@ -769,27 +793,30 @@ public sealed partial class DLSSSwitcherWindow : Window
                 {
                     foreach (var entry in archive.Entries)
                     {
-                        if (entry.FullName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                        if (!entry.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                         {
-                            try
-                            {
-                                var tempPath = Path.Combine(Path.GetTempPath(), entry.Name);
-                                entry.ExtractToFile(tempPath, true);
+                            Trace.WriteLine($"Skipped non-DLL file from ZIP");
+                            continue;
+                        }
 
-                                var versionInfo = FileVersionInfo.GetVersionInfo(tempPath);
-                                var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
-                                var cacheFileName = $"{version}.dll";
-                                var cachePath = Path.Combine(_cacheFolder, cacheFileName);
+                        try
+                        {
+                            var tempPath = Path.Combine(Path.GetTempPath(), entry.Name);
+                            entry.ExtractToFile(tempPath, true);
 
-                                File.Copy(tempPath, cachePath, true);
-                                File.Delete(tempPath);
+                            var versionInfo = FileVersionInfo.GetVersionInfo(tempPath);
+                            var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
+                            var cacheFileName = $"{version}.dll";
+                            var cachePath = Path.Combine(_cacheFolder, cacheFileName);
 
-                                Trace.WriteLine($"Extracted and added DLSS {version} from ZIP");
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.WriteLine($"Error processing {entry.FullName} from ZIP: {ex.Message}");
-                            }
+                            File.Copy(tempPath, cachePath, true);
+                            File.Delete(tempPath);
+
+                            Trace.WriteLine($"Extracted and added DLSS {version} from ZIP");
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine($"Error processing {entry.FullName} from ZIP: {ex.Message}");
                         }
                     }
                 }
@@ -899,6 +926,45 @@ public sealed partial class DLSSSwitcherWindow : Window
             return null;
         }
     }
+
+
+    private async Task CleanupOldDllsAsync()
+    {
+        await Task.Run(() =>
+        {
+            foreach (var dllPath in Directory.GetFiles(_cacheFolder, "*.dll"))
+            {
+                try
+                {
+                    var versionInfo = FileVersionInfo.GetVersionInfo(dllPath);
+                    var raw = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "";
+                    var normalized = raw.Replace(",", ".");
+
+                    if (string.IsNullOrWhiteSpace(raw) ||
+                        !Version.TryParse(normalized, out var parsedVersion) ||
+                        parsedVersion < new Version(2, 0, 0, 0))
+                    {
+                        // Don't delete the currently installed version even if it's weird (for legacy reasons, some idiot might have installed non-dlss dlss in the past)
+                        // We don't wanna fuck with the files just in case, stupid reason for stupid case
+                        if (!string.IsNullOrEmpty(_currentInstalledVersion) &&
+                            Path.GetFileNameWithoutExtension(dllPath) == _currentInstalledVersion)
+                        {
+                            Trace.WriteLine($"Skipping cleanup of current installed version: {dllPath}");
+                            continue;
+                        }
+
+                        File.Delete(dllPath);
+                        Trace.WriteLine($"Cleaned up incompatible/unversioned DLSS from cache: {dllPath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"Error during cleanup of {dllPath}: {ex.Message}");
+                }
+            }
+        });
+    }
+
 
     private class DllData
     {

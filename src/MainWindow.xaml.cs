@@ -34,8 +34,6 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
-- Make sure dlss swapper searches recursively for dlls in the zips it is given?
-
 - Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
 hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
 
