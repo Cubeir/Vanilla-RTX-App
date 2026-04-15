@@ -1,5 +1,11 @@
 using System;
+using System;
 using System.Diagnostics;
+using System.Diagnostics;
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -11,19 +17,15 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
+using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
-// Todo: Fix the lamps assets getting mixed up for some reason between mainwindow and this
-// mainwdow is fine, this one gets fucked and has lamp everywhere for some reason
-// add the click event for the top icon, when clicked it must flash similarly
-// then do the framework for redstone!
-// Perfect the licensing windows' appearance
+// Potentially rename to ARCHITEX or ALCHETEX before release.
 
-// use the thing you did, temp keys.. on other things?
-// nah, not necessery, only did it here cuz, u dont have internet, and rapidly RESETTING the app keys hurts!
+// Perfect the licensing windows' appearance
 
 // Review: is it a good idea to limit features lifecycle to their windows? In general... should it all ahve been on the main window?
 // well, you see, in your case, navigation view would've been very generic
@@ -39,6 +41,50 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 // A nice way to convey something being done in the background!
 // This is the way, and is actually imeplementable, unlike earlier versions of the idea. (how were to understand which areas are... to trigger)
 // it isn't too convoluted, and is gonna look AMAZING.
+
+
+public static class AlchitexVariables
+{
+
+    public static class Persistent
+    {
+
+    }
+    public static void SaveSettings()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var fields = typeof(Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+
+        foreach (var field in fields)
+        {
+            var value = field.GetValue(null);
+            localSettings.Values[field.Name] = value;
+        }
+    }
+    public static void LoadSettings()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+        var fields = typeof(Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+        foreach (var field in fields)
+        {
+            try
+            {
+                if (localSettings.Values.ContainsKey(field.Name))
+                {
+                    var savedValue = localSettings.Values[field.Name];
+                    var convertedValue = Convert.ChangeType(savedValue, field.FieldType);
+                    field.SetValue(null, convertedValue);
+                }
+            }
+            catch
+            {
+                Trace.WriteLine($"An issue occured loading settings");
+            }
+        }
+    }
+}
+
+
 
 public sealed partial class Alchitex : Window
 {
@@ -121,24 +167,28 @@ public sealed partial class Alchitex : Window
     // ── Lamp animator setup ──────────────────────────────────────────────────
     private void InitializeLampAnimators()
     {
-        // Titlebar lamp — same constructor signature as MainWindow's titlebar lamp.
-        // baseImage = "On", overlayImage = "Off", haloImage = halo, no superImage needed
-        // (pass superImage if your LampAnimator overload supports it, otherwise omit)
+        const string assetBase = "ms-appx:///Modules/Alchitex/Assets/";
+
         _titlebarLogoAnimator = new LampAnimator(
-            LampAnimator.LampContext.Titlebar,
+            context: LampAnimator.LampContext.Titlebar,
             baseImage: AlchitexIconOn,
+            onPath: assetBase + "splash.on.png",
+            offPath: assetBase + "splash.off.png",
+            superPath: assetBase + "splash.super.png",
+            haloPath: assetBase + "splash.halo.png",
             overlayImage: AlchitexIconOff,
             haloImage: AlchitexIconHalo,
             superImage: AlchitexIconSuper
         );
 
-        // Splash lamp — same pattern as MainWindow's splash lamp.
-        // overlayImage is the "Off" layer (SplashLampOff), not null, so the
-        // animator can cross-fade it. superImage is the "Super" layer.
         _splashLogoAnimator = new LampAnimator(
-            LampAnimator.LampContext.Splash,
+            context: LampAnimator.LampContext.Splash,
             baseImage: SplashLogo,
-            overlayImage: SplashLogo,
+            onPath: assetBase + "logo.on.png",
+            offPath: assetBase + "logo.off.png",
+            superPath: assetBase + "logo.super.png",
+            haloPath: assetBase + "logo.halo.png",
+            overlayImage: SplashLogoOff,
             haloImage: SplashLogoHalo,
             superImage: SplashLogoSuper
         );
@@ -408,5 +458,10 @@ public sealed partial class Alchitex : Window
         MainGrid.Visibility = Visibility.Visible;
 
         // TODO: initialise Alchitex feature content here
+    }
+
+    private void LogoInteractButton_Click(object sender, RoutedEventArgs e)
+    {
+        _ = BlinkingLamp(true, true, 1.0);
     }
 }

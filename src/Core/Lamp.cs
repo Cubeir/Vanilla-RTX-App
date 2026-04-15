@@ -49,9 +49,17 @@ public class LampAnimator
         Splash
     }
 
+    /// <summary>
+    /// Overload that accepts explicit asset paths, bypassing context-based path resolution.
+    /// Use this for module-specific lamps that have their own asset sets.
+    /// </summary>
     public LampAnimator(
         LampContext context,
         Image baseImage,
+        string onPath = null,
+        string offPath = null,
+        string superPath = null,
+        string haloPath = null,
         Image overlayImage = null,
         Image haloImage = null,
         Image superImage = null)
@@ -64,11 +72,23 @@ public class LampAnimator
 
         _defaultHaloOpacity = _context == LampContext.Splash ? 0.175 : 0.25;
 
-        var paths = ResolveImagePaths();
-        _onPath = paths.on;
-        _offPath = paths.off;
-        _superPath = paths.super;
-        _haloPath = paths.halo;
+        // If explicit paths were provided, use them directly.
+        // Otherwise fall back to the original context-based resolution.
+        if (onPath != null || offPath != null || superPath != null || haloPath != null)
+        {
+            _onPath = onPath;
+            _offPath = offPath;
+            _superPath = superPath;
+            _haloPath = haloPath;
+        }
+        else
+        {
+            var paths = ResolveImagePaths();
+            _onPath = paths.on;
+            _offPath = paths.off;
+            _superPath = paths.super;
+            _haloPath = paths.halo;
+        }
     }
 
     /// <summary>

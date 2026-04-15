@@ -167,6 +167,19 @@
                            Canvas.ZIndex="5"
                            IsHitTestVisible="False"
                            CacheMode="BitmapCache" />
+
+                    <!-- Button to make lamp interactive -->
+                    <Button x:Name="LogoInteractButton"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Canvas.Left="0.5"
+                            Canvas.Top="1"
+                            Opacity="0.0"
+                            Height="20"
+                            Width="20"
+                            Canvas.ZIndex="5"
+                            CornerRadius="0"
+                            Click="LogoInteractButton_Click" />
                 </Canvas>
 
                 <!-- Window title text — updated in code-behind later! -->
@@ -315,7 +328,7 @@
 
                     <!-- Halo — bottom layer -->
                     <Image x:Name="SplashLogoHalo"
-                           Source="ms-appx:///Modules/Alchitex/Assets/logo.halo.png"
+                           Source="ms-appx:///Modules/Alchitex/Assets/splash.halo.png"
                            Width="1280"
                            Height="1280"
                            Margin="-512,-512,-512,-512"
@@ -326,7 +339,7 @@
 
                     <!-- Base "On" — middle layer -->
                     <Image x:Name="SplashLogo"
-                           Source="ms-appx:///Modules/Alchitex/Assets/logo.on.png"
+                           Source="ms-appx:///Modules/Alchitex/Assets/splash.on.png"
                            Width="192"
                            Height="192"
                            Opacity="1.0"
@@ -336,7 +349,7 @@
 
                     <!-- "Off" overlay — used by animator -->
                     <Image x:Name="SplashLogoOff"
-                           Source="ms-appx:///Modules/Alchitex/Assets/logo.off.png"
+                           Source="ms-appx:///Modules/Alchitex/Assets/splash.off.png"
                            Width="192"
                            Height="192"
                            Opacity="0.0"
@@ -346,7 +359,7 @@
 
                     <!-- "Super" overlay — top layer -->
                     <Image x:Name="SplashLogoSuper"
-                           Source="ms-appx:///Modules/Alchitex/Assets/logo.super.png"
+                           Source="ms-appx:///Modules/Alchitex/Assets/splash.super.png"
                            Width="192"
                            Height="192"
                            Opacity="0.0"

@@ -34,16 +34,8 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
-- Alchitex Plan Start:
-Forget the older starting ideas, this works functionally a lot like chunker, let's make it inspired by chunker. The UI could use heavy inspirations
-A chunker-like UX/process theme
-do it like VVA was ORIGINALLY INTENDED to be done! look at the notes
-The window opens -> user sees license agreement thingy -> It's done and over
-let it be offline, don't auto update it (not necessery), fuck that, extra unncessery requests!
-keep it simple. But link the web one at the top! Y'know! just in case, a rich text box can do, two buttons, all with shadows, simple, minimal
-require scrolling to the bottom.
-
-This is going to be a multi-staged Window
+Alchiex
+Is it going to be a multi-staged Window?
 First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs
 YES, this way you DON'T have to make changes to the existing pack browser! AND DON'T, REVERT ALL IF YOU HAVE!
 Don't risk breaking existing code paths, VV/RTX/NoPBR flag and shit, that was a SHIT idea!
@@ -63,10 +55,6 @@ Fallback to asking for a save location if it fails
 >> MAYBE, while add it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
 could be used for launcher too as well as the 3 above
 
-- Stop disbaling Main Window for features that don't need them disabled
-lut, dlss, brtx, and prolly more, don't need all of mainwindow disabled, there is no security concern.
-but yeah something lkike alchitex should continue to do that
-
 - Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
 hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
 
@@ -78,7 +66,6 @@ link the guide's precise section .
 update PSA URLs
 test.
 roll.
-
 here's how to do this NICELY while making as few requests as possible
 Put the PSAs in a PSA.md in the github repository, this is only going to contain PSAs
 On app startup, we retrieve it
@@ -90,14 +77,12 @@ SO yeah, each feature gets its own STRING
 THE PSA retriever on startup tries its best to get the PSAs, caches them, and puts them in the strings, saves on windows.sstorage for future use!
 Put a 24 hour cooldown on it, every 24 hours user launches the app, they get up to date PSAs for ALL sections
 
-Do it smartly, there is also supporter retriever, MAYBE put them both into the same file, reduce requests!!!
+>>> Do it smartly, there is also supporter retriever, MAYBE put them both into the same file, reduce requests!!!
 Basically UNIFY this whole retrieve something from github to display
 logs can have a
 # Sidebarlog
 section on the .md file, this is what ends up in the sidebar log, simple, a system for YOUR APP!
-
-u can then display all of these PSAs in app's in the form of Panels, if there is a PSA, panel becomes visible, takes some updating existing windows.
-Claude can do it!
+u can then display all of these PSAs in app's in the form of Panels, if there is a PSA, panel becomes visible, takes some updating existing windows
 
 
 

@@ -873,6 +873,27 @@
     <None Update="Modules\Alchitex\Assets\logo.super.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Modules\Alchitex\Assets\splash.halo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\splash.off.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\splash.on.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\splash.super.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\splashlogo.off.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\splashlogo.on.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\splashlogo.super.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Page Update="Modules\Alchitex\Alchitex.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
