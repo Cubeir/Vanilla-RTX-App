@@ -182,6 +182,7 @@
                                                       Grid.Column="0"
                                                       Header="Enhancements"
                                                       IsOn="True"
+                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors/incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing. For more details, search the following URL: https://minecraftrtx.net/enhancements - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using."
                                                       IsTextScaleFactorEnabled="False" />
 
                                         <!-- Install Button -->
@@ -317,6 +318,7 @@
                                                       Grid.Column="0"
                                                       Header="Enhancements"
                                                       IsOn="True"
+                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors/incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing. For more details, search the following URL: https://minecraftrtx.net/enhancements - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using."
                                                       IsTextScaleFactorEnabled="False" />
 
                                         <!-- Install Button -->
@@ -452,6 +454,7 @@
                                                       Grid.Column="0"
                                                       Header="Enhancements"
                                                       IsOn="True"
+                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors/incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing. For more details, search the following URL: https://minecraftrtx.net/enhancements - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using."
                                                       IsTextScaleFactorEnabled="False" />
 
                                         <!-- Install Button -->
