@@ -1,19 +1,358 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Window
-    x:Class="Vanilla_RTX_App.Modules.Alchitex.Alchitex"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Vanilla_RTX_App.Modules.Alchitex"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Title="Alchitex">
+<Window x:Class="Vanilla_RTX_App.Modules.Alchitex.Alchitex"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Vanilla_RTX_App.Modules.Alchitex"
+        Title="Alchitex">
 
+    <!-- License gate uses Acrylic; MainGrid uses Mica (set in code-behind via SystemBackdrop swap) -->
     <Window.SystemBackdrop>
-        <MicaBackdrop />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Grid>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!--  BACKGROUND IMAGE  (behind everything, incl. titlebar)  -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <Image x:Name="AlchitexBackground"
+               Source="ms-appx:///Modules/Alchitex/Assets/huge_background.png"
+               Stretch="UniformToFill"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"
+               IsHitTestVisible="False"
+               Canvas.ZIndex="-2"
+               Opacity="1.0">
+        </Image>
+
+        <!-- Light theme tint overlay — identical to MainWindow -->
+        <Border x:Name="LightThemeOverlay"
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
+                Canvas.ZIndex="-1">
+            <Border.Background>
+                <SolidColorBrush Color="#17373737" />
+            </Border.Background>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!--  SHARED TITLEBAR  (always on top, always visible)       -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <Grid x:Name="TitleBarHost"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              Height="35"
+              Canvas.ZIndex="100">
+
+            <!-- Shadow receiver behind the titlebar -->
+            <Grid x:Name="TitleBarShadowReceiver" />
+
+            <!-- Styled titlebar strip -->
+            <Border x:Name="TitleBarBackground"
+                    Height="37"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
+                    BorderThickness="0,0,0,6"
+                    CornerRadius="0"
+                    Translation="0,0,24"
+                    IsHitTestVisible="False">
+                <Border.Shadow>
+                    <ThemeShadow x:Name="TitleBarShadow" />
+                </Border.Shadow>
+            </Border>
+
+            <!-- Drag area (leaves room for the Info button on the left in main state;
+                 full-width during license — we swap SetTitleBar target in code-behind) -->
+            <Border x:Name="TitleBarDragAreaFull"
+                    HorizontalAlignment="Stretch"
+                    Height="31"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    IsHitTestVisible="False" />
+
+            <!-- Narrowed drag area used when the Info button is showing -->
+            <Border x:Name="TitleBarDragAreaNarrow"
+                    Margin="50,0,0,0"
+                    Height="31"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed" />
+
+            <!-- Info button — only visible in main content state -->
+            <Button x:Name="InfoButton"
+                    Width="40"
+                    Height="31"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    CornerRadius="0"
+                    Padding="0"
+                    Visibility="Collapsed"
+                    ToolTipService.ToolTip="About Alchitex"
+                    Click="InfoButton_Click">
+                <FontIcon Glyph="&#xE946;"
+                          FontSize="14"
+                          IsTextScaleFactorEnabled="False" />
+            </Button>
+
+            <!-- Centered logo + title pair (single instance, shared by all panels) -->
+            <Grid x:Name="TitleBarCenterContent"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Margin="0,-1,-1,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo canvas -->
+                <Canvas Grid.Column="0"
+                        Height="20"
+                        Width="20"
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0"
+                        CacheMode="BitmapCache"
+                        Canvas.ZIndex="1">
+
+                    <!-- Halo (bottom layer) -->
+                    <Image x:Name="AlchitexIconHalo"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.halo.png"
+                           Height="128"
+                           Width="128"
+                           Canvas.Left="-54"
+                           Canvas.Top="-54"
+                           Opacity="0.25"
+                           Canvas.ZIndex="2"
+                           IsHitTestVisible="False"
+                           CacheMode="BitmapCache" />
+
+                    <!-- Base "On" image -->
+                    <Image x:Name="AlchitexIconOn"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.on.png"
+                           Height="20"
+                           Width="20"
+                           Canvas.Top="1"
+                           Opacity="1.0"
+                           Canvas.ZIndex="3"
+                           IsHitTestVisible="False"
+                           CacheMode="BitmapCache" />
+
+                    <!-- "Off" overlay (fades in/out during animation) -->
+                    <Image x:Name="AlchitexIconOff"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.off.png"
+                           Height="20"
+                           Width="20"
+                           Canvas.Top="1"
+                           Opacity="0.0"
+                           Canvas.ZIndex="4"
+                           IsHitTestVisible="False"
+                           CacheMode="BitmapCache" />
+
+                    <!-- "Super" overlay -->
+                    <Image x:Name="AlchitexIconSuper"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.super.png"
+                           Height="20"
+                           Width="20"
+                           Canvas.Top="1"
+                           Opacity="0.0"
+                           Canvas.ZIndex="5"
+                           IsHitTestVisible="False"
+                           CacheMode="BitmapCache" />
+                </Canvas>
+
+                <!-- Window title text — updated in code-behind per panel -->
+                <TextBlock x:Name="TitleBarText"
+                           Text="Alchitex — License Agreement"
+                           Grid.Column="1"
+                           Margin="0,6,0,5"
+                           VerticalAlignment="Center"
+                           FontWeight="Normal"
+                           IsTextScaleFactorEnabled="False"
+                           IsHitTestVisible="False" />
+            </Grid>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!--  LOADING PANEL                                          -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <Grid x:Name="LoadingPanel"
+              Visibility="Visible"
+              Margin="0,35,0,0"
+              Background="Transparent">
+            <ProgressRing IsActive="True"
+                          Width="100"
+                          Height="100"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center" />
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!--  LICENSE PANEL                                          -->
+        <!--  Sits BELOW the shared titlebar (Margin top = 35)      -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <Grid x:Name="LicensePanel"
+              Visibility="Collapsed"
+              Margin="0,35,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <!-- license text  -->
+                <RowDefinition Height="Auto" />
+                <!-- buttons       -->
+            </Grid.RowDefinitions>
+
+            <!-- Shadow receiver (behind everything in this panel) -->
+            <Grid x:Name="LicenseShadowReceiver"
+                  Grid.RowSpan="2" />
+
+            <!-- ── License RichTextBlock ── -->
+            <ScrollViewer Grid.Row="0"
+                          Margin="64,32,64,0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <RichTextBlock x:Name="LicenseTextBlock"
+                               IsTextSelectionEnabled="False"
+                               TextWrapping="Wrap"
+                               IsTabStop="False"
+                               FontSize="13"
+                               LineHeight="20"
+                               IsTextScaleFactorEnabled="False"
+                               HorizontalAlignment="Center"
+                               MaxWidth="860"
+                               Translation="0,0,32">
+                    <RichTextBlock.Shadow>
+                        <ThemeShadow x:Name="LicenseTextShadow" />
+                    </RichTextBlock.Shadow>
+                    <!-- Populated in code-behind -->
+                </RichTextBlock>
+            </ScrollViewer>
+
+            <!-- ── Action buttons ── -->
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="16"
+                        Padding="0,20,0,28">
+
+                <Button x:Name="DisagreeButton"
+                        MinWidth="200"
+                        Padding="24,14,24,14"
+                        IsTextScaleFactorEnabled="False"
+                        Translation="0,0,32"
+                        Click="DisagreeButton_Click">
+                    <Button.Shadow>
+                        <ThemeShadow x:Name="DisagreeShadow" />
+                    </Button.Shadow>
+                    <TextBlock Text="Disagree (Close Window)"
+                               IsTextScaleFactorEnabled="False"
+                               HorizontalAlignment="Center" />
+                </Button>
+
+                <Button x:Name="AgreeButton"
+                        MinWidth="360"
+                        Padding="24,14,24,14"
+                        Style="{StaticResource AccentButtonStyle}"
+                        IsTextScaleFactorEnabled="False"
+                        Translation="0,0,32"
+                        Click="AgreeButton_Click">
+                    <Button.Shadow>
+                        <ThemeShadow x:Name="AgreeShadow" />
+                    </Button.Shadow>
+                    <TextBlock Text="I have read and agreed to the terms and conditions of this feature"
+                               IsTextScaleFactorEnabled="False"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </Button>
+
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!--  MAIN CONTENT PANEL (Mica, shown after license accept)  -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <Grid x:Name="MainGrid"
+              Visibility="Collapsed"
+              Margin="0,35,0,0">
+
+            <!-- Shadow receiver (behind everything) -->
+            <Grid x:Name="MainShadowReceiver" />
+
+            <!-- ── Alchitex feature content area ── -->
+            <!-- TODO: your Alchitex UI goes here -->
+            <TextBlock Text="Alchitex content goes here"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsTextScaleFactorEnabled="False"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!--  SPLASH OVERLAY  (covers the entire window)             -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <Grid x:Name="SplashOverlay"
+              Visibility="Collapsed"
+              Canvas.ZIndex="9999">
+            <Grid.Background>
+                <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" />
+            </Grid.Background>
+
+            <Viewbox HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch"
+                     Margin="208,164,208,164"
+                     Stretch="Uniform">
+                <Grid Width="256"
+                      Height="256">
+
+                    <!-- Halo — bottom layer -->
+                    <Image x:Name="SplashLogoHalo"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.halo.png"
+                           Width="1280"
+                           Height="1280"
+                           Margin="-512,-512,-512,-512"
+                           Opacity="0.175"
+                           Stretch="Uniform"
+                           Canvas.ZIndex="1"
+                           CacheMode="BitmapCache" />
+
+                    <!-- Base "On" — middle layer -->
+                    <Image x:Name="SplashLogo"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.on.png"
+                           Width="192"
+                           Height="192"
+                           Opacity="1.0"
+                           Stretch="Uniform"
+                           Canvas.ZIndex="2"
+                           CacheMode="BitmapCache" />
+
+                    <!-- "Off" overlay — used by animator -->
+                    <Image x:Name="SplashLogoOff"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.off.png"
+                           Width="192"
+                           Height="192"
+                           Opacity="0.0"
+                           Stretch="Uniform"
+                           Canvas.ZIndex="3"
+                           CacheMode="BitmapCache" />
+
+                    <!-- "Super" overlay — top layer -->
+                    <Image x:Name="SplashLogoSuper"
+                           Source="ms-appx:///Modules/Alchitex/Assets/logo.super.png"
+                           Width="192"
+                           Height="192"
+                           Opacity="0.0"
+                           Stretch="Uniform"
+                           Canvas.ZIndex="4"
+                           CacheMode="BitmapCache" />
+                </Grid>
+            </Viewbox>
+        </Grid>
 
     </Grid>
 </Window>
