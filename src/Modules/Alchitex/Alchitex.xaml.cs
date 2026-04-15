@@ -16,6 +16,30 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
+// Todo: Fix the lamps assets getting mixed up for some reason between mainwindow and this
+// mainwdow is fine, this one gets fucked and has lamp everywhere for some reason
+// add the click event for the top icon, when clicked it must flash similarly
+// then do the framework for redstone!
+// Perfect the licensing windows' appearance
+
+// use the thing you did, temp keys.. on other things?
+// nah, not necessery, only did it here cuz, u dont have internet, and rapidly RESETTING the app keys hurts!
+
+// Review: is it a good idea to limit features lifecycle to their windows? In general... should it all ahve been on the main window?
+// well, you see, in your case, navigation view would've been very generic
+// and some modules like alchitex might become too heavy, so yes, making the main window act like a nexus hub that spawns child apps is better...
+// they have minimal communication/interactions, its like main window is a father responsible for them with all of the logs n things
+// navigation view is also nice... think about it, just think, u love the way your buttons look, don't want them to go!
+
+// REDSTONE ELEMENT IMPLEMENTAITON IDEA:
+// We got the tile backgrounds
+// Beneath there, have PROCEDURALLY GENERATED redstone going Upward from below, that makes 2 layers of bitmaps!
+// still do it like u had in mind, tiles exist, images are dynamically selected based on neighbors
+// Then, have a toggle, like the lamp, to either trigger random flashes, or continous random power flashes in the redstone
+// A nice way to convey something being done in the background!
+// This is the way, and is actually imeplementable, unlike earlier versions of the idea. (how were to understand which areas are... to trigger)
+// it isn't too convoluted, and is gonna look AMAZING.
+
 public sealed partial class Alchitex : Window
 {
     private readonly AppWindow _appWindow;
@@ -301,7 +325,7 @@ public sealed partial class Alchitex : Window
             {
                 NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt")
             };
-            link.Inlines.Add(new Run { Text = "View latest on GitHub" });
+            link.Inlines.Add(new Run { Text = "View on GitHub" });
             headerPara.Inlines.Add(link);
             LicenseTextBlock.Blocks.Add(headerPara);
 

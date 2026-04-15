@@ -14,6 +14,12 @@ using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables; // For Public Pack version variables, if null or empty = not installed
 
+// TODO:
+// Revise how "Up to date" text is displayed, it should be in front of "Installed" not "Available!"
+// Or rather.. ok maybe you're wrong, think about it more..
+// cuz, it says more things, like, availablity is from cache or not,
+// besides, the install button already CLARIFIES if it is latest ya have, or not, by saying either update, install, or reinstall, etc...
+
 namespace Vanilla_RTX_App.PackUpdate;
 
 public sealed partial class PackUpdateWindow : Window

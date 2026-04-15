@@ -18,9 +18,10 @@
         <Image x:Name="AlchitexBackground"
                Source="ms-appx:///Modules/Alchitex/Assets/huge_background.png"
                Stretch="UniformToFill"
-               HorizontalAlignment="Stretch"
-               VerticalAlignment="Stretch"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Bottom"
                IsHitTestVisible="False"
+               CacheMode="BitmapCache"
                Canvas.ZIndex="-2"
                Opacity="1.0">
         </Image>
@@ -168,9 +169,9 @@
                            CacheMode="BitmapCache" />
                 </Canvas>
 
-                <!-- Window title text — updated in code-behind per panel -->
+                <!-- Window title text — updated in code-behind later! -->
                 <TextBlock x:Name="TitleBarText"
-                           Text="Alchitex — License Agreement"
+                           Text="Alchitex  |  License Agreement"
                            Grid.Column="1"
                            Margin="0,6,0,5"
                            VerticalAlignment="Center"
@@ -196,11 +197,13 @@
 
         <!-- ═══════════════════════════════════════════════════════ -->
         <!--  LICENSE PANEL                                          -->
-        <!--  Sits BELOW the shared titlebar (Margin top = 35)      -->
+        <!--  Sits BELOW the shared titlebar (Margin top = 35)       -->
         <!-- ═══════════════════════════════════════════════════════ -->
         <Grid x:Name="LicensePanel"
               Visibility="Collapsed"
-              Margin="0,35,0,0">
+              Background="{ThemeResource OverlayBackgroundColor}"
+              Padding="16, 0, 16 16"
+              Margin="0,36,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <!-- license text  -->
@@ -214,18 +217,22 @@
 
             <!-- ── License RichTextBlock ── -->
             <ScrollViewer Grid.Row="0"
-                          Margin="64,32,64,0"
-                          VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled">
+                          Background="{ThemeResource OverlayBackgroundColor}"
+                          Margin="64,32,64,32"
+                          MaxWidth="720"
+                          BorderBrush="#40FFFFFF"
+                          BorderThickness="2"
+                          CornerRadius="12"
+                          VerticalScrollBarVisibility="Auto">
                 <RichTextBlock x:Name="LicenseTextBlock"
                                IsTextSelectionEnabled="False"
+                               Padding="24"
                                TextWrapping="Wrap"
                                IsTabStop="False"
-                               FontSize="13"
+                               FontSize="14"
                                LineHeight="20"
                                IsTextScaleFactorEnabled="False"
                                HorizontalAlignment="Center"
-                               MaxWidth="860"
                                Translation="0,0,32">
                     <RichTextBlock.Shadow>
                         <ThemeShadow x:Name="LicenseTextShadow" />
@@ -239,36 +246,32 @@
                         Orientation="Horizontal"
                         HorizontalAlignment="Center"
                         Spacing="16"
-                        Padding="0,20,0,28">
+                        Background="Transparent"
+                        Margin="0,0,0,24">
 
                 <Button x:Name="DisagreeButton"
-                        MinWidth="200"
-                        Padding="24,14,24,14"
+                        Padding="16,16,16,16"
                         IsTextScaleFactorEnabled="False"
                         Translation="0,0,32"
-                        Click="DisagreeButton_Click">
+                        Click="DisagreeButton_Click"
+                        Content="Disagree and close"
+                        Style="{ThemeResource ButtonRevealStyle}">
                     <Button.Shadow>
                         <ThemeShadow x:Name="DisagreeShadow" />
                     </Button.Shadow>
-                    <TextBlock Text="Disagree (Close Window)"
-                               IsTextScaleFactorEnabled="False"
-                               HorizontalAlignment="Center" />
+
                 </Button>
 
                 <Button x:Name="AgreeButton"
-                        MinWidth="360"
-                        Padding="24,14,24,14"
+                        Padding="16,16,16,16"
                         Style="{StaticResource AccentButtonStyle}"
                         IsTextScaleFactorEnabled="False"
                         Translation="0,0,32"
+                        Content="I have read and agreed to the terms and conditions of this feature"
                         Click="AgreeButton_Click">
                     <Button.Shadow>
                         <ThemeShadow x:Name="AgreeShadow" />
                     </Button.Shadow>
-                    <TextBlock Text="I have read and agreed to the terms and conditions of this feature"
-                               IsTextScaleFactorEnabled="False"
-                               HorizontalAlignment="Center"
-                               TextWrapping="Wrap" />
                 </Button>
 
             </StackPanel>

@@ -34,6 +34,39 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+- Alchitex Plan Start:
+Forget the older starting ideas, this works functionally a lot like chunker, let's make it inspired by chunker. The UI could use heavy inspirations
+A chunker-like UX/process theme
+do it like VVA was ORIGINALLY INTENDED to be done! look at the notes
+The window opens -> user sees license agreement thingy -> It's done and over
+let it be offline, don't auto update it (not necessery), fuck that, extra unncessery requests!
+keep it simple. But link the web one at the top! Y'know! just in case, a rich text box can do, two buttons, all with shadows, simple, minimal
+require scrolling to the bottom.
+
+This is going to be a multi-staged Window
+First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs
+YES, this way you DON'T have to make changes to the existing pack browser! AND DON'T, REVERT ALL IF YOU HAVE!
+Don't risk breaking existing code paths, VV/RTX/NoPBR flag and shit, that was a SHIT idea!
+Second: Some very simple options must be provided to the user, Normal Map, Heightmap, None, VV or NOT
+In VV mode, user gets SSS and processes none-block folders too, but not RTX mode stuff, which include water, glass, and a whole bunch of things
+Two different code paths!
+
+Note: keep PBR for entities subtle THORUGHOUT
+
+At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
+Fallback to asking for a save location if it fails
+
+>> Do the idea of unifying hardcoded paths while at it!
+-Pack locator
+-Pack browser
+-Alchitex is due to reuse a lot of the code.
+>> MAYBE, while add it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
+could be used for launcher too as well as the 3 above
+
+- Stop disbaling Main Window for features that don't need them disabled
+lut, dlss, brtx, and prolly more, don't need all of mainwindow disabled, there is no security concern.
+but yeah something lkike alchitex should continue to do that
+
 - Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
 hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
 
@@ -45,6 +78,27 @@ link the guide's precise section .
 update PSA URLs
 test.
 roll.
+
+here's how to do this NICELY while making as few requests as possible
+Put the PSAs in a PSA.md in the github repository, this is only going to contain PSAs
+On app startup, we retrieve it
+The PSA has SECTIONS to it dedicated to FEATURE NAMES
+each feature can have a PSA.
+You store it in a Library/class of variables
+SO yeah, each feature gets its own STRING
+
+THE PSA retriever on startup tries its best to get the PSAs, caches them, and puts them in the strings, saves on windows.sstorage for future use!
+Put a 24 hour cooldown on it, every 24 hours user launches the app, they get up to date PSAs for ALL sections
+
+Do it smartly, there is also supporter retriever, MAYBE put them both into the same file, reduce requests!!!
+Basically UNIFY this whole retrieve something from github to display
+logs can have a
+# Sidebarlog
+section on the .md file, this is what ends up in the sidebar log, simple, a system for YOUR APP!
+
+u can then display all of these PSAs in app's in the form of Panels, if there is a PSA, panel becomes visible, takes some updating existing windows.
+Claude can do it!
+
 
 
 - BIG CHANGE OF PLANS:
@@ -73,26 +127,9 @@ Sepearte Extensions/Add-ons are good. Don't try to complicate it with the app.
 make psa panes pull them from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
 this is a really cool idea, maybe other windows could use it too... general psas are in logs, feature-specific PSAs THAT MIGHT need it in their windows!
 
-- pack version logger should keep logging the versions as long as it is NOT the latest message
-ur current method causes to avoid logging if preview and release versions are the same.
-u see, just whether what was logged was the latest status message or not should be the deciding factor...!!
-
-- Fix secondary windows' shadows
-the container/host is too small! it is cutting off at the edges
-ESPECIALLY visible in light theme
-
-- Start creating and developnig on a Beta branch on GitHub
-And in app, leave an option to get the zipball from that branch instead
-use that branch to test releases more easily.
-
-Vanilla RTX github repo must have a PREVIEW branch
-Preview branch is where the pack is developed, main pulls its changes upon releases -- u can push more rapidly this way without affecting release!
-makes testing easy
-
-Vanilla RTX App uses Preview branch URLs if toggle preview is ON
-This could be implemented very straightforwardedly
-Then,
-expose ALL URLs and hardcoded shit like that to a json file to make the app usabale in the event of your death
+- When targeting preview, Dev branch on github
+must be used to receieve updates, compare packages, etc...
+easier said than done, the code is a clusterfuck
 
 - Tuning is very slow on certain AMD CPUs, there were some reports on Disc
 
@@ -1762,9 +1799,19 @@ public sealed partial class MainWindow : Window
 
     private void AlchitexButton_Click(object sender, RoutedEventArgs e)
     {
-
+        ToggleControls(this, false, true, []);
+        var alchitexWindow = new Vanilla_RTX_App.Modules.Alchitex.Alchitex(this);
+        var mainAppWindow = this.AppWindow;
+        alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        alchitexWindow.AppWindow.Move(mainAppWindow.Position);
+        alchitexWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true, true, []);
+        };
+        alchitexWindow.Activate();
     }
-
 
 
 
@@ -1776,7 +1823,7 @@ public sealed partial class MainWindow : Window
         try
         {
             var exportQueue = new List<(string path, string name)>();
-            var suffix = $"_export_{appVersion}";
+            var suffix = $"_{appVersion}_App_Export";
 
             if (IsVanillaRTXEnabled && Directory.Exists(VanillaRTXLocation))
                 exportQueue.Add((VanillaRTXLocation, "Vanilla_RTX_" + VanillaRTXVersion + suffix));
@@ -1837,7 +1884,7 @@ public sealed partial class MainWindow : Window
             }
             else
             {
-                Log("Export Queue Finished.", LogLevel.Success);
+                Log("Finished exporting.", LogLevel.Success);
             }
             _progressManager.HideProgress();
             ToggleControls(this, true);
