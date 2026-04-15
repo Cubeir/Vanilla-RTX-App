@@ -17,7 +17,7 @@
         <!-- ═══════════════════════════════════════════════════════ -->
         <Image x:Name="AlchitexBackground"
                Source="ms-appx:///Modules/Alchitex/Assets/huge_background.png"
-               Stretch="UniformToFill"
+               Stretch="None"
                HorizontalAlignment="Center"
                VerticalAlignment="Bottom"
                IsHitTestVisible="False"
