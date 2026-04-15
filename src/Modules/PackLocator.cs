@@ -56,7 +56,7 @@ public class PackLocator
             {
             Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "resource_packs"),
             Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "development_resource_packs")
-        };
+            };
 
             var results = new List<string>();
             var allManifestFiles = new List<string>();
