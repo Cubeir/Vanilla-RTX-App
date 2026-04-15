@@ -794,7 +794,7 @@
                                        Margin="0,0,13.5,0"
                                        Visibility="Collapsed"
                                        IsTextScaleFactorEnabled="False"
-                                       ToolTipService.ToolTip="Higher emissivity multipliers after tuning more than once with this option can break the pack. Keep Emissive Multiplier at default (1.0) if you've previously tuned the pack with this option enabled." />
+                                       ToolTipService.ToolTip="Higher emissivity multipliers after tuning more than once with this option can break the pack. Keep Emissive Multiplier at default (1.0) if you've previously tuned a pack with this option enabled." />
                         </Grid>
                     </StackPanel>
 
