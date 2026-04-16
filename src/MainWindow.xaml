@@ -64,6 +64,21 @@
             </Viewbox>
         </Grid>
 
+
+        <!-- Background Bitmap (just a fun test for now, might tint later based on accent color)-->
+        <Image x:Name="MainWindowBackground"
+               Visibility="Collapsed"
+               Source="ms-appx:///Assets/background_grey.png"
+               Stretch="None"
+               HorizontalAlignment="Right"
+               VerticalAlignment="Bottom"
+               IsHitTestVisible="False"
+               CacheMode="BitmapCache"
+               Canvas.ZIndex="-2"
+               Opacity="0.05"
+               Grid.Column="1">
+        </Image>
+
         <!-- Light theme tint overlay -->
         <Border x:Name="LightThemeOverlay"
                 Grid.ColumnSpan="2"
