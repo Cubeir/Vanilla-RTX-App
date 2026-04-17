@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
@@ -42,6 +43,27 @@ public class LampAnimator
     private readonly SemaphoreSlim _animationLock = new(1, 1);
     private bool _isInitialized;
     private bool _isBusy;
+
+    // --- Halo spin physics state ---
+    // Angle in degrees; never reset — the wheel just keeps turning wherever it is.
+    private double _haloAngle = 0.0;
+    // Degrees per second. Positive = clockwise.
+    private double _haloVelocity = 0.0;
+    // Background spin loop, shared across all callers while the lamp lives.
+    private CancellationTokenSource _spinCts;
+    private Task _spinTask;
+    private readonly SemaphoreSlim _spinLock = new(1, 1);
+
+    // Physics constants
+    // Physics constants
+    private const double SpinFriction = 0.96;          // velocity multiplied each tick (< 1 = friction)
+    private const double SpinTickMs = 8.0;             // Control fps, 16 = 60 fps roughly
+    private const double SpinStopThreshold = 0.05;      // deg/s below which we consider it stopped
+    private const double SingleFlashImpulse = 240.0;    // deg/s added by a single flash
+    private const double BlinkImpulseMin = 60.0;        // minimum impulse per blink cycle
+    private const double BlinkImpulseMax = 720.0;       // maximum impulse per blink cycle
+    private const double SuperFlashImpulse = 360.0;     // deg/s added by a super flash
+
 
     public enum LampContext
     {
@@ -106,7 +128,12 @@ public class LampAnimator
     /// <summary>
     /// Main animation method - handles blinking, single flashes, steady states, and timed animations.
     /// </summary>
-    public async Task Animate(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double? duration = null)
+    /// <param name="rotate">
+    /// When true, the halo layer spins like a loose wheel.
+    /// Each flash or blink event delivers an angular impulse that accelerates it;
+    /// friction then naturally decelerates it on its own — no forced reset.
+    /// </param>
+    public async Task Animate(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double? duration = null, bool rotate = false)
     {
         const double initialDelayMs = 900;
         const double minDelayMs = 150;
@@ -150,7 +177,8 @@ public class LampAnimator
                 _isBusy = true;
                 try
                 {
-                    await ExecuteTimedAnimation(duration.Value, random, singleFlashOnChance, fadeAnimationMs);
+                    if (rotate) EnsureSpinLoopRunning();
+                    await ExecuteTimedAnimation(duration.Value, random, singleFlashOnChance, fadeAnimationMs, rotate);
                 }
                 finally
                 {
@@ -165,7 +193,8 @@ public class LampAnimator
                 _isBusy = true;
                 try
                 {
-                    await ExecuteSingleFlash(random, singleFlashOnChance, fadeAnimationMs);
+                    if (rotate) EnsureSpinLoopRunning();
+                    await ExecuteSingleFlash(random, singleFlashOnChance, fadeAnimationMs, rotate: rotate);
                 }
                 finally
                 {
@@ -179,7 +208,8 @@ public class LampAnimator
             {
                 _blinkCts = new CancellationTokenSource();
                 _isBusy = true;
-                _animationTask = BlinkLoop(_blinkCts.Token, fadeAnimationMs, initialDelayMs, minDelayMs, minRampSec, maxRampSec, random);
+                if (rotate) EnsureSpinLoopRunning();
+                _animationTask = BlinkLoop(_blinkCts.Token, fadeAnimationMs, initialDelayMs, minDelayMs, minRampSec, maxRampSec, random, rotate);
             }
             else
             {
@@ -194,6 +224,116 @@ public class LampAnimator
             _animationLock.Release();
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Halo spin physics
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Starts the background spin loop if it isn't already running.
+    /// The loop persists until velocity drops to near zero — it is self-terminating.
+    /// Calling this again while it is already running is a no-op.
+    /// </summary>
+    private void EnsureSpinLoopRunning()
+    {
+        if (_haloImage == null) return;
+
+        _spinLock.Wait();
+        try
+        {
+            if (_spinTask != null && !_spinTask.IsCompleted)
+                return; // already spinning
+
+            _spinCts = new CancellationTokenSource();
+            _spinTask = RunSpinLoop(_spinCts.Token);
+        }
+        finally
+        {
+            _spinLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Adds an angular impulse to the halo (degrees per second).
+    /// Always clockwise (positive). Fires-and-forgets; the loop picks it up.
+    /// </summary>
+    private void ApplySpinImpulse(double impulseMagnitude)
+    {
+        if (_haloImage == null) return;
+
+        // Random chance of clockwise (+) or counter-clockwise (-)
+        double sign = Random.Shared.NextDouble() < 0.67 ? 1.0 : -1.0;
+
+        _haloVelocity += sign * impulseMagnitude;
+
+        EnsureSpinLoopRunning(); // wake the loop if needed
+    }
+
+    /// <summary>
+    /// Background loop that advances the halo rotation each tick using simple
+    /// Euler integration + multiplicative friction. Self-terminates when still.
+    /// </summary>
+    private async Task RunSpinLoop(CancellationToken ct)
+    {
+        if (_haloImage == null) return;
+
+        // Ensure the halo has a RenderTransform we can drive.
+        // We add it here so XAML doesn't need to declare it.
+        EnsureHaloRotateTransform();
+
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                double dt = SpinTickMs / 1000.0; // seconds per tick
+
+                _haloAngle += _haloVelocity * dt;
+                _haloVelocity *= SpinFriction;
+
+                // Keep angle in [0, 360) to avoid float drift over long sessions
+                _haloAngle = ((_haloAngle % 360) + 360) % 360;
+
+                ApplyHaloRotation(_haloAngle);
+
+                if (Math.Abs(_haloVelocity) < SpinStopThreshold)
+                {
+                    _haloVelocity = 0.0;
+                    break; // wheel has settled — let the task finish
+                }
+
+                await Task.Delay((int)SpinTickMs, ct);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    /// <summary>
+    /// Applies the rotation angle to the halo image's RenderTransform on the UI thread.
+    /// </summary>
+    private void ApplyHaloRotation(double angleDegrees)
+    {
+        if (_haloImage?.RenderTransform is RotateTransform rt)
+        {
+            rt.Angle = angleDegrees;
+        }
+    }
+
+    /// <summary>
+    /// Ensures the halo Image has a RotateTransform centered on itself.
+    /// Safe to call multiple times.
+    /// </summary>
+    private void EnsureHaloRotateTransform()
+    {
+        if (_haloImage == null) return;
+        if (_haloImage.RenderTransform is RotateTransform) return;
+
+        _haloImage.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
+        _haloImage.RenderTransform = new RotateTransform { Angle = _haloAngle };
+    }
+
+    // -------------------------------------------------------------------------
+    // Existing private helpers (unchanged except spin impulse injections)
+    // -------------------------------------------------------------------------
 
     private (string on, string off, string super, string halo) ResolveImagePaths()
     {
@@ -397,7 +537,7 @@ public class LampAnimator
         }
     }
 
-    private async Task ExecuteTimedAnimation(double durationMs, Random random, double superFlashChance, double fadeMs)
+    private async Task ExecuteTimedAnimation(double durationMs, Random random, double superFlashChance, double fadeMs, bool rotate = false)
     {
         const double minFlashDuration = 300;
         const double maxFlashDuration = 700;
@@ -407,14 +547,18 @@ public class LampAnimator
         double flashDuration = Math.Clamp(availableTime * 0.4, minFlashDuration, maxFlashDuration);
 
         await Task.Delay((int)flashStart);
-        await ExecuteSingleFlash(random, superFlashChance, fadeMs, (int)flashDuration);
+        await ExecuteSingleFlash(random, superFlashChance, fadeMs, (int)flashDuration, rotate: rotate);
         await SetupSteadyOnState(fadeMs);
     }
 
-    private async Task ExecuteSingleFlash(Random random, double superFlashChance, double fadeMs, int? customDuration = null)
+    private async Task ExecuteSingleFlash(Random random, double superFlashChance, double fadeMs, int? customDuration = null, bool rotate = false)
     {
         bool doSuperFlash = random.NextDouble() < superFlashChance;
         int flashDuration = customDuration ?? random.Next(300, 800);
+
+        // Every flash gives the halo a push. Super flashes hit harder.
+        if (rotate)
+            ApplySpinImpulse(doSuperFlash ? SuperFlashImpulse : SingleFlashImpulse);
 
         if (doSuperFlash)
         {
@@ -494,7 +638,7 @@ public class LampAnimator
     }
 
     private async Task BlinkLoop(CancellationToken token, double fadeMs, double initialDelayMs, double minDelayMs,
-        double minRampSec, double maxRampSec, Random random)
+        double minRampSec, double maxRampSec, Random random, bool rotate = false)
     {
         if (_overlayImage == null)
             return;
@@ -528,6 +672,10 @@ public class LampAnimator
 
                         for (int i = 0; i < flashCount && !token.IsCancellationRequested; i++)
                         {
+                            // Each rapid flash pop gives a smaller-but-cumulative kick
+                            if (rotate)
+                                ApplySpinImpulse(SuperFlashImpulse * 0.4);
+
                             await SetImageAsync(_baseImage, _superPath);
                             _overlayImage.Opacity = 0;
                             if (_haloImage != null) _ = AnimateOpacity(_haloImage, 0.6, fadeMs, token);
@@ -540,6 +688,9 @@ public class LampAnimator
                     }
                     else
                     {
+                        if (rotate)
+                            ApplySpinImpulse(SuperFlashImpulse);
+
                         var superFlashDuration = random.Next(300, 1500);
                         await SetImageAsync(_baseImage, _superPath);
                         _overlayImage.Opacity = 0;
@@ -578,6 +729,14 @@ public class LampAnimator
                 double delay = rampingUp
                     ? initialDelayMs - (initialDelayMs - minDelayMs) * eased
                     : minDelayMs + (initialDelayMs - minDelayMs) * eased;
+
+                // Each blink toggle is a small push — faster blink rate = more frequent pushes = feels livelier
+                if (rotate)
+                {
+                    double normalizedSpeed = 1.0 - Math.Clamp((delay - minDelayMs) / (initialDelayMs - minDelayMs), 0, 1);
+                    double impulse = BlinkImpulseMin + (BlinkImpulseMax - BlinkImpulseMin) * normalizedSpeed;
+                    ApplySpinImpulse(impulse);
+                }
 
                 await Task.WhenAll(
                     AnimateOpacity(_overlayImage, state ? 0.0 : 1.0, fadeMs, token),
