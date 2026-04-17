@@ -3,6 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Vanilla_RTX_App.Modules.Alchitex"
+        SizeChanged="Window_SizeChanged"
         Title="Alchitex">
 
     <!-- License gate uses Acrylic; MainGrid uses Mica (set in code-behind via SystemBackdrop swap) -->
@@ -27,10 +28,11 @@
         </Image>
 
         <Image x:Name="RedstoneLayer"
-               HorizontalAlignment="Left"
+               HorizontalAlignment="Center"
+               Stretch="None"
                VerticalAlignment="Top"
                IsHitTestVisible="False"
-               Canvas.ZIndex="-1"
+               Canvas.ZIndex="-3"
                CacheMode="BitmapCache" />
 
         <!-- Light theme tint overlay — identical to MainWindow -->

@@ -441,29 +441,30 @@ public sealed partial class Alchitex : Window
     }
 
     // ── Reveal main content ───────────────────────────────────────────────────
-    private void ShowMainContent()
+    private async void ShowMainContent()
     {
-        // Swap to Mica now that the license gate is gone
-        this.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
-
-        // Update shared titlebar text
+        this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
         TitleBarText.Text = "Alchitex";
-
-        // Show Info button and use the narrowed drag area
         InfoButton.Visibility = Visibility.Visible;
         TitleBarDragAreaNarrow.Visibility = Visibility.Visible;
         SetTitleBar(TitleBarDragAreaNarrow);
-
-        // Initialise titlebar shadow (first time we wire it)
         InitializeTitleBarShadow();
-
         MainGrid.Visibility = Visibility.Visible;
 
-        // TODO: initialise Alchitex feature content here
+        _redstone = new RedstoneFramework(RedstoneLayer,
+                                          Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
+        await _redstone.InitializeAsync(_appWindow.Size.Width, _appWindow.Size.Height);
     }
 
-    private void LogoInteractButton_Click(object sender, RoutedEventArgs e)
+    private async void LogoInteractButton_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true, 1.0);
+        _redstone.StartContinuousFlashing();
+    }
+
+    private async void Window_SizeChanged(object sender, WindowSizeChangedEventArgs args)
+    {
+        if (_redstone is null) return;
+        await _redstone.RegenerateAsync(args.Size.Width, args.Size.Height);
     }
 }

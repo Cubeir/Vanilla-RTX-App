@@ -861,6 +861,12 @@
     <None Update="Assets\Wide310x150Logo.scale-400.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Modules\Alchitex\Assets\cross_junction.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Modules\Alchitex\Assets\horizontal_line.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Modules\Alchitex\Assets\huge_background.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
