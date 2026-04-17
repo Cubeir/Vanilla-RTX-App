@@ -26,6 +26,13 @@
                Opacity="1.0">
         </Image>
 
+        <Image x:Name="RedstoneLayer"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Top"
+               IsHitTestVisible="False"
+               Canvas.ZIndex="-1"
+               CacheMode="BitmapCache" />
+
         <!-- Light theme tint overlay — identical to MainWindow -->
         <Border x:Name="LightThemeOverlay"
                 Grid.ColumnSpan="2"

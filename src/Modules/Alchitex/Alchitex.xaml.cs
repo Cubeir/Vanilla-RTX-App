@@ -88,6 +88,7 @@ public static class AlchitexVariables
 
 public sealed partial class Alchitex : Window
 {
+    private RedstoneFramework? _redstone;
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
 
@@ -199,7 +200,7 @@ public sealed partial class Alchitex : Window
                                    double singleFlashOnChance = 0.75)
     {
         if (_titlebarLogoAnimator is null) return;
-        await _titlebarLogoAnimator.Animate(enable, singleFlash, singleFlashOnChance);
+        await _titlebarLogoAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate:true);
     }
 
     // ── Lifetime ─────────────────────────────────────────────────────────────
@@ -300,7 +301,8 @@ public sealed partial class Alchitex : Window
                 enable: false,
                 singleFlash: true,
                 singleFlashOnChance: 1.0,
-                duration: 375
+                duration: 375,
+                rotate:true
             );
         }
 
