@@ -106,7 +106,7 @@
                     CornerRadius="0"
                     Padding="0"
                     Visibility="Collapsed"
-                    ToolTipService.ToolTip="About Alchitex"
+                    ToolTipService.ToolTip="Learn more..."
                     Click="InfoButton_Click">
                 <FontIcon Glyph="&#xE946;"
                           FontSize="14"

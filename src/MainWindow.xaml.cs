@@ -42,9 +42,7 @@ Don't risk breaking existing code paths, VV/RTX/NoPBR flag and shit, that was a 
 Second: Some very simple options must be provided to the user, Normal Map, Heightmap, None, VV or NOT
 In VV mode, user gets SSS and processes none-block folders too, but not RTX mode stuff, which include water, glass, and a whole bunch of things
 Two different code paths!
-
 Note: keep PBR for entities subtle THORUGHOUT
-
 At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
 Fallback to asking for a save location if it fails
 
@@ -52,16 +50,14 @@ Fallback to asking for a save location if it fails
 -Pack locator
 -Pack browser
 -Alchitex is due to reuse a lot of the code.
->> MAYBE, while add it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
+>> MAYBE, while at it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
 could be used for launcher too as well as the 3 above
 
 - Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
 hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
-
 Include a short guide maybe, a link to a readme guide, in that guide, say what each row of pixels do in the LUT.
 Write up the readme and upload it, link it for now.
 Finalize the guide, put it in the readme.md at the last minute as a subsection, or a secondary section at the very very bottom, assuminng you also rework the PSA retrieve
-
 link the guide's precise section .
 update PSA URLs
 test.
@@ -73,44 +69,16 @@ The PSA has SECTIONS to it dedicated to FEATURE NAMES
 each feature can have a PSA.
 You store it in a Library/class of variables
 SO yeah, each feature gets its own STRING
-
 THE PSA retriever on startup tries its best to get the PSAs, caches them, and puts them in the strings, saves on windows.sstorage for future use!
 Put a 24 hour cooldown on it, every 24 hours user launches the app, they get up to date PSAs for ALL sections
-
 >>> Do it smartly, there is also supporter retriever, MAYBE put them both into the same file, reduce requests!!!
+Move supporters to PSA.md away from Vanilla-RTX's readme.md
 Basically UNIFY this whole retrieve something from github to display
 logs can have a
 # Sidebarlog
 section on the .md file, this is what ends up in the sidebar log, simple, a system for YOUR APP!
 u can then display all of these PSAs in app's in the form of Panels, if there is a PSA, panel becomes visible, takes some updating existing windows
 
-
-
-- BIG CHANGE OF PLANS:
-PBR Alchemist, Reworked RTX Reactor, coming to the app!
-It is the spritual successor to RTX Reactor.
-Vibrant Visuals Alchemist project is dead, so is RTX Reactor effectively, PBR Alchemist combines the ideas from both into something better.
-
-Generating PBR textures properly where the non-PBR pack is already installed is a much better way of doing it
-It's not like all people keep MCPACKS around? they delete them after importing!
-So, indeed, giving people the ability to do it from here instead makes a lot more sense from a UX perspective.
-
-Just gotta make it so incompatible packs are selectable now, 
-then implement something to make tuning NOT work for these packs, a sort of marker or something will do
-Call the Non-PBR packs "Likely suitable for PBR Alchemist"
-A blue card!
-
-This is going to be a long term plan, implement as much of it as you can for 3.0
-
-Leave addons be as it is, the app automating it isn't too useful, its clunky, complex, and a waste overall
-they can already be modularly activated in game, that's very good already.
-imagine having to reinstall the entire pack just because you merged down the wrong addon, all tunings done? gone!
-KEEP THE PACKS SEPARATE, thats the way
-aside from some personal workflows where you merge BtU extensions down into Vanilla RTX for that special variant, this is a bad idea
-Sepearte Extensions/Add-ons are good. Don't try to complicate it with the app.
-
-make psa panes pull them from VANILLA RTX GITHUB README, if it can, if not, it displays "Important information about updates may appear here if you have an internet connection, check back later!", cache for a few hours
-this is a really cool idea, maybe other windows could use it too... general psas are in logs, feature-specific PSAs THAT MIGHT need it in their windows!
 
 - When targeting preview, Dev branch on github
 must be used to receieve updates, compare packages, etc...

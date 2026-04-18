@@ -1184,7 +1184,7 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="TEMP">
+                            ToolTipService.ToolTip="Yup, you heard it right, coming soon!">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF196;"
