@@ -202,6 +202,308 @@
                        IsHitTestVisible="False" />
         </Grid>
 
+        <!-- Titlebar Buttons -->
+        <Border x:Name="CommandBarButtonsShadowReceiver"
+                Margin="-2,-2,16,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Height="34"
+                Width="Auto"
+                Translation="0,0,0">
+            <Border.Shadow>
+                <ThemeShadow x:Name="CommandBarShadow" />
+            </Border.Shadow>
+            <Grid Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Button -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Separator -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Button -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Separator -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Button -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Separator -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Button -->
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Chat Button -->
+                <Button x:Name="ChatButton"
+                        Grid.Column="0"
+                        FontFamily="Segoe Fluent Icons"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Opacity="0.67"
+                        Content="&#xE8F2;"
+                        Width="42"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="14"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="ChatButton_Click"
+                        ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server"
+                        IsTextScaleFactorEnabled="False" />
+
+                <!-- Separator -->
+                <Border Grid.Column="1"
+                        Width="1"
+                        Margin="4,6,4,6"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- Info/Help Button -->
+                <Button x:Name="HelpButton"
+                        Grid.Column="2"
+                        FontFamily="Segoe Fluent Icons"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        Opacity="0.67"
+                        Content="&#xE946;"
+                        Width="43"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="16"
+                        Click="HelpButton_Click"
+                        PointerEntered="HelpButton_PointerEntered"
+                        PointerExited="HelpButton_PointerExited"
+                        ToolTipService.ToolTip="Documentation"
+                        IsTextScaleFactorEnabled="False" />
+
+                <!-- Separator -->
+                <Border Grid.Column="3"
+                        Width="1"
+                        Margin="4,6,4,6"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- Donate Button -->
+                <Button x:Name="DonateButton"
+                        Grid.Column="4"
+                        FontFamily="Segoe Fluent Icons"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        Opacity="0.67"
+                        Content="&#xEB51;"
+                        Width="42"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="14"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="DonateButton_Click"
+                        PointerEntered="DonateButton_PointerEntered"
+                        PointerExited="DonateButton_PointerExited"
+                        ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it that way!"
+                        IsTextScaleFactorEnabled="False" />
+
+                <!-- Separator -->
+                <Border Grid.Column="5"
+                        Width="1"
+                        Margin="4,6,4,6"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- Theme Button -->
+                <Button x:Name="CycleThemeButton"
+                        Grid.Column="6"
+                        FontFamily="Segoe Fluent Icons"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        Opacity="0.67"
+                        Content="&#xEC46;"
+                        Width="42"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="16"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="CycleThemeButton_Click"
+                        ToolTipService.ToolTip="Theme: System"
+                        IsTextScaleFactorEnabled="False" />
+            </Grid>
+        </Border>
+
+
+        <!-- Locate Packs || Preview || Checkboxes -->
+        <Border x:Name="TopRowContentShadowHost"
+                Grid.ColumnSpan="2"
+                Margin="16,52,16,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Stretch"
+                Height="40"
+                Translation="0,0,32"
+                CornerRadius="6">
+            <Border.Shadow>
+                <ThemeShadow x:Name="TopRowContentShadow" />
+            </Border.Shadow>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.33*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="0.66*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="3*" />
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="BrowsePacksButton"
+                        Grid.Column="0"
+                        Click="BrowsePacksButton_Click"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        FontWeight="SemiBold"
+                        CornerRadius="6,0,0,6"
+                        BorderThickness="0"
+                        IsTextScaleFactorEnabled="False"
+                        ToolTipService.ToolTip="Select a pack from the list of your local Minecraft PBR-enabled resource packs for tuning or export.">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center">
+                        <FontIcon Glyph="&#xF78B;"
+                                  FontSize="18"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center" />
+                        <TextBlock x:Name="BrowsePacksButtonText"
+                                   Text="Select another pack"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+
+                <!-- VISUAL SPLIT 1 -->
+                <Grid Grid.Column="0"
+                      HorizontalAlignment="Right"
+                      Width="3"
+                      Margin="0,0,-3,0"
+                      IsHitTestVisible="False">
+                    <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                    <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                            BorderThickness="3,0,0,0" />
+                </Grid>
+                <Grid Grid.Column="2"
+                      HorizontalAlignment="Left"
+                      Width="3"
+                      Margin="-3,0,0,0"
+                      IsHitTestVisible="False">
+                    <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                    <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                            BorderThickness="3,0,0,0"
+                            x:Name="LeftEdgeOfTargetPreviewButton" />
+                </Grid>
+
+                
+                <ToggleButton x:Name="TargetPreviewToggle"
+                              Grid.Column="2"
+                              Content="Preview"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              FontWeight="SemiBold"
+                              CornerRadius="0,0,0,0"
+                              BorderThickness="0"
+                              Checked="TargetPreviewToggle_Checked"
+                              Unchecked="TargetPreviewToggle_Unchecked"
+                              IsTextScaleFactorEnabled="False"
+                              ToolTipService.ToolTip="If enabled, all functionalities target Minecraft Preview instead of regular Minecraft." />
+
+                <!-- VISUAL SPLIT 2 -->
+                <Grid Grid.Column="2"
+                      HorizontalAlignment="Right"
+                      Width="3"
+                      Margin="0,0,-3,0"
+                      IsHitTestVisible="False">
+                    <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                    <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                            x:Name="RightEdgeOfTargetPreviewButton"
+                            BorderThickness="3,0,0,0" />
+                </Grid>
+                <Grid Grid.Column="4"
+                      HorizontalAlignment="Left"
+                      Width="3"
+                      Margin="-3,0,0,0"
+                      IsHitTestVisible="False">
+                    <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                    <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                            BorderThickness="3,0,0,0" />
+                </Grid>
+
+                
+                <!-- Pack Selection Options -->
+                <Border x:Name="PackOptionsShadowHost"
+                        Grid.Column="4"
+                        Padding="16,4"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderThickness="0"
+                        CornerRadius="0,6,6,0"
+                        ToolTipService.ToolTip="Select from the list of installed Vanilla RTX resource packs for tuning or export.">
+                    <Grid HorizontalAlignment="Stretch"
+                          BorderThickness="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.9*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <CheckBox x:Name="VanillaRTXCheckBox"
+                                  Grid.Column="0"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Checked="Option_Checked"
+                                  Unchecked="Option_Unchecked"
+                                  IsEnabled="False">
+                            <TextBlock Text="Vanilla RTX"
+                                       FontWeight="SemiBold"
+                                       Margin="2,1,0,0"
+                                       IsTextScaleFactorEnabled="False" />
+                        </CheckBox>
+
+                        <AppBarSeparator Grid.Column="1"
+                                         VerticalAlignment="Stretch"
+                                         Margin="0" />
+
+                        <CheckBox x:Name="NormalsCheckBox"
+                                  Grid.Column="2"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Checked="Option_Checked"
+                                  Unchecked="Option_Unchecked"
+                                  IsEnabled="False">
+                            <TextBlock Text="Vanilla RTX Normals"
+                                       FontWeight="SemiBold"
+                                       Margin="2,1,0,0"
+                                       IsTextScaleFactorEnabled="False" />
+                        </CheckBox>
+
+                        <AppBarSeparator Grid.Column="3"
+                                         VerticalAlignment="Stretch"
+                                         Margin="0" />
+
+                        <CheckBox x:Name="OpusCheckBox"
+                                  Grid.Column="4"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Checked="Option_Checked"
+                                  Unchecked="Option_Unchecked"
+                                  IsEnabled="False">
+                            <TextBlock Text="Vanilla RTX Opus"
+                                       FontWeight="SemiBold"
+                                       Margin="2,1,0,0"
+                                       IsTextScaleFactorEnabled="False" />
+                        </CheckBox>
+                    </Grid>
+                </Border>
+
+
+
+
+
+            </Grid>
+        </Border>
 
 
         <!-- LEFT CONTENT AREA -->
@@ -211,202 +513,6 @@
             <Grid x:Name="LeftShadowReceiver"
                   IsHitTestVisible="False"
                   Background="Transparent" />
-
-            <!-- Titlebar Buttons -->
-            <Border x:Name="CommandBarButtonsShadowReceiver"
-                    Margin="-2,-2,16,0"
-                    VerticalAlignment="Top"
-                    Height="34"
-                    Width="Auto"
-                    Translation="0,0,0">
-                <Border.Shadow>
-                    <ThemeShadow x:Name="CommandBarShadow" />
-                </Border.Shadow>
-                <Grid Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Button -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Separator -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Button -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Separator -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Button -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Separator -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Button -->
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Chat Button -->
-                    <Button x:Name="ChatButton"
-                            Grid.Column="0"
-                            FontFamily="Segoe Fluent Icons"
-                            Style="{ThemeResource SubtleButtonStyle}"
-                            Content="&#xE8F2;"
-                            Width="42"
-                            Height="35"
-                            CornerRadius="0"
-                            FontSize="14"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Click="ChatButton_Click"
-                            ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server"
-                            IsTextScaleFactorEnabled="False" />
-
-                    <!-- Separator -->
-                    <Border Grid.Column="1"
-                            Width="1"
-                            Margin="4,6,4,6"
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                    <!-- Info/Help Button -->
-                    <Button x:Name="HelpButton"
-                            Grid.Column="2"
-                            FontFamily="Segoe Fluent Icons"
-                            Style="{StaticResource SubtleButtonStyle}"
-                            Content="&#xE946;"
-                            Width="43"
-                            Height="35"
-                            CornerRadius="0"
-                            FontSize="16"
-                            Click="HelpButton_Click"
-                            PointerEntered="HelpButton_PointerEntered"
-                            PointerExited="HelpButton_PointerExited"
-                            ToolTipService.ToolTip="Documentation"
-                            IsTextScaleFactorEnabled="False" />
-
-                    <!-- Separator -->
-                    <Border Grid.Column="3"
-                            Width="1"
-                            Margin="4,6,4,6"
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                    <!-- Donate Button -->
-                    <Button x:Name="DonateButton"
-                            Grid.Column="4"
-                            FontFamily="Segoe Fluent Icons"
-                            Style="{StaticResource SubtleButtonStyle}"
-                            Content="&#xEB51;"
-                            Width="42"
-                            Height="35"
-                            CornerRadius="0"
-                            FontSize="14"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Click="DonateButton_Click"
-                            PointerEntered="DonateButton_PointerEntered"
-                            PointerExited="DonateButton_PointerExited"
-                            ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it that way!"
-                            IsTextScaleFactorEnabled="False" />
-
-                    <!-- Separator -->
-                    <Border Grid.Column="5"
-                            Width="1"
-                            Margin="4,6,4,6"
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                    <!-- Theme Button -->
-                    <Button x:Name="CycleThemeButton"
-                            Grid.Column="6"
-                            FontFamily="Segoe Fluent Icons"
-                            Style="{StaticResource SubtleButtonStyle}"
-                            Content="&#xEC46;"
-                            Width="42"
-                            Height="35"
-                            CornerRadius="0"
-                            FontSize="16"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Click="CycleThemeButton_Click"
-                            ToolTipService.ToolTip="Theme: System"
-                            IsTextScaleFactorEnabled="False" />
-                </Grid>
-            </Border>
-
-            <!-- Locate Packs and Preview Buttons -->
-            <Border x:Name="BrowsePacksButtonShadowHost"
-                    Margin="16,52,8,0"
-                    VerticalAlignment="Top"
-                    Height="40"
-                    Translation="0,0,32"
-                    CornerRadius="6">
-                <Border.Shadow>
-                    <ThemeShadow x:Name="BrowsePacksShadow" />
-                </Border.Shadow>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="3*" />
-                        <ColumnDefinition Width="6" />
-                        <!-- 4px gap between buttons -->
-                        <ColumnDefinition Width="1.33*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Button x:Name="BrowsePacksButton"
-                            Grid.Column="0"
-                            Click="BrowsePacksButton_Click"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            FontWeight="SemiBold"
-                            CornerRadius="6,0,0,6"
-                            BorderThickness="0"
-                            IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Select a pack from your local PBR-enabled resource packs for tuning or export. Hold shift and press to see detailed status of Vanilla RTX resource pack installations">
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xF78B;"
-                                      FontSize="18"
-                                      Margin="0,0,8,0"
-                                      VerticalAlignment="Center" />
-                            <TextBlock x:Name="BrowsePacksButtonText"
-                                       Text="Select another pack"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <ToggleButton x:Name="TargetPreviewToggle"
-                                  Grid.Column="2"
-                                  Content="Preview"
-                                  HorizontalAlignment="Stretch"
-                                  VerticalAlignment="Stretch"
-                                  FontWeight="SemiBold"
-                                  CornerRadius="0,6,6,0"
-                                  BorderThickness="0"
-                                  Checked="TargetPreviewToggle_Checked"
-                                  Unchecked="TargetPreviewToggle_Unchecked"
-                                  IsTextScaleFactorEnabled="False"
-                                  ToolTipService.ToolTip="If enabled, all functionalities target Minecraft Preview instead of regular Minecraft." />
-
-                    <!-- Overlay borders for the visual split -->
-                    <!-- Dark border on RIGHT edge of left button -->
-                    <Grid Grid.Column="0"
-                          HorizontalAlignment="Right"
-                          Width="3"
-                          Margin="0,0,-3,0"
-                          IsHitTestVisible="False">
-                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
-                                BorderThickness="3,0,0,0" />
-                    </Grid>
-
-                    <!-- Bright border on LEFT edge of right button -->
-                    <Grid Grid.Column="2"
-                          HorizontalAlignment="Left"
-                          Width="3"
-                          Margin="-3,0,0,0"
-                          IsHitTestVisible="False">
-                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
-                                BorderThickness="3,0,0,0"
-                                x:Name="LeftEdgeOfTargetPreviewButton" />
-                    </Grid>
-                </Grid>
-            </Border>
 
             <!-- Sidebar Log Box -->
             <Grid>
@@ -488,9 +594,7 @@
                    Source="ms-appx:///Assets/previews/huge_background.png" />
         </Grid>
 
-
-
-        
+     
         <!-- RIGHT CONTENT AREA -->
         <Grid Grid.Column="1">
             <!-- Shadow receiver for right column -->
@@ -501,10 +605,6 @@
             <!-- Main layout grid with defined rows -->
             <Grid>
                 <Grid.RowDefinitions>
-                    <!-- Pack Selection -->
-                    <RowDefinition Height="Auto" />
-                    <!-- Spacing -->
-                    <RowDefinition Height="16" />
                     <!-- Sliders Grid -->
                     <RowDefinition Height="Auto" />
                     <!-- Spacing -->
@@ -517,87 +617,12 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Pack Selection Options with shadow -->
-                <Border x:Name="PackOptionsShadowHost"
-                        Grid.Row="0"
-                        Margin="8, 52, 16, 0"
-                        Padding="16,4"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Top"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderThickness="0"
-                        CornerRadius="6"
-                        Translation="0,0,32"
-                        ToolTipService.ToolTip="Select from the list of installed Vanilla RTX resource packs for tuning or export.">
-                    <Border.Shadow>
-                        <ThemeShadow x:Name="PackOptionsShadow" />
-                    </Border.Shadow>
-                    <Grid HorizontalAlignment="Stretch"
-                          BorderThickness="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="0.9*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="1.2*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="1*" />
-                        </Grid.ColumnDefinitions>
 
-                        <CheckBox x:Name="VanillaRTXCheckBox"
-                                  Grid.Column="0"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Margin="8,0,0,0"
-                                  Checked="Option_Checked"
-                                  Unchecked="Option_Unchecked"
-                                  IsEnabled="False">
-                            <TextBlock Text="Vanilla RTX"
-                                       FontWeight="SemiBold"
-                                       Margin="2,1,0,0"
-                                       IsTextScaleFactorEnabled="False" />
-                        </CheckBox>
-
-                        <AppBarSeparator Grid.Column="1"
-                                         VerticalAlignment="Stretch"
-                                         Margin="0" />
-
-                        <CheckBox x:Name="NormalsCheckBox"
-                                  Grid.Column="2"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Margin="8,0,0,0"
-                                  Checked="Option_Checked"
-                                  Unchecked="Option_Unchecked"
-                                  IsEnabled="False">
-                            <TextBlock Text="Vanilla RTX Normals"
-                                       FontWeight="SemiBold"
-                                       Margin="2,1,0,0"
-                                       IsTextScaleFactorEnabled="False" />
-                        </CheckBox>
-
-                        <AppBarSeparator Grid.Column="3"
-                                         VerticalAlignment="Stretch"
-                                         Margin="0" />
-
-                        <CheckBox x:Name="OpusCheckBox"
-                                  Grid.Column="4"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Margin="8,0,0,0"
-                                  Checked="Option_Checked"
-                                  Unchecked="Option_Unchecked"
-                                  IsEnabled="False">
-                            <TextBlock Text="Vanilla RTX Opus"
-                                       FontWeight="SemiBold"
-                                       Margin="2,1,0,0"
-                                       IsTextScaleFactorEnabled="False" />
-                        </CheckBox>
-                    </Grid>
-                </Border>
 
                 <!-- =============== Sliders Grid =============== -->
                 <Grid x:Name="SlidersGrid"
-                      Grid.Row="2"
-                      Margin="16,0,24,0"
+                      Grid.Row="0"
+                      Margin="16,108,24,0"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Stretch">
 
@@ -974,7 +999,7 @@
 
                 <!-- Tune and Export button block -->
                 <Border x:Name="TuneAndExportShadowHost"
-                        Grid.Row="4"
+                        Grid.Row="2"
                         Margin="16,0,24,0"
                         Height="45"
                         HorizontalAlignment="Stretch"
@@ -987,7 +1012,7 @@
                     </Border.Shadow>
                 </Border>
 
-                <Grid Grid.Row="4"
+                <Grid Grid.Row="2"
                       Margin="16,0,24,0"
                       Height="45"
                       HorizontalAlignment="Stretch"
@@ -1082,7 +1107,7 @@
 
                 <!-- Bottom Buttons Grid 3x2 with shadow -->
                 <Border x:Name="BottomButtonsShadowHost"
-                        Grid.Row="6"
+                        Grid.Row="4"
                         Margin="8,0,16,16"
                         Height="136"
                         HorizontalAlignment="Stretch"
@@ -1095,7 +1120,7 @@
                     </Border.Shadow>
                 </Border>
 
-                <Grid Grid.Row="6"
+                <Grid Grid.Row="4"
                       Margin="8,0,16,16"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Bottom"

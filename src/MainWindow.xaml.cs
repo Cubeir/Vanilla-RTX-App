@@ -424,12 +424,10 @@ public sealed partial class MainWindow : Window
         if (_updater.HasDeployableCache())
         {
             UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
-            UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
         }
         else
         {
             UpdateVanillaRTXGlyph.Glyph = "\uEBD3"; // Default cloud icon
-            UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
         }
 
         // Slower UI update override for a smoother startup
@@ -561,6 +559,8 @@ public sealed partial class MainWindow : Window
             {
                 var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
                 LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
+                var accentColorKeyDark = theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorDark1";
+                RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
             }
             else
             {
@@ -571,6 +571,10 @@ public sealed partial class MainWindow : Window
                     if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
                     {
                         LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
+                    }
+                    if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
+                    {
+                        RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
                     }
                 }
             }
@@ -753,14 +757,13 @@ public sealed partial class MainWindow : Window
     private void InitializeShadows()
     {
         TitleBarShadow.Receivers.Add(TitleBarShadowReceiver);
-
+        // Top row shadow — spans both columns, add both receivers
+        TopRowContentShadow.Receivers.Add(LeftShadowReceiver);
+        TopRowContentShadow.Receivers.Add(RightShadowReceiver);
         // Left column shadows
-        BrowsePacksShadow.Receivers.Add(LeftShadowReceiver);
         SidebarLogShadow.Receivers.Add(LeftShadowReceiver);
         CommandBarShadow.Receivers.Add(LeftShadowReceiver);
-
         // Right column shadows
-        PackOptionsShadow.Receivers.Add(RightShadowReceiver);
         ClearResetShadow.Receivers.Add(RightShadowReceiver);
         BottomButtonsShadow.Receivers.Add(RightShadowReceiver);
     }
@@ -1302,6 +1305,9 @@ public sealed partial class MainWindow : Window
         var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
         var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
         LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
+        var accentColorKeyDark = theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorDark1";
+        RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
+
         BetterRTXPresetManagerButton.IsEnabled = false;
     }
     private void TargetPreviewToggle_Unchecked(object sender, RoutedEventArgs e)
@@ -1319,6 +1325,10 @@ public sealed partial class MainWindow : Window
             if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
             {
                 LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
+            }
+            if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
+            {
+                RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
             }
         }
         BetterRTXPresetManagerButton.IsEnabled = true;
@@ -1921,12 +1931,10 @@ public sealed partial class MainWindow : Window
                 if (_updater.HasDeployableCache())
                 {
                     UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
-                    UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
                 }
                 else
                 {
                     UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
-                    UpdateVanillaRTXButtonText.Text = "Get latest RTX packs";
                 }
 
                 // Trigger an automatic pack location check after update (fail or not)
