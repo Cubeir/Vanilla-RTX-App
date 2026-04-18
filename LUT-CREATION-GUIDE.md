@@ -1,11 +1,3 @@
-# W.I.P
-This document is not directly related to the current release version of the app or its functions, for that, refer to [README.md](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md).  
-
-This guide is a work in progress and intended for a future release.
-It's entire purpose is to be linked in the lut manager feature coming with the next major update of the app.
-It will likely be merged into README.md as a subsection in the future.
-
-
 # Minecraft RTX: Look Up Table Modification Guide
 In this short guide, you will learn to create and test your own LUT to customize Minecraft's ray tracing by editing the two primary files named `look_up_tables.png` and `sky.png`, and if you think you've came up with something cool or new, you can submit it through the forum channel of the [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud) server to have it featured among the presets bundled with the app.
 
@@ -40,7 +32,7 @@ One side of the image is brighter, this side points towards the sun.
 
 
 ## `water_n.png`
-This is not really a look up table, this file is meant to be a seamless normal map which the game engine animtes on its own to produce water waves.
+This is not really a look up table, this file is meant to be a seamless normal map which the game engine animates in multiple directions to produce water waves.
 
 
 ## Testing
@@ -53,9 +45,17 @@ Now you can launch Minecraft RTX through the Vanilla RTX App and test your very 
 
 ## Done!
 Congrats!
-Keep playing around, once you've come up with something decently unique, share it in the forum channel at [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud) and ping `@Cubeir` and you'll likely see it listed among the bundled presets with the future updates!
+Keep playing around, once you've come up with something decently unique, share it in the forum channel at [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud) and ping `@Cubeir` and you'll likely see it listed among the bundled presets with the future updates! You can also make a pull request.
 
 
 Note: ideally, back up your default lut files before replacing them, if you've previously used the lut manager of the app, chances are it has the backups stored away, you'll have to reinstall your game at worst, or copy the same files from Minecraft Preview/Release into your other Minecraft installation that you made these changes to.
 
+## Making a pull request for your lut preset
+Create a folder inside `src\Assets\lut` folder of project's files, folder name determiens your preset name.  
+Inside this folder, you have to provide four files:
+1. `image.png`: This is your preset's preview image in lut manager
+2. and 3. `look_up_tables.png` and `sky.png` these are your primary lut files.
+4. `water_n.tga`: leave the default one if unchanged.
 
+Create your pull request with these four files added inside a folder with the name of your choice.
+The name of the folder has to be appropriate.

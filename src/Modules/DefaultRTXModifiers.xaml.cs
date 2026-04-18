@@ -938,9 +938,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             _imagePathOverride = imagePathOverride;
         }
     }
-
-    private void Button_Click(object sender, RoutedEventArgs e)
+    private void LearnTo_Button_Click(object sender, RoutedEventArgs e)
     {
-        MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#LUT-Tutorial");
+        MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md");
     }
 }

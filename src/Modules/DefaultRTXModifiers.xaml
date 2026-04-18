@@ -264,6 +264,7 @@
 
 
                     <Button Content="Learn to create and submit your own lut presets for everyone to see them here!"
+                            x:Name="LearnTo_Button"
                             Opacity="0.84"
                             Padding="6"
                             CornerRadius="0"
@@ -273,7 +274,7 @@
                             Foreground="White"
                             Margin="-0.5"
                             HorizontalAlignment="Stretch"
-                            Click="Button_Click"
+                            Click="LearnTo_Button_Click"
                             Canvas.ZIndex="998">
                         <Button.Background>
                             <AcrylicBrush TintColor="{ThemeResource SystemAltHighColor}"

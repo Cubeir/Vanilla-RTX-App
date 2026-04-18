@@ -23,7 +23,7 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
-// Potentially rename to ARCHITEX or ALCHETEX before release.
+// Potentially rename to Alchemist, PBR Alchemist or RTX Reactor or ARCHITEX or ALCHETEX before release.
 
 // Perfect the licensing windows' appearance
 
