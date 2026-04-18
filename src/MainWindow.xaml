@@ -1214,9 +1214,11 @@
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF196;"
                                       FontSize="18"
+                                      Opacity="0.67"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
                             <TextBlock Text="Coming soon!"
+                                       Opacity="0.67"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
