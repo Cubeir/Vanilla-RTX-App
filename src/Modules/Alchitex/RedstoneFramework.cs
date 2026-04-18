@@ -38,6 +38,14 @@ using Windows.Storage;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
+// This thing is amazing
+// Offload it to a background thread, improve its performance
+// Then, do this, remake the reactor tile background image, this time with MISSING TILES!
+// And keep em flat!? flat as a starting test, you can make it 3d later but yeah
+// take the darkest ones perhaps, and second darkest, or randomly, via NOISE, and delete most tiles
+// that way redstone shows through the GAPS! this will look a lot nicer! but there gotta be many big gaps!
+
+
 /// <summary>
 /// Generates and animates a procedural Minecraft-style redstone background layer.
 /// </summary>

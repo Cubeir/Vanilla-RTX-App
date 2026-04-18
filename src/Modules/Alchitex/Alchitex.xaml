@@ -300,22 +300,38 @@
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════ -->
-        <!--  MAIN CONTENT PANEL (Mica, shown after license accept)  -->
+        <!--  MAIN CONTENT PANEL (Shown after license accept)  -->
         <!-- ═══════════════════════════════════════════════════════ -->
         <Grid x:Name="MainGrid"
               Visibility="Collapsed"
+              Background="Transparent"
               Margin="0,35,0,0">
 
             <!-- Shadow receiver (behind everything) -->
             <Grid x:Name="MainShadowReceiver" />
 
             <!-- ── Alchitex feature content area ── -->
-            <!-- TODO: your Alchitex UI goes here -->
-            <TextBlock Text="Alchitex content goes here"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       IsTextScaleFactorEnabled="False"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+            
+            <Button Content="The redstone circuits are still being laid down. Keep an eye out for updates!"
+                    x:Name="AnnouncementButton"
+                    Click="AnnouncementButton_Click"
+                    Opacity="0.85"
+                    Padding="6"
+                    CornerRadius="0"
+                    FontSize="14"
+                    VerticalAlignment="Center"
+                    MinHeight="64"
+                    Foreground="White"
+                    Margin="-0.5"
+                    HorizontalAlignment="Stretch"
+                    Canvas.ZIndex="998">
+                <Button.Background>
+                    <AcrylicBrush TintColor="{ThemeResource SystemAltHighColor}"
+                                  TintOpacity="0.0"
+                                  FallbackColor="{ThemeResource SystemAccentColor}" />
+                </Button.Background>
+                </Button>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════ -->

@@ -1191,7 +1191,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Alchitex (Beta)"
+                            <TextBlock Text="Coming Soon!"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

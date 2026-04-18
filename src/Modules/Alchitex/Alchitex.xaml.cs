@@ -437,10 +437,12 @@ public sealed partial class Alchitex : Window
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
-        // TODO: show an about/info flyout or dialog
+        MainWindow.OpenUrl("http://minecraftrtx.net/reactor");
     }
 
     // ── Reveal main content ───────────────────────────────────────────────────
+
+    // Main content are hidden before license is accepted, i.e. redstone circuits and others
     private async void ShowMainContent()
     {
         this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
@@ -459,12 +461,18 @@ public sealed partial class Alchitex : Window
     private async void LogoInteractButton_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true, 1.0);
-        _redstone.StartContinuousFlashing();
+        _redstone.StopContinuousFlashing();
     }
 
     private async void Window_SizeChanged(object sender, WindowSizeChangedEventArgs args)
     {
         if (_redstone is null) return;
         await _redstone.RegenerateAsync(args.Size.Width, args.Size.Height);
+    }
+
+    private void AnnouncementButton_Click(object sender, RoutedEventArgs e)
+    {
+        _ = BlinkingLamp(true, true, 1.0);
+        _redstone.StartContinuousFlashing();
     }
 }
