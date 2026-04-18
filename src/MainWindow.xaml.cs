@@ -1869,7 +1869,7 @@ public sealed partial class MainWindow : Window
             }
             else
             {
-                Log("Finished exporting.", LogLevel.Success);
+                Log("Export queue finished.", LogLevel.Success);
             }
             _progressManager.HideProgress();
             ToggleControls(this, true);

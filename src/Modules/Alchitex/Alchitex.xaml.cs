@@ -104,7 +104,8 @@ public sealed partial class Alchitex : Window
 #if DEBUG
         $"Alchitex_LicenseAccepted_{GetAppVersion()}_{Guid.NewGuid()}";
 #else
-        $"Alchitex_LicenseAccepted_{GetAppVersion()}";
+        $"TEMPORARY_LICENSEWINDOW_{GetAppVersion()}_{Guid.NewGuid()}";
+        // $"Alchitex_LicenseAccepted_{GetAppVersion()}";
 #endif
 
     private static string GetAppVersion()

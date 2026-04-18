@@ -1191,7 +1191,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Coming Soon!"
+                            <TextBlock Text="Coming soon!"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
