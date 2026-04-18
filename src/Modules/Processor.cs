@@ -51,10 +51,6 @@ public class Processor
 
     public static void TuneSelectedPacks()
     {
-        if (RuntimeFlags.Set("Has_Told_Tuning_Options_Thingy"))
-        {
-            MainWindow.Log("Options left at default will be skipped.", MainWindow.LogLevel.Informational);
-        }
         var packs = new[]
         {
         new PackInfo("Vanilla RTX", VanillaRTXLocation, IsVanillaRTXEnabled),
@@ -82,6 +78,9 @@ public class Processor
             MainWindow.Log($"{CustomPackDisplayName} was selected twice, but will only be processed once!", MainWindow.LogLevel.Warning);
             packs = packs.Take(packs.Length - 1).ToArray();
         }
+
+        // Only process enabeld ones
+        packs = packs.Where(p => p.Enabled).ToArray();
 
         MainWindow.Log($"Tuning selected {((IsVanillaRTXEnabled ? 1 : 0) + (IsNormalsEnabled ? 1 : 0) + (IsOpusEnabled ? 1 : 0) + (!string.IsNullOrEmpty(CustomPackLocation) ? 1 : 0) == 1 ? "package" : "packages")}...", MainWindow.LogLevel.Lengthy);
 
