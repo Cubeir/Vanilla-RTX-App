@@ -3,15 +3,15 @@ LICENSE VERSION: 0.0
 Check back later, RTX Reactor is merging with the Vanilla RTX App soon!
 
 What is RTX Reactor?
-It is a closed-source premium PBR texture generation too that allowed anyone to use their favorite Bedrock Edition texture packs with ray tracing.
-Introduced in early 2023 as an exclusive reward for anyone who decided to support me, with a promise to eventually become free and open-source.
+It is a closed-source premium PBR texture generation too that allows anyone to use their favorite Bedrock Edition texture packs with ray tracing.
+Introduced in early 2023 as an exclusive reward for all who decided to support me, with a promise to eventually become free and open-source.
 While there'll be major rewrites, the vision stays the same:
-A software that generate packs that would be usually better or no different than when the average resource pack author tries to add ray tracing support to their texture packs (which in reality most never do, there are very few original non-vanilla texture packs for ray tracing floating around the internet)
+A software that generate packs that would be usually better or no different than when the average resource pack author tries to add proper ray tracing support to their texture packs (which in reality most never do, there are very few original non-vanilla texture packs for ray tracing floating around the internet)
 RTX Reactor will eliminate lots of manual human effort, so that players are no longer limited to Vanilla RTX or a few Minecraft RTX capable resource packs, but instead thousands.
-(This time with proper Vibrant Visuals support, and possibly under a new name)
+This time with proper Vibrant Visuals support, and possibly under a new name!
 
 Once you hit the agree, a button appears, once clicked it triggers something interesting.
 And if you wait long enough, due to a known memory leak, something even more interesting might happen.
 Dead serious, don't leave this window open too long, it does nothing! The features aren't here yet, and the memory leak is real.
-You've been warned! Just close this window, alright?
-I would've disabled this window for this release build, but I thought to myself the redstone stuff is too cool to miss! Even though it is a demo at the moment. Haha!
+You've been warned! Just close this window soon, alright?
+I would've disabled this window for this release build, but I thought to myself the redstone stuff is too cool to miss! Even though it is just a visual demo at the moment. Haha!

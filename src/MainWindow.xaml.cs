@@ -34,6 +34,9 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+// Prioritize the small, yet critical stuff UP HERE, alchitex is a long term plan, no ETA, focus on app quality and compatability with different scenarios
+
+
 Alchiex
 Is it going to be a multi-staged Window?
 First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs

@@ -313,7 +313,7 @@
             <!-- ── Alchitex feature content area ── -->
 
             
-            <Button Content="The redstone circuits are still being laid down. Keep an eye out for updates!"
+            <Button Content="Redstone circuits are still being laid down; Keep an eye out for updates!"
                     x:Name="AnnouncementButton"
                     Click="AnnouncementButton_Click"
                     Opacity="0.85"
