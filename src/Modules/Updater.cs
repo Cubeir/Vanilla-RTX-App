@@ -1449,7 +1449,7 @@ public class PSAUpdater
     private const string TIMESTAMP_KEY = "PSALastCheckedTimestamp";
     private const string LAST_SHOWN_KEY = "PSALastShownTimestamp";
     private static readonly TimeSpan COOLDOWN = TimeSpan.FromHours(6);
-    private static readonly TimeSpan SHOW_COOLDOWN = TimeSpan.FromMinutes(0.5);
+    private static readonly TimeSpan SHOW_COOLDOWN = TimeSpan.FromMinutes(0.3);
 
     public static async Task<string?> GetPSAAsync()
     {
