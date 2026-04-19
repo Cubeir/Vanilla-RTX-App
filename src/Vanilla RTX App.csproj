@@ -906,7 +906,7 @@
     <Page Update="Modules\Alchitex\Alchitex.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <None Update="Modules\Alchitex\ALCHITEX_LICENSE.txt">
+    <None Update="Modules\Alchitex\LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <Page Update="Modules\Alchemist\Alchemist.xaml">

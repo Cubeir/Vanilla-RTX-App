@@ -36,18 +36,38 @@ namespace Vanilla_RTX_App;
 
 // Prioritize the small, yet critical stuff UP HERE, alchitex is a long term plan, no ETA, focus on app quality and compatability with different scenarios
 
+- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
+watchya doing?
 
-Alchiex
-Is it going to be a multi-staged Window?
-First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs
-YES, this way you DON'T have to make changes to the existing pack browser! AND DON'T, REVERT ALL IF YOU HAVE!
-Don't risk breaking existing code paths, VV/RTX/NoPBR flag and shit, that was a SHIT idea!
-Second: Some very simple options must be provided to the user, Normal Map, Heightmap, None, VV or NOT
-In VV mode, user gets SSS and processes none-block folders too, but not RTX mode stuff, which include water, glass, and a whole bunch of things
-Two different code paths!
-Note: keep PBR for entities subtle THORUGHOUT
-At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
-Fallback to asking for a save location if it fails
+
+- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
+Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
+Some overrides now disable it while they should not.
+
+- Unify the 4 places hardcoded paths are used into a class
+pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
+
+For finding the game, GDKLocator kit handles it system-wide, all good
+**For Minecraft's USER DATA however, you better expose those, apparently some third party launchers use different paths!!!**
+
+For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
+Actually don't expose anything, the overhead and the risk, instead, make them globally-available constants that can easily be changed
+so in the event of Minecraft files restructuing, you can quickly release an update without having to do much testing, make the code clear, basically
+This Applies to this older todo below as well:
+
+- Expose as many params as you can to a json in app's root
+the URLs the app sends requests to + the hardcoded Minecraft paths
+* Resource packs only end up in shared
+* Options file is in both shared and non-shared, but non-shared is presumably the one that takes priority, still, we take care of both
+* PackLocator, PackUpdater (deployer), Browse Packs, and LaunchMinecraftRTX's options.txt updater are the only things that rely on hardcoded paths on the system
+* EXPOSE ALL hardcoded URLs and Tuning parameters
+
+Additionally, while going through params, 
+Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
+All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
+
+
+- Do the TODOs scattered in the code
 
 >> Do the idea of unifying hardcoded paths while at it!
 -Pack locator
@@ -55,6 +75,7 @@ Fallback to asking for a save location if it fails
 -Alchitex is due to reuse a lot of the code.
 >> MAYBE, while at it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
 could be used for launcher too as well as the 3 above
+
 
 - Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
 hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
@@ -87,6 +108,21 @@ u can then display all of these PSAs in app's in the form of Panels, if there is
 must be used to receieve updates, compare packages, etc...
 easier said than done, the code is a clusterfuck
 
+Alchiex
+Is it going to be a multi-staged Window?
+First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs
+YES, this way you DON'T have to make changes to the existing pack browser! AND DON'T, REVERT ALL IF YOU HAVE!
+Don't risk breaking existing code paths, VV/RTX/NoPBR flag and shit, that was a SHIT idea!
+Second: Some very simple options must be provided to the user, Normal Map, Heightmap, None, VV or NOT
+In VV mode, user gets SSS and processes none-block folders too, but not RTX mode stuff, which include water, glass, and a whole bunch of things
+Two different code paths!
+Note: keep PBR for entities subtle THORUGHOUT
+At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
+Fallback to asking for a save location if it fails
+
+
+
+
 - Tuning is very slow on certain AMD CPUs, there were some reports on Disc
 
 - We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
@@ -96,9 +132,6 @@ it hangs too long trying to get from remote
 the whole deal is that user quickly gets access to the cached version if no internet is available
 this defeats the purpose if they gotta wait 59 or 30 seconds
 Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
-
-- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
-watchya doing?
 
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
@@ -129,35 +162,6 @@ And lastly the CACHE invalidator, will it continue to work well with it (betterr
 Especially release builds
 Game detection and cache invalidation could be improved for both
 PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
-
-- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
-Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
-Some overrides now disable it while they should not.
-
-- Unify the 4 places hardcoded paths are used into a class
-pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
-
-For finding the game, GDKLocator kit handles it system-wide, all good
-**For Minecraft's USER DATA however, you better expose those, apparently some third party launchers use different paths!!!**
-
-For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
-Actually don't expose anything, the overhead and the risk, instead, make them globally-available constants that can easily be changed
-so in the event of Minecraft files restructuing, you can quickly release an update without having to do much testing, make the code clear, basically
-This Applies to this older todo below as well:
-
-- Expose as many params as you can to a json in app's root
-the URLs the app sends requests to + the hardcoded Minecraft paths
-* Resource packs only end up in shared
-* Options file is in both shared and non-shared, but non-shared is presumably the one that takes priority, still, we take care of both
-* PackLocator, PackUpdater (deployer), Browse Packs, and LaunchMinecraftRTX's options.txt updater are the only things that rely on hardcoded paths on the system
-* EXPOSE ALL hardcoded URLs and Tuning parameters
-
-Additionally, while going through params, 
-Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
-All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
-
-
-- Do the TODOs scattered in the code
 
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it

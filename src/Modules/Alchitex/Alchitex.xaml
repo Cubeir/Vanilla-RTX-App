@@ -193,7 +193,7 @@
 
                 <!-- Window title text — updated in code-behind later! -->
                 <TextBlock x:Name="TitleBarText"
-                           Text="Alchitex  |  License Agreement"
+                           Text="PBR Alchemist  |  License Agreement"
                            Grid.Column="1"
                            Margin="0,6,0,5"
                            VerticalAlignment="Center"

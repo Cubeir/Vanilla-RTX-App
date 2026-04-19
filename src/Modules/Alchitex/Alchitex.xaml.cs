@@ -365,7 +365,7 @@ public sealed partial class Alchitex : Window
     {
         try
         {
-            var uri = new Uri("ms-appx:///Modules/Alchitex/ALCHITEX_LICENSE.txt");
+            var uri = new Uri("ms-appx:///Modules/Alchitex/LICENSE.txt");
             var file = await StorageFile.GetFileFromApplicationUriAsync(uri);
             var body = await FileIO.ReadTextAsync(file);
 
@@ -376,7 +376,7 @@ public sealed partial class Alchitex : Window
             headerPara.Inlines.Add(new Run { Text = "Online version:  " });
             var link = new Hyperlink
             {
-                NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt")
+                NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/LICENSE.txt")
             };
             link.Inlines.Add(new Run { Text = "View on GitHub" });
             headerPara.Inlines.Add(link);
