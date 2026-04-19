@@ -2,7 +2,7 @@
 In this short guide, you will learn to create and test your own LUT to customize Minecraft's ray tracing by editing the two primary files named `look_up_tables.png` and `sky.png`, and if you think you've came up with something cool or new, you can submit it through the forum channel of the [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud) server to have it featured among the presets bundled with the app.
 
 # Files to modify
-The first step is to download and extract the example files.
+The first step is to download and extract the [example files](https://www.mediafire.com/file/1lwqkcvh0ylupa8/Whimsical-Bright-Examples-LUT-Assets.zip/file).
 
 Once you have `look_up_tables.png` and `sky.png` extracted, you need an image editing software, such as Microsoft Paint, [Paint.NET](http://paint.net/) or whatever you're comfortable with.
 
