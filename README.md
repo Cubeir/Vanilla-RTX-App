@@ -35,7 +35,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 ## Quick Guide (For Beginners)
 
 1. **Install the app from the Microsoft Store, open the app.**  
-2. Click **`Install latest RTX packages`**  
+2. Click **`Get latest RTX packs`**  
    - This opens a menu which allows you to swiftly install (or update) Vanilla RTX.
 3. After Vanilla RTX's installation finishes, click **`Launch Minecraft RTX`**  
    - Starts the game with ray tracing enabled.
@@ -60,9 +60,9 @@ This is your detailed guidebook on what each option within the app does.
 
 ![vanilla-rtx-app-ui-screenshots](https://github.com/user-attachments/assets/09563ec6-0099-4afd-b2e5-73a3af930b02)
 
-- `Install latest RTX packages`  
-  Opens a new window in which you can download and install, resintall, or update the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
-  Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. The app allows you to become aware of updates and automatically receive the latest updates without having to visit third party sites. 
+- `Get latest RTX packs`  
+  Opens a window from which you can download and install, resintall, or update the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
+  Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and they are constantly improving, in short, they are the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. This window lets you know if there are updates available and automatically updates to the latest version without opening the game or having to visit third party sites. 
   Downloaded files are cached for faster reinstalls until a new update becomes available to you, this is mainly to give you a quick way reset the packs back to original state, allowing rapid experimentation with the tuning options expanded on later in this document.
   
   ![vanilla-rtx-app-ui-image](https://github.com/user-attachments/assets/65affd06-3396-4302-aca5-07952d593942)
@@ -74,16 +74,22 @@ Allows you to import and manage a catalogue of DLSS dll files for easy version s
 - `BetterRTX manager`
 Displays an up-to-date list of all available BetterRTX presets, which you can click to download and then install. The list is long so once a preset is downloaded it is moved to the top for convenience.
 Upon installing your first ever preset, a Default RTX preset is created at the top allowing you to rollback/uninstall BetterRTX.
-> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential game crashes, sometimes the files can become outdated, by tracking changes in game files and removing your current presets, it ensures you will never install outdated RTX files by accident.
-You will have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files fast enough, even then this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update. In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, refresh button won't touch your Default RTX preset, which is only ever cleared after game updates, opening space for a new Default preset which gets made from the latest game files.  
+> All of your presets are wiped and the list is refreshed after game updates, the reason for that is to avoid potential game crashes, sometimes the files can become outdated, by tracking changes in game files and removing your current presets, it ensures you aren't installing outdated RTX files by accident.
+You will have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app ensures you're always getting the latest, however, this depends entirely on BetterRTX updating the bin files just in time, even if not this is not going to be a big issue, if you experience crashes after installing a BetterRTX preset, you can always rollback to the default preset, which will always be re-created upon your first attempt at installing a BetterRTX preset after a game update. In other words if BetterRTX has delays after Minecraft updates and you use the app, you may be left with stale/outdated cache, in which case you can use the refresh button in the top left corner to manually reset the API and preset cache, refresh button won't touch your Default RTX preset, which is only ever cleared after game updates, opening space for a new Default preset which gets made from the latest game files.  
 
 > Note: Given the install paths can now vary compared to Minecraft UWP, the app first scans for the most common install locations, if that fails, a system-wide search takes place which will work if you give it time, but you're also given the choice to manually locate `Minecraft for Windows` or `Minecraft Preview for Windows` folders depending on the version of the game you're trying to swap DLSS of or install BetterRTX to. The app then caches the game's location after initial detection, making subsequent preset changes or DLSS swapping faster. The cache remains valid until Minecraft is relocated.
 
+- `RTX lut manager`  
+A simpler way to modify and improve Minecraft RTX's appearance that works across all game versions and Minecraft Preview, you can select from the list of pre-bundled presets, you can also [learn to create and submit your own lut preset](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md) to see it included with future versions of the app.
+
 - `Preview (Togglable)`  
-  All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active.
+All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active. All app features and modules with the exception of `BetterRTX manager` fully support Minecraft Preview.
   
 - `Export selection`  
   Exports selected packs. Useful for backing up your snapshot of the pack before making further changes, or to share your tuned version of Vanilla RTX (or another PBR resource pack) with friends! Since the app doesn't come with any quick way to reset PBR resource packs other than Vanilla RTX, it is recommended that you save them using this feature before tuning.
+
+  - `Coming soon`  
+Currently a teaser for [RTX Reactor](http://minecraftrtx.net/reactor)'s merge with the Vanilla RTX App. Stay tuned!
   
 ## Tuner
 
@@ -146,7 +152,7 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
   Clears the Vanilla RTX and custom pack selections, as if you just booted up the app!
 
 - `Reset`  
-  Resets tuning values and options to their defaults — this does not reset the pack back to its default state, to do that, you must reinstall the packages via the `(Re)install latest RTX packs` or if it is a custom pack, manually reimport the original pack to Minecraft.
+  Resets tuning values and options to their defaults — this does not reset the pack back to its default state, to do that, you must reinstall the packages via the `Get latest RTX packs` or if it is a custom pack, manually reimport the original pack to Minecraft.
 
 - `Wipe / Hard reset (Hold Shift + Reset)`  
   Wipes all of app's storage, as well as any temporary data, including: cached timestamps (like update check cooldowns), tuning options, cached pack locations or game locations, DLSS and BetterRTX catalogues, PSA messages, and more..., then restarts the app.
