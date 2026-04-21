@@ -88,7 +88,7 @@ All of the app's functionalities are targeted at Preview/Beta version of Minecra
 - `Export selection`  
   Exports selected packs. Useful for backing up your snapshot of the pack before making further changes, or to share your tuned version of Vanilla RTX (or another PBR resource pack) with friends! Since the app doesn't come with any quick way to reset PBR resource packs other than Vanilla RTX, it is recommended that you save them using this feature before tuning.
 
-  - `Coming soon`  
+- `Coming soon!`  
 Currently a teaser for [RTX Reactor](http://minecraftrtx.net/reactor)'s merge with the Vanilla RTX App. Stay tuned!
   
 ## Tuner
@@ -100,8 +100,8 @@ The Vanilla RTX App includes tools to tune Vanilla RTX or any other RTX or Vibra
 Upon launch, the app automatically scans for already-installed Vanilla RTX packs, available packs become selectable for tuning or export, you can also select up to one additional custom pack at a time.
 >  Any action within the app that could result in pack stasus change refreshes the checkboxes automatically (such as toggling Preview or updating/reinstalling packs) if multiple versions of the same Vanilla RTX variant are present, the newest will be picked, you can still select older versions manually from the list of local packs.
 
-- `Select a local pack`  
-  Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select one pack to be tuned alongside any of the 3 primary Vanilla RTX variants.
+- `Select another pack`  
+  Opens a menu containing a list of your installed RTX or Vibrant Visuals resource packs. You can select up to one pack to be added to the tuning or export queue alongside any of the 3 primary Vanilla RTX variants.
   
 - `Fog multiplier`  
   Updates all fog densities by a given factor — e.g., `0.5` to halve, `3.0` to triple, or `0` to effectively disable air fog. If a fog density is already at 0, the multiplier is instead converted into an acceptable literal number between `0.0-1.0`.
