@@ -36,9 +36,14 @@ namespace Vanilla_RTX_App;
 
 // Prioritize the small, yet critical stuff UP HERE, alchitex is a long term plan, no ETA, focus on app quality and compatability with different scenarios
 
+- Add a new third, smaller button on the right side of Export button, make it a square, small
+It is IMPORT button, no text maybe, just a import icon
+it allows u to import .mcpacks and .zips!!! very good, because minecraft gkd is a fuck
+
+give preview button and reset buttons icons as well maybe? a reset icon, and choose something good from winui gallery aight?
+
 - Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
 watchya doing?
-
 
 - Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
@@ -345,15 +350,8 @@ public sealed partial class MainWindow : Window
         SetMainWindowProperties();
         InitializeComponent();
         InitializeLampAnimators();
-
-        // Titlebar drag region
+        SplashOverlay.Visibility = Visibility.Visible;
         SetTitleBar(TitleBarDragArea);
-
-        // Show splash screen immedietly
-        if (SplashOverlay != null)
-        {
-            SplashOverlay.Visibility = Visibility.Visible;
-        }
 
         _windowStateManager = new WindowStateManager(this, false, msg => Log(msg));
         _progressManager = new ProgressBarManager(ProgressBar);
@@ -367,8 +365,10 @@ public sealed partial class MainWindow : Window
         var version = Windows.ApplicationModel.Package.Current.Id.Version;
         var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
         appVersion = versionString;
-        Log($"App Version: {versionString}" + new string('\n', 2) +
-             "Not affiliated with Mojang Studios or NVIDIA;\nby continuing, you consent to modifications to your Minecraft data folders.");
+
+        Log($"App Version: {appVersion}" + new string('\n', 2) +
+            $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
+
 
         // Do upon app closure
         this.Closed += (s, e) =>
@@ -474,7 +474,7 @@ public sealed partial class MainWindow : Window
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
             var buttonName = LaunchButtonText.Text;
-            Log($"Please close Minecraft while using the app, when finished, launch the game using {buttonName} button.", LogLevel.Warning);
+            Log($"Please close Minecraft while using the app. Once finished, launch the game using {buttonName} button.", LogLevel.Warning);
         }
 
         // Show Leave a Review prompt, has a 10 sec cd built in
@@ -1865,7 +1865,7 @@ public sealed partial class MainWindow : Window
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
-            Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+            Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
 
         try
         {
@@ -1915,7 +1915,7 @@ public sealed partial class MainWindow : Window
         {
             if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
             {
-                Log($"Please close Minecraft while using the app, when finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+                Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
             }
 
             ToggleControls(this, false, true, []);
