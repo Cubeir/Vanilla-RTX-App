@@ -253,7 +253,8 @@ public static class OnlineTexts
     private static Dictionary<string, List<string>> ParseSections(string raw)
     {
         var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        var lines = raw.Split('\n');
+        // Normalize all line endings to \n up front
+        var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
         List<string>? currentBlocks = null;
         var currentBlock = new StringBuilder();
@@ -271,9 +272,7 @@ public static class OnlineTexts
 
             if (line.StartsWith("# ") && !line.StartsWith("## "))
             {
-                // ── Top-level section header ──────────────────────────────
                 CommitBlock();
-
                 var key = Normalise(line.Substring(2).Trim());
                 currentBlocks = new List<string>();
                 result[key] = currentBlocks;
@@ -281,17 +280,21 @@ public static class OnlineTexts
             }
             else if (line.StartsWith("### ") && currentBlocks is not null)
             {
-                // ── Array-item separator ──────────────────────────────────
                 CommitBlock();
-
-                // Text on the ### line itself is the first line of the new block
+                // Title text on the ### line — append with explicit \n so body starts on next line
                 var afterHash = line.Substring(4).Trim();
                 if (!string.IsNullOrWhiteSpace(afterHash))
-                    currentBlock.AppendLine(afterHash);
+                    currentBlock.Append(afterHash).Append('\n');
+                // Empty ### line → no title, body starts clean
+            }
+            else if (line.StartsWith("###") && currentBlocks is not null)
+            {
+                // Bare "###" with nothing after it
+                CommitBlock();
             }
             else if (currentBlocks is not null)
             {
-                currentBlock.AppendLine(line);
+                currentBlock.Append(line).Append('\n');
             }
         }
 
