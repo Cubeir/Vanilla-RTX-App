@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -87,15 +88,27 @@ public static class OnlineTexts
     /// </summary>
     public static async Task<bool> TriggerUpdateAsync()
     {
-        // Always apply whatever is in cache first so callers see stale data
-        // immediately rather than nulls while the network request is in flight.
+        Trace.WriteLine("[OnlineTexts] TriggerUpdateAsync called");
+
         TryApplyCache();
 
-        if (!IsCooldownExpired() || _isFetching)
+        if (!IsCooldownExpired())
+        {
+            Trace.WriteLine("[OnlineTexts] Cooldown not expired, using cache");
             return false;
+        }
+
+        if (_isFetching)
+        {
+            Trace.WriteLine("[OnlineTexts] Already fetching, skipping");
+            return false;
+        }
 
         if (!await _fetchLock.WaitAsync(0))
+        {
+            Trace.WriteLine("[OnlineTexts] Could not acquire lock, skipping");
             return false;
+        }
 
         _isFetching = true;
         try
@@ -103,19 +116,33 @@ public static class OnlineTexts
             for (int attempt = 0; attempt <= MAX_RETRIES; attempt++)
             {
                 if (attempt > 0)
+                {
+                    Trace.WriteLine($"[OnlineTexts] Retry {attempt}, waiting {RETRY_DELAY.TotalSeconds}s...");
                     await Task.Delay(RETRY_DELAY);
+                }
 
+                Trace.WriteLine($"[OnlineTexts] Fetch attempt {attempt + 1}/{MAX_RETRIES + 1}");
                 var raw = await FetchRawAsync();
-                if (raw is null) continue;
 
+                if (raw is null)
+                {
+                    Trace.WriteLine($"[OnlineTexts] Fetch attempt {attempt + 1} returned null");
+                    continue;
+                }
+
+                Trace.WriteLine($"[OnlineTexts] Fetch succeeded ({raw.Length} chars), parsing...");
                 ParseAndApply(raw);
                 CacheContent(raw);
+                Trace.WriteLine($"[OnlineTexts] Done. Credits={(OnlineTextsContent.Credits is null ? "null" : "set")}, PSA count={OnlineTextsContent.PSA?.Length ?? 0}");
                 return true;
             }
+
+            Trace.WriteLine("[OnlineTexts] All fetch attempts failed, staying on cache");
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            Trace.WriteLine($"[OnlineTexts] Unexpected exception: {ex}");
             return false;
         }
         finally
@@ -152,12 +179,19 @@ public static class OnlineTexts
             if (settings.Values.TryGetValue(CACHE_CONTENT_KEY, out var raw) &&
                 raw is string s && !string.IsNullOrWhiteSpace(s))
             {
+                Trace.WriteLine($"[OnlineTexts] Applying cache ({s.Length} chars)");
                 ParseAndApply(s);
             }
+            else
+            {
+                Trace.WriteLine("[OnlineTexts] No cache found");
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] TryApplyCache failed: {ex}");
+        }
     }
-
     private static void CacheContent(string raw)
     {
         try
@@ -165,8 +199,12 @@ public static class OnlineTexts
             var settings = ApplicationData.Current.LocalSettings;
             settings.Values[CACHE_CONTENT_KEY] = raw;
             settings.Values[CACHE_TIMESTAMP_KEY] = DateTime.UtcNow.ToString("O");
+            Trace.WriteLine($"[OnlineTexts] Cached {raw.Length} chars at {DateTime.UtcNow:O}");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] CacheContent failed: {ex}");
+        }
     }
 
     private static bool IsCooldownExpired()
@@ -175,13 +213,34 @@ public static class OnlineTexts
         {
             var settings = ApplicationData.Current.LocalSettings;
             if (!settings.Values.TryGetValue(CACHE_TIMESTAMP_KEY, out var val))
+            {
+                Trace.WriteLine("[OnlineTexts] No timestamp found, cooldown treated as expired");
                 return true;
+            }
 
             if (DateTime.TryParse(val?.ToString(), out var last))
-                return DateTime.UtcNow - last >= FETCH_COOLDOWN;
+            {
+                var age = DateTime.UtcNow - last;
+                // Negative age means timestamp is in the future (clock skew / bad write) — treat as expired
+                if (age < TimeSpan.Zero)
+                {
+                    Trace.WriteLine($"[OnlineTexts] Timestamp is in the future — resetting and treating as expired");
+                    try { ApplicationData.Current.LocalSettings.Values.Remove(CACHE_TIMESTAMP_KEY); } catch { }
+                    return true;
+                }
+                var expired = age >= FETCH_COOLDOWN;
+                Trace.WriteLine($"[OnlineTexts] Cache age: {age.TotalMinutes:F1} min, cooldown: {FETCH_COOLDOWN.TotalHours}h, expired: {expired}");
+                return expired;
+            }
+
+            Trace.WriteLine("[OnlineTexts] Could not parse timestamp, treating as expired");
+            return true;
         }
-        catch { }
-        return true;
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] IsCooldownExpired failed: {ex}");
+            return true;
+        }
     }
 
     // =========================================================================
@@ -192,17 +251,24 @@ public static class OnlineTexts
     {
         try
         {
+            Trace.WriteLine($"[OnlineTexts] Fetching {ANNOUNCEMENTS_URL}");
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
             client.DefaultRequestHeaders.Add("User-Agent",
                 $"vanilla_rtx_app_updater/{TunerVariables.appVersion} " +
                 "(https://github.com/Cubeir/Vanilla-RTX-App)");
 
             var response = await client.GetAsync(ANNOUNCEMENTS_URL);
+            Trace.WriteLine($"[OnlineTexts] HTTP {(int)response.StatusCode} {response.StatusCode}");
+
             return response.IsSuccessStatusCode
                 ? await response.Content.ReadAsStringAsync()
                 : null;
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] FetchRawAsync exception: {ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
     }
 
     // =========================================================================
@@ -218,19 +284,28 @@ public static class OnlineTexts
     {
         try
         {
-            // Nullify everything first — sections missing from the file stay null.
+            Trace.WriteLine("[OnlineTexts] ParseAndApply started");
             NullifyAll();
-
-            var sections = ParseSections(raw); // normalisedHeader → List<block text>
+            var sections = ParseSections(raw);
+            Trace.WriteLine($"[OnlineTexts] Parsed {sections.Count} section(s): {string.Join(", ", sections.Keys)}");
 
             foreach (var (header, blocks) in sections)
             {
                 if (SectionMap.TryGetValue(header, out var apply))
+                {
+                    Trace.WriteLine($"[OnlineTexts] Applying section '{header}' with {blocks.Count} block(s)");
                     apply(blocks);
-                // Unknown header → silently discard
+                }
+                else
+                {
+                    Trace.WriteLine($"[OnlineTexts] Unknown section '{header}', discarding");
+                }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] ParseAndApply exception: {ex}");
+        }
     }
 
     /// <summary>
@@ -253,16 +328,23 @@ public static class OnlineTexts
     private static Dictionary<string, List<string>> ParseSections(string raw)
     {
         var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        // Normalize all line endings to \n up front
+
+        // Normalize all line endings up front — no \r\n surprises anywhere downstream
         var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
         List<string>? currentBlocks = null;
+        string? currentHeader = null;
         var currentBlock = new StringBuilder();
 
         void CommitBlock()
         {
             if (currentBlocks is null) return;
-            currentBlocks.Add(currentBlock.ToString().Trim());
+            var text = currentBlock.ToString().Trim();
+            Trace.WriteLine($"[OnlineTexts] Committing block for '{currentHeader}': " +
+                (string.IsNullOrWhiteSpace(text)
+                    ? "(empty)"
+                    : $"{text.Length} chars: \"{text.Substring(0, Math.Min(60, text.Length))}...\""));
+            currentBlocks.Add(text);
             currentBlock.Clear();
         }
 
@@ -270,32 +352,38 @@ public static class OnlineTexts
         {
             var line = rawLine.TrimEnd();
 
-            if (line.StartsWith("# ") && !line.StartsWith("## "))
+            // Exactly "# Title" — single # followed by space and non-empty text only
+            // Ignores ##, ###, ####, and bare "#" lines
+            if (line.StartsWith("# ") &&
+                !line.StartsWith("## ") &&
+                line.Length > 2 &&
+                !string.IsNullOrWhiteSpace(line.Substring(2)))
             {
                 CommitBlock();
-                var key = Normalise(line.Substring(2).Trim());
+                currentHeader = line.Substring(2).Trim();
+                var key = Normalise(currentHeader);
+                Trace.WriteLine($"[OnlineTexts] New section: '{currentHeader}' → key '{key}'");
                 currentBlocks = new List<string>();
                 result[key] = currentBlocks;
                 currentBlock.Clear();
             }
-            else if (line.StartsWith("### ") && currentBlocks is not null)
+            // Exactly "### ..." — three hashes only, not #### or deeper
+            // A bare "###" with nothing after is a clean delimiter too
+            else if ((line == "###" || line.StartsWith("### ")) && currentBlocks is not null)
             {
                 CommitBlock();
-                // Title text on the ### line — append with explicit \n so body starts on next line
-                var afterHash = line.Substring(4).Trim();
+                var afterHash = line.Length > 3 ? line.Substring(3).Trim() : string.Empty;
+                Trace.WriteLine($"[OnlineTexts] ### delimiter, title: " +
+                    $"'{(string.IsNullOrWhiteSpace(afterHash) ? "(none)" : afterHash)}'");
                 if (!string.IsNullOrWhiteSpace(afterHash))
                     currentBlock.Append(afterHash).Append('\n');
-                // Empty ### line → no title, body starts clean
             }
-            else if (line.StartsWith("###") && currentBlocks is not null)
-            {
-                // Bare "###" with nothing after it
-                CommitBlock();
-            }
+            // Everything else inside a section goes into the current block as-is
             else if (currentBlocks is not null)
             {
                 currentBlock.Append(line).Append('\n');
             }
+            // Lines before any # header are silently ignored
         }
 
         CommitBlock();

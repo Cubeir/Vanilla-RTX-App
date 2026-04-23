@@ -451,7 +451,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Launch silent update immediately — runs concurrently with everything else
-        _ = Task.Run(async () => await OnlineTexts.TriggerUpdateAsync());
+        _ = OnlineTexts.TriggerUpdateAsync();
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -473,15 +473,12 @@ public sealed partial class MainWindow : Window
 
         // By the time we get here, on good internet the OnlineTexts fetch is already done.
         // On bad internet we use stale cache — acceptable.
-        _ = Task.Run(async () =>
+        var psa = OnlineTextsContent.PSA;
+        if (psa is { Length: > 0 })
         {
-            var psa = OnlineTextsContent.PSA;
-            if (psa is { Length: > 0 })
-            {
-                for (int i = psa.Length - 1; i >= 0; i--)
-                    Log(psa[i], LogLevel.PSA);
-            }
-        });
+            for (int i = psa.Length - 1; i >= 0; i--)
+                Log(psa[i], LogLevel.PSA);
+        }
 
 
         async Task FadeOutSplashScreen()
