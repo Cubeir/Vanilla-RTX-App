@@ -6,11 +6,10 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 # Unused section for the funsies
 
 # PSA
-### Oldest / most persistent notice
+### IMPORTANT:
 If your game crashes after installing a BetterRTX preset, it's because BetterRTX API hasn't been updated or your game is outdated, go back to your default preset or update the game, hit the refresh button in the top left of the window to clear API's preset cache, so you can get the fresh version that works for the latest Minecraft update!
 
-### Bubbles and guppies! Insaniquarium Deluxe!
-It's my birthday fellas!
+### It's my birthday fellas!
 
 ### Newest notice test
 App 3.0 update is out!!
