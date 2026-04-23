@@ -866,14 +866,13 @@ public sealed partial class MainWindow : Window
 #endif
     }
 
-
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75)
     {
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance);
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate:_titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
-        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs);
+        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
     }
 
 

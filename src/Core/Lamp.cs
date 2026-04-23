@@ -337,8 +337,7 @@ public class LampAnimator
 
     private (string on, string off, string super, string halo) ResolveImagePaths()
     {
-        var today = DateTime.Today;
-        string specialName = GetSpecialOccasionName(today);
+        string specialName = GetSpecialOccasionName(DateTime.Today);
 
         if (!string.IsNullOrEmpty(specialName))
         {
@@ -369,7 +368,7 @@ public class LampAnimator
         );
     }
 
-    private string GetSpecialOccasionName(DateTime date)
+    public string GetSpecialOccasionName(DateTime date)
     {
         if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
             return "birthday";
