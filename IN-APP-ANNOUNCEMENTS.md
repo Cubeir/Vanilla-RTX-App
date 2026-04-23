@@ -3,15 +3,11 @@ Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: natt
 
 Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
 
-# Unused section for the debugging
-
 # PSA
 ### IMPORTANT:
 If your game crashes after installing a BetterRTX preset, it's because BetterRTX API hasn't been updated or your game is outdated, go back to your default preset or update the game, hit the refresh button in the top left of the window to clear API's preset cache, so you can get the fresh version that works for the latest Minecraft update!
 
-### It's my birthday fellas!
+### Update 3.1 is out! Download now from the Microsoft Store. 
 
-### Newest notice test
-App 3.0 update is out!!
-
-OIH MY GOD REALLY?!?!! AMAZING!
+# BetterRTXPane
+Show this as a sort of warning pane or something on the BetterRTX Window, good to keep ppl informed about the crash there instead of PSA logs!
