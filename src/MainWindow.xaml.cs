@@ -450,14 +450,17 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
-        // lazy credits and PSA retriever, credits are saved for donate hover event, PSA is shown when ready
-        _ = CreditsUpdater.GetCredits(false);
+        // On window launch: silent update with stale-cache-first, then log all PSAs
         _ = Task.Run(async () =>
         {
-            var psa = await PSAUpdater.GetPSAAsync();
-            if (!string.IsNullOrWhiteSpace(psa))
+            await OnlineTexts.TriggerUpdateAsync();
+
+            var psa = OnlineTextsContent.PSA;
+            if (psa is { Length: > 0 })
             {
-                Log(psa, LogLevel.Informational);
+                // Log last-to-first: PSA[0] is logged last so it sits at the top
+                for (int i = psa.Length - 1; i >= 0; i--)
+                    Log(psa[i], LogLevel.PSA);
             }
         });
 
@@ -778,7 +781,7 @@ public sealed partial class MainWindow : Window
 
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Debug
+        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA
     }
     public static void Log(string message, LogLevel? level = null)
     {
@@ -795,6 +798,7 @@ public sealed partial class MainWindow : Window
                 LogLevel.Network => "🛜 ",
                 LogLevel.Lengthy => "⏳ ",
                 LogLevel.Debug => "🔍 ",
+                LogLevel.PSA => "📢 ",
                 _ => ""
             };
 
@@ -1135,31 +1139,24 @@ public sealed partial class MainWindow : Window
     private void DonateButton_Click(object sender, RoutedEventArgs e)
     {
         DonateButton.Content = "\uEB52";
-        var credits = CreditsUpdater.GetCredits(true);
-        if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Wrote_Supporter_Shoutout"))
-        {
-            Log(credits);
-        }
-
+        ShowCreditsOnce();
         OpenUrl("https://ko-fi.com/cubeir");
     }
     private void DonateButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         DonateButton.Content = "\uEB52";
-        var credits = CreditsUpdater.GetCredits(true);
-        if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Wrote_Supporter_Shoutout"))
-        {
-            Log(credits);
-        }
+        ShowCreditsOnce();
     }
     private void DonateButton_PointerExited(object sender, PointerRoutedEventArgs e)
     {
         DonateButton.Content = "\uEB51";
-        var credits = CreditsUpdater.GetCredits(true);
+        ShowCreditsOnce();
+    }
+    private void ShowCreditsOnce()
+    {
+        var credits = OnlineTextsContent.Credits;
         if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Wrote_Supporter_Shoutout"))
-        {
             Log(credits);
-        }
     }
 
 
