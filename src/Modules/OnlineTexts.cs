@@ -39,9 +39,12 @@ public static class OnlineTexts
 
     private const string CACHE_CONTENT_KEY = "OnlineTexts_Content";
     private const string CACHE_TIMESTAMP_KEY = "OnlineTexts_Timestamp";
-
+#if DEBUG
+    private static readonly TimeSpan FETCH_COOLDOWN = TimeSpan.FromHours(0);
+#else
     private static readonly TimeSpan FETCH_COOLDOWN = TimeSpan.FromHours(6);
-    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(20);
+#endif
+    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;
 
     // ── Explicit section-name → property mapping ──────────────────────────────
@@ -185,11 +188,11 @@ public static class OnlineTexts
     // Network
     // =========================================================================
 
-    private static async Task<string?> FetchRawAsync()
+    private static async Task<string?> FetchRawAsync(int timeoutSeconds = 8)
     {
         try
         {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
             client.DefaultRequestHeaders.Add("User-Agent",
                 $"vanilla_rtx_app_updater/{TunerVariables.appVersion} " +
                 "(https://github.com/Cubeir/Vanilla-RTX-App)");
@@ -199,10 +202,7 @@ public static class OnlineTexts
                 ? await response.Content.ReadAsStringAsync()
                 : null;
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
     // =========================================================================

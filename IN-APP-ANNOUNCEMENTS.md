@@ -3,7 +3,7 @@ Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: natt
 
 Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
 
-# Unused section for the funsies
+# Unused section for the debugging
 
 # PSA
 ### IMPORTANT:

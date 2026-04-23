@@ -450,20 +450,8 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
-        // On window launch: silent update with stale-cache-first, then log all PSAs
-        _ = Task.Run(async () =>
-        {
-            await OnlineTexts.TriggerUpdateAsync();
-
-            var psa = OnlineTextsContent.PSA;
-            if (psa is { Length: > 0 })
-            {
-                // Log last-to-first: PSA[0] is logged last so it sits at the top
-                for (int i = psa.Length - 1; i >= 0; i--)
-                    Log(psa[i], LogLevel.PSA);
-            }
-        });
-
+        // Launch silent update immediately — runs concurrently with everything else
+        _ = Task.Run(async () => await OnlineTexts.TriggerUpdateAsync());
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -482,6 +470,19 @@ public sealed partial class MainWindow : Window
 
         // Show Leave a Review prompt, has a 10 sec cd built in
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
+
+        // By the time we get here, on good internet the OnlineTexts fetch is already done.
+        // On bad internet we use stale cache — acceptable.
+        _ = Task.Run(async () =>
+        {
+            var psa = OnlineTextsContent.PSA;
+            if (psa is { Length: > 0 })
+            {
+                for (int i = psa.Length - 1; i >= 0; i--)
+                    Log(psa[i], LogLevel.PSA);
+            }
+        });
+
 
         async Task FadeOutSplashScreen()
         {
