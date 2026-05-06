@@ -1209,7 +1209,7 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Yup, you heard it right, coming soon!">
+                            ToolTipService.ToolTip="Yup, you heard it right, coming soon, hopefully!">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF196;"
@@ -1217,7 +1217,7 @@
                                       Opacity="0.67"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Coming soon!"
+                            <TextBlock Text="Coming later!"
                                        Opacity="0.67"
                                        VerticalAlignment="Center" />
                         </StackPanel>
