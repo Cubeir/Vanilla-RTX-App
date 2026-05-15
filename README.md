@@ -49,7 +49,7 @@ Below you'll find the full list of features & documentation of functionalities i
 
 ## Documentation
 
-This is your detailed guidebook on what each option within the app does.
+This is your detailed guidebook on what each feature within the app does.
 
 - `Launch Minecraft RTX`  
   Launches Minecraft with ray tracing pre-enabled, additionally disables VSync for better performance and enables in-game graphics mode switching, this circumvents issues such as these that make enabling ray tracing difficult:    
