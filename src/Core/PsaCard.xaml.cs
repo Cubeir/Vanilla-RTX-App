@@ -15,6 +15,7 @@ public sealed partial class PsaCard : UserControl
     private const double FADE_OUT_MS = 120;
     private const double DISMISS_MS = 180;
 
+
     public PsaCard(PsaItem item)
     {
         InitializeComponent();
@@ -22,6 +23,17 @@ public sealed partial class PsaCard : UserControl
         _isEphemeral = item.IsEphemeral;
         ContentText.Text = item.Text;
     }
+
+
+    /// <summary>
+    /// Font size for the card text. Defaults to 12. Set before adding to a panel.
+    /// </summary>
+    public double CardFontSize
+    {
+        get => ContentText.FontSize;
+        set => ContentText.FontSize = value;
+    }
+
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
         => AnimateOpacity(DismissButton, to: 0.65, durationMs: FADE_IN_MS);
