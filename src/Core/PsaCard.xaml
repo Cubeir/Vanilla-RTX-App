@@ -1,0 +1,51 @@
+<UserControl x:Class="Vanilla_RTX_App.Core.PsaCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             HorizontalAlignment="Stretch"
+             PointerEntered="Card_PointerEntered"
+             PointerExited="Card_PointerExited">
+
+    <Grid HorizontalAlignment="Stretch"
+          VerticalAlignment="Top">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <FontIcon Grid.Column="0"
+                  Glyph="&#xE946;"
+                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                  FontSize="18"
+                  VerticalAlignment="Top"
+                  Margin="0,1,12,0"
+                  IsHitTestVisible="False"
+                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+        <TextBlock x:Name="ContentText"
+                   Grid.Column="1"
+                   TextWrapping="Wrap"
+                   FontSize="12"
+                   Opacity="0.9"
+                   VerticalAlignment="Center"
+                   IsTextScaleFactorEnabled="False" />
+
+        <Button x:Name="DismissButton"
+                Grid.Column="2"
+                Opacity="0"
+                Width="24"
+                Height="24"
+                Padding="0"
+                VerticalAlignment="Top"
+                Margin="10,0,0,0"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="DismissButton_Click"
+                ToolTipService.ToolTip="Dismiss">
+            <FontIcon Glyph="&#xE8BB;"
+                      FontSize="9"
+                      FontFamily="{StaticResource SymbolThemeFontFamily}" />
+        </Button>
+    </Grid>
+
+</UserControl>
