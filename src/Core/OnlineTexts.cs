@@ -54,9 +54,11 @@ public static class OnlineTextsContent
 {
     public static PsaItem[]? Credits { get; set; }
     public static PsaItem[]? PSA { get; set; }
-    public static PsaItem[]? BetterRTXAnnouncements { get; set; }
     public static PsaItem[]? PackUpdateAnnouncements { get; set; }
+    public static PsaItem[]? BetterRTXAnnouncements { get; set; }
     public static PsaItem[]? LutManagerAnnouncements { get; set; }
+    public static PsaItem[]? DLSSAnnouncements { get; set; }
+    public static PsaItem[]? ResourcePackSelectionAnnouncements { get; set; }
 }
 
 
