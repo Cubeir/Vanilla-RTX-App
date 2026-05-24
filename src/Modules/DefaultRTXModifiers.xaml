@@ -170,9 +170,7 @@
                 <StackPanel x:Name="LutAnnouncementsPanel"
                             Grid.Row="1"
                             Spacing="12"
-                            Margin="20,12,20,0" />
-
-
+                            Margin="22,8,22,0" />
 
                 <!-- ═══════════════════════════════════════════════
                      ROW 2 — Preset preview image (crossfade vessels)
@@ -180,7 +178,7 @@
                      Top vessel:    incoming image, fades in over bottom
                      ═══════════════════════════════════════════════ -->
                 <Grid Grid.Row="2"
-                      Padding="0,16,0,0">
+                      Padding="0,12,0,0">
 
                     <Rectangle Fill="{ThemeResource FakeSplitButtonBrightBorderColor}"
                                Height="6"

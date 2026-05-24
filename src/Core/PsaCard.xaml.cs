@@ -46,16 +46,38 @@ public sealed partial class PsaCard : UserControl
         if (!_isEphemeral)
             OnlineTexts.Dismiss(_text);
 
+        AnimateCollapse();
+    }
+
+    private void AnimateCollapse()
+    {
+        double fromHeight = this.ActualHeight;
+        this.MaxHeight = fromHeight;
+
         var sb = new Storyboard();
+
         var fade = new DoubleAnimation
         {
+            From = 1,
             To = 0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(DISMISS_MS)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            Duration = new Duration(TimeSpan.FromMilliseconds(160)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
         };
         Storyboard.SetTarget(fade, this);
         Storyboard.SetTargetProperty(fade, "Opacity");
+
+        var collapse = new DoubleAnimation
+        {
+            From = fromHeight,
+            To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(220)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+        };
+        Storyboard.SetTarget(collapse, this);
+        Storyboard.SetTargetProperty(collapse, "MaxHeight");
+
         sb.Children.Add(fade);
+        sb.Children.Add(collapse);
         sb.Completed += (_, _) => Visibility = Visibility.Collapsed;
         sb.Begin();
     }
