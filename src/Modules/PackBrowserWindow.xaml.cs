@@ -9,8 +9,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using WinRT.Interop;
 using Newtonsoft.Json.Linq;
+using Vanilla_RTX_App.Core;
+using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
@@ -67,6 +68,15 @@ public sealed partial class PackBrowserWindow : Window
         _mainWindow.Closed += MainWindow_Closed;
     }
 
+
+    // PSA thingies
+    private void PopulatePackBrowserAnnouncements()
+    {
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            PackListContainer.Children.Add(new PsaCard(item));
+    }
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         // Unsubscribe to avoid memory leaks
@@ -91,6 +101,7 @@ public sealed partial class PackBrowserWindow : Window
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
             WindowTitle.Text = $"Select a local {text} resource pack";
 
+            PopulatePackBrowserAnnouncements();
             await LoadPacksAsync();
 
             // Bring to top again

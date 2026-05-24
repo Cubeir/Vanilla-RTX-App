@@ -16,6 +16,7 @@ using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Vanilla_RTX_App.Core;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
@@ -80,6 +81,14 @@ public sealed partial class DLSSSwitcherWindow : Window
         _mainWindow.Closed += MainWindow_Closed;
     }
 
+    // PSA thingies
+    private void PopulateDLSSAnnouncements()
+    {
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.DLSSAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            DllListContainer.Children.Add(new PsaCard(item));
+    }
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
@@ -200,6 +209,8 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
     }
 
+
+
     private async Task ContinueInitializationWithPath(string minecraftPath)
     {
         _gameDllPath = Path.Combine(minecraftPath, "Content", "nvngx_dlss.dll");
@@ -259,6 +270,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         LoadingPanel.Visibility = Visibility.Collapsed;
         DllSelectionPanel.Visibility = Visibility.Visible;
+        PopulateDLSSAnnouncements();
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)

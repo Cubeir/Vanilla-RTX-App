@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Modules;
+using Vanilla_RTX_App.Core;
 using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables; // For Public Pack version variables, if null or empty = not installed
@@ -97,6 +98,15 @@ public sealed partial class PackUpdateWindow : Window
 
         this.Activated += PackUpdateWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
+    }
+
+    // PSA updates
+    private void PopulatePackUpdateAnnouncements()
+    {
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.PackUpdateAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            PackUpdateAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
 
     private void InitializeHoverEffects()
@@ -217,6 +227,7 @@ public sealed partial class PackUpdateWindow : Window
     {
         UpdateInstalledVersionDisplays();
         await FetchAndDisplayRemoteVersions();
+        PopulatePackUpdateAnnouncements();
     }
 
     private void UpdateInstalledVersionDisplays()

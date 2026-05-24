@@ -476,6 +476,12 @@
                         </Border>
                     </Grid>
 
+                    <!-- ═══════════════════════════════════════════════
+                         Online announcements (PackUpdateAnnouncements)
+                          ═══════════════════════════════════════════════ -->
+                    <StackPanel x:Name="PackUpdateAnnouncementsPanel"
+                                Spacing="12" />
+
                     <!-- SPECIAL PANEL -->
                     <Border x:Name="SpecialOccasionPanel"
                             CornerRadius="8"
