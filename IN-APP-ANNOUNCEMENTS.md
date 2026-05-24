@@ -42,10 +42,8 @@ If your game crashes after installing a BetterRTX preset, It's either because Be
 
 # LutManagerAnnouncements
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
-##
+### A less important note
 This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
-
-
 
 
 

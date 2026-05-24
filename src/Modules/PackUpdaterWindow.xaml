@@ -481,7 +481,7 @@
                           ═══════════════════════════════════════════════ -->
                     <StackPanel x:Name="PackUpdateAnnouncementsPanel"
                                 Spacing="12"
-                                Margin="22,4,22,4" />
+                                Margin="22,2,22,2" />
 
                     <!-- SPECIAL PANEL -->
                     <Border x:Name="SpecialOccasionPanel"
