@@ -34,6 +34,22 @@ namespace Vanilla_RTX_App;
 /*
 ### BACKLOG ###
 
+
+- You could use the PSA thingy in PackUpdate window too,
+Use it to get a short version of update changelogs to people, so many uses for this thing! 
+
+- Implement PSA pane thingy in betterrtx window, test the psa retriever as a whole.
+let it build any number of panes based on number of individual strings in the array
+
+de-staticify the pane in pack installer window and LUT manager windows
+
+have a "close" or collapse button on the panes
+when clicked, it adds that particular string to a global blacklist which all psa pane builders check against
+if it matches, it won't be displayed ever again by the psa builder!
+simple way to build a local blacklist for user and avoid displaying psas when user doesn't want to see them
+
+- Create a BetterRTX-like lut preset, gets the looks 80% there! 
+
 // Prioritize the small, yet critical stuff UP HERE, alchitex is a long term plan, no ETA, focus on app quality and compatability with different scenarios
 
 - Add a new third, smaller button on the right side of Export button, make it a square, small
@@ -473,11 +489,11 @@ public sealed partial class MainWindow : Window
 
         // By the time we get here, on good internet the OnlineTexts fetch is already done.
         // On bad internet we use stale cache — acceptable.
-        var psa = OnlineTextsContent.PSA;
+        var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
         if (psa is { Length: > 0 })
         {
             for (int i = psa.Length - 1; i >= 0; i--)
-                Log(psa[i], LogLevel.PSA);
+                Log(psa[i].Text, LogLevel.PSA);
         }
 
 
@@ -1151,7 +1167,7 @@ public sealed partial class MainWindow : Window
     }
     private void ShowCreditsOnce()
     {
-        var credits = OnlineTextsContent.Credits;
+        var credits = OnlineTextsContent.Credits?[0].Text;
         if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Wrote_Supporter_Shoutout"))
             Log(credits);
     }
@@ -1314,6 +1330,7 @@ public sealed partial class MainWindow : Window
     private void TargetPreviewToggle_Unchecked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = false;
+        _ = BlinkingLamp(true, true, 0.0);
         _ = LocatePacksButton_Click();
         Log("Targeting Minecraft Release.", LogLevel.Informational);
 

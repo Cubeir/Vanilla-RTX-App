@@ -390,10 +390,9 @@
                             x:Name="LeftEdgeOfTargetPreviewButton" />
                 </Grid>
 
-                
+
                 <ToggleButton x:Name="TargetPreviewToggle"
                               Grid.Column="2"
-                              Content="Preview"
                               HorizontalAlignment="Stretch"
                               VerticalAlignment="Stretch"
                               FontWeight="SemiBold"
@@ -402,7 +401,17 @@
                               Checked="TargetPreviewToggle_Checked"
                               Unchecked="TargetPreviewToggle_Unchecked"
                               IsTextScaleFactorEnabled="False"
-                              ToolTipService.ToolTip="If enabled, all functionalities of the app target Minecraft Preview instead of regular Minecraft." />
+                              ToolTipService.ToolTip="If enabled, all functionalities of the app target Minecraft Preview instead of regular Minecraft.">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center">
+                        <FontIcon Glyph="&#xE98F;"
+                                  FontSize="17"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Preview"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </ToggleButton>
 
                 <!-- VISUAL SPLIT 2 -->
                 <Grid Grid.Column="2"
@@ -701,7 +710,8 @@
                                 CornerRadius="0,6,6,0"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Resets tuning options back to their default values. Hold Shift and press to perform a hard reset of app's data.">
+                                ToolTipService.ToolTip="Resets tuning options back to their default values. Hold Shift and press to perform a hard reset of app's data.
+                                WARNING: Please revert to game's default files manually (through BetterRTX manager, lut manager, or even DLSS swapper) if performing a hard reset to avoid losing your game's default files, so the app can pick up the defaults again after reset.">
                         </Button>
 
                         <!-- Overlay borders for the visual split -->
