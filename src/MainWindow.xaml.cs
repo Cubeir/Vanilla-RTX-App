@@ -31,26 +31,22 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-/*
-### BACKLOG ###
+/* ### BACKLOG ###
 
+- Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
+the two new buttons are to appear next to export
+Tune selection | Export selection | Import Selection | Delete Selection
 
-- You could use the PSA thingy in PackUpdate window too,
-Use it to get a short version of update changelogs to people, so many uses for this thing! 
+Four buttons will exist, but let's do something special here
+Tune selection has selection text by default, the other 3 only have Icons, no texts
+when each is hovered, it ANIMNATES becoming larger revealing its full text
 
-- Implement PSA pane thingy in betterrtx window, test the psa retriever as a whole.
-let it build any number of panes based on number of individual strings in the array
+OR DONT do that, only tune has the "selection" but
+others just say Export, Import, Delete
 
-de-staticify the pane in pack installer window and LUT manager windows
-
-have a "close" or collapse button on the panes
-when clicked, it adds that particular string to a global blacklist which all psa pane builders check against
-if it matches, it won't be displayed ever again by the psa builder!
-simple way to build a local blacklist for user and avoid displaying psas when user doesn't want to see them
+see what u can do, its a cool idea.
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there! 
-
-// Prioritize the small, yet critical stuff UP HERE, alchitex is a long term plan, no ETA, focus on app quality and compatability with different scenarios
 
 - Add a new third, smaller button on the right side of Export button, make it a square, small
 It is IMPORT button, no text maybe, just a import icon
@@ -98,38 +94,11 @@ All settled there? ensure there isn't a way the app can ddos github AND at the s
 could be used for launcher too as well as the 3 above
 
 
-- Put a PSA pane thingy in it too, static for now, could be made dynamic later, the idea is to have a whole dedicated PSA SECTION
-hardcode in the app the markers, each sub-psa has a name, app knows where to pull it from that way
-Include a short guide maybe, a link to a readme guide, in that guide, say what each row of pixels do in the LUT.
-Write up the readme and upload it, link it for now.
-Finalize the guide, put it in the readme.md at the last minute as a subsection, or a secondary section at the very very bottom, assuminng you also rework the PSA retrieve
-link the guide's precise section .
-update PSA URLs
-test.
-roll.
-here's how to do this NICELY while making as few requests as possible
-Put the PSAs in a PSA.md in the github repository, this is only going to contain PSAs
-On app startup, we retrieve it
-The PSA has SECTIONS to it dedicated to FEATURE NAMES
-each feature can have a PSA.
-You store it in a Library/class of variables
-SO yeah, each feature gets its own STRING
-THE PSA retriever on startup tries its best to get the PSAs, caches them, and puts them in the strings, saves on windows.sstorage for future use!
-Put a 24 hour cooldown on it, every 24 hours user launches the app, they get up to date PSAs for ALL sections
->>> Do it smartly, there is also supporter retriever, MAYBE put them both into the same file, reduce requests!!!
-Move supporters to PSA.md away from Vanilla-RTX's readme.md
-Basically UNIFY this whole retrieve something from github to display
-logs can have a
-# Sidebarlog
-section on the .md file, this is what ends up in the sidebar log, simple, a system for YOUR APP!
-u can then display all of these PSAs in app's in the form of Panels, if there is a PSA, panel becomes visible, takes some updating existing windows
-
-
-- When targeting preview, Dev branch on github
+- When targeting preview, a new Dev branch on github
 must be used to receieve updates, compare packages, etc...
 easier said than done, the code is a clusterfuck
 
-Alchiex
+Alchitex
 Is it going to be a multi-staged Window?
 First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs
 YES, this way you DON'T have to make changes to the existing pack browser! AND DON'T, REVERT ALL IF YOU HAVE!
@@ -140,8 +109,6 @@ Two different code paths!
 Note: keep PBR for entities subtle THORUGHOUT
 At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
 Fallback to asking for a save location if it fails
-
-
 
 
 - Tuning is very slow on certain AMD CPUs, there were some reports on Disc
@@ -183,6 +150,9 @@ And lastly the CACHE invalidator, will it continue to work well with it (betterr
 Especially release builds
 Game detection and cache invalidation could be improved for both
 PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
+
+The biggest issue is the app failing to find the game sometimes, reported several time already
+materials folder
 
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
