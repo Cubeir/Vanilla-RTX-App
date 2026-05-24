@@ -480,7 +480,8 @@
                          Online announcements (PackUpdateAnnouncements)
                           ═══════════════════════════════════════════════ -->
                     <StackPanel x:Name="PackUpdateAnnouncementsPanel"
-                                Spacing="12" />
+                                Spacing="12"
+                                Margin="22,4,22,4" />
 
                     <!-- SPECIAL PANEL -->
                     <Border x:Name="SpecialOccasionPanel"
@@ -745,7 +746,7 @@
                         </Border>
                     </Grid>
 
-                    <!-- Info Panel -->
+                    <!-- Static Info Panel -->
                     <Border CornerRadius="8"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             Padding="16"

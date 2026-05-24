@@ -75,7 +75,7 @@ public sealed partial class PackBrowserWindow : Window
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);
         if (items is null) return;
         foreach (var item in items)
-            PackListContainer.Children.Add(new PsaCard(item));
+            PackBrowserAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {

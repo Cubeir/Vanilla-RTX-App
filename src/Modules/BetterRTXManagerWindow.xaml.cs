@@ -171,6 +171,14 @@ public sealed partial class BetterRTXManagerWindow : Window
         _mainWindow.Closed += MainWindow_Closed;
     }
 
+    // PSA thingies
+    private void PopulateBetterRTXAnnouncements()
+    {
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.BetterRTXAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            BetterRTXAnnouncementsPanel.Children.Add(new PsaCard(item));
+    }
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
@@ -190,15 +198,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         _cooldownTimer = null;
 
         this.Close();
-    }
-
-    // PSA thingies
-    private void PopulateBetterRTXAnnouncements()
-    {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.BetterRTXAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            PresetListContainer.Children.Add(new PsaCard(item));
     }
 
     private async void BetterRTXManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
@@ -570,7 +569,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
-        // Show PSAs
+        // Initialize PSAs
         PopulateBetterRTXAnnouncements();
     }
 

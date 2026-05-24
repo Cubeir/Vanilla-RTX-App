@@ -58,10 +58,20 @@
 
             <!-- Pack List -->
             <Grid Grid.Row="1">
-                <!-- Shadow receiver grid, should be behind the scrollviewer -->
-                <Grid x:Name="ShadowReceiverGrid" />
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-                <ScrollViewer Padding="20, 20, 20, 0"
+                <StackPanel x:Name="PackBrowserAnnouncementsPanel"
+                            Grid.Row="0"
+                            Spacing="12"
+                            Margin="22,8,22,4" />
+
+                <Grid x:Name="ShadowReceiverGrid"
+                      Grid.Row="1" />
+                <ScrollViewer Grid.Row="1"
+                              Padding="20,20,20,0"
                               Margin="0,-5,0,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"

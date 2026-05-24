@@ -87,7 +87,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.DLSSAnnouncements);
         if (items is null) return;
         foreach (var item in items)
-            DllListContainer.Children.Add(new PsaCard(item));
+            DLSSAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
