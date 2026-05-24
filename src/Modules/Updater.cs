@@ -23,7 +23,7 @@ public enum PackType { VanillaRTX, VanillaRTXNormals, VanillaRTXOpus }
 public enum VersionSource
 {
     Remote,           // Fresh from GitHub
-    CachedRemote,     // From 5-min cache of remote versions
+    CachedRemote,     // From few-min cache of remote versions
     ZipballFallback   // Read from cached zipball when remote unavailable
 }
 

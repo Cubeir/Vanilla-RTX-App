@@ -14,6 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Core\PsaCard.xaml" />
     <None Remove="Modules\Alchemist.xaml" />
     <None Remove="Modules\Alchitex\Alchitex.xaml" />
     <None Remove="Modules\BetterRTXManagerWindow.xaml" />
@@ -885,6 +886,9 @@
     <None Update="Assets\Wide310x150Logo.scale-400.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Page Update="Core\PsaCard.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <None Update="Modules\Alchitex\Assets\cross_junction.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
