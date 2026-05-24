@@ -32,7 +32,7 @@ loooooooooooooooooooooongloooooooooooooooooooooongloooooooooooooooooooooongloooo
 
 
 # BetterRTXAnnouncements
-If your game crashes after installing a BetterRTX preset, it's because BetterRTX API hasn't been updated or your game is outdated, go back to your default preset or update the game, hit the refresh button in the top left of the window to clear API's preset cache, so you can get the fresh version that works for the latest Minecraft update!
+If your game crashes after installing a BetterRTX preset, It's either because BetterRTX hasn't been updated yet, or your game is outdated, go back to your default preset or update the game, hit the refresh button in the top left of the window to clear API's preset cache, so you can get the fresh version that works for the latest Minecraft update!
 
 
 
