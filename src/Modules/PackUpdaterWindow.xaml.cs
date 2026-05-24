@@ -106,7 +106,7 @@ public sealed partial class PackUpdateWindow : Window
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.PackUpdateAnnouncements);
         if (items is null) return;
         foreach (var item in items)
-            PackUpdateAnnouncementsPanel.Children.Add(new PsaCard(item));
+            PackUpdateAnnouncementsPanel.Children.Add(new PsaCard(item) { CardFontSize = 14 });
     }
 
     private void InitializeHoverEffects()
