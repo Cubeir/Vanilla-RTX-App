@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
@@ -291,6 +292,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         {
             LoadingPanel.Visibility = Visibility.Collapsed;
             MainPanel.Visibility = Visibility.Visible;
+            PopulateLutAnnouncements();
         });
     }
 
@@ -786,7 +788,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
                     LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
                 }
-            }); 
+            });
         }
     }
 
@@ -941,5 +943,17 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private void LearnTo_Button_Click(object sender, RoutedEventArgs e)
     {
         MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md");
+    }
+
+
+    // PSA
+
+    private void PopulateLutAnnouncements()
+    {
+        LutAnnouncementsPanel.Children.Clear();
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.LutManagerAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            LutAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
 }
