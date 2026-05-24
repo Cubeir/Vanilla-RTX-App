@@ -1074,7 +1074,7 @@
                             ToolTipService.ToolTip="Exports selected packages.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xEDE2;"
+                            <FontIcon Glyph="&#xEDE1;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />

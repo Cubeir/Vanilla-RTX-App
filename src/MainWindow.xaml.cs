@@ -33,6 +33,9 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
+- PSA caching is actually broken, it doesn't work!!!
+CLAUUUUUUUUUUDE?! FIX MY CODE!
+
 - Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
 the two new buttons are to appear next to export
 Tune selection | Export selection | Import Selection | Delete Selection
