@@ -169,7 +169,7 @@
                 <StackPanel x:Name="LutAnnouncementsPanel"
                             Grid.Row="1"
                             Spacing="12"
-                            Margin="22,8,22,0" />
+                            Margin="22,12,22,10" />
 
                 <!-- ═══════════════════════════════════════════════
                      ROW 2 — Preset preview image (crossfade vessels)
