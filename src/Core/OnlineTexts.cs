@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Vanilla_RTX_App;
+using System.IO;
 using Windows.Storage;
 
 // =====================================================================================================================
@@ -103,15 +104,10 @@ public static class OnlineTexts
     private const string URL =
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/IN-APP-ANNOUNCEMENTS.md";
 
-    private const string KEY_CONTENT = "OnlineTexts_Content";
     private const string KEY_TIMESTAMP = "OnlineTexts_Timestamp";
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
 
-#if DEBUG
-    private static readonly TimeSpan COOLDOWN = TimeSpan.Zero;
-#else
     private static readonly TimeSpan COOLDOWN    = TimeSpan.FromHours(6);
-#endif
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;
 
@@ -317,16 +313,18 @@ public static class OnlineTexts
     {
         try
         {
-            var cached = ApplicationData.Current.LocalSettings.Values[KEY_CONTENT] as string;
-            if (!string.IsNullOrWhiteSpace(cached))
+            var path = GetCacheFilePath();
+            if (File.Exists(path))
             {
-                Trace.WriteLine($"[OnlineTexts] Applying cache ({cached.Length} chars)");
-                ParseAndApply(cached);
+                var cached = File.ReadAllText(path);
+                if (!string.IsNullOrWhiteSpace(cached))
+                {
+                    Trace.WriteLine($"[OnlineTexts] Applying cache ({cached.Length} chars)");
+                    ParseAndApply(cached);
+                    return;
+                }
             }
-            else
-            {
-                Trace.WriteLine("[OnlineTexts] No cache found");
-            }
+            Trace.WriteLine("[OnlineTexts] No cache found");
         }
         catch (Exception ex)
         {
@@ -338,15 +336,21 @@ public static class OnlineTexts
     {
         try
         {
-            var s = ApplicationData.Current.LocalSettings;
-            s.Values[KEY_CONTENT] = raw;
-            s.Values[KEY_TIMESTAMP] = DateTime.UtcNow.ToString("O");
+            File.WriteAllText(GetCacheFilePath(), raw);
+            ApplicationData.Current.LocalSettings.Values[KEY_TIMESTAMP] =
+                DateTime.UtcNow.ToString("O");
             Trace.WriteLine($"[OnlineTexts] Cached {raw.Length} chars");
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[OnlineTexts] CacheContent failed: {ex.Message}");
         }
+    }
+    private static string GetCacheFilePath()
+    {
+        return Path.Combine(
+            ApplicationData.Current.LocalFolder.Path,
+            "OnlineTexts_Cache.md");
     }
 
     private static bool IsCooldownExpired()
