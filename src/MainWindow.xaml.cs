@@ -33,8 +33,15 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
-- PSA caching is actually broken, it doesn't work!!!
-CLAUUUUUUUUUUDE?! FIX MY CODE!
+-- For the feature below, MAKE SURE pack selector allows selection of incompatible packs as well so deleting them is easier!!
+delete parent dir of json all the way up to wherever resource_packs or dev_resource packs, u know what u mean just cant type it all out
+anyway
+anyway
+hopefully no issues with other features if selection of incompatible packs gets allowed... just gotta remove the part that disables the panels that show em
+keeping the incompatible badge though... maybe write a warning when an inc pack is selected?
+u had some ideas before with transferring vv or rtx flags or something
+it was related to alchitex
+now's the time if u wanna refine it and do it, rework the pack browser, or something
 
 - Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
 the two new buttons are to appear next to export
@@ -1557,82 +1564,106 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-            var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
-            Log("Wiping all of app's storage data...", LogLevel.Warning);
+            Log("Starting hard reset — wiping all app storage...", LogLevel.Warning);
             await Task.Delay(200);
 
-            // Wipe local settings
-            var localKeys = localSettings.Values.Keys.ToList();
-            foreach (var key in localKeys)
+            // ── 1. Local Settings (recursive containers) ─────────────────────────
+            var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+            var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
+            int totalKeysWiped = 0;
+
+            var containerStack = new Stack<(Windows.Storage.ApplicationDataContainer container, string path)>();
+            containerStack.Push((localSettings, "LocalSettings"));
+            containerStack.Push((roamingSettings, "RoamingSettings"));
+
+            while (containerStack.Count > 0)
             {
-                localSettings.Values.Remove(key);
-                Log($"Deleted: {key}", LogLevel.Informational);
-                await Task.Delay(20);
-            }
+                var (container, path) = containerStack.Pop();
 
-            // Wipe roaming settings (even though you don't use it, because of its limits and that you don't need it)
-            var roamingKeys = roamingSettings.Values.Keys.ToList();
-            foreach (var key in roamingKeys)
-            {
-                roamingSettings.Values.Remove(key);
-                Log($"Deleted: {key}", LogLevel.Informational);
-                await Task.Delay(20);
-            }
-
-            Log($"Wiped {localKeys.Count + roamingKeys.Count} keys.", LogLevel.Success);
-
-            // Delete LocalState folders (Downloads and DLSS_Cache)
-            Log("Checking for app data folders...", LogLevel.Informational);
-
-            try
-            {
-                var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                var foldersToDelete = new[]
+                // Queue sub-containers for processing, then delete them
+                foreach (var subKey in container.Containers.Keys.ToList())
                 {
-                Path.Combine(localFolder, "Downloads"),
-                Path.Combine(localFolder, "DLSS_Cache"),
-                Path.Combine(localFolder, "RTX_Cache")
-                };
+                    containerStack.Push((container.Containers[subKey], $"{path}/{subKey}"));
+                }
+                foreach (var subKey in container.Containers.Keys.ToList())
+                {
+                    container.DeleteContainer(subKey);
+                    Log($"Deleted container: {path}/{subKey}", LogLevel.Informational);
+                }
 
-                int deletedFolders = 0;
-                foreach (var folder in foldersToDelete)
+                // Wipe all values at this level
+                foreach (var key in container.Values.Keys.ToList())
+                {
+                    container.Values.Remove(key);
+                    Log($"Deleted key: {path}/{key}", LogLevel.Informational);
+                    totalKeysWiped++;
+                }
+            }
+
+            Log($"Wiped {totalKeysWiped} setting key(s) across all containers.", LogLevel.Success);
+            await Task.Delay(100);
+
+            // ── 2. Wipe all storage folders ───────────────────────────────────────
+            var foldersToWipe = new[]
+            {
+            (path: Windows.Storage.ApplicationData.Current.LocalFolder.Path,      label: "LocalFolder (LocalState)"),
+            (path: Windows.Storage.ApplicationData.Current.LocalCacheFolder.Path, label: "LocalCacheFolder"),
+            (path: Windows.Storage.ApplicationData.Current.TemporaryFolder.Path,  label: "TemporaryFolder"),
+        };
+
+            int totalItemsDeleted = 0;
+
+            foreach (var (path, label) in foldersToWipe)
+            {
+                Log($"Wiping {label}: {path}", LogLevel.Informational);
+                int deletedInFolder = 0;
+
+                if (!Directory.Exists(path))
+                {
+                    Log($"{label} not found, skipping.", LogLevel.Informational);
+                    continue;
+                }
+
+                foreach (var file in Directory.GetFiles(path))
                 {
                     try
                     {
-                        if (Directory.Exists(folder))
-                        {
-                            Directory.Delete(folder, true);
-                            Log($"Deleted folder: {folder}", LogLevel.Informational);
-                            deletedFolders++;
-                            await Task.Delay(15);
-                        }
+                        File.Delete(file);
+                        Log($"Deleted file: {Path.GetFileName(file)}", LogLevel.Informational);
+                        deletedInFolder++;
+                        await Task.Delay(10);
                     }
                     catch (Exception ex)
                     {
-                        Log($"Could not delete {folder}: {ex.Message}", LogLevel.Warning);
-                        await Task.Delay(15);
+                        Log($"Could not delete file {Path.GetFileName(file)}: {ex.Message}", LogLevel.Warning);
                     }
                 }
 
-                if (deletedFolders > 0)
+                foreach (var dir in Directory.GetDirectories(path))
                 {
-                    Log($"Deleted {deletedFolders} folder(s).", LogLevel.Success);
+                    try
+                    {
+                        Directory.Delete(dir, recursive: true);
+                        Log($"Deleted folder: {Path.GetFileName(dir)}", LogLevel.Informational);
+                        deletedInFolder++;
+                        await Task.Delay(15);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Could not delete folder {Path.GetFileName(dir)}: {ex.Message}", LogLevel.Warning);
+                    }
                 }
-                else
-                {
-                    Log("No data folders found.", LogLevel.Informational);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error deleting app data folders: {ex.Message}", LogLevel.Warning);
+
+                Log($"{label} wiped ({deletedInFolder} item(s)).", LogLevel.Success);
+                totalItemsDeleted += deletedInFolder;
             }
 
+            Log($"Deleted {totalItemsDeleted} file/folder item(s) total.", LogLevel.Success);
             await Task.Delay(500);
             Log("Hard reset complete! Restarting in a moment...", LogLevel.Success);
             await Task.Delay(3000);
-            var restartResult = Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+
+            Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
         }
         catch (Exception ex)
         {
