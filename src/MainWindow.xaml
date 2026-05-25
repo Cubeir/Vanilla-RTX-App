@@ -673,7 +673,7 @@
                           VerticalAlignment="Bottom"
                           BorderThickness="0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2.25*" />
+                            <ColumnDefinition Width="1.7*" />
                             <ColumnDefinition Width="6" />
                             <!-- 6px gap between buttons -->
                             <ColumnDefinition Width="1*" />
@@ -702,7 +702,6 @@
 
                         <Button x:Name="ResetButton"
                                 Grid.Column="2"
-                                Content="Reset"
                                 Click="ResetButton_Click"
                                 FontWeight="SemiBold"
                                 HorizontalAlignment="Stretch"
@@ -711,7 +710,20 @@
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Resets tuning options back to their default values. Hold Shift and press to perform a hard reset of app's data.
-                                WARNING: Please revert to game's default files manually (through BetterRTX manager, lut manager, or even DLSS swapper) if performing a hard reset to avoid losing your game's default files, so the app can pick up the defaults again after reset.">
+                                
+                                WARNING: Please revert to game's default files manually (through BetterRTX manager, lut manager, or even DLSS swapper) if performing a hard reset to avoid losing your game's default files! So the app can pick up the defaults again after the hard reset.">
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE777;"
+                                          x:Name="ResetButton_FontIcon"
+                                          FontSize="16"
+                                          Margin="0,0,8,0"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Reset"
+                                           x:Name="ResetButton_TextBlock"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
                         </Button>
 
                         <!-- Overlay borders for the visual split -->

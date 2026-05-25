@@ -335,7 +335,8 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
-    private Dictionary<FrameworkElement, string> _originalTexts = new();
+    private readonly Dictionary<FrameworkElement, string> _originalTexts = new();
+    private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
     private bool _shiftPressed = false;
 
     // ---------------------------------------| | | | | | | | | | |-------------------------------------------- \\
@@ -379,21 +380,17 @@ public sealed partial class MainWindow : Window
             if (e.Key == VirtualKey.Shift && !_shiftPressed)
             {
                 _shiftPressed = true;
-                // Just set controls and shift texts here
-                SetShiftText(ResetButton, "⚠️ Wipe");
+                SetShiftText(ResetButton_TextBlock, "Wipe", ResetButton_FontIcon, "\uE7BA");
                 // Add more as needed...
             }
         };
         Content.KeyUp += (s, e) =>
         {
-            if (e.Key == VirtualKey.Shift && _shiftPressed)
+            if (e.Key == VirtualKey.Shift)
             {
                 _shiftPressed = false;
-                foreach (var kvp in _originalTexts)
-                {
-                    if (kvp.Key is Button btn) btn.Content = kvp.Value;
-                    else if (kvp.Key is TextBlock tb) tb.Text = kvp.Value;
-                }
+                RestoreShiftText(ResetButton_TextBlock, ResetButton_FontIcon);
+                // Mirror every SetShiftText call above...
             }
         };
 
@@ -953,22 +950,37 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void SetShiftText(FrameworkElement control, string shiftText)
+    private void SetShiftText(FrameworkElement control, string shiftText, FontIcon icon = null, string shiftGlyph = null)
     {
-        // Save original text if not already saved
+        // Save + apply text
         if (!_originalTexts.ContainsKey(control))
         {
-            if (control is Button btn)
-                _originalTexts[control] = btn.Content?.ToString() ?? "";
-            else if (control is TextBlock tb)
-                _originalTexts[control] = tb.Text;
+            if (control is Button btn) _originalTexts[control] = btn.Content?.ToString() ?? "";
+            else if (control is TextBlock tb) _originalTexts[control] = tb.Text;
         }
 
-        // Apply shift text
-        if (control is Button button)
-            button.Content = shiftText;
-        else if (control is TextBlock textBlock)
-            textBlock.Text = shiftText;
+        if (control is Button button) button.Content = shiftText;
+        else if (control is TextBlock textBlock) textBlock.Text = shiftText;
+
+        // Save + apply glyph (optional)
+        if (icon != null && shiftGlyph != null)
+        {
+            if (!_originalGlyphs.ContainsKey(icon))
+                _originalGlyphs[icon] = icon.Glyph;
+
+            icon.Glyph = shiftGlyph;
+        }
+    }
+    private void RestoreShiftText(FrameworkElement control, FontIcon icon = null)
+    {
+        if (_originalTexts.TryGetValue(control, out var originalText))
+        {
+            if (control is Button button) button.Content = originalText;
+            else if (control is TextBlock textBlock) textBlock.Text = originalText;
+        }
+
+        if (icon != null && _originalGlyphs.TryGetValue(icon, out var originalGlyph))
+            icon.Glyph = originalGlyph;
     }
     #endregion -------------------------------
 
