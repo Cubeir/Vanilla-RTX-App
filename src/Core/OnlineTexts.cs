@@ -247,16 +247,22 @@ public static class OnlineTexts
     public static void Dismiss(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-
         lock (_dismissLock)
         {
             var d = GetDismissed();
-            if (d.Add(text))
+            if (d.Add(DismissHash(text)))
             {
                 SaveDismissed(d);
-                Trace.WriteLine($"[OnlineTexts] Dismissed: \"{text.Substring(0, Math.Min(60, text.Length))}…\"");
+                Trace.WriteLine($"[OnlineTexts] Dismissed hash of: \"{text.Substring(0, Math.Min(60, text.Length))}\"");
             }
         }
+    }
+
+    private static string DismissHash(string text)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(text));
+        return Convert.ToHexString(bytes, 0, 8).ToLowerInvariant(); // 16 chars per entry
     }
 
     // =========================================================================
