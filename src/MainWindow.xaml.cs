@@ -403,6 +403,9 @@ public sealed partial class MainWindow : Window
         // Unsubscribe to avoid running this again
         this.Activated -= MainWindow_Activated;
 
+        // Launch silent update immediately, hopefully by the time the startup sequence is finished, we have new PSAs to show!
+        _ = OnlineTexts.TriggerUpdateAsync();
+
         // Give the window time to render for the first time
         // If one day something goes on the background that needs waiting, increase this, it delays the flash
         await Task.Delay(50);
@@ -443,9 +446,6 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
-        // Launch silent update immediately — runs concurrently with everything else
-        _ = OnlineTexts.TriggerUpdateAsync();
-
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
 
@@ -464,8 +464,7 @@ public sealed partial class MainWindow : Window
         // Show Leave a Review prompt, has a 10 sec cd built in
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
-        // By the time we get here, on good internet the OnlineTexts fetch is already done.
-        // On bad internet we use stale cache — acceptable.
+        // By the time we get here, on good internet the OnlineTexts fetch is already done. On bad internet it may be stale cache, it's ok
         var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
         if (psa is { Length: > 0 })
         {
