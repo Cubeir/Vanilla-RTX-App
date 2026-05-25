@@ -48,7 +48,7 @@
                           x:Name="ContentScrollViewer"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="24"
+                <StackPanel Spacing="12"
                             Margin="16">
 
                     <!-- Main Pack Panels -->
