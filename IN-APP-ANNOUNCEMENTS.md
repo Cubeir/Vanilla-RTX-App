@@ -53,7 +53,7 @@ This feature will not work if you're using a BetterRTX Preset (Default RTX must 
 
 # DLSSAnnouncements
 ### A friendly note
-Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and some version in-between tend to be a bit blurry!
+Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most versions in-between tend to be a bit blurry!
 
 
 
