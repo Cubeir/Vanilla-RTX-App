@@ -63,4 +63,4 @@ Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3
 ### Text below is a one time thingy, tutorial type of thing!
 Select compatible RTX or Vibrant Visuals resource pack from the list below and begin tuning! You can also export your selected resource packs afterwards.
 Use the clear selection button to undo your selection.
-You can only select one pack at a time to be tuned to exported alongside the 3 primary Vanilla RTX resource packs.
+You can only select one pack at a time to be tuned alongside the 3 primary Vanilla RTX resource packs.
