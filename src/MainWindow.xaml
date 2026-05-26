@@ -363,7 +363,7 @@
                                   Margin="0,0,8,0"
                                   VerticalAlignment="Center" />
                         <TextBlock x:Name="BrowsePacksButtonText"
-                                   Text="Select another pack"
+                                   Text="Select other packs"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
@@ -673,7 +673,7 @@
                           VerticalAlignment="Bottom"
                           BorderThickness="0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.7*" />
+                            <ColumnDefinition Width="1.67*" />
                             <ColumnDefinition Width="6" />
                             <!-- 6px gap between buttons -->
                             <ColumnDefinition Width="1*" />
