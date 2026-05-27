@@ -88,7 +88,6 @@ public static class AlchitexVariables
 
 public sealed partial class Alchitex : Window
 {
-    private RedstoneFramework? _redstone;
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
 
@@ -197,7 +196,7 @@ public sealed partial class Alchitex : Window
     }
 
     // ── Public helper — lets callers blink the titlebar lamp ─────────────────
-    public async Task BlinkingLamp(bool enable, bool singleFlash = false,
+    public async Task BlinkingLogo(bool enable, bool singleFlash = false,
                                    double singleFlashOnChance = 0.75)
     {
         if (_titlebarLogoAnimator is null) return;
@@ -433,7 +432,7 @@ public sealed partial class Alchitex : Window
         ShowMainContent();
 
         // Celebrate with a single titlebar lamp flash (always On)
-        await BlinkingLamp(enable: false, singleFlash: true, singleFlashOnChance: 1.0);
+        await BlinkingLogo(enable: false, singleFlash: true, singleFlashOnChance: 1.0);
     }
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
@@ -453,27 +452,19 @@ public sealed partial class Alchitex : Window
         SetTitleBar(TitleBarDragAreaNarrow);
         InitializeTitleBarShadow();
         MainGrid.Visibility = Visibility.Visible;
-
-        _redstone = new RedstoneFramework(RedstoneLayer,
-                                          Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
-        await _redstone.InitializeAsync(_appWindow.Size.Width, _appWindow.Size.Height);
     }
 
     private async void LogoInteractButton_Click(object sender, RoutedEventArgs e)
     {
-        _ = BlinkingLamp(true, true, 1.0);
-        _redstone.StopContinuousFlashing();
+        _ = BlinkingLogo(true, true, 1.0);
     }
 
     private async void Window_SizeChanged(object sender, WindowSizeChangedEventArgs args)
     {
-        if (_redstone is null) return;
-        await _redstone.RegenerateAsync(args.Size.Width, args.Size.Height);
     }
 
     private void AnnouncementButton_Click(object sender, RoutedEventArgs e)
     {
-        _ = BlinkingLamp(true, true, 1.0);
-        _redstone.StartContinuousFlashing();
+        _ = BlinkingLogo(true, true, 1.0);
     }
 }
