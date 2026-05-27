@@ -43,6 +43,15 @@ u had some ideas before with transferring vv or rtx flags or something
 it was related to alchitex
 now's the time if u wanna refine it and do it, rework the pack browser, or something
 
+This is time, expand it to "select other packs"
+Allow selection of several packs in an array
+Update tune and export and clear selection buttons to work with the multi-selection
+Multiple packs can be selected by holding CTRL
+Multiple packs can be tuned or exported alongside the 3 primary vrtx packs
+
+Or later deleted to exported
+settle all before going after BELOW
+
 - Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
 the two new buttons are to appear next to export
 Tune selection | Export selection | Import Selection | Delete Selection
