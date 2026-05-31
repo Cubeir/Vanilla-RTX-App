@@ -121,11 +121,12 @@ public static class OnlineTexts
 
 #if DEBUG
     private static readonly TimeSpan COOLDOWN = TimeSpan.Zero;
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.Zero; // CD of PSAs that can be dismissed but return later (##)
 #else
     private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(110);
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(5);
 #endif
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(5);
     private const int MAX_RETRIES = 2;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
