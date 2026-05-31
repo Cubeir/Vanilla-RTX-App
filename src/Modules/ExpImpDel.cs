@@ -10,7 +10,7 @@ using static Vanilla_RTX_App.MainWindow;
 
 namespace Vanilla_RTX_App.Modules;
 
-public static class Exporter
+public static class ExpImpDel
 {
     public static async Task ExportMCPACK(string packFolderPath, string suggestedName)
     {

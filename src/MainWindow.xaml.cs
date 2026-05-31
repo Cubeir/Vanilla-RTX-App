@@ -1869,7 +1869,7 @@ public sealed partial class MainWindow : Window
 
             foreach (var (path, name) in dedupedQueue)
             {
-                await Exporter.ExportMCPACK(path, name);
+                await ExpImpDel.ExportMCPACK(path, name);
 
                 // Blinks once for each exported pack!
                 _ = BlinkingLamp(true, true, 1.0);
