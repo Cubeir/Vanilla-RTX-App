@@ -13,26 +13,28 @@ using System.IO;
 using Windows.Storage;
 
 // =====================================================================================================================
-// PsaItem — A single announcement entry with a permanent/ephemeral flag.
+// PsaKind — Controls dismiss behaviour and button visibility for a PsaItem.
 //
-// Permanent  (IsEphemeral = false): inside a ## or ### block.
-//            Dismissed once → gone forever (stored in LocalSettings).
-//
-// Ephemeral  (IsEphemeral = true):  text that appears BEFORE the first ## / ### in a section.
-//            Dismissed during the session → hidden until next launch.
-//            Never written to the permanent dismissed list.
-//
-// Example .md section that produces both:
-//
-//   # LutManagerAnnouncements
-//   This is ephemeral — always comes back on relaunch.      ← ephemeral (no separator yet)
-//   ## First item
-//   This is permanent — dismissed once, gone forever.       ← permanent
-//   ## Second item
-//   Another permanent item.                                  ← permanent
+//   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
+//   Timed     (## body)  — Dismiss button with "Dismiss for now" tooltip.
+//                          Reappears after 5 minutes. Not added to the permanent blacklist.
+//   Permanent (### body) — Dismiss button with "Dismiss" tooltip.
+//                          Dismissed once → gone forever (until text changes in the .md).
 // =====================================================================================================================
 
-public record PsaItem(string Text, bool IsEphemeral);
+public enum PsaKind
+{
+    Pinned,
+    Timed,
+    Permanent
+}
+
+
+// =====================================================================================================================
+// PsaItem — A single announcement entry.
+// =====================================================================================================================
+
+public record PsaItem(string Text, PsaKind Kind);
 
 
 // =====================================================================================================================
@@ -47,8 +49,7 @@ public record PsaItem(string Text, bool IsEphemeral);
 //
 // READING VALUES:
 //   Always call OnlineTexts.GetFiltered(OnlineTextsContent.YourProperty).
-//   GetFiltered strips permanently dismissed entries automatically.
-//   Ephemeral entries are never in the dismissed list — they always pass through.
+//   GetFiltered strips dismissed entries automatically according to each item's PsaKind.
 // =====================================================================================================================
 
 public static class OnlineTextsContent
@@ -68,33 +69,43 @@ public static class OnlineTextsContent
 //
 // ── .md FILE FORMAT ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   # PropertyName          ← Must match a property name in OnlineTextsContent (case-insensitive, trimmed).
-//   Ephemeral text here.    ← EPHEMERAL: shown every launch, dismissed only for the session.
-//   ## (any title)          ← Commits the current block, opens a new one. Title is ignored.
-//   Permanent text here.    ← PERMANENT: dismissed once → gone forever.
-//   ### (any title)         ← Another separator; same rules apply.
-//   More permanent text.
+//   # PropertyName          ← Section header. Must match a property in OnlineTextsContent (case-insensitive).
+//
+//   Pinned text here.       ← PINNED: no dismiss button, always shown.
+//                              This is any text that appears before the first ## or ### in the section.
+//
+//   ## (any title)          ← Opens a TIMED block. Title is ignored.
+//   Timed text here.        ← TIMED: dismiss button says "Dismiss for now", reappears after 5 minutes.
+//
+//   ### (any title)         ← Opens a PERMANENT block. Title is ignored.
+//   Permanent text here.    ← PERMANENT: dismiss button says "Dismiss", gone forever once dismissed.
 //
 // ── RULES ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   • Single # only = section header. ## and deeper = item separator (title ignored).
-//   • Text before the first ## / ### in a section = ephemeral.
-//   • Text inside ## / ### blocks = permanent.
+//   • Single # only = section header.
+//   • ## (not ###) = Timed item separator.
+//   • ### or deeper = Permanent item separator.
+//   • Separators are checked ### first, then ## to avoid misclassification.
+//   • Text before the first separator in a section = Pinned.
 //   • Empty / whitespace-only blocks are discarded.
 //   • Properties whose # header is absent from the file are set to null.
 //
 // ── DISMISS SYSTEM ──────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   OnlineTexts.Dismiss(string)         — permanently hides a specific string for this user.
-//                                         Call only for permanent (non-ephemeral) items.
-//   OnlineTexts.GetFiltered(PsaItem[]?) — returns only non-dismissed items.
-//                                         Ephemeral items are never in the dismissed list;
-//                                         they always pass through GetFiltered.
+//   OnlineTexts.Dismiss(text)      — Permanently blacklists text. Use for Permanent items.
+//   OnlineTexts.DismissTimed(text) — Records a 5-minute expiry. Use for Timed items.
+//   OnlineTexts.GetFiltered(…)     — Returns only items that should currently be shown.
+//                                    Pinned items always pass through.
+//                                    Timed items pass through once their expiry has elapsed.
+//                                    Permanent items pass through only if never dismissed.
+//
+//   PsaCard calls the correct method automatically based on PsaKind — you never call these directly.
 //
 // ── COOLDOWN ────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   6 h (0 in DEBUG). Stale cache is applied immediately on startup; fresh fetch runs
-//   in the background with up to 2 retries spaced 5 s apart.
+//   110 minutes. Stale cache is applied immediately on startup; fresh fetch runs in the
+//   background with up to 2 retries spaced 5 seconds apart.
+//   In DEBUG builds the cooldown is zero so every launch fetches fresh content.
 // =====================================================================================================================
 
 public static class OnlineTexts
@@ -106,9 +117,15 @@ public static class OnlineTexts
 
     private const string KEY_TIMESTAMP = "OnlineTexts_Timestamp";
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
+    private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
-    private static readonly TimeSpan COOLDOWN    = TimeSpan.FromHours(6);
+#if DEBUG
+    private static readonly TimeSpan COOLDOWN = TimeSpan.Zero;
+#else
+    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(110);
+#endif
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(5);
     private const int MAX_RETRIES = 2;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
@@ -124,10 +141,15 @@ public static class OnlineTexts
     private static readonly SemaphoreSlim _lock = new(1, 1);
     private static volatile bool _fetching;
 
-    // ── Dismissed set — lazy, in-memory mirror of LocalSettings ──────────────
+    // ── Permanent dismissed set ───────────────────────────────────────────────
 
     private static HashSet<string>? _dismissed;
     private static readonly object _dismissLock = new();
+
+    // ── Timed dismissed dictionary: hash → expiry UTC ─────────────────────────
+
+    private static Dictionary<string, DateTime>? _timedDismissed;
+    private static readonly object _timedDismissLock = new();
 
     // =========================================================================
     // Public API
@@ -216,33 +238,45 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Filters <paramref name="source"/> down to items whose text has not been
-    /// permanently dismissed. Ephemeral items are never in the dismissed list, so
-    /// they always pass through. Returns null if nothing survives.
+    /// Filters <paramref name="source"/> down to items that should currently be shown,
+    /// according to each item's PsaKind and the user's dismiss history.
     /// <para>
-    /// Always use this instead of reading OnlineTextsContent properties directly.
+    /// Pinned   — always passes through.
+    /// Timed    — passes through once the 5-minute dismiss window has elapsed.
+    /// Permanent — passes through only if never permanently dismissed.
     /// </para>
+    /// Always use this instead of reading OnlineTextsContent properties directly.
     /// </summary>
     public static PsaItem[]? GetFiltered(PsaItem[]? source)
     {
         if (source is null || source.Length == 0) return null;
 
         var dismissed = GetDismissed();
+        var timedDismissed = GetTimedDismissed();
+        var now = DateTime.UtcNow;
+
         var kept = source
-            .Where(item => !string.IsNullOrWhiteSpace(item.Text) && !dismissed.Contains(DismissHash(item.Text)))
+            .Where(item =>
+            {
+                if (string.IsNullOrWhiteSpace(item.Text)) return false;
+                var hash = DismissHash(item.Text);
+                return item.Kind switch
+                {
+                    PsaKind.Pinned => true,
+                    PsaKind.Timed => !timedDismissed.TryGetValue(hash, out var expiry) || now >= expiry,
+                    PsaKind.Permanent => !dismissed.Contains(hash),
+                    _ => true
+                };
+            })
             .ToArray();
 
         return kept.Length > 0 ? kept : null;
     }
 
     /// <summary>
-    /// Permanently dismisses <paramref name="text"/> for this user.
-    /// It will never appear in <see cref="GetFiltered"/> results again,
-    /// even across restarts — until the string changes in the .md file.
-    /// <para>
-    /// Only call this for permanent (non-ephemeral) items.
-    /// PsaCard handles this distinction automatically.
-    /// </para>
+    /// Permanently blacklists <paramref name="text"/>.
+    /// It will never appear in <see cref="GetFiltered"/> results again until the text changes.
+    /// Only call for Permanent items — PsaCard handles this automatically.
     /// </summary>
     public static void Dismiss(string text)
     {
@@ -265,6 +299,33 @@ public static class OnlineTexts
         }
     }
 
+    /// <summary>
+    /// Hides <paramref name="text"/> for 5 minutes.
+    /// After the window elapses it will reappear in <see cref="GetFiltered"/> results.
+    /// Only call for Timed items — PsaCard handles this automatically.
+    /// </summary>
+    public static void DismissTimed(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        try
+        {
+            lock (_timedDismissLock)
+            {
+                var d = GetTimedDismissed();
+                var hash = DismissHash(text);
+                d[hash] = DateTime.UtcNow.Add(TIMED_DURATION);
+                SaveTimedDismissed(d);
+                Trace.WriteLine($"[OnlineTexts] Timed dismiss until {d[hash]:HH:mm:ss}: \"{text.Substring(0, Math.Min(60, text.Length))}\"");
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] DismissTimed failed: {ex.Message}");
+        }
+    }
+
+    // ── Hash helper ───────────────────────────────────────────────────────────
+
     private static string DismissHash(string text)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();
@@ -273,7 +334,7 @@ public static class OnlineTexts
     }
 
     // =========================================================================
-    // Dismiss storage
+    // Permanent dismiss storage
     // =========================================================================
 
     private static HashSet<string> GetDismissed()
@@ -319,8 +380,65 @@ public static class OnlineTexts
     }
 
     // =========================================================================
+    // Timed dismiss storage
+    // =========================================================================
+
+    private static Dictionary<string, DateTime> GetTimedDismissed()
+    {
+        if (_timedDismissed is not null) return _timedDismissed;
+        lock (_timedDismissLock)
+        {
+            _timedDismissed ??= LoadTimedDismissed();
+        }
+        return _timedDismissed;
+    }
+
+    private static Dictionary<string, DateTime> LoadTimedDismissed()
+    {
+        try
+        {
+            var raw = ApplicationData.Current.LocalSettings.Values[KEY_TIMED_DISMISSED] as string;
+            if (!string.IsNullOrEmpty(raw))
+            {
+                var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(raw);
+                if (dict is not null)
+                {
+                    var now = DateTime.UtcNow;
+                    var result = new Dictionary<string, DateTime>(StringComparer.Ordinal);
+                    foreach (var (k, v) in dict)
+                        if (DateTime.TryParse(v, out var dt) && dt > now) // prune expired on load
+                            result[k] = dt;
+                    return result;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] LoadTimedDismissed failed: {ex.Message}");
+        }
+        return new Dictionary<string, DateTime>(StringComparer.Ordinal);
+    }
+
+    private static void SaveTimedDismissed(Dictionary<string, DateTime> dismissed)
+    {
+        try
+        {
+            var toStore = dismissed.ToDictionary(k => k.Key, v => v.Value.ToString("O"));
+            ApplicationData.Current.LocalSettings.Values[KEY_TIMED_DISMISSED] =
+                JsonSerializer.Serialize(toStore);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] SaveTimedDismissed failed: {ex.Message}");
+        }
+    }
+
+    // =========================================================================
     // Cache
     // =========================================================================
+
+    private static string GetCacheFilePath() =>
+        Path.Combine(ApplicationData.Current.LocalFolder.Path, "OnlineTexts_Cache.md");
 
     private static void TryApplyCache()
     {
@@ -359,12 +477,6 @@ public static class OnlineTexts
             Trace.WriteLine($"[OnlineTexts] CacheContent failed: {ex.Message}");
         }
     }
-    private static string GetCacheFilePath()
-    {
-        return Path.Combine(
-            ApplicationData.Current.LocalFolder.Path,
-            "OnlineTexts_Cache.md");
-    }
 
     private static bool IsCooldownExpired()
     {
@@ -382,7 +494,6 @@ public static class OnlineTexts
                 var age = DateTime.UtcNow - last;
                 if (age < TimeSpan.Zero)
                 {
-                    // Timestamp is in the future — clock skew or bad write. Reset.
                     Trace.WriteLine("[OnlineTexts] Timestamp is in the future — resetting");
                     try { ApplicationData.Current.LocalSettings.Values.Remove(KEY_TIMESTAMP); } catch { }
                     return true;
@@ -453,12 +564,14 @@ public static class OnlineTexts
 
                 var items = blocks
                     .Where(b => !string.IsNullOrWhiteSpace(b.text))
-                    .Select(b => new PsaItem(b.text.Trim(), b.ephemeral))
+                    .Select(b => new PsaItem(b.text.Trim(), b.kind))
                     .ToArray();
 
                 prop.SetValue(null, items.Length > 0 ? items : null);
                 Trace.WriteLine($"[OnlineTexts] '{key}' → {items.Length} item(s) " +
-                    $"({items.Count(i => i.IsEphemeral)} ephemeral, {items.Count(i => !i.IsEphemeral)} permanent)");
+                    $"(pinned={items.Count(i => i.Kind == PsaKind.Pinned)}, " +
+                    $"timed={items.Count(i => i.Kind == PsaKind.Timed)}, " +
+                    $"permanent={items.Count(i => i.Kind == PsaKind.Permanent)})");
             }
         }
         catch (Exception ex)
@@ -468,31 +581,27 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Core parser. Returns: lowercase-section-name → ordered list of (text, ephemeral) blocks.
+    /// Core parser. Returns: lowercase-section-name → ordered list of (text, kind) blocks.
     ///
     /// Single #    = opens a new section.
-    /// ## or ###+  = item separator; commits the current block, opens a new one.
-    ///               The inline title after the hashes is ignored.
-    ///
-    /// Ephemerality rule:
-    ///   The block accumulated BEFORE the first separator in a section is ephemeral.
-    ///   All blocks accumulated AFTER a separator are permanent.
-    ///   If a section has no separators at all, its single block is ephemeral.
+    /// ###         = Permanent item separator (checked before ## to avoid misclassification).
+    /// ## (not ###)= Timed item separator.
+    /// No separator= entire section body is one Pinned item.
+    /// Separator titles are ignored — only the body beneath them matters.
     /// </summary>
-    private static Dictionary<string, List<(string text, bool ephemeral)>> Parse(string raw)
+    private static Dictionary<string, List<(string text, PsaKind kind)>> Parse(string raw)
     {
-        var result = new Dictionary<string, List<(string, bool)>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<(string, PsaKind)>>(StringComparer.Ordinal);
         var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
-        List<(string text, bool ephemeral)>? currentBlocks = null;
+        List<(string text, PsaKind kind)>? currentBlocks = null;
         var block = new StringBuilder();
-        bool sectionHadSeparator = false; // tracks whether we've hit a ## / ### yet
+        var currentKind = PsaKind.Pinned; // text before first separator is Pinned
 
         void CommitBlock()
         {
             if (currentBlocks is null) return;
-            // ephemeral = we have NOT yet seen a separator in this section
-            currentBlocks.Add((block.ToString(), ephemeral: !sectionHadSeparator));
+            currentBlocks.Add((block.ToString(), currentKind));
             block.Clear();
         }
 
@@ -507,18 +616,26 @@ public static class OnlineTexts
                 var name = line.Substring(2).Trim().ToLowerInvariant();
                 if (string.IsNullOrEmpty(name)) continue;
 
-                currentBlocks = new List<(string, bool)>();
+                currentBlocks = new List<(string, PsaKind)>();
                 result[name] = currentBlocks;
                 block.Clear();
-                sectionHadSeparator = false; // reset for the new section
+                currentKind = PsaKind.Pinned; // reset for each new section
                 Trace.WriteLine($"[OnlineTexts] Section: '{name}'");
             }
-            // ── ## or deeper separator ────────────────────────────────────────
+            // ── ### or deeper → Permanent ─────────────────────────────────────
+            // Must be checked BEFORE ## to avoid treating ### as a ## match.
+            else if (currentBlocks is not null && line.StartsWith("###"))
+            {
+                CommitBlock();
+                currentKind = PsaKind.Permanent;
+                Trace.WriteLine($"[OnlineTexts] ### in '{result.Keys.Last()}' → Permanent");
+            }
+            // ── ## (exactly, not ###) → Timed ─────────────────────────────────
             else if (currentBlocks is not null && line.StartsWith("##"))
             {
                 CommitBlock();
-                sectionHadSeparator = true; // all blocks from here on are permanent
-                Trace.WriteLine($"[OnlineTexts] Separator in '{result.Keys.Last()}' (permanent from here)");
+                currentKind = PsaKind.Timed;
+                Trace.WriteLine($"[OnlineTexts] ## in '{result.Keys.Last()}' → Timed");
             }
             // ── Body line ─────────────────────────────────────────────────────
             else if (currentBlocks is not null)
