@@ -673,7 +673,7 @@
                           VerticalAlignment="Bottom"
                           BorderThickness="0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.67*" />
+                            <ColumnDefinition Width="1.65*" />
                             <ColumnDefinition Width="6" />
                             <!-- 6px gap between buttons -->
                             <ColumnDefinition Width="1*" />
@@ -1046,10 +1046,12 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="0.385*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="0.385*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Tune Button (Top-Left) -->
+                    <!-- Tune Button -->
                     <Button x:Name="TuneSelectionButton"
                             Click="TuneSelectionButton_Click"
                             Grid.Row="0"
@@ -1072,7 +1074,7 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- Export Selection Button (Top-Right) -->
+                    <!-- Export Selection Button -->
                     <Button x:Name="ExportButton"
                             Click="ExportButton_Click"
                             Grid.Row="0"
@@ -1080,26 +1082,47 @@
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0,6,6,0"
+                            CornerRadius="0,0,0,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Exports selected packages.">
+                            ToolTipService.ToolTip="Exports selected packages as .mcpack for easy sharing.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xEDE1;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Export selection"
+                            <TextBlock Text="Export"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Delete Selection Button -->
+                    <Button x:Name="DeleteSelection"
+                            Click="DeleteSelection_Click"
+                            Grid.Row="0"
+                            Grid.Column="4"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0,6,6,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Physically deletes the files of the selected packages from game's data directory.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE74D;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="Delete"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- OVERLAY BORDERS FOR VISUAL SPLITS -->
+                    <!-- OVERLAY BORDERS FOR BEVEL VISUALS            -->
                     <!-- ============================================ -->
-
-                    <!-- LEFT VERTICAL DIVIDER (dark line on right edge of left column) -->
                     <Grid Grid.Row="0"
                           Grid.Column="0"
                           Grid.RowSpan="5"
@@ -1111,8 +1134,6 @@
                         <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
                                 BorderThickness="3,0,0,0" />
                     </Grid>
-
-                    <!-- RIGHT VERTICAL DIVIDER (bright line on left edge of right column) -->
                     <Grid Grid.Row="0"
                           Grid.Column="2"
                           Grid.RowSpan="5"
@@ -1124,7 +1145,28 @@
                         <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
                                 BorderThickness="3,0,0,0" />
                     </Grid>
-
+                    <Grid Grid.Row="0"
+                          Grid.Column="2"
+                          Grid.RowSpan="5"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+                    <Grid Grid.Row="0"
+                          Grid.Column="4"
+                          Grid.RowSpan="5"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
                 </Grid>
 
                 <!-- Bottom Buttons Grid 3x2 with shadow -->

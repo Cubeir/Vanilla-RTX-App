@@ -448,7 +448,7 @@ public sealed partial class MainWindow : Window
         // Locate packs, if Preview is enabled, TargetPreview triggers another pack location, avoid redundant operation
         if (!IsTargetingPreview)
         {
-            _ = LocatePacksButton_Click();
+            _ = LocatePacksTask();
         }
         else
         {
@@ -1228,7 +1228,7 @@ public sealed partial class MainWindow : Window
 
 
     private Dictionary<bool, string?> _previousStatusMessages = new();
-    public async Task LocatePacksButton_Click(bool ShowLogs = false)
+    public async Task LocatePacksTask(bool ShowLogs = false)
     {
         _ = BlinkingLamp(true, true, 1.0);
 
@@ -1317,7 +1317,7 @@ public sealed partial class MainWindow : Window
     private void TargetPreviewToggle_Checked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = true;
-        _ = LocatePacksButton_Click();
+        _ = LocatePacksTask();
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
         var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
         var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
@@ -1331,7 +1331,7 @@ public sealed partial class MainWindow : Window
     {
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
-        _ = LocatePacksButton_Click();
+        _ = LocatePacksTask();
         Log("Targeting Minecraft Release.", LogLevel.Informational);
 
         // Color of that little border next to the button
@@ -1944,7 +1944,7 @@ public sealed partial class MainWindow : Window
         // The UI display text relies on this, rerun it just in case, few ms overhead worth it
         try
         {
-            await LocatePacksButton_Click();
+            await LocatePacksTask();
         }
         finally
         {
@@ -1980,7 +1980,7 @@ public sealed partial class MainWindow : Window
                 }
 
                 // Trigger an automatic pack location check after update (fail or not)
-                _ = LocatePacksButton_Click(true);
+                _ = LocatePacksTask(true);
             };
 
             packUpdaterWindow.Activate();
@@ -2007,5 +2007,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void DeleteSelection_Click(object sender, RoutedEventArgs e)
+    {
 
+    }
 }

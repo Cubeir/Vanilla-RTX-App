@@ -120,8 +120,8 @@ public static class OnlineTexts
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
 #if DEBUG
-    private static readonly TimeSpan COOLDOWN = TimeSpan.Zero;
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.Zero; // CD of PSAs that can be dismissed but return later (##)
+    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(5); // Cooldown of fetching the new .md
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(3); // CD of PSAs that can be dismissed but return later (##)
 #else
     private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(110);
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(5);

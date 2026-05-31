@@ -585,7 +585,7 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task RefreshInstalledVersions()
     {
-        await _mainWindow.LocatePacksButton_Click();
+        await _mainWindow.LocatePacksTask();
 
         this.DispatcherQueue.TryEnqueue(() =>
         {
