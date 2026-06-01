@@ -10,14 +10,10 @@ public sealed partial class PsaCard : UserControl
 {
     private readonly string _text;
     private readonly PsaKind _kind;
-    private readonly int _cooldownMinutes;
 
     private const double FADE_IN_MS = 120;
     private const double FADE_OUT_MS = 120;
 
-    /// <summary>
-    /// Font size for the card text. Defaults to 12. Set before adding to a panel.
-    /// </summary>
     public double CardFontSize
     {
         get => ContentText.FontSize;
@@ -29,22 +25,18 @@ public sealed partial class PsaCard : UserControl
         InitializeComponent();
         _text = item.Text;
         _kind = item.Kind;
-        _cooldownMinutes = item.CooldownMinutes;
         ContentText.Text = item.Text;
 
         switch (item.Kind)
         {
             case PsaKind.Pinned:
-                // No dismiss button for Pinned items — always visible
                 DismissButton.Visibility = Visibility.Collapsed;
                 break;
-
             case PsaKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, "Dismiss for now");
                 break;
-
             case PsaKind.Permanent:
-                // Tooltip is already "Dismiss" in XAML
+                // tooltip already set to "Dismiss" in XAML
                 break;
         }
     }
@@ -68,15 +60,12 @@ public sealed partial class PsaCard : UserControl
             case PsaKind.Permanent:
                 OnlineTexts.Dismiss(_text);
                 break;
-
             case PsaKind.Timed:
-                OnlineTexts.DismissTimed(_text, _cooldownMinutes);
+                OnlineTexts.DismissTimed(_text);
                 break;
-
             case PsaKind.Pinned:
                 return; // button is hidden, should never fire
         }
-
         AnimateCollapse();
     }
 
