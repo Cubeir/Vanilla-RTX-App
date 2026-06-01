@@ -868,7 +868,7 @@
                         <TextBlock Text="Surface normal intensity"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust intensity normal maps and heightmaps. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
+                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -1046,9 +1046,9 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="0.385*" />
+                        <ColumnDefinition Width="115" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="0.385*" />
+                        <ColumnDefinition Width="50" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Tune Button -->
@@ -1088,7 +1088,7 @@
                             ToolTipService.ToolTip="Exports selected packages as .mcpack for easy sharing.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xEDE1;"
+                            <FontIcon Glyph="&#xEDE2;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
@@ -1108,14 +1108,14 @@
                             CornerRadius="0,6,6,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Physically deletes the files of the selected packages from game's data directory.">
+                            ToolTipService.ToolTip="Physically delete the files of the selected packages from game's data directory.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE74D;"
                                       FontSize="18"
-                                      Margin="0,0,8,0"
+                                      Margin="0,0,2,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Delete"
+                            <TextBlock Text=""
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

@@ -619,7 +619,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         var titleText = new TextBlock
         {
-            Text = "Add DLSS Version",
+            Text = "Add DLSS files",
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
