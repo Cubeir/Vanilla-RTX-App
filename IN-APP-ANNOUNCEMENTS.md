@@ -8,13 +8,11 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 
 # PSA
-## app update announcement
+### app update announcement
 3.1 Update brings Dynamic Announcements to effectively communicate the latest information surrounding Minecraft RTX, app features, pack updates, and more.
 Please read before dismissing them (because that's an option!)
-## reactor temp announcement
+### reactor temp announcement
 RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
-
-
 
 
 # PackUpdateAnnouncements
@@ -29,7 +27,7 @@ Check back daily!
 
 
 # BetterRTXAnnouncements
-### another way to give the same warning
+## another way to give the same warning
 Important tip: If your preset list has been auto reset since your last visit, it is a good idea to wait or check from the BetterRTX Discord whether it has been updated or not for the latest game version before installing a preset.
 If you install presets while BetterRTX remains outdated, your game will crash and you should either revert to Default RTX, or if you've made sure BetterRTX is up-to-date, update your game!
 
@@ -53,7 +51,7 @@ This feature will not work if you're using a BetterRTX Preset (Default RTX must 
 
 # DLSSAnnouncements
 ### A friendly note
-Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most versions in-between tend to be a bit blurry!
+Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most other versions in-between tend to be a bit blurry!
 
 
 
