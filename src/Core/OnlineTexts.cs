@@ -17,7 +17,7 @@ using Windows.Storage;
 //
 //   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
 //   Timed     (## body)  — Dismiss button with "Dismiss for now" tooltip.
-//                          Reappears after 5 minutes. Not added to the permanent blacklist.
+//                          Reappears after CooldownMinutes (default 5, override with [cd:N] in the ## title).
 //   Permanent (### body) — Dismiss button with "Dismiss" tooltip.
 //                          Dismissed once → gone forever (until text changes in the .md).
 // =====================================================================================================================
@@ -32,9 +32,12 @@ public enum PsaKind
 
 // =====================================================================================================================
 // PsaItem — A single announcement entry.
+//
+//   CooldownMinutes — only meaningful for Timed items. Parsed from [cd:N] in the ## title.
+//                     Defaults to 5 if the tag is absent or unparseable.
 // =====================================================================================================================
 
-public record PsaItem(string Text, PsaKind Kind);
+public record PsaItem(string Text, PsaKind Kind, int CooldownMinutes = 5);
 
 
 // =====================================================================================================================
@@ -69,43 +72,54 @@ public static class OnlineTextsContent
 //
 // ── .md FILE FORMAT ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   # PropertyName          ← Section header. Must match a property in OnlineTextsContent (case-insensitive).
+//   # PropertyName            ← Section header. Must match a property in OnlineTextsContent (case-insensitive).
 //
-//   Pinned text here.       ← PINNED: no dismiss button, always shown.
-//                              This is any text that appears before the first ## or ### in the section.
+//   Pinned text here.         ← PINNED: no dismiss button, always shown.
+//                                Any text before the first ## or ### in the section.
 //
-//   ## (any title)          ← Opens a TIMED block. Title is ignored.
-//   Timed text here.        ← TIMED: dismiss button says "Dismiss for now", reappears after 5 minutes.
+//   ## Title [cd:N]           ← Opens a TIMED block. Title and [cd:N] tag are both ignored in the body.
+//   Timed text here.          ← TIMED: "Dismiss for now", reappears after N minutes (default 5).
 //
-//   ### (any title)         ← Opens a PERMANENT block. Title is ignored.
-//   Permanent text here.    ← PERMANENT: dismiss button says "Dismiss", gone forever once dismissed.
+//   ## Title                  ← No [cd:N] tag — uses the default 5-minute cooldown.
+//   More timed text.
+//
+//   ### Title                 ← Opens a PERMANENT block. Title is ignored.
+//   Permanent text here.      ← PERMANENT: "Dismiss", gone forever once dismissed.
+//
+// ── [cd:N] TAG ──────────────────────────────────────────────────────────────────────────────────────────────────────
+//
+//   Only meaningful on ## lines. N is the cooldown in minutes (positive integer).
+//   Can appear anywhere in the title — everything outside the tag is ignored.
+//   If absent, malformed, zero, or negative: defaults to 5 minutes.
+//
+//   Examples:
+//     ## Some title [cd:30]        → 30-minute cooldown
+//     ## [cd:1] quick notice       → 1-minute cooldown
+//     ## no tag here               → 5-minute cooldown (default)
+//     ## [cd:abc]                  → 5-minute cooldown (parse failure → default)
 //
 // ── RULES ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
 //   • Single # only = section header.
-//   • ## (not ###) = Timed item separator.
-//   • ### or deeper = Permanent item separator.
-//   • Separators are checked ### first, then ## to avoid misclassification.
+//   • ### or deeper = Permanent item separator (checked before ## to avoid misclassification).
+//   • ## (not ###)  = Timed item separator. [cd:N] tag controls cooldown duration.
 //   • Text before the first separator in a section = Pinned.
 //   • Empty / whitespace-only blocks are discarded.
 //   • Properties whose # header is absent from the file are set to null.
 //
 // ── DISMISS SYSTEM ──────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   OnlineTexts.Dismiss(text)      — Permanently blacklists text. Use for Permanent items.
-//   OnlineTexts.DismissTimed(text) — Records a 5-minute expiry. Use for Timed items.
-//   OnlineTexts.GetFiltered(…)     — Returns only items that should currently be shown.
-//                                    Pinned items always pass through.
-//                                    Timed items pass through once their expiry has elapsed.
-//                                    Permanent items pass through only if never dismissed.
+//   OnlineTexts.Dismiss(text)                    — Permanently blacklists text.
+//   OnlineTexts.DismissTimed(text, cooldownMins) — Records expiry at UtcNow + cooldownMins.
+//   OnlineTexts.GetFiltered(…)                   — Returns only items that should currently be shown.
 //
-//   PsaCard calls the correct method automatically based on PsaKind — you never call these directly.
+//   PsaCard calls the correct method automatically — you never call these directly.
 //
 // ── COOLDOWN ────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   110 minutes. Stale cache is applied immediately on startup; fresh fetch runs in the
-//   background with up to 2 retries spaced 5 seconds apart.
-//   In DEBUG builds the cooldown is zero so every launch fetches fresh content.
+//   110 minutes between remote fetches (0 in DEBUG).
+//   Stale cache applied immediately on startup; fresh fetch runs in the background
+//   with up to 2 retries spaced 5 seconds apart.
 // =====================================================================================================================
 
 public static class OnlineTexts
@@ -119,18 +133,17 @@ public static class OnlineTexts
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
+    private const int DEFAULT_TIMED_COOLDOWN_MINUTES = 5;
+
 #if DEBUG
-    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(5); // Cooldown of fetching the new .md
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(3); // CD of PSAs that can be dismissed but return later (##)
+    private static readonly TimeSpan COOLDOWN = TimeSpan.Zero;
 #else
-    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(110);
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan COOLDOWN    = TimeSpan.FromMinutes(110);
 #endif
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
-    // Built once at startup. Adding a property to OnlineTextsContent is all that's needed.
 
     private static readonly Dictionary<string, PropertyInfo> _propMap =
         typeof(OnlineTextsContent)
@@ -239,13 +252,10 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Filters <paramref name="source"/> down to items that should currently be shown,
-    /// according to each item's PsaKind and the user's dismiss history.
-    /// <para>
+    /// Filters <paramref name="source"/> down to items that should currently be shown.
     /// Pinned   — always passes through.
-    /// Timed    — passes through once the 5-minute dismiss window has elapsed.
+    /// Timed    — passes through once the dismiss cooldown has elapsed.
     /// Permanent — passes through only if never permanently dismissed.
-    /// </para>
     /// Always use this instead of reading OnlineTextsContent properties directly.
     /// </summary>
     public static PsaItem[]? GetFiltered(PsaItem[]? source)
@@ -276,7 +286,6 @@ public static class OnlineTexts
 
     /// <summary>
     /// Permanently blacklists <paramref name="text"/>.
-    /// It will never appear in <see cref="GetFiltered"/> results again until the text changes.
     /// Only call for Permanent items — PsaCard handles this automatically.
     /// </summary>
     public static void Dismiss(string text)
@@ -301,22 +310,24 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Hides <paramref name="text"/> for 5 minutes.
-    /// After the window elapses it will reappear in <see cref="GetFiltered"/> results.
+    /// Hides <paramref name="text"/> for <paramref name="cooldownMinutes"/> minutes.
+    /// After the window elapses it reappears in <see cref="GetFiltered"/> results.
     /// Only call for Timed items — PsaCard handles this automatically.
     /// </summary>
-    public static void DismissTimed(string text)
+    public static void DismissTimed(string text, int cooldownMinutes = DEFAULT_TIMED_COOLDOWN_MINUTES)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
+        var safeMinutes = cooldownMinutes > 0 ? cooldownMinutes : DEFAULT_TIMED_COOLDOWN_MINUTES;
         try
         {
             lock (_timedDismissLock)
             {
                 var d = GetTimedDismissed();
                 var hash = DismissHash(text);
-                d[hash] = DateTime.UtcNow.Add(TIMED_DURATION);
+                d[hash] = DateTime.UtcNow.AddMinutes(safeMinutes);
                 SaveTimedDismissed(d);
-                Trace.WriteLine($"[OnlineTexts] Timed dismiss until {d[hash]:HH:mm:ss}: \"{text.Substring(0, Math.Min(60, text.Length))}\"");
+                Trace.WriteLine($"[OnlineTexts] Timed dismiss for {safeMinutes}m until {d[hash]:HH:mm:ss}: " +
+                    $"\"{text.Substring(0, Math.Min(60, text.Length))}\"");
             }
         }
         catch (Exception ex)
@@ -565,7 +576,7 @@ public static class OnlineTexts
 
                 var items = blocks
                     .Where(b => !string.IsNullOrWhiteSpace(b.text))
-                    .Select(b => new PsaItem(b.text.Trim(), b.kind))
+                    .Select(b => new PsaItem(b.text.Trim(), b.kind, b.cooldownMinutes))
                     .ToArray();
 
                 prop.SetValue(null, items.Length > 0 ? items : null);
@@ -582,27 +593,28 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Core parser. Returns: lowercase-section-name → ordered list of (text, kind) blocks.
+    /// Core parser. Returns: lowercase-section-name → ordered list of (text, kind, cooldownMinutes) blocks.
     ///
     /// Single #    = opens a new section.
     /// ###         = Permanent item separator (checked before ## to avoid misclassification).
-    /// ## (not ###)= Timed item separator.
+    /// ## (not ###)= Timed item separator. [cd:N] in the title sets cooldown minutes.
     /// No separator= entire section body is one Pinned item.
-    /// Separator titles are ignored — only the body beneath them matters.
+    /// Separator titles (beyond the [cd:N] tag) are ignored.
     /// </summary>
-    private static Dictionary<string, List<(string text, PsaKind kind)>> Parse(string raw)
+    private static Dictionary<string, List<(string text, PsaKind kind, int cooldownMinutes)>> Parse(string raw)
     {
-        var result = new Dictionary<string, List<(string, PsaKind)>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<(string, PsaKind, int)>>(StringComparer.Ordinal);
         var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
-        List<(string text, PsaKind kind)>? currentBlocks = null;
+        List<(string text, PsaKind kind, int cooldownMinutes)>? currentBlocks = null;
         var block = new StringBuilder();
-        var currentKind = PsaKind.Pinned; // text before first separator is Pinned
+        var currentKind = PsaKind.Pinned;
+        var currentCooldown = DEFAULT_TIMED_COOLDOWN_MINUTES;
 
         void CommitBlock()
         {
             if (currentBlocks is null) return;
-            currentBlocks.Add((block.ToString(), currentKind));
+            currentBlocks.Add((block.ToString(), currentKind, currentCooldown));
             block.Clear();
         }
 
@@ -617,10 +629,11 @@ public static class OnlineTexts
                 var name = line.Substring(2).Trim().ToLowerInvariant();
                 if (string.IsNullOrEmpty(name)) continue;
 
-                currentBlocks = new List<(string, PsaKind)>();
+                currentBlocks = new List<(string, PsaKind, int)>();
                 result[name] = currentBlocks;
                 block.Clear();
-                currentKind = PsaKind.Pinned; // reset for each new section
+                currentKind = PsaKind.Pinned;
+                currentCooldown = DEFAULT_TIMED_COOLDOWN_MINUTES;
                 Trace.WriteLine($"[OnlineTexts] Section: '{name}'");
             }
             // ── ### or deeper → Permanent ─────────────────────────────────────
@@ -629,6 +642,7 @@ public static class OnlineTexts
             {
                 CommitBlock();
                 currentKind = PsaKind.Permanent;
+                currentCooldown = DEFAULT_TIMED_COOLDOWN_MINUTES; // irrelevant for Permanent
                 Trace.WriteLine($"[OnlineTexts] ### in '{result.Keys.Last()}' → Permanent");
             }
             // ── ## (exactly, not ###) → Timed ─────────────────────────────────
@@ -636,7 +650,8 @@ public static class OnlineTexts
             {
                 CommitBlock();
                 currentKind = PsaKind.Timed;
-                Trace.WriteLine($"[OnlineTexts] ## in '{result.Keys.Last()}' → Timed");
+                currentCooldown = ParseCooldownTag(line);
+                Trace.WriteLine($"[OnlineTexts] ## in '{result.Keys.Last()}' → Timed, cooldown={currentCooldown}m");
             }
             // ── Body line ─────────────────────────────────────────────────────
             else if (currentBlocks is not null)
@@ -647,5 +662,25 @@ public static class OnlineTexts
 
         CommitBlock();
         return result;
+    }
+
+    /// <summary>
+    /// Extracts [cd:N] from a separator line title.
+    /// N must be a positive integer. Returns the default if absent, malformed, or invalid.
+    /// The tag can appear anywhere in the title — surrounding text is ignored.
+    /// </summary>
+    private static int ParseCooldownTag(string line)
+    {
+        var start = line.IndexOf("[cd:", StringComparison.OrdinalIgnoreCase);
+        if (start < 0) return DEFAULT_TIMED_COOLDOWN_MINUTES;
+
+        start += 4; // skip past "[cd:"
+        var end = line.IndexOf(']', start);
+        if (end < 0) return DEFAULT_TIMED_COOLDOWN_MINUTES;
+
+        var numStr = line.Substring(start, end - start).Trim();
+        return int.TryParse(numStr, out var n) && n > 0
+            ? n
+            : DEFAULT_TIMED_COOLDOWN_MINUTES;
     }
 }
