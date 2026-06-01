@@ -32,15 +32,18 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
   <img src="https://img.shields.io/github/last-commit/Cubeir/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Last%20Commit&cacheSeconds=1800"/>
 </p>
 
-## Quick Guide (For Beginners)
+## Ray Tracing Quick Setup Guide (For Beginners)
 
-1. **Install the app from the Microsoft Store, open the app.**  
-2. Click **`Get latest RTX packs`**  
+1. Install and launch the Vanilla RTX App through [Microsoft Store](https://apps.microsoft.com/detail/9N6PCRZ5V9DJ) or with a winget command
+   ```powershell
+   winget install "Vanilla RTX App"
+   ```
+3. Click **`Get latest RTX packs`**  
    - This opens a menu which allows you to swiftly install (or update) Vanilla RTX.
-3. After Vanilla RTX's installation finishes, click **`Launch Minecraft RTX`**  
+4. After installing a Vanilla RTX resource pack finishes, click **`Launch Minecraft RTX`**  
    - Starts the game with ray tracing enabled.
-4. In Minecraft → **Settings → Global Resources → Enable one of the provided Vanilla RTX resource packs.**
-5. Enter your world.
+5. In Minecraft → **Settings → Global Resources → Enable one of the provided Vanilla RTX resource packs.**
+6. Enter your world.
 
 And you're done!  
 Now ray tracing is enabled properly, you have the latest version of [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX), which is kept up-to-date for the latest version of Minecraft, with [bug fixes](https://minecraftrtx.net/enhancements) for as many issues as possible.  
