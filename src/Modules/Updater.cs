@@ -18,6 +18,11 @@ namespace Vanilla_RTX_App.Modules;
 /// Deployment deletes any pack that matches UUIDs as defined at the begenning of PackLocator class
 /// =====================================================================================================================
 
+// Development idea:
+// Deploy from a dev branch on github, that is, assuming, you begin actively maintaing Vanilla RTX on a dev branch instead of holding commits back
+// until releases... so??? depends on what happens on the Vanilla RTX repo, but its a cool idea, and definitely doable, rapid updates for preview users, occasional for release
+// Just gotta separate the cache download and handling, easy enough without messing up? the checks are already separate! why not that?!
+
 public enum PackType { VanillaRTX, VanillaRTXNormals, VanillaRTXOpus }
 
 public enum VersionSource
