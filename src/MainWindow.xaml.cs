@@ -1575,7 +1575,7 @@ public sealed partial class MainWindow : Window
 
         if (RuntimeFlags.Set("Said_Extra_Resetting_Information"))
         {
-            Log($"To perform a full reset of app's data if necessery, hold SHIFT key while pressing {ResetButton.Content}.", LogLevel.Informational);
+            Log($"To perform a full reset of app's data if necessery, hold SHIFT key while pressing {ResetButton_TextBlock.Text}.", LogLevel.Informational);
             Log($"Note: this does not restore the packs to their default state!\nTo reset packs back to original you can quickly reinstall the latest versions of Vanilla RTX using the '{UpdateVanillaRTXButtonText.Text}' button. Other packs will require manual reinstallation.\nUse Export button to back them up!", LogLevel.Informational);
         }
         Log("Tuning environment reset.", LogLevel.Success);
