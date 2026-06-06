@@ -531,7 +531,7 @@ public static class TextureSetHelper
 
 public class Processor
 {
-    // ── Pack info (unchanged) ────────────────────────────────────────────────
+    // ── Pack info ────────────────────────────────────────────────
 
     private struct PackInfo
     {
@@ -618,7 +618,7 @@ public class Processor
 
         foreach (var pack in packs)
         {
-            // ---- Fog pass (fully independent, unchanged logic) ---------------
+            // ---- Fog pass (fully independent ---------------
             if (doFog)
             {
                 ProcessFog(pack);
@@ -642,15 +642,30 @@ public class Processor
             // ---- Feed each loaded set through the active sub-processors ------
             //
             //  Sub-processor needs:
-            //    Emissivity   → MER bitmap
-            //    NormalInt    → Normal/Heightmap bitmap  (+ IsHeightmap flag)
-            //    Lazify       → Color bitmap + Normal/Heightmap bitmap
-            //    Roughness    → MER bitmap
-            //    MaterialGrain→ MER bitmap  (groups files by base name; handled below)
+            //    Emissivity    → MER bitmap only.
+            //                    Virtual 1×1 MER: pixel loop runs on the single pixel, result
+            //                    written back as inline value. Correct and harmless.
             //
-            // Material grain is the only one that requires cross-set coordination
-            // (noise-pattern sharing between variant files).  We pre-group by base
-            // filename and pass the shared cache in.
+            //    NormalInt     → Normal/Heightmap bitmap only.
+            //                    Virtual 1×1 normal (128,128 = flat): scaling keeps it flat.
+            //                    Virtual 1×1 heightmap (uniform grey): span == 0, early-out.
+            //                    Both cases write back the same (or equivalent) inline value.
+            //
+            //    Lazify        → REQUIRES two same-resolution real bitmaps.
+            //                    A virtual colour is a uniform grey → driving a Sobel kernel
+            //                    with it produces a zero-gradient normal, which is meaningless.
+            //                    A virtual normal/heightmap is a 1×1 → the generated normal
+            //                    would be written back as a single inline pixel, discarding
+            //                    the real texture content entirely.
+            //                    → Skip if EITHER input is virtual.
+            //
+            //    Roughness     → MER bitmap only. Same reasoning as Emissivity above.
+            //
+            //    MaterialGrain → MER bitmap only. Same reasoning as Emissivity above.
+            //                    Grain cache uses "virtual_WxH" key for virtual bitmaps.
+            //
+            // Material grain is the only processor that requires cross-set coordination
+            // (noise-pattern sharing between variant files), so the cache lives here.
 
             var grainCache = new Dictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)>(
                 StringComparer.OrdinalIgnoreCase);
@@ -663,8 +678,15 @@ public class Processor
                 if (doNormalInt && lts.NormalBmp != null)
                     lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
 
-                if (doLazify && lts.ColorBmp != null && lts.NormalBmp != null)
+                // Lazify: skip entirely when either input is virtual — a uniform-colour
+                // source produces a zero-gradient Sobel result, and a virtual normal/heightmap
+                // target would lose its real file content on write-back.
+                if (doLazify
+                    && lts.ColorBmp != null && !lts.ColorIsVirtual
+                    && lts.NormalBmp != null && !lts.NormalIsVirtual)
+                {
                     lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
+                }
 
                 if (doRoughness && lts.MerBmp != null)
                     lts.MerDirty |= ApplyRoughness(lts.MerBmp);
@@ -688,7 +710,7 @@ public class Processor
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Fog processor  ──  standalone, unchanged logic
+    //  Fog processor  ──  standalone logic
     // ══════════════════════════════════════════════════════════════════════════
 
     private static void ProcessFog(PackInfo pack, bool processWaterOnly = false)
