@@ -1934,7 +1934,7 @@ public sealed partial class MainWindow : Window
 
             // Mixed: at least one compatible AND at least one incompatible in the custom selection
             if ((hasVanillaPacks || hasCompatibleCustom) && hasIncompatibleCustom)
-                Log("Some selected packs that are not RTX or Vibrant Visuals compatible and will be skipped.", LogLevel.Warning);
+                Log("Some of the selected packs are not RTX compatible & will be excluded from the tuning process.", LogLevel.Warning);
 
             if (!hasVanillaPacks && !hasCompatibleCustom)
             {
