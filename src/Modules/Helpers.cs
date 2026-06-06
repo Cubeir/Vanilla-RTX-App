@@ -373,8 +373,7 @@ public static class Helpers
 
     public static void GenerateTexturesLists(string rootDirectory)
     {
-        // Helpers for JSON formatting
-        string FormatMinecraftJson(List<string> paths)
+        static string FormatMinecraftJson(List<string> paths)
         {
             if (paths == null || paths.Count == 0)
                 return "[]";
@@ -383,76 +382,72 @@ public static class Helpers
         }
 
         if (!Directory.Exists(rootDirectory))
-        {
             throw new DirectoryNotFoundException($"Directory not found: {rootDirectory}");
-        }
 
-        // Find all directories named "textures" recursively
-        var texturesDirectories = Directory.GetDirectories(rootDirectory, "textures", SearchOption.AllDirectories)
-                                          .ToList();
+        // ── Find all "textures" directories (unchanged) ───────────────────────────
+        var texturesDirectories = Directory
+            .GetDirectories(rootDirectory, "textures", SearchOption.AllDirectories)
+            .ToList();
 
-        // Also check if the root directory itself is named "textures"
         if (Path.GetFileName(rootDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-            .Equals("textures", StringComparison.OrdinalIgnoreCase))
-        {
+                .Equals("textures", StringComparison.OrdinalIgnoreCase))
             texturesDirectories.Add(rootDirectory);
-        }
 
         if (texturesDirectories.Count == 0)
-        {
             return;
-        }
 
-        // Supported image types
         string[] imageExtensions = { ".tga", ".png", ".jpg", ".jpeg" };
 
         foreach (string texturesDir in texturesDirectories)
         {
-            // Collect all PBR texture file paths from texture sets
+            // ── Collect all non-color file paths to exclude ───────────────────────
+            //
+            // ResolveTextureSets validates every texture set in one pass and gives us
+            // structured access to each layer. We exclude any real-file path that
+            // belongs to a non-color layer (MER/MERS, normal, heightmap).
+            // Inline layers (RGB arrays / hex values) have no FilePath, so nothing
+            // is added to the exclusion set for them.
+
             var pbrTextures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Retrieve all PBR texture types
-            var merFiles = TextureSetHelper.RetrieveFilesFromTextureSets(texturesDir, TextureSetHelper.TextureType.Mer);
-            var normalFiles = TextureSetHelper.RetrieveFilesFromTextureSets(texturesDir, TextureSetHelper.TextureType.Normal);
-            var heightmapFiles = TextureSetHelper.RetrieveFilesFromTextureSets(texturesDir, TextureSetHelper.TextureType.Heightmap);
+            var resolvedSets = TextureSetHelper.ResolveTextureSets(texturesDir);
 
-            // Add all PBR textures to exclusion set
-            foreach (var file in merFiles.Concat(normalFiles).Concat(heightmapFiles))
+            foreach (var rs in resolvedSets)
             {
-                pbrTextures.Add(file);
+                // MER / MERS layer
+                if (rs.Mer is { IsInline: false, FilePath: not null } mer)
+                    pbrTextures.Add(mer.FilePath);
+
+                // Normal or heightmap layer
+                if (rs.NormalOrHeight is { IsInline: false, FilePath: not null } normalOrHeight)
+                    pbrTextures.Add(normalOrHeight.FilePath);
             }
 
-            // Collect all image files
+            // ── Collect all image files (unchanged) ───────────────────────────────
             var imageFiles = new List<string>();
-            foreach (string extension in imageExtensions)
+            foreach (string ext in imageExtensions)
             {
-                var files = Directory.GetFiles(texturesDir, $"*{extension}", SearchOption.AllDirectories)
-                                    .Concat(Directory.GetFiles(texturesDir, $"*{extension.ToUpper()}", SearchOption.AllDirectories));
-                imageFiles.AddRange(files);
+                imageFiles.AddRange(Directory.GetFiles(texturesDir, $"*{ext}", SearchOption.AllDirectories));
+                imageFiles.AddRange(Directory.GetFiles(texturesDir, $"*{ext.ToUpper()}", SearchOption.AllDirectories));
             }
 
-            // Build relative paths and filter out PBR textures
+            // ── Build relative paths, filtering out non-color PBR textures ────────
             var filteredPaths = new List<string>();
             foreach (string filePath in imageFiles.Distinct())
             {
-                // Skip
                 if (pbrTextures.Contains(filePath))
                     continue;
 
-                string relativePath = Path.GetRelativePath(texturesDir, filePath);
-                relativePath = relativePath.Replace('\\', '/');
+                string relativePath = Path.GetRelativePath(texturesDir, filePath).Replace('\\', '/');
                 string pathWithoutExtension = Path.ChangeExtension(relativePath, null);
-                string finalPath = "textures/" + pathWithoutExtension;
-                filteredPaths.Add(finalPath);
+                filteredPaths.Add("textures/" + pathWithoutExtension);
             }
 
             filteredPaths.Sort();
 
-            string outputPath = Path.Combine(texturesDir, "textures_list.json");
-            string json = FormatMinecraftJson(filteredPaths);
-            File.WriteAllText(outputPath, json);
-
-            int excludedCount = imageFiles.Distinct().Count() - filteredPaths.Count;
+            File.WriteAllText(
+                Path.Combine(texturesDir, "textures_list.json"),
+                FormatMinecraftJson(filteredPaths));
         }
     }
 
