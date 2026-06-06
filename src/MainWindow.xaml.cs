@@ -212,14 +212,14 @@ public static class TunerVariables
     public static string VanillaRTXLocation = string.Empty;
     public static string VanillaRTXNormalsLocation = string.Empty;
     public static string VanillaRTXOpusLocation = string.Empty;
-    public static string CustomPackLocation = string.Empty;
 
     public static string VanillaRTXVersion = string.Empty;
     public static string VanillaRTXNormalsVersion = string.Empty;
     public static string VanillaRTXOpusVersion = string.Empty;
-    public static string CustomPackDisplayName = string.Empty;
     // We already know names of Vanilla RTX packs so we get version instead, for custom pack, name's enough.
     // We invalidate the retrieved name whenever we want to disable processing of the custom pack, so it has multiple purposes
+    public static List<(string Location, string Name, string Type)> SelectedPacks = new();
+
 
     // Tied to checkboxes
     public static bool IsVanillaRTXEnabled = false;
@@ -1232,7 +1232,7 @@ public sealed partial class MainWindow : Window
     {
         _ = BlinkingLamp(true, true, 1.0);
 
-        // Reset these variables and controls
+        // Reset controls
         VanillaRTXCheckBox.IsEnabled = false;
         VanillaRTXCheckBox.IsChecked = false;
         IsVanillaRTXEnabled = false;
@@ -1246,12 +1246,12 @@ public sealed partial class MainWindow : Window
         VanillaRTXLocation = string.Empty;
         VanillaRTXNormalsLocation = string.Empty;
         VanillaRTXOpusLocation = string.Empty;
-        CustomPackLocation = string.Empty;
 
         VanillaRTXVersion = string.Empty;
         VanillaRTXNormalsVersion = string.Empty;
         VanillaRTXOpusVersion = string.Empty;
-        CustomPackDisplayName = string.Empty;
+
+        SelectedPacks.Clear();
 
         // Status message
         var statusMessage = PackLocator.LocatePacks(IsTargetingPreview,
@@ -1298,9 +1298,10 @@ public sealed partial class MainWindow : Window
         {
             ToggleControls(this, true, true, []);
 
-            if (!string.IsNullOrEmpty(TunerVariables.CustomPackLocation))
+            if (TunerVariables.SelectedPacks.Count > 0)
             {
-                Log($"Selected: {TunerVariables.CustomPackDisplayName}", LogLevel.Success);
+                var names = string.Join(", ", TunerVariables.SelectedPacks.Select(p => p.Name));
+                Log($"Selected: {names}", LogLevel.Success);
                 _ = BlinkingLamp(true, true, 1.0);
             }
             else
@@ -1568,18 +1569,17 @@ public sealed partial class MainWindow : Window
         IsNormalsEnabled = false;
         IsOpusEnabled = false;
 
-        // The custom one
-        CustomPackDisplayName = string.Empty;
-        CustomPackLocation = string.Empty;
+        // Custom packs
+        TunerVariables.SelectedPacks.Clear();
 
-        // Manually updates UI based on new values
+        // Manually update UI based on new values
         UpdateUI();
 
         // Lamp single off flash
         _ = BlinkingLamp(true, true, 0.0);
         Log("Cleared all pack selections.", LogLevel.Success);
-
     }
+
     private async Task WipeAllStorageData()
     {
         try
@@ -1830,14 +1830,20 @@ public sealed partial class MainWindow : Window
             var exportQueue = new List<(string path, string name)>();
             var suffix = $"_{appVersion}_App_Export";
 
+            // ── Vanilla RTX packs ──────────────────────────────
             if (IsVanillaRTXEnabled && Directory.Exists(VanillaRTXLocation))
                 exportQueue.Add((VanillaRTXLocation, "Vanilla_RTX_" + VanillaRTXVersion + suffix));
             if (IsNormalsEnabled && Directory.Exists(VanillaRTXNormalsLocation))
                 exportQueue.Add((VanillaRTXNormalsLocation, "Vanilla_RTX_Normals_" + VanillaRTXNormalsVersion + suffix));
             if (IsOpusEnabled && Directory.Exists(VanillaRTXOpusLocation))
                 exportQueue.Add((VanillaRTXOpusLocation, "Vanilla_RTX_Opus_" + VanillaRTXOpusVersion + suffix));
-            if (!string.IsNullOrEmpty(CustomPackDisplayName) && Directory.Exists(CustomPackLocation))
-                exportQueue.Add((CustomPackLocation, SanitizeFileName(CustomPackDisplayName) + suffix));
+
+            // ── All selected custom packs ─────────────────────────────────────────
+            foreach (var (location, name, _) in TunerVariables.SelectedPacks)
+            {
+                if (!string.IsNullOrEmpty(name) && Directory.Exists(location))
+                    exportQueue.Add((location, SanitizeFileName(name) + suffix));
+            }
 
             string SanitizeFileName(string name)
             {
@@ -1848,13 +1854,14 @@ public sealed partial class MainWindow : Window
                 return Regex.Replace(sanitized.Trim('_'), "_{2,}", "_");
             }
 
-            // Deduplicate by normalized paths
+            // ── Eradicate dupes w/ normalised path ────────────────────────────────────
             var seenPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var dedupedQueue = new List<(string path, string name)>();
 
             foreach (var (path, name) in exportQueue)
             {
-                var normalizedPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var normalizedPath = Path.GetFullPath(path)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
                 if (seenPaths.ContainsKey(normalizedPath))
                 {
@@ -1862,7 +1869,7 @@ public sealed partial class MainWindow : Window
                 }
                 else
                 {
-                    seenPaths.Add(normalizedPath, name.Replace(suffix, "")); // Store display name without suffix
+                    seenPaths.Add(normalizedPath, name.Replace(suffix, ""));
                     dedupedQueue.Add((path, name));
                 }
             }
@@ -1870,10 +1877,8 @@ public sealed partial class MainWindow : Window
             foreach (var (path, name) in dedupedQueue)
             {
                 await ExpImpDel.ExportMCPACK(path, name);
-
-                // Blinks once for each exported pack!
                 _ = BlinkingLamp(true, true, 1.0);
-            }   
+            }
         }
         catch (Exception ex)
         {
@@ -1881,16 +1886,17 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
-            if (!IsVanillaRTXEnabled && !IsNormalsEnabled && !IsOpusEnabled &&
-                (string.IsNullOrEmpty(CustomPackLocation) || string.IsNullOrEmpty(CustomPackDisplayName))
-                )
-            {
+            bool nothingSelected =
+                !IsVanillaRTXEnabled &&
+                !IsNormalsEnabled &&
+                !IsOpusEnabled &&
+                TunerVariables.SelectedPacks.Count == 0;
+
+            if (nothingSelected)
                 Log("Select at least one package to export.", LogLevel.Warning);
-            }
             else
-            {
                 Log("Export queue finished.", LogLevel.Success);
-            }
+
             _progressManager.HideProgress();
             ToggleControls(this, true);
         }
@@ -1904,11 +1910,19 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            if (!IsVanillaRTXEnabled && !IsNormalsEnabled && !IsOpusEnabled &&
-                (string.IsNullOrEmpty(CustomPackLocation) || string.IsNullOrEmpty(CustomPackDisplayName))
-                )
+            bool hasVanillaPacks = IsVanillaRTXEnabled || IsNormalsEnabled || IsOpusEnabled;
+            // Compatible custom packs = anything that isn't Incompatible
+            bool hasCompatibleCustom = TunerVariables.SelectedPacks
+                .Any(p => p.Type != "Incompatible");
+            bool hasIncompatibleOnly = TunerVariables.SelectedPacks.Count > 0 &&
+                                       !hasCompatibleCustom && !hasVanillaPacks;
+
+            if (!hasVanillaPacks && !hasCompatibleCustom)
             {
-                Log("Select at least one package to tune.", LogLevel.Warning);
+                if (hasIncompatibleOnly)
+                    Log("None of the selected pack(s) are RTX or Vibrant Visuals compatible. Select at least one compatible pack to tune.", LogLevel.Warning);
+                else
+                    Log("Select at least one package to tune.", LogLevel.Warning);
                 return;
             }
             else
@@ -1920,11 +1934,9 @@ public sealed partial class MainWindow : Window
                 await Task.Run(Processor.TuneSelectedPacks);
                 Log("Completed tuning.", LogLevel.Success);
 
-                // Reset emissive multiplier if ambient light was enabled during current tuning attempt
+                // Reset emissive multiplier if ambient light was enabled during this tuning attempt
                 if (AddEmissivityAmbientLight)
-                {
                     EmissivityMultiplier = Defaults.EmissivityMultiplier;
-                }
             }
         }
         finally
@@ -1932,8 +1944,6 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(false);
             ToggleControls(this, true);
             _progressManager.HideProgress();
-
-            // Always update the UI, mainly because of EmissivityMultiplier = Defaults.EmissivityMultiplier; line above
             UpdateUI();
         }
     }

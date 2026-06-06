@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -18,15 +19,29 @@ namespace Vanilla_RTX_App.PackBrowser;
 
 public sealed partial class PackBrowserWindow : Window
 {
+    // ── Window infrastructure ────────────────────────────────────────────────
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
 
+    // ── Selection state ──────────────────────────────────────────────────────
+    // Maps pack directory path → its toggle button.
+    private readonly Dictionary<string, Button> _packButtonMap = new();
+
+    // Tracks which packs are currently toggled ON.
+    private readonly HashSet<string> _selectedPaths = new();
+
+    public static string gameTitleText = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Constructor
+    // ════════════════════════════════════════════════════════════════════════
     public PackBrowserWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
+
         _mainWindow = mainWindow;
 
-        // Theme
+        // ── Theme ────────────────────────────────────────────────────────────
         var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
         if (this.Content is FrameworkElement root)
         {
@@ -38,7 +53,7 @@ public sealed partial class PackBrowserWindow : Window
             };
         }
 
-        // Remove title bar and hide system buttons
+        // ── AppWindow / title bar ────────────────────────────────────────────
         var hWnd = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
@@ -68,18 +83,12 @@ public sealed partial class PackBrowserWindow : Window
         _mainWindow.Closed += MainWindow_Closed;
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    //  Lifecycle
+    // ════════════════════════════════════════════════════════════════════════
 
-    // PSA thingies
-    private void PopulatePackBrowserAnnouncements()
-    {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            PackBrowserAnnouncementsPanel.Children.Add(new PsaCard(item));
-    }
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
-        // Unsubscribe to avoid memory leaks
         _mainWindow.Closed -= MainWindow_Closed;
         this.Close();
     }
@@ -87,54 +96,205 @@ public sealed partial class PackBrowserWindow : Window
     private async void PackBrowserWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         await Task.Delay(25);
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+
+        this.Activated -= PackBrowserWindow_Activated;
+
+        _ = this.DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            SetTitleBarDragRegion);
+
+
+        WindowTitle.Text = $"Select {gameTitleText} resource packs";
+
+        PopulatePackBrowserAnnouncements();
+        BuildConfirmButton();
+        BuildAddPackButton();
+        await LoadPacksAsync();
+
+        _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
-            // Unsub
-            this.Activated -= PackBrowserWindow_Activated;
-
-            // Delay drag region setup until UI is fully loaded
-            _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-            {
-                SetTitleBarDragRegion();
-            });
-
-            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Select a local {text} resource pack";
-
-            PopulatePackBrowserAnnouncements();
-            await LoadPacksAsync();
-
-            // Bring to top again
-            _ = this.DispatcherQueue.TryEnqueue(async () =>
-            {
-                await Task.Delay(75);
-                try
-                {
-                    this.Activate();
-                }
-                catch { }
-            });
-        }
+            await Task.Delay(75);
+            try { this.Activate(); } catch { }
+        });
     }
 
     private void SetTitleBarDragRegion()
     {
-        if (_appWindow.TitleBar != null && TitleBarArea.XamlRoot != null)
+        if (_appWindow.TitleBar == null || TitleBarArea.XamlRoot == null) return;
+        try
         {
-            try
-            {
-                var scaleAdjustment = TitleBarArea.XamlRoot.RasterizationScale;
-                var dragRectHeight = (int)(TitleBarArea.ActualHeight * scaleAdjustment);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Trace.WriteLine($"Error setting drag region: {ex.Message}");
-            }
+            var scale = TitleBarArea.XamlRoot.RasterizationScale;
+            _ = (int)(TitleBarArea.ActualHeight * scale);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Error setting drag region: {ex.Message}");
         }
     }
 
+    private void PopulatePackBrowserAnnouncements()
+    {
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            PackBrowserAnnouncementsPanel.Children.Add(new PsaCard(item));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Sticky panes
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// "Confirm selection" — centred glyph + label, pinned to the top of the list area.
+    /// </summary>
+    private void BuildConfirmButton()
+    {
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(16, 14, 16, 14),
+            CornerRadius = new CornerRadius(5),
+            IsTextScaleFactorEnabled = false,
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            MinHeight = 62
+        };
+
+        var shadow = new ThemeShadow();
+        button.Shadow = shadow;
+        button.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                shadow.Receivers.Add(ShadowReceiverGrid);
+        };
+
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 12
+        };
+        panel.Children.Add(new FontIcon
+        {
+            Glyph = "\uE8FB",   // Accept
+            FontSize = 20,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTextScaleFactorEnabled = false
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Confirm selection",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 14,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTextScaleFactorEnabled = false
+        });
+
+        button.Content = panel;
+        button.Click += ConfirmButton_Click;
+
+        ConfirmButtonPresenter.Content = button;
+    }
+
+    /// <summary>
+    /// "Add a resource pack" — same visual pattern as a pack card, pinned to the bottom.
+    /// </summary>
+    private void BuildAddPackButton()
+    {
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(16, 20, 16, 20),
+            CornerRadius = new CornerRadius(5),
+            IsTextScaleFactorEnabled = false,
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            MinHeight = 115
+        };
+
+        var shadow = new ThemeShadow();
+        button.Shadow = shadow;
+        button.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                shadow.Receivers.Add(ShadowReceiverGrid);
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // Icon column — upload glyph
+        var iconBorder = new Border
+        {
+            Width = 75,
+            Height = 75,
+            CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(ColorHelper.FromArgb(40, 139, 139, 139)),
+            Translation = new System.Numerics.Vector3(0, 0, 16)
+        };
+        iconBorder.Child = new FontIcon
+        {
+            Glyph = "\uE896",   // Upload / import
+            FontSize = 28,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Opacity = 0.75,
+            IsTextScaleFactorEnabled = false
+        };
+
+        var iconShadow = new ThemeShadow();
+        iconBorder.Shadow = iconShadow;
+        iconBorder.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                iconShadow.Receivers.Add(ShadowReceiverGrid);
+        };
+
+        Grid.SetColumn(iconBorder, 0);
+        grid.Children.Add(iconBorder);
+
+        // Text column
+        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        infoPanel.Children.Add(new TextBlock
+        {
+            Text = "Import more resource packs",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap,
+            IsTextScaleFactorEnabled = false
+        });
+        infoPanel.Children.Add(new TextBlock
+        {
+            Text = $"Select or drag & drop your .mcpack or .zip files of your resource packs here to import them to {gameTitleText}",
+            FontSize = 12,
+            Opacity = 0.7,
+            Margin = new Thickness(0, 2, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            IsTextScaleFactorEnabled = false
+        });
+        Grid.SetColumn(infoPanel, 2);
+        grid.Children.Add(infoPanel);
+
+        button.Content = grid;
+        button.Click += AddPackButton_Click;
+
+        AddPackButtonPresenter.Content = button;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Pack list loading
+    // ════════════════════════════════════════════════════════════════════════
+
     private async Task LoadPacksAsync()
     {
+        PackListContainer.Children.Clear();
+        _packButtonMap.Clear();
+        _selectedPaths.Clear();
+        EmptyStatePanel.Visibility = Visibility.Collapsed;
+
         try
         {
             System.Diagnostics.Trace.WriteLine("Starting pack scan...");
@@ -153,17 +313,22 @@ public sealed partial class PackBrowserWindow : Window
                 return;
             }
 
-            // Sort: compatible packs first (alphabetically), then incompatible packs (alphabetically)
+            // Sort: RTX → Vibrant Visuals → Incompatible; alphabetical within each group
             var sortedPacks = packs
-                .OrderByDescending(p => p.IsCompatible)
+                .OrderBy(p => p.PackType switch
+                {
+                    "RTX" => 0,
+                    "Vibrant Visuals" => 1,
+                    _ => 2   // Incompatible
+                })
                 .ThenBy(p => p.PackName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             foreach (var pack in sortedPacks)
             {
-                System.Diagnostics.Trace.WriteLine($"Creating button for: {pack.PackName} (Compatible: {pack.IsCompatible})");
-                var packButton = CreatePackButton(pack);
-                PackListContainer.Children.Add(packButton);
+                var btn = CreatePackButton(pack);
+                PackListContainer.Children.Add(btn);
+                _packButtonMap[pack.PackPath] = btn;
             }
 
             System.Diagnostics.Trace.WriteLine("Pack loading complete");
@@ -178,6 +343,10 @@ public sealed partial class PackBrowserWindow : Window
         }
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    //  Pack button factory
+    // ════════════════════════════════════════════════════════════════════════
+
     private Button CreatePackButton(PackData pack)
     {
         var button = new Button
@@ -189,22 +358,19 @@ public sealed partial class PackBrowserWindow : Window
             CornerRadius = new CornerRadius(5),
             Tag = pack,
             IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32), // shadow
-            IsEnabled = pack.IsCompatible, // Disable button if not compatible
-            MinHeight = 115 // Minimum height, can grow if content wraps
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            MinHeight = 115
         };
 
-        // Add shadow to button
         var buttonShadow = new ThemeShadow();
         button.Shadow = buttonShadow;
         button.Loaded += (s, e) =>
         {
             if (ShadowReceiverGrid != null)
-            {
                 buttonShadow.Receivers.Add(ShadowReceiverGrid);
-            }
         };
 
+        // Columns: [icon 75] [gap 15] [info *] [gap 15] [tags Auto]
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
@@ -212,36 +378,29 @@ public sealed partial class PackBrowserWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Icon
+        // ── Icon + selection overlay ─────────────────────────────────────────
+        var iconContainer = new Grid { Width = 75, Height = 75 };
+
         var iconBorder = new Border
         {
             Width = 75,
             Height = 75,
             CornerRadius = new CornerRadius(5),
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Microsoft.UI.Colors.Gray),
-            Translation = new System.Numerics.Vector3(0, 0, 48),
-            Opacity = pack.IsCompatible ? 1.0 : 0.5 // Dim icon if not compatible
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            Translation = new System.Numerics.Vector3(0, 0, 48)
         };
 
-        // Shadow for the icon
         var iconShadow = new ThemeShadow();
         iconBorder.Shadow = iconShadow;
         iconBorder.Loaded += (s, e) =>
         {
             if (ShadowReceiverGrid != null)
-            {
                 iconShadow.Receivers.Add(ShadowReceiverGrid);
-            }
         };
 
         if (pack.Icon != null)
         {
-            iconBorder.Child = new Image
-            {
-                Source = pack.Icon,
-                Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill
-            };
+            iconBorder.Child = new Image { Source = pack.Icon, Stretch = Stretch.UniformToFill };
         }
         else
         {
@@ -250,7 +409,7 @@ public sealed partial class PackBrowserWindow : Window
                 iconBorder.Child = new Image
                 {
                     Source = new BitmapImage(new Uri("ms-appx:///Assets/missing.png")),
-                    Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill
+                    Stretch = Stretch.UniformToFill
                 };
             }
             catch
@@ -265,130 +424,190 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        Grid.SetColumn(iconBorder, 0);
-        grid.Children.Add(iconBorder);
-
-        // Pack info (left side)
-        var infoPanel = new StackPanel
+        // Selection overlay: semi-transparent black tint + checkmark, hidden by default
+        var selectionOverlay = new Border
         {
+            Width = 75,
+            Height = 75,
+            CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(ColorHelper.FromArgb(128, 0, 0, 0)),
+            Translation = new System.Numerics.Vector3(0, 0, 64),
+            Visibility = Visibility.Collapsed,
+            Tag = "SelectionOverlay"
+        };
+        selectionOverlay.Child = new FontIcon
+        {
+            Glyph = "\uE73E",   // Checkmark
+            FontSize = 28,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+            HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
 
-        var nameText = new TextBlock
+        iconContainer.Children.Add(iconBorder);
+        iconContainer.Children.Add(selectionOverlay);
+        Grid.SetColumn(iconContainer, 0);
+        grid.Children.Add(iconContainer);
+
+        // ── Pack name + description ──────────────────────────────────────────
+        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        infoPanel.Children.Add(new TextBlock
         {
             Text = pack.PackName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Opacity = pack.IsCompatible ? 1.0 : 0.6
-        };
-
-        var descriptionText = new TextBlock
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        infoPanel.Children.Add(new TextBlock
         {
             Text = pack.PackDescription,
             FontSize = 12,
-            Opacity = pack.IsCompatible ? 0.75 : 0.5,
+            Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
-        };
-
-        infoPanel.Children.Add(nameText);
-        infoPanel.Children.Add(descriptionText);
+        });
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // Capability Tags (right side, bottom aligned)
+        // ── Capability tags ──────────────────────────────────────────────────
         var tagsPanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Bottom,
             Spacing = 6
         };
-
         foreach (var tag in pack.CapabilityTags)
-        {
-            var isIncompatible = tag == "Incompatible";
-            var tagBorder = new Border
-            {
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(8, 4, 8, 4)
-            };
-
-            var tagText = new TextBlock
-            {
-                Text = tag,
-                FontSize = 12,
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            };
-
-            if (tag == "Incompatible")
-            {
-                tagText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
-                tagBorder.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 7, 0));
-            }
-            else if (tag == "RTX")
-            {
-                tagText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
-                tagBorder.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 110, 175, 0));
-            }
-            else if (tag == "Vibrant Visuals")
-            {
-                tagText.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
-                tagBorder.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 75, 0));
-            }
-            else // Fallback
-            {
-                tagText.Foreground = new SolidColorBrush(Colors.White);
-                tagBorder.Background = new SolidColorBrush(Colors.Black);
-            }
-
-            tagBorder.Child = tagText;
-            tagsPanel.Children.Add(tagBorder);
-        }
-
+            tagsPanel.Children.Add(BuildTagBadge(tag));
         Grid.SetColumn(tagsPanel, 4);
         grid.Children.Add(tagsPanel);
 
         button.Content = grid;
         button.Click += PackButton_Click;
-
         return button;
     }
 
+    private static Border BuildTagBadge(string tag)
+    {
+        var badge = new Border
+        {
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(8, 4, 8, 4)
+        };
+        var text = new TextBlock
+        {
+            Text = tag,
+            FontSize = 12,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        };
+
+        switch (tag)
+        {
+            case "Incompatible":
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 7, 0));
+                break;
+            case "RTX":
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 110, 175, 0));
+                break;
+            case "Vibrant Visuals":
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 75, 0));
+                break;
+            default:
+                text.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                badge.Background = new SolidColorBrush(Microsoft.UI.Colors.Black);
+                break;
+        }
+
+        badge.Child = text;
+        return badge;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Click handlers
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Toggles the selected state of a pack. ALL pack types are selectable,
+    /// including Incompatible — callers decide what to do with the type field.
+    /// </summary>
     private void PackButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is PackData packData)
+        if (sender is not Button button || button.Tag is not PackData pack) return;
+
+        var overlay = FindSelectionOverlay(button);
+        if (overlay == null) return;
+
+        if (_selectedPaths.Contains(pack.PackPath))
         {
-            // Only allow selection of compatible packs
-            if (packData.IsCompatible)
-            {
-                TunerVariables.CustomPackLocation = packData.PackPath;
-                TunerVariables.CustomPackDisplayName = packData.PackName;
-                this.Close();
-            }
+            _selectedPaths.Remove(pack.PackPath);
+            overlay.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            _selectedPaths.Add(pack.PackPath);
+            overlay.Visibility = Visibility.Visible;
         }
     }
+
+    /// <summary>
+    /// Writes the toggled packs to <see cref="TunerVariables.SelectedPacks"/> and closes.
+    /// If nothing is toggled the window closes without modifying SelectedPacks.
+    /// Each entry is a (Location, Name, Type) tuple where Type is "RTX",
+    /// "Vibrant Visuals", or "Incompatible".
+    /// </summary>
+    private void ConfirmButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedPaths.Count > 0)
+        {
+            TunerVariables.SelectedPacks = _selectedPaths
+                .Where(path => _packButtonMap.ContainsKey(path))
+                .Select(path =>
+                {
+                    var pack = (PackData)_packButtonMap[path].Tag;
+                    return (pack.PackPath, pack.PackName, pack.PackType);
+                })
+                .ToList();
+        }
+
+        this.Close();
+    }
+
+    /// <summary>
+    /// Placeholder for future import functionality.
+    /// The pack list is always refreshed in the finally block.
+    /// </summary>
+    private async void AddPackButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // TODO: implement ImportPackAsync() and call it here
+            // await ImportPackAsync();
+        }
+        finally
+        {
+            // Refresh regardless of success or failure
+            LoadingPanel.Visibility = Visibility.Visible;
+            PackSelectionPanel.Visibility = Visibility.Collapsed;
+            await LoadPacksAsync();
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            PackSelectionPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Pack scanning
+    // ════════════════════════════════════════════════════════════════════════
 
     private async Task<List<PackData>> ScanForCompatiblePacksAsync()
     {
         var packs = new List<PackData>();
-        string basePath;
 
-        if (TunerVariables.Persistent.IsTargetingPreview)
-        {
-            basePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Minecraft Bedrock Preview"
-            );
-        }
-        else
-        {
-            basePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Minecraft Bedrock"
-            );
-        }
+        var basePath = TunerVariables.Persistent.IsTargetingPreview
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock Preview")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock");
 
         var scanPaths = new[]
         {
@@ -404,7 +623,6 @@ public sealed partial class PackBrowserWindow : Window
                 continue;
             }
 
-            // Recursive search for manifest.json files
             foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
@@ -413,13 +631,11 @@ public sealed partial class PackBrowserWindow : Window
                 try
                 {
                     var packData = await ParsePackAsync(packDir, manifestPath);
-                    if (packData != null)
-                        packs.Add(packData);
+                    if (packData != null) packs.Add(packData);
                 }
                 catch (Newtonsoft.Json.JsonException jsonEx)
                 {
                     System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
-                    // Skip this pack - likely encrypted marketplace content
                 }
                 catch (Exception ex)
                 {
@@ -436,60 +652,44 @@ public sealed partial class PackBrowserWindow : Window
         var json = await File.ReadAllTextAsync(manifestPath);
         var root = JObject.Parse(json);
 
-        string headerUUID = root["header"]?["uuid"]?.ToString();
-        string moduleUUID = root["modules"]?.FirstOrDefault()?["uuid"]?.ToString();
-
         var capabilityTags = new List<string>();
-        bool isCompatible = false;
+        // PackType is the primary/most-significant tag: RTX > Vibrant Visuals > Incompatible
+        var packType = "Incompatible";
 
         var capabilities = root["capabilities"];
         if (capabilities != null && capabilities.Type == JTokenType.Array)
         {
-            bool hasRaytraced = false;
-            bool hasPbr = false;
+            bool hasRaytraced = false, hasPbr = false;
 
             foreach (var cap in capabilities)
             {
-                var capValue = cap.ToString();
-                if (!string.IsNullOrEmpty(capValue))
-                {
-                    var capLower = capValue.ToLowerInvariant();
-                    if (capLower == "raytraced")
-                    {
-                        hasRaytraced = true;
-                    }
-                    else if (capLower == "pbr")
-                    {
-                        hasPbr = true;
-                    }
-                }
+                var capLower = cap.ToString().ToLowerInvariant();
+                if (capLower == "raytraced") hasRaytraced = true;
+                else if (capLower == "pbr") hasPbr = true;
             }
 
             if (hasRaytraced)
             {
                 capabilityTags.Add("RTX");
-                isCompatible = true;
+                packType = "RTX";
             }
             if (hasPbr)
             {
                 capabilityTags.Add("Vibrant Visuals");
-                isCompatible = true;
+                // Only promote to VV if not already RTX
+                if (packType == "Incompatible") packType = "Vibrant Visuals";
             }
         }
 
-        // If no compatible capabilities found, mark as incompatible
-        if (!isCompatible)
-        {
+        if (packType == "Incompatible")
             capabilityTags.Add("Incompatible");
-        }
 
-        // Get pack name and description
+        // ── Name / description ───────────────────────────────────────────────
         var header = root["header"];
         string packName = header?["name"]?.ToString() ?? "pack.name";
-        string packDescription = header?["description"]?.ToString() ?? "pack.description";
+        string packDesc = header?["description"]?.ToString() ?? "pack.description";
 
-        // If localization keys detected, try to load from lang files
-        if (packName == "pack.name" || packDescription == "pack.description")
+        if (packName == "pack.name" || packDesc == "pack.description")
         {
             var langFolder = Path.Combine(packDir, "texts");
             if (Directory.Exists(langFolder))
@@ -499,35 +699,29 @@ public sealed partial class PackBrowserWindow : Window
                 {
                     if (packName == "pack.name" && langData.ContainsKey("pack.name"))
                         packName = langData["pack.name"];
-                    if (packDescription == "pack.description" && langData.ContainsKey("pack.description"))
-                        packDescription = langData["pack.description"];
+                    if (packDesc == "pack.description" && langData.ContainsKey("pack.description"))
+                        packDesc = langData["pack.description"];
                 }
             }
         }
 
-        // Fallback to directory name if still localized
-        if (packName == "pack.name")
-            packName = Path.GetFileName(packDir);
-        if (packDescription == "pack.description")
-            packDescription = "";
-
-        var icon = await LoadIconAsync(packDir);
+        if (packName == "pack.name") packName = Path.GetFileName(packDir);
+        if (packDesc == "pack.description") packDesc = string.Empty;
 
         return new PackData
         {
             PackName = packName,
-            PackDescription = packDescription,
+            PackDescription = packDesc,
             PackPath = packDir,
-            Icon = icon,
+            Icon = await LoadIconAsync(packDir),
             CapabilityTags = capabilityTags,
-            IsCompatible = isCompatible
+            PackType = packType   // "RTX", "Vibrant Visuals", or "Incompatible"
         };
     }
 
     private async Task<Dictionary<string, string>> TryLoadLangFileAsync(string langFolder)
     {
-        if (!Directory.Exists(langFolder))
-            return null;
+        if (!Directory.Exists(langFolder)) return null;
 
         var langFiles = Directory.GetFiles(langFolder, "*.lang")
             .Where(f => Path.GetFileName(f).StartsWith("en", StringComparison.OrdinalIgnoreCase))
@@ -542,16 +736,10 @@ public sealed partial class PackBrowserWindow : Window
 
                 foreach (var line in lines)
                 {
-                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
-                        continue;
-
-                    var equalIndex = line.IndexOf('=');
-                    if (equalIndex > 0)
-                    {
-                        var key = line.Substring(0, equalIndex).Trim();
-                        var value = line.Substring(equalIndex + 1).Trim();
-                        langData[key] = value;
-                    }
+                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#")) continue;
+                    var eq = line.IndexOf('=');
+                    if (eq <= 0) continue;
+                    langData[line.Substring(0, eq).Trim()] = line.Substring(eq + 1).Trim();
                 }
 
                 if (langData.ContainsKey("pack.name") || langData.ContainsKey("pack.description"))
@@ -568,31 +756,20 @@ public sealed partial class PackBrowserWindow : Window
 
     private async Task<BitmapImage> LoadIconAsync(string packDir)
     {
-        // Icon search
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
-            .Where(f =>
-            {
-                var ext = Path.GetExtension(f).ToLowerInvariant();
-                return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".tga";
-            })
+            .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".tga")
             .ToArray();
 
         foreach (var iconPath in iconFiles)
         {
             try
             {
-                System.Diagnostics.Trace.WriteLine($"Loading icon: {iconPath}");
                 var bitmap = new BitmapImage();
-                using (var fileStream = File.OpenRead(iconPath))
-                {
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        await fileStream.CopyToAsync(memoryStream);
-                        memoryStream.Position = 0;
-                        var randomAccessStream = memoryStream.AsRandomAccessStream();
-                        await bitmap.SetSourceAsync(randomAccessStream);
-                    }
-                }
+                using var fs = File.OpenRead(iconPath);
+                using var ms = new MemoryStream();
+                await fs.CopyToAsync(ms);
+                ms.Position = 0;
+                await bitmap.SetSourceAsync(ms.AsRandomAccessStream());
                 return bitmap;
             }
             catch (Exception ex)
@@ -604,6 +781,32 @@ public sealed partial class PackBrowserWindow : Window
         return null;
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    //  Visual-tree helper
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Recursively finds the selection-overlay Border (Tag = "SelectionOverlay")
+    /// within a button's visual tree.
+    /// </summary>
+    private static Border FindSelectionOverlay(DependencyObject parent)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is Border b && b.Tag is string s && s == "SelectionOverlay")
+                return b;
+            var result = FindSelectionOverlay(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Private data model
+    // ════════════════════════════════════════════════════════════════════════
+
     private class PackData
     {
         public string PackName { get; set; }
@@ -611,6 +814,10 @@ public sealed partial class PackBrowserWindow : Window
         public string PackPath { get; set; }
         public BitmapImage Icon { get; set; }
         public List<string> CapabilityTags { get; set; }
-        public bool IsCompatible { get; set; }
+        /// <summary>
+        /// Primary type string: "RTX", "Vibrant Visuals", or "Incompatible".
+        /// Drives sort order and the Type field written to TunerVariables.SelectedPacks.
+        /// </summary>
+        public string PackType { get; set; }
     }
 }

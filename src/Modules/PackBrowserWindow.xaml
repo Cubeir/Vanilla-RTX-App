@@ -10,6 +10,7 @@
 
     <Grid>
 
+        <!-- Light-theme tint overlay -->
         <Border x:Name="LightThemeOverlay"
                 Grid.ColumnSpan="2"
                 HorizontalAlignment="Stretch"
@@ -22,7 +23,9 @@
             </Border.Background>
         </Border>
 
-        <!-- Loading Screen -->
+        <!-- ═══════════════════════════════════════════════════
+             LOADING SCREEN
+        ════════════════════════════════════════════════════ -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
               Background="Transparent">
@@ -31,73 +34,107 @@
                           Height="100" />
         </Grid>
 
-        <!-- Pack Selection UI -->
+        <!-- ═══════════════════════════════════════════════════
+             MAIN PANEL (title bar + scrollable content)
+        ════════════════════════════════════════════════════ -->
         <Grid x:Name="PackSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
+                <!-- Custom title-bar drag area -->
                 <RowDefinition Height="35" />
+                <!-- Everything else            -->
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Title Bar Area -->
+            <!-- ── Title Bar ───────────────────────────────── -->
             <Grid Grid.Row="0"
                   x:Name="TitleBarArea"
                   Background="Transparent">
-
-                <!-- Centered Title -->
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
-                    <TextBlock Text=""
+                    <TextBlock x:Name="WindowTitle"
+                               Text=""
                                Margin="0,6,0,5"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
-                               IsHitTestVisible="False"
-                               x:Name="WindowTitle" />
+                               IsHitTestVisible="False" />
                 </Grid>
             </Grid>
 
-            <!-- Pack List -->
+            <!-- ── Content area ────────────────────────────── -->
             <Grid Grid.Row="1">
                 <Grid.RowDefinitions>
+                    <!-- Announcements (PSA cards, auto-height) -->
                     <RowDefinition Height="Auto" />
+                    <!-- Pack list + fixed top/bottom panes     -->
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
+                <!-- PSA / announcement cards -->
                 <StackPanel x:Name="PackBrowserAnnouncementsPanel"
                             Grid.Row="0"
                             Spacing="12"
                             Margin="22,8,22,4" />
 
+                <!-- Shadow receiver sits behind everything -->
                 <Grid x:Name="ShadowReceiverGrid"
                       Grid.Row="1" />
-                <ScrollViewer Grid.Row="1"
-                              Padding="20,20,20,0"
-                              Margin="0,-5,0,0"
-                              IsTextScaleFactorEnabled="False"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="PackListContainer"
-                                Spacing="8" />
-                </ScrollViewer>
-            </Grid>
 
-            <!-- Empty State -->
-            <StackPanel x:Name="EmptyStatePanel"
-                        Grid.Row="1"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Center"
-                        Visibility="Collapsed"
-                        Spacing="12">
-                <FontIcon Glyph="&#xE7C3;"
-                          FontSize="48"
-                          IsTextScaleFactorEnabled="False"
-                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                <TextBlock x:Name="EmptyStateText"
-                           Text="No compatible packs found"
-                           FontSize="14"
-                           IsTextScaleFactorEnabled="False"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </StackPanel>
+                <!--
+                    Three-row grid:
+                      Row 0 – "Confirm selection" sticky pane  (top)
+                      Row 1 – Scrollable dynamic pack list
+                      Row 2 – "Add resource pack" sticky pane  (bottom)
+                -->
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- CONFIRM SELECTION (sticky top) -->
+                    <Grid Grid.Row="0"
+                          Padding="20,0,20,4">
+                        <ContentPresenter x:Name="ConfirmButtonPresenter" />
+                    </Grid>
+
+                    <!-- PACK LIST (scrollable) -->
+                    <ScrollViewer Grid.Row="1"
+                                  Padding="20,4,20,0"
+                                  IsTextScaleFactorEnabled="False"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="PackListContainer"
+                                    Spacing="8"
+                                    Padding="0,0,0,8" />
+                    </ScrollViewer>
+
+                    <!-- Empty state overlays the scroll area -->
+                    <StackPanel x:Name="EmptyStatePanel"
+                                Grid.Row="1"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Visibility="Collapsed"
+                                Spacing="12">
+                        <FontIcon Glyph="&#xE7C3;"
+                                  FontSize="48"
+                                  IsTextScaleFactorEnabled="False"
+                                  Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <TextBlock x:Name="EmptyStateText"
+                                   Text="No packs found"
+                                   FontSize="14"
+                                   IsTextScaleFactorEnabled="False"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+
+                    <!-- ADD RESOURCE PACK (sticky bottom) -->
+                    <Grid Grid.Row="2"
+                          Padding="20,4,20,12">
+                        <ContentPresenter x:Name="AddPackButtonPresenter" />
+                    </Grid>
+                </Grid>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
