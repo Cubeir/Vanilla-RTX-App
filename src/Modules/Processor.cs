@@ -14,6 +14,9 @@ using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Modules;
 
+// One last thing:
+// Add a little something to write EVERYTHING to trace logs, reasons of failure of each processor, if any
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Module-level constants
 // ──────────────────────────────────────────────────────────────────────────────

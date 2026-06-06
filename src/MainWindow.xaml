@@ -1046,7 +1046,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="115" />
+                        <ColumnDefinition Width="0.3*" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="50" />
                     </Grid.ColumnDefinitions>
@@ -1085,7 +1085,7 @@
                             CornerRadius="0,0,0,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Exports selected packages as .mcpack for easy sharing.">
+                            ToolTipService.ToolTip="Exports selected packages as .mcpack for creating backups or easy sharing.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xEDE2;"

@@ -1014,6 +1014,24 @@ public sealed partial class MainWindow : Window
                     foreach (var field in fields)
                     {
                         var value = field.GetValue(null);
+
+                        // Special-case SelectedPacks — the tuple list won't print usefully via ToString()
+                        if (field.Name == nameof(TunerVariables.SelectedPacks) &&
+                            value is List<(string Location, string Name, string Type)> selectedPacks)
+                        {
+                            if (selectedPacks.Count == 0)
+                            {
+                                sb.AppendLine("SelectedPacks: (empty)");
+                            }
+                            else
+                            {
+                                sb.AppendLine("SelectedPacks:");
+                                foreach (var (location, name, type) in selectedPacks)
+                                    sb.AppendLine($"  [{type}] {name} → {location}");
+                            }
+                            continue;
+                        }
+
                         sb.AppendLine($"{field.Name}: {value ?? "null"}");
                     }
                     sb.AppendLine();
