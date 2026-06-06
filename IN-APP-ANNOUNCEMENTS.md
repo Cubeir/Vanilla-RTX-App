@@ -25,6 +25,12 @@ Fog and atmosphere of many biomes has been overhauled across all three packs! Fi
 Support for Chaos Cubed game drop will be arriving soon.
 Check back daily!
 
+### Tip:
+Begineer tip: It is always preferred to activate a Vanilla RTX resource pack in your Global Resources instead of Realm or World.
+
+### Tip #2
+Beginner tip 2: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen from a cached version unless a new version happens to be available.
+
 
 # BetterRTXAnnouncements
 ## another way to give the same warning
