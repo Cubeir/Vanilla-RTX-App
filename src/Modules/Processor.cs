@@ -605,7 +605,7 @@ public class Processor
         var packs = dedupedList.ToArray();
 
         var packNames = string.Join(", ", packs.Select(p => p.Name));
-        MainWindow.Log($"Tuning {packNames}...", MainWindow.LogLevel.Lengthy);
+        MainWindow.Log($"Tuning: {packNames}...", MainWindow.LogLevel.Lengthy);
 
         // ── Determine which processors are active ─────────────────────────────
 
