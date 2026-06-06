@@ -1332,7 +1332,7 @@ public class Processor
             }
         double originalIntensity = origIntensitySum / (width * height);
 
-        // Blend generated normals with original (33% linear + 67% overlay)
+        // Blend generated normals with original (40% linear + 60% overlay)
         var blended = new (byte r, byte g)[width, height];
         for (var y = 0; y < height; y++)
         {
@@ -1356,8 +1356,8 @@ public class Processor
                     : 255.0 - (2.0 * (255.0 - orig.G) * (255.0 - detailG)) / 255.0;
 
                 blended[x, y] = (
-                    (byte)Math.Clamp(0.33 * linearR + 0.67 * overlayR, 0, 255),
-                    (byte)Math.Clamp(0.33 * linearG + 0.67 * overlayG, 0, 255)
+                    (byte)Math.Clamp(0.4 * linearR + 0.6 * overlayR, 0, 255),
+                    (byte)Math.Clamp(0.4 * linearG + 0.6 * overlayG, 0, 255)
                 );
             }
         }
