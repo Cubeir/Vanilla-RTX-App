@@ -1911,16 +1911,17 @@ public sealed partial class MainWindow : Window
         try
         {
             bool hasVanillaPacks = IsVanillaRTXEnabled || IsNormalsEnabled || IsOpusEnabled;
-            // Compatible custom packs = anything that isn't Incompatible
-            bool hasCompatibleCustom = TunerVariables.SelectedPacks
-                .Any(p => p.Type != "Incompatible");
-            bool hasIncompatibleOnly = TunerVariables.SelectedPacks.Count > 0 &&
-                                       !hasCompatibleCustom && !hasVanillaPacks;
+            bool hasCompatibleCustom = TunerVariables.SelectedPacks.Any(p => p.Type != "Incompatible");
+            bool hasIncompatibleCustom = TunerVariables.SelectedPacks.Any(p => p.Type == "Incompatible");
+
+            // Mixed: at least one compatible AND at least one incompatible in the custom selection
+            if ((hasVanillaPacks || hasCompatibleCustom) && hasIncompatibleCustom)
+                Log("Some selected packs that are not RTX or Vibrant Visuals compatible and will be skipped.", LogLevel.Warning);
 
             if (!hasVanillaPacks && !hasCompatibleCustom)
             {
-                if (hasIncompatibleOnly)
-                    Log("None of the selected pack(s) are RTX or Vibrant Visuals compatible. Select at least one compatible pack to tune.", LogLevel.Warning);
+                if (hasIncompatibleCustom)
+                    Log("None of the selected packs are RTX or Vibrant Visuals compatible. Select at least one compatible pack to tune.", LogLevel.Warning);
                 else
                     Log("Select at least one package to tune.", LogLevel.Warning);
                 return;
