@@ -1151,7 +1151,7 @@ public sealed partial class MainWindow : Window
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
         Log("Find helpful resources in the README file, launching in your default browser shortly.", LogLevel.Informational);
-        OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md");
+        OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation");
     }
     private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
