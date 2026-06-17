@@ -390,6 +390,7 @@ public sealed partial class MainWindow : Window
             {
                 _shiftPressed = true;
                 SetShiftText(ResetButton_TextBlock, "Wipe", ResetButton_FontIcon, "\uE7BA");
+                SetShiftText(LaunchButtonText, "Disable Minecraft RTX", LaunchButtonFontIcon, "\uE7A7");
                 // Add more as needed...
             }
         };
@@ -399,6 +400,7 @@ public sealed partial class MainWindow : Window
             {
                 _shiftPressed = false;
                 RestoreShiftText(ResetButton_TextBlock, ResetButton_FontIcon);
+                RestoreShiftText(LaunchButtonText, LaunchButtonFontIcon);
                 // Mirror every SetShiftText call above...
             }
         };
@@ -1968,10 +1970,6 @@ public sealed partial class MainWindow : Window
 
                 await Task.Run(Processor.TuneSelectedPacks);
                 Log("Completed tuning.", LogLevel.Success);
-
-                // Reset emissive multiplier if ambient light was enabled during this tuning attempt
-                if (AddEmissivityAmbientLight)
-                    EmissivityMultiplier = Defaults.EmissivityMultiplier;
             }
         }
         finally
@@ -1979,7 +1977,6 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(false);
             ToggleControls(this, true);
             _progressManager.HideProgress();
-            UpdateUI();
         }
     }
 

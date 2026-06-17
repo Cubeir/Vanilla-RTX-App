@@ -852,7 +852,7 @@
                                        Margin="0,0,13.5,0"
                                        Visibility="Collapsed"
                                        IsTextScaleFactorEnabled="False"
-                                       ToolTipService.ToolTip="This option is intended for RTX resource packs only, do not enable for Vibrant Visuals resource packs. Furthermore, If this option is enabled while tuning a resource pack, future tuning attempts on that pack will skip applying the Emissivity Multiplier slider to avoid breaking the pack." />
+                                       ToolTipService.ToolTip="This option is intended for RTX resource packs only, do not enable for Vibrant Visuals resource packs. Furthermore, If this option is enabled while tuning a resource pack, future tuning attempts on that pack will skip applying the Emissivity Multiplier slider to keep the pack from breaking." />
                         </Grid>
                     </StackPanel>
 
@@ -1322,13 +1322,14 @@
                             VerticalAlignment="Stretch"
                             CornerRadius="0,0,0,6"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.">
+                            ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching. Holding shift while pressing this button disables Minecraft RTX and enables VSync instead.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE78B;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
-                                      VerticalAlignment="Center" />
+                                      VerticalAlignment="Center"
+                                      x:Name="LaunchButtonFontIcon"/>
                             <TextBlock Text="Launch Minecraft RTX"
                                        VerticalAlignment="Center"
                                        x:Name="LaunchButtonText" />
