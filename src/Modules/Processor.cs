@@ -14,6 +14,7 @@ using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Modules;
 
+
 public static class ProcessorVariables
 {
     public const bool FOG_UNIFORM_HEIGHT = false;
@@ -763,7 +764,7 @@ public class Processor
                     }
                 }
 
-                if (doGrain && lts.MerBmp != null)
+                if (doGrain && lts.MerBmp != null && !lts.MerIsVirtual)
                 {
                     try
                     {

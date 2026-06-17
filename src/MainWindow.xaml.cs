@@ -33,6 +33,10 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
+- ALT Launch Minecraft RTX button: when shift held, instead do this, Put graphics to fancy, disable in-game graphics mode switching, and enable VSync
+
+- Safeguard loss of default RTX  files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
+
 -- For the feature below, MAKE SURE pack selector allows selection of incompatible packs as well so deleting them is easier!!
 delete parent dir of json all the way up to wherever resource_packs or dev_resource packs, u know what u mean just cant type it all out
 anyway
@@ -71,8 +75,6 @@ see what u can do, its a cool idea.
 It is IMPORT button, no text maybe, just a import icon
 it allows u to import .mcpacks and .zips!!! very good, because minecraft gkd is a fuck
 
-give preview button and reset buttons icons as well maybe? a reset icon, and choose something good from winui gallery aight?
-
 - Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
 watchya doing?
 
@@ -80,11 +82,18 @@ watchya doing?
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
 Some overrides now disable it while they should not.
 
+- Vanilla RTX Update window triggers a Relocation of Vanilla RTX packs
+Vitasl question is, WHY DOES RE-LOCATING Vanilla RTX packs resets the array of custom packs???
+Check the semantics, remove that line!!! HUH?!
+
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
 
 For finding the game, GDKLocator kit handles it system-wide, all good
-**For Minecraft's USER DATA however, you better expose those, apparently some third party launchers use different paths!!!**
+**For Minecraft's USER DATA however, you better expose those, apparently some third party launchers direc to different paths!!!**
+
+Have a class of sorts, ask to locate game files manually IF it can't be located automatically. maybe maybe
+
 
 For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
 Actually don't expose anything, the overhead and the risk, instead, make them globally-available constants that can easily be changed
@@ -166,7 +175,7 @@ And lastly the CACHE invalidator, will it continue to work well with it (betterr
 - Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
 
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
-Especially release builds
+Especially release builds, There COULD BE LATENT TRIMMING BUGS!
 Game detection and cache invalidation could be improved for both
 PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
 
