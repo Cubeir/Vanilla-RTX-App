@@ -550,6 +550,9 @@ public sealed partial class MainWindow : Window
         appWindow.SetTaskbarIcon(iconPath);
         appWindow.SetTitleBarIcon(iconPath);
 
+        // Force LtR
+        if (Content is FrameworkElement root)
+            root.FlowDirection = FlowDirection.LeftToRight;
 
         // Watches theme changes and adjusts based on theme
         // use only for stuff that can be altered before mainwindow initlization
