@@ -17,7 +17,7 @@ using Windows.Storage;
 //
 //   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
 //   Timed     (## body)  — Dismiss button with "Dismiss for now" tooltip.
-//                          Reappears after 5 minutes. Not added to the permanent blacklist.
+//                          Can reappear after 5 minutes. Not added to the permanent blacklist.
 //   Permanent (### body) — Dismiss button with "Dismiss" tooltip.
 //                          Dismissed once → gone forever (until text changes in the .md).
 // =====================================================================================================================
@@ -123,8 +123,8 @@ public static class OnlineTexts
     private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(1); // Cooldown of fetching the new .md
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(5); // CD of PSAs that can be dismissed but return later (##)
 #else
-    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(180);
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(18);
+    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(240);
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(16);
 #endif
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;
