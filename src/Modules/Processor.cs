@@ -14,16 +14,84 @@ using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Modules;
 
-// One last thing:
-// Add a little something to write EVERYTHING to trace logs, reasons of failure of each processor, if any
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Module-level constants
-// ──────────────────────────────────────────────────────────────────────────────
 public static class ProcessorVariables
 {
     public const bool FOG_UNIFORM_HEIGHT = false;
     public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PackContextFile  ──  per-pack tuning state written to __vanillartxtuner_context
+// ══════════════════════════════════════════════════════════════════════════════
+
+public static class PackContextFile
+{
+    private const string FileName = "__vanillartxtuner_context";
+    private const string AmbientKey = "hasambientlighting";
+
+    public sealed class PackContext
+    {
+        public bool HadAmbientLighting { get; set; }
+    }
+
+    /// <summary>
+    /// Reads the context file from the pack root.
+    /// Returns a default (all-false) context if the file is absent or malformed.
+    /// </summary>
+    public static PackContext Read(string packRoot)
+    {
+        var ctx = new PackContext();
+        var path = Path.Combine(packRoot, FileName);
+
+        if (!File.Exists(path))
+            return ctx;
+
+        try
+        {
+            foreach (var raw in File.ReadAllLines(path))
+            {
+                var line = raw.Trim();
+                if (line.StartsWith(AmbientKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = line.Split(':');
+                    if (parts.Length >= 2 && int.TryParse(parts[1].Trim(), out var v))
+                        ctx.HadAmbientLighting = v != 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[TUNER] PackContextFile.Read failed for '{packRoot}': {ex.Message}");
+        }
+
+        return ctx;
+    }
+
+    /// <summary>
+    /// Writes (or updates) the context file in the pack root.
+    /// Only creates the file if at least one tracked flag is true.
+    /// </summary>
+    public static void Write(string packRoot, PackContext ctx)
+    {
+        var path = Path.Combine(packRoot, FileName);
+
+        // If nothing interesting to record, and file doesn't exist yet, skip it.
+        if (!ctx.HadAmbientLighting && !File.Exists(path))
+            return;
+
+        try
+        {
+            var lines = new List<string>
+            {
+                $"{AmbientKey}:{(ctx.HadAmbientLighting ? 1 : 0)}"
+            };
+            File.WriteAllLines(path, lines);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[TUNER] PackContextFile.Write failed for '{packRoot}': {ex.Message}");
+        }
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -32,8 +100,6 @@ public static class ProcessorVariables
 
 public static class TextureSetHelper
 {
-    // ── Public enums & value types ─────────────────────────────────────────────
-
     public enum TextureKind { Color, Mer, Normal, Heightmap }
 
     /// <summary>
@@ -41,41 +107,33 @@ public static class TextureSetHelper
     /// </summary>
     public sealed class TextureLayerValue
     {
-        // ---- real file ----
         public string? FilePath { get; }
 
-        // ---- inline ----
         public bool IsInline { get; }
-        /// <summary>Parsed RGBA components (0-255). Always length 4 even for RGB/hex input.</summary>
+        /// <summary>Parsed RGBA components (0-255). Always length 4 internally.</summary>
         public byte[] InlineRgba { get; } = Array.Empty<byte>();
-        /// <summary>Number of components that were originally specified (3 or 4).</summary>
+        /// <summary>Number of components as originally written (3 or 4).</summary>
         public int InlineChannels { get; }
         /// <summary>True when the source was a hex string (e.g. "#B48CBE").</summary>
         public bool IsHex { get; }
-        /// <summary>The raw token that produced this inline value (kept for write-back).</summary>
         public JToken SourceToken { get; }
 
-        // Constructors ----------------------------------------------------------
-
-        private TextureLayerValue(JToken sourceToken, byte[] rgba, int channels, bool isHex)
+        private TextureLayerValue(JToken sourceToken, byte[] rgba, int originalChannels, bool isHex)
         {
             IsInline = true;
             SourceToken = sourceToken;
             InlineRgba = rgba;
-            InlineChannels = channels;
+            InlineChannels = originalChannels;   // the count as it appeared in the file
             IsHex = isHex;
         }
 
         private TextureLayerValue(string filePath)
         {
             FilePath = filePath;
-            SourceToken = JValue.CreateNull(); // unused
+            SourceToken = JValue.CreateNull();
         }
 
-        // Factory helpers -------------------------------------------------------
-
-        public static TextureLayerValue FromFile(string path)
-            => new(path);
+        public static TextureLayerValue FromFile(string path) => new(path);
 
         public static TextureLayerValue? TryParseInline(JToken token)
         {
@@ -83,46 +141,51 @@ public static class TextureSetHelper
             if (token.Type == JTokenType.String)
             {
                 var s = token.Value<string>()!.Trim();
-                if (s.StartsWith('#') && TryParseHex(s, out var rgba))
-                    return new TextureLayerValue(token, rgba, rgba.Length, isHex: true);
-                return null; // plain string → treat as filename elsewhere
+                if (s.StartsWith('#') && TryParseHex(s, out var rgba, out var originalChannels))
+                    return new TextureLayerValue(token, rgba, originalChannels, isHex: true);
+                return null;
             }
 
-            // Array of numbers
+            // Array of numbers (RGB triplet or RGBA quadruplet)
             if (token is JArray arr && arr.Count is 3 or 4)
             {
-                var comps = new byte[arr.Count];
-                for (var i = 0; i < arr.Count; i++)
+                var originalChannels = arr.Count;
+                var comps = new byte[originalChannels];
+                for (var i = 0; i < originalChannels; i++)
                 {
                     if (!TryGetByte(arr[i], out comps[i]))
                         return null;
                 }
-                // Pad to 4 channels
-                var rgba = comps.Length == 4
+                // Pad to 4 channels internally, but remember the original count
+                var rgba = originalChannels == 4
                     ? comps
                     : new[] { comps[0], comps[1], comps[2], (byte)255 };
-                return new TextureLayerValue(token, rgba, comps.Length, isHex: false);
+                return new TextureLayerValue(token, rgba, originalChannels, isHex: false);
             }
 
             return null;
         }
 
-        // ---- helpers ----------------------------------------------------------
-
-        private static bool TryParseHex(string hex, out byte[] rgba)
+        private static bool TryParseHex(string hex, out byte[] rgba, out int originalChannels)
         {
             rgba = Array.Empty<byte>();
+            originalChannels = 0;
             hex = hex.TrimStart('#');
+
             if (hex.Length == 6)
             {
-                if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v)) return false;
+                if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v))
+                    return false;
                 rgba = new[] { (byte)(v >> 16), (byte)(v >> 8), (byte)v, (byte)255 };
+                originalChannels = 3;
                 return true;
             }
             if (hex.Length == 8)
             {
-                if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v)) return false;
+                if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v))
+                    return false;
                 rgba = new[] { (byte)(v >> 24), (byte)(v >> 16), (byte)(v >> 8), (byte)v };
+                originalChannels = 4;
                 return true;
             }
             return false;
@@ -151,8 +214,9 @@ public static class TextureSetHelper
         }
 
         /// <summary>
-        /// Serialises the (possibly modified) 1×1 bitmap back to the JToken
-        /// format that was originally used (hex / 3-channel array / 4-channel array).
+        /// Serialises the (possibly modified) 1×1 bitmap back to exactly the format
+        /// it was originally written in: RGB hex stays RGB hex, RGBA array stays RGBA
+        /// array, etc. The alpha channel is always preserved from the bitmap as-is.
         /// </summary>
         public JToken SerializeVirtual(Bitmap bmp)
         {
@@ -161,26 +225,17 @@ public static class TextureSetHelper
 
             if (IsHex)
             {
-                // Reproduce original hex length (6 vs 8 chars)
-                return InlineChannels == 4
-                    ? new JValue($"#{r:X2}{g:X2}{b:X2}{a:X2}")
-                    : new JValue($"#{r:X2}{g:X2}{b:X2}");
+                return InlineChannels == 3
+                    ? new JValue($"#{r:X2}{g:X2}{b:X2}")
+                    : new JValue($"#{r:X2}{g:X2}{b:X2}{a:X2}");
             }
 
-            // Array form – always write as ints, 4-channel (RGBA) or 3-channel (RGB)
-            if (InlineChannels == 4)
-                return new JArray(r, g, b, a);
-
-            return new JArray(r, g, b);
+            return InlineChannels == 3
+                ? new JArray(r, g, b)
+                : new JArray(r, g, b, a);
         }
     }
 
-    // ── Resolved / loaded texture set records ────────────────────────────────
-
-    /// <summary>
-    /// One validated texture set parsed from a .texture_set.json.
-    /// Null secondary means that layer was absent.
-    /// </summary>
     public sealed class ResolvedTextureSet
     {
         public string JsonFilePath { get; init; } = "";
@@ -189,15 +244,10 @@ public static class TextureSetHelper
 
         public TextureLayerValue Color { get; init; } = null!;
         public TextureLayerValue? Mer { get; init; }
-        /// <summary>Either a normal map or a heightmap – check IsHeightmap.</summary>
         public TextureLayerValue? NormalOrHeight { get; init; }
         public bool IsHeightmap { get; init; }
     }
 
-    /// <summary>
-    /// In-memory form of a texture set: real Bitmaps ready for processing.
-    /// Virtual bitmaps (from inline values) are flagged as such.
-    /// </summary>
     public sealed class LoadedTextureSet
     {
         public ResolvedTextureSet Resolved { get; init; } = null!;
@@ -211,22 +261,16 @@ public static class TextureSetHelper
         public Bitmap? NormalBmp { get; set; }
         public bool NormalIsVirtual { get; init; }
 
-        // Dirty flags set by processors
         public bool ColorDirty { get; set; }
         public bool MerDirty { get; set; }
         public bool NormalDirty { get; set; }
     }
 
-    // ── File-extension priority (matches Minecraft spec) ─────────────────────
-
     private static readonly string[] SupportedExtensions = { ".tga", ".png", ".jpg", ".jpeg" };
-
-    // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Scans a pack root, parses all .texture_set.json files, validates them
-    /// according to the Minecraft spec, and returns the valid resolved sets.
-    /// Invalid sets are silently skipped (matching game behaviour).
+    /// per the Minecraft spec, and returns the valid resolved sets.
     /// </summary>
     public static IReadOnlyList<ResolvedTextureSet> ResolveTextureSets(string packRoot)
     {
@@ -241,41 +285,52 @@ public static class TextureSetHelper
             {
                 var text = File.ReadAllText(jsonFile);
                 var root = JObject.Parse(text);
+
                 if (root.SelectToken("minecraft:texture_set") is not JObject set)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': missing minecraft:texture_set node.");
                     continue;
+                }
 
                 var folder = Path.GetDirectoryName(jsonFile)!;
 
-                // ---- Color (required) ----------------------------------------
                 var colorToken = set["color"];
                 if (colorToken == null)
-                    continue; // invalid – no color layer
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': no color layer defined.");
+                    continue;
+                }
 
                 var colorLayer = ResolveLayer(folder, colorToken);
                 if (colorLayer == null)
-                    continue; // referenced file missing
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': color layer could not be resolved.");
+                    continue;
+                }
 
-                // ---- MER / MERS (mutually exclusive) --------------------------
                 var merToken = set["metalness_emissive_roughness"];
                 var mersToken = set["metalness_emissive_roughness_subsurface"];
 
                 if (merToken != null && mersToken != null)
-                    continue; // invalid – both present
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': both MER and MERS defined (mutually exclusive).");
+                    continue;
+                }
 
                 var merLayer = ResolveLayer(folder, merToken ?? mersToken);
 
-                // ---- Normal / Heightmap (mutually exclusive) ------------------
                 var normalToken = set["normal"];
                 var heightmapToken = set["heightmap"];
 
                 if (normalToken != null && heightmapToken != null)
-                    continue; // invalid – both present
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': both normal and heightmap defined (mutually exclusive).");
+                    continue;
+                }
 
                 var normalLayer = ResolveLayer(folder, normalToken);
                 var heightmapLayer = ResolveLayer(folder, heightmapToken);
                 var isHeightmap = heightmapToken != null;
-
-                var normalOrHeight = normalLayer ?? heightmapLayer;
 
                 results.Add(new ResolvedTextureSet
                 {
@@ -284,13 +339,13 @@ public static class TextureSetHelper
                     SetNode = set,
                     Color = colorLayer,
                     Mer = merLayer,
-                    NormalOrHeight = normalOrHeight,
+                    NormalOrHeight = normalLayer ?? heightmapLayer,
                     IsHeightmap = isHeightmap,
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                // Malformed JSON or IO error → skip
+                Trace.WriteLine($"[TUNER] Error resolving '{jsonFile}': {ex.Message}");
             }
         }
 
@@ -311,10 +366,28 @@ public static class TextureSetHelper
             try
             {
                 var colorBmp = LoadLayer(rs.Color);
-                if (colorBmp == null) continue;
+                if (colorBmp == null)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping texture set '{rs.JsonFilePath}': color bitmap could not be loaded.");
+                    continue;
+                }
 
-                var merBmp = rs.Mer != null ? LoadLayer(rs.Mer) : null;
-                var normalBmp = rs.NormalOrHeight != null ? LoadLayer(rs.NormalOrHeight!) : null;
+                Bitmap? merBmp = null;
+                Bitmap? normalBmp = null;
+
+                if (rs.Mer != null)
+                {
+                    merBmp = LoadLayer(rs.Mer);
+                    if (merBmp == null)
+                        Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': MER layer could not be loaded; MER processors will be skipped.");
+                }
+
+                if (rs.NormalOrHeight != null)
+                {
+                    normalBmp = LoadLayer(rs.NormalOrHeight);
+                    if (normalBmp == null)
+                        Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': normal/heightmap layer could not be loaded; normal processors will be skipped.");
+                }
 
                 results.Add(new LoadedTextureSet
                 {
@@ -327,30 +400,22 @@ public static class TextureSetHelper
                     NormalIsVirtual = rs.NormalOrHeight?.IsInline ?? false,
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                // Failed to load → skip
+                Trace.WriteLine($"[TUNER] Error loading texture set '{rs.JsonFilePath}': {ex.Message}");
             }
         }
 
         return results;
     }
 
-    // ── Internal helpers ──────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Resolves a JToken from a texture set layer field.
-    /// Returns null if the token is absent, or a referenced file doesn't exist.
-    /// </summary>
     private static TextureLayerValue? ResolveLayer(string folder, JToken? token)
     {
         if (token == null) return null;
 
-        // Try inline first (array or hex string)
         var inline = TextureLayerValue.TryParseInline(token);
         if (inline != null) return inline;
 
-        // Must be a plain string (filename)
         if (token.Type != JTokenType.String) return null;
 
         var name = token.Value<string>()!.Trim();
@@ -371,10 +436,6 @@ public static class TextureSetHelper
         return ReadImage(layer.FilePath!, false);
     }
 
-    /// <summary>
-    /// Finds a texture file using Minecraft priority order: .tga > .png > .jpg > .jpeg.
-    /// Case-insensitive where the filesystem may be case-sensitive.
-    /// </summary>
     public static string? FindTextureFile(string folder, string textureName)
     {
         foreach (var ext in SupportedExtensions)
@@ -383,23 +444,20 @@ public static class TextureSetHelper
             if (File.Exists(target))
                 return target;
 
-            // Case-insensitive fallback
             try
             {
                 var matches = Directory.GetFiles(folder, textureName + ext, SearchOption.TopDirectoryOnly);
                 if (matches.Length > 0) return matches[0];
             }
-            catch { /* access denied etc. */ }
+            catch { /* access denied or directory missing */ }
         }
 
         return null;
     }
 
-    // ── Write-back helper ────────────────────────────────────────────────────
-
     /// <summary>
     /// Persists a loaded texture set's dirty bitmaps back to disk (or inline JSON).
-    /// For real files: writes in the source format (TGA → TGA, PNG → PNG, etc.).
+    /// For real files: writes in the source format (TGA stays TGA, PNG stays PNG, etc.).
     /// For virtual bitmaps: patches the .texture_set.json in place.
     /// </summary>
     public static void SaveDirtyLayers(LoadedTextureSet lts)
@@ -407,66 +465,87 @@ public static class TextureSetHelper
         var rs = lts.Resolved;
         var jsonDirty = false;
 
-        // ---- Color -----------------------------------------------------------
         if (lts.ColorDirty && lts.ColorBmp != null)
         {
-            if (lts.ColorIsVirtual)
+            try
             {
-                rs.SetNode["color"] = rs.Color.SerializeVirtual(lts.ColorBmp);
-                jsonDirty = true;
+                if (lts.ColorIsVirtual)
+                {
+                    rs.SetNode["color"] = rs.Color.SerializeVirtual(lts.ColorBmp);
+                    jsonDirty = true;
+                }
+                else
+                {
+                    WriteBackBitmap(lts.ColorBmp, rs.Color.FilePath!);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                WriteBackBitmap(lts.ColorBmp, rs.Color.FilePath!);
+                Trace.WriteLine($"[TUNER] Error saving color layer for '{rs.JsonFilePath}': {ex.Message}");
             }
         }
 
-        // ---- MER -------------------------------------------------------------
         if (lts.MerDirty && lts.MerBmp != null && rs.Mer != null)
         {
-            if (lts.MerIsVirtual)
+            try
             {
-                // Preserve which key was used (mer vs mers)
-                var merKey = rs.SetNode["metalness_emissive_roughness"] != null
-                    ? "metalness_emissive_roughness"
-                    : "metalness_emissive_roughness_subsurface";
-                rs.SetNode[merKey] = rs.Mer.SerializeVirtual(lts.MerBmp);
-                jsonDirty = true;
+                if (lts.MerIsVirtual)
+                {
+                    var merKey = rs.SetNode["metalness_emissive_roughness"] != null
+                        ? "metalness_emissive_roughness"
+                        : "metalness_emissive_roughness_subsurface";
+                    rs.SetNode[merKey] = rs.Mer.SerializeVirtual(lts.MerBmp);
+                    jsonDirty = true;
+                }
+                else
+                {
+                    WriteBackBitmap(lts.MerBmp, rs.Mer.FilePath!);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                WriteBackBitmap(lts.MerBmp, rs.Mer.FilePath!);
+                Trace.WriteLine($"[TUNER] Error saving MER layer for '{rs.JsonFilePath}': {ex.Message}");
             }
         }
 
-        // ---- Normal / Heightmap ----------------------------------------------
         if (lts.NormalDirty && lts.NormalBmp != null && rs.NormalOrHeight != null)
         {
-            if (lts.NormalIsVirtual)
+            try
             {
-                var normalKey = rs.IsHeightmap ? "heightmap" : "normal";
-                rs.SetNode[normalKey] = rs.NormalOrHeight.SerializeVirtual(lts.NormalBmp);
-                jsonDirty = true;
+                if (lts.NormalIsVirtual)
+                {
+                    var normalKey = rs.IsHeightmap ? "heightmap" : "normal";
+                    rs.SetNode[normalKey] = rs.NormalOrHeight.SerializeVirtual(lts.NormalBmp);
+                    jsonDirty = true;
+                }
+                else
+                {
+                    WriteBackBitmap(lts.NormalBmp, rs.NormalOrHeight.FilePath!);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                WriteBackBitmap(lts.NormalBmp, rs.NormalOrHeight.FilePath!);
+                Trace.WriteLine($"[TUNER] Error saving normal/heightmap layer for '{rs.JsonFilePath}': {ex.Message}");
             }
         }
 
-        // ---- Flush JSON if any inline layer changed --------------------------
         if (jsonDirty)
         {
-            File.WriteAllText(rs.JsonFilePath, rs.RootJson.ToString(Newtonsoft.Json.Formatting.Indented));
+            try
+            {
+                File.WriteAllText(rs.JsonFilePath, rs.RootJson.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error writing JSON for '{rs.JsonFilePath}': {ex.Message}");
+            }
         }
     }
 
     /// <summary>
     /// Writes a bitmap back to disk preserving the original file format.
-    /// TGA  → TGA via existing WriteImageAsTGA helper.
-    /// PNG  → lossless PNG (32-bpp ARGB).
-    /// JPG  → high-quality JPEG (the best we can do for a lossy source).
-    /// Other formats fall back to TGA.
+    /// TGA  → TGA   PNG  → lossless 32-bpp ARGB PNG
+    /// JPG  → maximum-quality JPEG   Other → TGA fallback
     /// </summary>
     private static void WriteBackBitmap(Bitmap bmp, string originalPath)
     {
@@ -479,14 +558,12 @@ public static class TextureSetHelper
                 break;
 
             case ".png":
-                // Ensure we save as 32-bpp ARGB PNG (lossless, straight alpha)
                 using (var canonical = EnsureArgb32(bmp))
                     canonical.Save(originalPath, ImageFormat.Png);
                 break;
 
             case ".jpg":
             case ".jpeg":
-                // JPEG is lossy; use maximum quality to minimise round-trip loss
                 var jpegEncoder = GetEncoder(ImageFormat.Jpeg);
                 if (jpegEncoder == null) goto default;
 
@@ -498,16 +575,11 @@ public static class TextureSetHelper
                 break;
 
             default:
-                // Unknown format – fall back to TGA (game reads it with highest priority anyway)
                 WriteImageAsTGA(bmp, originalPath);
                 break;
         }
     }
 
-    /// <summary>
-    /// Returns the bitmap as a 32-bpp ARGB image (no-op if already correct).
-    /// Caller is responsible for disposing if a new bitmap was created.
-    /// </summary>
     private static Bitmap EnsureArgb32(Bitmap src)
     {
         if (src.PixelFormat == PixelFormat.Format32bppArgb)
@@ -529,13 +601,11 @@ public static class TextureSetHelper
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Processor  ──  the "big daddy" orchestrator + all sub-processors
+//  Processor  ──  orchestrator + all sub-processors
 // ══════════════════════════════════════════════════════════════════════════════
 
 public class Processor
 {
-    // ── Pack info ────────────────────────────────────────────────
-
     private struct PackInfo
     {
         public string Name;
@@ -550,14 +620,8 @@ public class Processor
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  TuneSelectedPacks  ──  entry point
-    // ══════════════════════════════════════════════════════════════════════════
-
     public static void TuneSelectedPacks()
     {
-        // ── Build & deduplicate pack list (same logic as before) ──────────────
-
         static string NormalizePath(string path)
         {
             if (string.IsNullOrEmpty(path)) return string.Empty;
@@ -607,8 +671,6 @@ public class Processor
         var packNames = string.Join(", ", packs.Select(p => p.Name));
         MainWindow.Log($"Tuning: {packNames}...", MainWindow.LogLevel.Lengthy);
 
-        // ── Determine which processors are active ─────────────────────────────
-
         bool doFog = FogMultiplier != Defaults.FogMultiplier;
         bool doEmissivity = EmissivityMultiplier != Defaults.EmissivityMultiplier
                          || AddEmissivityAmbientLight != Defaults.AddEmissivityAmbientLight;
@@ -617,58 +679,47 @@ public class Processor
         bool doRoughness = RoughnessControlValue != Defaults.RoughnessControlValue;
         bool doGrain = MaterialNoiseOffset != Defaults.MaterialNoiseOffset;
 
-        // ── Per-pack processing ───────────────────────────────────────────────
-
         foreach (var pack in packs)
         {
-            // ---- Fog pass (fully independent ---------------
             if (doFog)
             {
                 ProcessFog(pack);
                 ProcessFog(pack, processWaterOnly: true);
             }
 
-            // ---- Bail early if no texture processing is needed ---------------
             if (!doEmissivity && !doLazify && !doNormalInt && !doRoughness && !doGrain)
                 continue;
 
             if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
+            {
+                Trace.WriteLine($"[TUNER] Skipping texture processing for '{pack.Name}': path missing or inaccessible.");
                 continue;
+            }
 
-            // ---- Resolve ALL texture sets for this pack ONCE -----------------
+            // Read pack context to determine guardrails for this pack
+            var packCtx = PackContextFile.Read(pack.Path);
+
+            // If this pack was previously tuned with ambient lighting, suppress the
+            // multiplier pass to prevent blinding over-brightness. The ambient pass
+            // itself (second pass) is still allowed to run.
+            bool skipEmissivityMultiplierPass = packCtx.HadAmbientLighting;
+
+            if (skipEmissivityMultiplierPass && doEmissivity && EmissivityMultiplier != Defaults.EmissivityMultiplier)
+                Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed — pack was previously tuned with ambient lighting.");
+
             var resolved = TextureSetHelper.ResolveTextureSets(pack.Path);
-            if (resolved.Count == 0) continue;
+            if (resolved.Count == 0)
+            {
+                Trace.WriteLine($"[TUNER] '{pack.Name}': no valid texture sets found.");
+                continue;
+            }
 
             var loaded = TextureSetHelper.LoadTextureSets(resolved);
-            if (loaded.Count == 0) continue;
-
-            // ---- Feed each loaded set through the active sub-processors ------
-            //
-            //  Sub-processor needs:
-            //    Emissivity    → MER bitmap only.
-            //                    Virtual 1×1 MER: pixel loop runs on the single pixel, result
-            //                    written back as inline value. Correct and harmless.
-            //
-            //    NormalInt     → Normal/Heightmap bitmap only.
-            //                    Virtual 1×1 normal (128,128 = flat): scaling keeps it flat.
-            //                    Virtual 1×1 heightmap (uniform grey): span == 0, early-out.
-            //                    Both cases write back the same (or equivalent) inline value.
-            //
-            //    Lazify        → REQUIRES two same-resolution real bitmaps.
-            //                    A virtual colour is a uniform grey → driving a Sobel kernel
-            //                    with it produces a zero-gradient normal, which is meaningless.
-            //                    A virtual normal/heightmap is a 1×1 → the generated normal
-            //                    would be written back as a single inline pixel, discarding
-            //                    the real texture content entirely.
-            //                    → Skip if EITHER input is virtual.
-            //
-            //    Roughness     → MER bitmap only. Same reasoning as Emissivity above.
-            //
-            //    MaterialGrain → MER bitmap only. Same reasoning as Emissivity above.
-            //                    Grain cache uses "virtual_WxH" key for virtual bitmaps.
-            //
-            // Material grain is the only processor that requires cross-set coordination
-            // (noise-pattern sharing between variant files), so the cache lives here.
+            if (loaded.Count == 0)
+            {
+                Trace.WriteLine($"[TUNER] '{pack.Name}': no texture sets could be loaded.");
+                continue;
+            }
 
             var grainCache = new Dictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)>(
                 StringComparer.OrdinalIgnoreCase);
@@ -676,44 +727,89 @@ public class Processor
             foreach (var lts in loaded)
             {
                 if (doEmissivity && lts.MerBmp != null)
-                    lts.MerDirty |= ApplyEmissivity(lts.MerBmp);
+                {
+                    try
+                    {
+                        lts.MerDirty |= ApplyEmissivity(lts.MerBmp, skipEmissivityMultiplierPass);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[TUNER] Emissivity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                    }
+                }
 
                 if (doNormalInt && lts.NormalBmp != null)
-                    lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
+                {
+                    try
+                    {
+                        lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[TUNER] NormalIntensity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                    }
+                }
 
-                // Lazify: skip entirely when either input is virtual — a uniform-colour
-                // source produces a zero-gradient Sobel result, and a virtual normal/heightmap
-                // target would lose its real file content on write-back.
+                // Lazify requires two same-resolution real bitmaps — skip if either is virtual.
                 if (doLazify
                     && lts.ColorBmp != null && !lts.ColorIsVirtual
                     && lts.NormalBmp != null && !lts.NormalIsVirtual)
                 {
-                    lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
+                    try
+                    {
+                        lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[TUNER] Lazify failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                    }
                 }
 
                 if (doRoughness && lts.MerBmp != null)
-                    lts.MerDirty |= ApplyRoughness(lts.MerBmp);
+                {
+                    try
+                    {
+                        lts.MerDirty |= ApplyRoughness(lts.MerBmp);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[TUNER] Roughness failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                    }
+                }
 
                 if (doGrain && lts.MerBmp != null)
-                    lts.MerDirty |= ApplyMaterialGrain(lts.MerBmp, lts.Resolved.Mer?.FilePath, grainCache);
+                {
+                    try
+                    {
+                        lts.MerDirty |= ApplyMaterialGrain(lts.MerBmp, lts.Resolved.Mer?.FilePath, grainCache);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[TUNER] MaterialGrain failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                    }
+                }
             }
 
-            // ---- Write back every dirty layer --------------------------------
             foreach (var lts in loaded)
             {
                 if (lts.ColorDirty || lts.MerDirty || lts.NormalDirty)
                     TextureSetHelper.SaveDirtyLayers(lts);
 
-                // Dispose bitmaps
                 lts.ColorBmp?.Dispose();
                 lts.MerBmp?.Dispose();
                 lts.NormalBmp?.Dispose();
             }
+
+            // Update the pack context file to reflect what was just applied.
+            // Once ambient lighting has ever been applied to a pack, that flag is
+            // permanent — it is never cleared back to false.
+            packCtx.HadAmbientLighting = packCtx.HadAmbientLighting || AddEmissivityAmbientLight;
+            PackContextFile.Write(pack.Path, packCtx);
         }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Fog processor  ──  standalone logic
+    //  Fog processor  ──  standalone
     // ══════════════════════════════════════════════════════════════════════════
 
     private static void ProcessFog(PackInfo pack, bool processWaterOnly = false)
@@ -739,7 +835,11 @@ public class Processor
             .SelectMany(dir =>
             {
                 try { return Directory.GetFiles(dir, "*.json", SearchOption.TopDirectoryOnly); }
-                catch { return Enumerable.Empty<string>(); }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"[TUNER] Could not enumerate fog directory '{dir}': {ex.Message}");
+                    return Enumerable.Empty<string>();
+                }
             })
             .ToList();
 
@@ -767,10 +867,12 @@ public class Processor
                     File.WriteAllText(file, jsonString);
                 }
             }
-            catch { /* per-file errors silently skipped */ }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error processing fog file '{file}': {ex.Message}");
+            }
         }
 
-        // ── Air density & scattering ──────────────────────────────────────────
         bool ProcessAirDensityAndScattering(JObject volumetric)
         {
             var modified = false;
@@ -869,7 +971,6 @@ public class Processor
             return modified;
         }
 
-        // ── Water coefficients ────────────────────────────────────────────────
         bool ProcessWaterCoefficients(JObject volumetric)
         {
             var modified = false;
@@ -901,8 +1002,6 @@ public class Processor
 
             return modified;
         }
-
-        // ── Fog helpers ───────────────────────────────────────────────────────
 
         bool ProcessRgbArray(JArray rgbArray, double multiplier)
         {
@@ -996,22 +1095,22 @@ public class Processor
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Sub-processors  ──  receive bitmaps, return true if modified
-    //  Virtual (1×1) bitmaps are handled transparently; processors are unaware.
+    //  Sub-processors
     // ══════════════════════════════════════════════════════════════════════════
 
-    // ── Emissivity ────────────────────────────────────────────────────────────
-
-    /// <summary>Applies emissivity multiplier and optional ambient light to a MER bitmap.</summary>
-    private static bool ApplyEmissivity(Bitmap bmp)
+    /// <summary>
+    /// Applies emissivity multiplier (first pass) and optional ambient light (second pass).
+    /// Pass skipMultiplierPass = true when the pack was previously tuned with ambient lighting
+    /// to prevent blinding over-brightness; the ambient pass still runs regardless.
+    /// </summary>
+    private static bool ApplyEmissivity(Bitmap bmp, bool skipMultiplierPass)
     {
         var userMult = EmissivityMultiplier;
         var width = bmp.Width;
         var height = bmp.Height;
         var wroteBack = false;
 
-        // First pass: emissivity multiplier
-        if (userMult != 1.0)
+        if (!skipMultiplierPass && userMult != 1.0)
         {
             var maxGreen = 0;
             for (var y = 0; y < height; y++)
@@ -1024,8 +1123,7 @@ public class Processor
             if (maxGreen > 0)
             {
                 var ratio = 255.0 / maxGreen;
-                var neededMult = ratio;
-                var effectiveMult = userMult < neededMult ? userMult : neededMult;
+                var effectiveMult = userMult < ratio ? userMult : ratio;
                 var excess = Math.Max(0, userMult - effectiveMult);
 
                 var excessOverage = excess - 1.0;
@@ -1059,7 +1157,6 @@ public class Processor
             }
         }
 
-        // Second pass: ambient light
         if (AddEmissivityAmbientLight)
         {
             var ambientAmount = (int)Math.Ceiling(userMult) + 1;
@@ -1081,9 +1178,6 @@ public class Processor
         return wroteBack;
     }
 
-    // ── Normal intensity ──────────────────────────────────────────────────────
-
-    /// <summary>Applies normal-intensity scaling to a normal map or heightmap bitmap.</summary>
     private static bool ApplyNormalIntensity(Bitmap bmp, bool isHeightmap)
     {
         return isHeightmap
@@ -1105,10 +1199,8 @@ public class Processor
                 for (var x = 0; x < width; x++)
                 {
                     var orig = bmp.GetPixel(x, y);
-                    var newR = (int)Math.Round(128 + (orig.R - 128) * intensityPercent);
-                    var newG = (int)Math.Round(128 + (orig.G - 128) * intensityPercent);
-                    newR = Math.Clamp(newR, 0, 255);
-                    newG = Math.Clamp(newG, 0, 255);
+                    var newR = Math.Clamp((int)Math.Round(128 + (orig.R - 128) * intensityPercent), 0, 255);
+                    var newG = Math.Clamp((int)Math.Round(128 + (orig.G - 128) * intensityPercent), 0, 255);
 
                     if (newR != orig.R || newG != orig.G)
                     {
@@ -1125,9 +1217,9 @@ public class Processor
                 for (var x = 0; x < width; x++)
                 {
                     var pixel = bmp.GetPixel(x, y);
-                    var rDev = Math.Abs((pixel.R - 128.0) * intensityPercent);
-                    var gDev = Math.Abs((pixel.G - 128.0) * intensityPercent);
-                    var maxDev = Math.Max(rDev, gDev);
+                    var maxDev = Math.Max(
+                        Math.Abs((pixel.R - 128.0) * intensityPercent),
+                        Math.Abs((pixel.G - 128.0) * intensityPercent));
                     if (maxDev > maxIdealDeviation) maxIdealDeviation = maxDev;
                 }
 
@@ -1140,10 +1232,8 @@ public class Processor
                 for (var x = 0; x < width; x++)
                 {
                     var orig = bmp.GetPixel(x, y);
-                    var idealR = 128.0 + (orig.R - 128.0) * intensityPercent * compressionRatio;
-                    var idealG = 128.0 + (orig.G - 128.0) * intensityPercent * compressionRatio;
-                    var newR = Math.Clamp((int)Math.Round(idealR), 0, 255);
-                    var newG = Math.Clamp((int)Math.Round(idealG), 0, 255);
+                    var newR = Math.Clamp((int)Math.Round(128.0 + (orig.R - 128.0) * intensityPercent * compressionRatio), 0, 255);
+                    var newG = Math.Clamp((int)Math.Round(128.0 + (orig.G - 128.0) * intensityPercent * compressionRatio), 0, 255);
 
                     if (newR != orig.R || newG != orig.G)
                     {
@@ -1186,8 +1276,7 @@ public class Processor
             for (var x = 0; x < width; x++)
             {
                 var orig = bmp.GetPixel(x, y);
-                var deviation = orig.R - currentCenter;
-                var newGray = Math.Clamp((int)Math.Round(127.5 + deviation * userIntensity * compressionRatio), 0, 255);
+                var newGray = Math.Clamp((int)Math.Round(127.5 + (orig.R - currentCenter) * userIntensity * compressionRatio), 0, 255);
 
                 if (newGray != orig.R)
                 {
@@ -1200,12 +1289,9 @@ public class Processor
         return wroteBack;
     }
 
-    // ── Lazify ────────────────────────────────────────────────────────────────
-
     /// <summary>
     /// Lazifies a normal map or heightmap using the colour texture as a luminance guide.
-    /// colorBmp and normalBmp must have the same dimensions (virtual 1×1 bitmaps are
-    /// handled by the orchestrator—if they differ in size, we skip gracefully).
+    /// Skipped when either input is virtual (enforced by the orchestrator).
     /// </summary>
     private static bool ApplyLazify(Bitmap colorBmp, Bitmap normalBmp, bool isHeightmap)
     {
@@ -1213,14 +1299,11 @@ public class Processor
         var width = normalBmp.Width;
         var height = normalBmp.Height;
 
-        // Dimension guard (virtual bitmaps are 1×1; skip if color is virtual)
         if (colorBmp.Width != width || colorBmp.Height != height)
             return false;
 
-        // Apply edge padding to transparent pixels of the colour map
         var paddedColormap = ApplyEdgePadding(colorBmp);
 
-        // Convert to greyscale and stretch
         var greyscale = new byte[width, height];
         byte minV = 255, maxV = 0;
 
@@ -1263,8 +1346,7 @@ public class Processor
             for (var x = 0; x < width; x++)
             {
                 var orig = bmp.GetPixel(x, y);
-                var newH = stretched[x, y];
-                var blended = (alpha * newH + (255 - alpha) * orig.R) / 255;
+                var blended = (alpha * stretched[x, y] + (255 - alpha) * orig.R) / 255;
                 var finalValue = (byte)Math.Clamp(blended, 0, 255);
 
                 if (finalValue != orig.R)
@@ -1279,7 +1361,6 @@ public class Processor
 
     private static bool LazifyNormalMap(Bitmap bmp, byte[,] stretched, int alpha, int width, int height)
     {
-        // Build 3×3 tiled heightmap for seamless Sobel normal generation
         var expW = width * 3;
         var expH = height * 3;
         var expHmap = new byte[expW, expH];
@@ -1290,7 +1371,6 @@ public class Processor
                     for (var x = 0; x < width; x++)
                         expHmap[tx * width + x, ty * height + y] = stretched[x, y];
 
-        // Sobel normal generation over the tiled image
         var expNormals = new (byte r, byte g)[expW, expH];
 
         for (var y = 1; y < expH - 1; y++)
@@ -1316,13 +1396,11 @@ public class Processor
             }
         }
 
-        // Crop centre tile
         var genNormals = new (byte r, byte g)[width, height];
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
                 genNormals[x, y] = expNormals[width + x, height + y];
 
-        // Calculate original intensity
         double origIntensitySum = 0;
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
@@ -1332,7 +1410,6 @@ public class Processor
             }
         double originalIntensity = origIntensitySum / (width * height);
 
-        // Blend generated normals with original (40% linear + 60% overlay)
         var blended = new (byte r, byte g)[width, height];
         for (var y = 0; y < height; y++)
         {
@@ -1362,7 +1439,6 @@ public class Processor
             }
         }
 
-        // Normalise back to original intensity
         double blendedIntensitySum = 0;
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
@@ -1395,7 +1471,6 @@ public class Processor
         return wroteBack;
     }
 
-    // Shared edge-padding helper
     private static Color[,] ApplyEdgePadding(Bitmap bitmap)
     {
         var width = bitmap.Width;
@@ -1446,8 +1521,6 @@ public class Processor
         return result;
     }
 
-    // ── Roughness ─────────────────────────────────────────────────────────────
-
     private static bool ApplyRoughness(Bitmap bmp)
     {
         const double MetalnessModificationFraction = 0.33;
@@ -1461,7 +1534,6 @@ public class Processor
 
         bool isIncreasing = controlValue > 0;
         int absControl = Math.Abs(controlValue);
-
         var width = bmp.Width;
         var height = bmp.Height;
         var wroteBack = false;
@@ -1473,7 +1545,6 @@ public class Processor
                 var orig = bmp.GetPixel(x, y);
                 int origRoughness = orig.B;
                 int origMetalness = orig.R;
-
                 int newRoughness, newMetalness;
 
                 if (isIncreasing)
@@ -1482,25 +1553,20 @@ public class Processor
                     var curveAggression = BasePower + (absControl / 25.0) * 1.5;
                     var inverseFactor = 1.0 - Math.Pow(normalized, curveAggression);
                     var maxBoost = absControl * ImpactMultiplier + (absControl / 12.0) * HighControlScaling;
-                    var boost = maxBoost * inverseFactor;
 
-                    newRoughness = Math.Clamp((int)Math.Floor(origRoughness + boost), 0, 255);
+                    newRoughness = Math.Clamp((int)Math.Floor(origRoughness + maxBoost * inverseFactor), 0, 255);
 
-                    if (origMetalness > 0)
-                    {
-                        var metalnessReduction = (newRoughness - origRoughness) * MetalnessModificationFraction;
-                        newMetalness = Math.Clamp((int)Math.Floor(origMetalness - metalnessReduction), 0, 255);
-                    }
-                    else newMetalness = origMetalness;
+                    newMetalness = origMetalness > 0
+                        ? Math.Clamp((int)Math.Floor(origMetalness - (newRoughness - origRoughness) * MetalnessModificationFraction), 0, 255)
+                        : origMetalness;
                 }
                 else
                 {
                     var metalnessInfluence = origMetalness > 0 ? origMetalness / 255.0 : 0.0;
                     var roughnessNormalized = origRoughness / 255.0;
                     var curveAggression = BasePower + (absControl / 5.0) * 1.5;
-                    var factor = Math.Pow(roughnessNormalized, curveAggression);
                     var maxReduction = absControl * ImpactMultiplier + (absControl / 5.0) * HighControlScaling;
-                    var baseReduction = maxReduction * factor;
+                    var baseReduction = maxReduction * Math.Pow(roughnessNormalized, curveAggression);
                     var metalnessBonus = maxReduction * metalnessInfluence * MetalnessInfluenceOnRoughnessReduction;
 
                     newRoughness = Math.Clamp((int)Math.Ceiling(origRoughness - (baseReduction + metalnessBonus)), 0, 255);
@@ -1510,8 +1576,7 @@ public class Processor
                         var posCurveAggression = BasePower + (absControl / 25.0) * 1.5;
                         var invFactor = 1.0 - Math.Pow(roughnessNormalized, posCurveAggression);
                         var hypoMaxBoost = absControl * ImpactMultiplier + (absControl / 12.0) * HighControlScaling;
-                        var metalnessIncrease = hypoMaxBoost * invFactor * MetalnessModificationFraction;
-                        newMetalness = Math.Clamp((int)Math.Ceiling(origMetalness + metalnessIncrease), 0, 255);
+                        newMetalness = Math.Clamp((int)Math.Ceiling(origMetalness + hypoMaxBoost * invFactor * MetalnessModificationFraction), 0, 255);
                     }
                     else newMetalness = origMetalness;
                 }
@@ -1527,13 +1592,6 @@ public class Processor
         return wroteBack;
     }
 
-    // ── Material grain ────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Applies per-pixel noise to a MER bitmap.
-    /// The noise cache is shared across the call-site so that texture variants
-    /// (e.g. _on / _off) receive the same noise pattern as their siblings.
-    /// </summary>
     private static bool ApplyMaterialGrain(
         Bitmap bmp,
         string? sourceFilePath,
@@ -1548,13 +1606,10 @@ public class Processor
         var width = bmp.Width;
         var height = bmp.Height;
 
-        // Animated texture (flipbook) detection
         var isAnimated = height >= width * 2 && width > 0 && height % width == 0;
-        var frameHeight = width;
+        var frameHeight = isAnimated ? width : height;
         var frameCount = isAnimated ? height / width : 1;
-        if (!isAnimated) frameHeight = height;
 
-        // Cache key — uses the base filename (variant-stripped) + dimensions
         var baseFilename = sourceFilePath != null
             ? GetBaseFilename(sourceFilePath)
             : $"virtual_{width}x{frameHeight}";
@@ -1624,7 +1679,6 @@ public class Processor
                     var newG = g + (int)Math.Round(greenFN * greenEff);
                     var newB = b + (int)Math.Round(blueFN * blueEff);
 
-                    // Anti-clipping: discard if would clip
                     if (newR < 0 || newR > 255) newR = r;
                     if (newG < 0 || newG > 255) newG = g;
                     if (newB < 0 || newB > 255) newB = b;
@@ -1658,9 +1712,8 @@ public class Processor
             var baseParts = new List<string>();
             foreach (var part in parts)
             {
-                var isVariant = variantSuffixes.Any(s =>
-                    part.Equals(s, StringComparison.OrdinalIgnoreCase));
-                if (!isVariant) baseParts.Add(part);
+                if (!variantSuffixes.Any(s => part.Equals(s, StringComparison.OrdinalIgnoreCase)))
+                    baseParts.Add(part);
             }
 
             return string.Join("_", baseParts);
