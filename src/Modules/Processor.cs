@@ -20,24 +20,21 @@ public static class ProcessorVariables
     public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
 }
 
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  PackContextFile  ──  per-pack tuning state written to __vanillartxtuner_context
 // ══════════════════════════════════════════════════════════════════════════════
 
 public static class PackContextFile
 {
-    private const string FileName = "__vanillartxtuner_context";
-    private const string AmbientKey = "hasambientlighting";
+    private const string FileName = "__vanillartxapp_tuner_context";
+    private const string AmbientKey = "PreviouslyTunedWithAmbientLightingToggle";
 
     public sealed class PackContext
     {
         public bool HadAmbientLighting { get; set; }
     }
 
-    /// <summary>
-    /// Reads the context file from the pack root.
-    /// Returns a default (all-false) context if the file is absent or malformed.
-    /// </summary>
     public static PackContext Read(string packRoot)
     {
         var ctx = new PackContext();
@@ -48,16 +45,11 @@ public static class PackContextFile
 
         try
         {
-            foreach (var raw in File.ReadAllLines(path))
-            {
-                var line = raw.Trim();
-                if (line.StartsWith(AmbientKey, StringComparison.OrdinalIgnoreCase))
-                {
-                    var parts = line.Split(':');
-                    if (parts.Length >= 2 && int.TryParse(parts[1].Trim(), out var v))
-                        ctx.HadAmbientLighting = v != 0;
-                }
-            }
+            var keys = File.ReadAllLines(path)
+                          .Select(l => l.Trim())
+                          .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            ctx.HadAmbientLighting = keys.Contains(AmbientKey);
         }
         catch (Exception ex)
         {
@@ -67,24 +59,18 @@ public static class PackContextFile
         return ctx;
     }
 
-    /// <summary>
-    /// Writes (or updates) the context file in the pack root.
-    /// Only creates the file if at least one tracked flag is true.
-    /// </summary>
     public static void Write(string packRoot, PackContext ctx)
     {
         var path = Path.Combine(packRoot, FileName);
 
-        // If nothing interesting to record, and file doesn't exist yet, skip it.
         if (!ctx.HadAmbientLighting && !File.Exists(path))
             return;
 
         try
         {
-            var lines = new List<string>
-            {
-                $"{AmbientKey}:{(ctx.HadAmbientLighting ? 1 : 0)}"
-            };
+            var lines = new List<string>();
+            if (ctx.HadAmbientLighting) lines.Add(AmbientKey);
+
             File.WriteAllLines(path, lines);
         }
         catch (Exception ex)
@@ -1110,7 +1096,9 @@ public class Processor
         var height = bmp.Height;
         var wroteBack = false;
 
-        if (!skipMultiplierPass && userMult != 1.0)
+        // If user mult under 1.0, always run, if higher, skip multiplier pass becomes relevant, it must be false for it to run.
+        // The bool is determined elsewhere in the code via PackContext
+        if (userMult < 1.0 || (!skipMultiplierPass && userMult > 1.0))
         {
             var maxGreen = 0;
             for (var y = 0; y < height; y++)
