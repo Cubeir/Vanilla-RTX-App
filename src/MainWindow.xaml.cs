@@ -405,6 +405,7 @@ public sealed partial class MainWindow : Window
 
         // Things to do after mainwindow is initialized
         this.Activated += MainWindow_Activated;
+        this.Activated += MainWindow_FocusOpacity;
     }
 
     private async void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
@@ -512,6 +513,17 @@ public sealed partial class MainWindow : Window
     }
 
 
+    private void MainWindow_FocusOpacity(object sender, WindowActivatedEventArgs e)
+    {
+        var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
+        var opacity = isFocused ? 1.0 : 0.5;
+
+        ChatButton.Opacity = opacity;
+        HelpButton.Opacity = opacity;
+        DonateButton.Opacity = opacity;
+        CycleThemeButton.Opacity = opacity;
+    }
+
     #region Main Window properties and essential components used throughout the app
     private void SetMainWindowProperties()
     {
@@ -537,6 +549,7 @@ public sealed partial class MainWindow : Window
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");
         appWindow.SetTaskbarIcon(iconPath);
         appWindow.SetTitleBarIcon(iconPath);
+
 
         // Watches theme changes and adjusts based on theme
         // use only for stuff that can be altered before mainwindow initlization
