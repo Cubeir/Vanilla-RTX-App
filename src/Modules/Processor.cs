@@ -798,14 +798,17 @@ public class Processor
         stopwatch.Stop();
         return BuildTuningCompletionMessage(packs.Length, stopwatch.Elapsed);
     }
+
+
     private static string BuildTuningCompletionMessage(int packCount, TimeSpan elapsed)
     {
         if (packCount == 0) return "No packs were processed.";
 
+        var verb = Random.Shared.NextDouble() < 0.5 ? "Completed" : "Finished";
         var duration = FormatDuration(elapsed);
         return packCount == 1
-            ? $"Completed tuning. ({duration})"
-            : $"Completed tuning {packCount} packs. ({duration})";
+            ? $"{verb} tuning. ({duration})"
+            : $"{verb} tuning {packCount} packs. ({duration})";
 
         static string FormatDuration(TimeSpan elapsed)
         {
@@ -814,7 +817,10 @@ public class Processor
             int seconds = totalSeconds % 60;
 
             if (minutes == 0)
+            {
+                if (totalSeconds < 1) return "Under a second!";
                 return $"{seconds} second{(seconds == 1 ? "" : "s")}";
+            }
 
             var minutePart = $"{minutes} minute{(minutes == 1 ? "" : "s")}";
             return seconds == 0
