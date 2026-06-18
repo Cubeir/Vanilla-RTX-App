@@ -40,25 +40,6 @@ namespace Vanilla_RTX_App;
 
 - Safeguard loss of default RTX  files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
--- For the feature below, MAKE SURE pack selector allows selection of incompatible packs as well so deleting them is easier!!
-delete parent dir of json all the way up to wherever resource_packs or dev_resource packs, u know what u mean just cant type it all out
-anyway
-anyway
-hopefully no issues with other features if selection of incompatible packs gets allowed... just gotta remove the part that disables the panels that show em
-keeping the incompatible badge though... maybe write a warning when an inc pack is selected?
-u had some ideas before with transferring vv or rtx flags or something
-it was related to alchitex
-now's the time if u wanna refine it and do it, rework the pack browser, or something
-
-This is time, expand it to "select other packs"
-Allow selection of several packs in an array
-Update tune and export and clear selection buttons to work with the multi-selection
-Multiple packs can be selected by holding CTRL
-Multiple packs can be tuned or exported alongside the 3 primary vrtx packs
-
-Or later deleted to exported
-settle all before going after BELOW
-
 - Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
 the two new buttons are to appear next to export
 Tune selection | Export selection | Import Selection | Delete Selection
@@ -72,14 +53,16 @@ others just say Export, Import, Delete
 
 see what u can do, its a cool idea.
 
+- Vanilla RTX Update window triggers a Relocation of Vanilla RTX packs
+The actual question is, WHY DOES RE-LOCATING Vanilla RTX in general packs reset the array of custom packs?????
+Check the semantics, remove that line!!! HUH?!
+
 - Consider the redesign, pic on discord, its simple but a very good change probably
 rip out the legacy checkboxes for selecting default Vanilla RTX packs
+would wanna do the idea of dynamically resizing the action buttons near tune selection, but give you MIGHT do this redesign down the line, it is NOT worth the effort yet.
+until the ideas are more concrete 
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there! 
-
-- Add a new third, smaller button on the right side of Export button, make it a square, small
-It is IMPORT button, no text maybe, just a import icon
-it allows u to import .mcpacks and .zips!!! very good, because minecraft gkd is a fuck
 
 - Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
 watchya doing?
@@ -87,10 +70,6 @@ watchya doing?
 - Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
 Some overrides now disable it while they should not.
-
-- Vanilla RTX Update window triggers a Relocation of Vanilla RTX packs
-Vitasl question is, WHY DOES RE-LOCATING Vanilla RTX packs resets the array of custom packs???
-Check the semantics, remove that line!!! HUH?!
 
 - Unify the 4 places hardcoded paths are used into a class
 pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
@@ -213,8 +192,7 @@ A variable is getting constantly updated with new logs, a worker in main UI thre
 Or simple pixel arts you'd like to make in the same style
 Have 5-10 made
 
-- Tuner could, in theory, use the MANIFEST.JSON's metadata (i.e. TOOLS USED param) to MARK packs
-e.g. you can preserve their tuning histories there, embed it into the manifest, like for ambient lighting toggle
+- Make holding shift turn the lamp Green to indicate its debugging functionality
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
