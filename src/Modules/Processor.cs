@@ -624,7 +624,7 @@ public class Processor
             new("Vanilla RTX Opus",    VanillaRTXOpusLocation,    IsOpusEnabled),
         };
 
-        foreach (var (location, name, type) in TunerVariables.SelectedPacks)
+        foreach (var (location, name, type, _) in TunerVariables.SelectedPacks)
         {
             if (type == "Incompatible") continue;
             packList.Add(new PackInfo(name, location, !string.IsNullOrEmpty(location)));

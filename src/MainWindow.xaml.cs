@@ -40,6 +40,8 @@ namespace Vanilla_RTX_App;
 
 - Safeguard loss of default RTX  files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
+- resolve all compiler warnings and test one by one, hunt through them with claude! make it fast
+
 - Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
 the two new buttons are to appear next to export
 Tune selection | Export selection | Import Selection | Delete Selection
@@ -71,16 +73,7 @@ watchya doing?
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
 Some overrides now disable it while they should not.
 
-- Unify the 4 places hardcoded paths are used into a class
-pack updater, pack locator, pack browser, launcher, they deal with hardcoded paths, what else? (Ask copilot to scry the code)
-
-For finding the game, GDKLocator kit handles it system-wide, all good
-**For Minecraft's USER DATA however, you better expose those, apparently some third party launchers direc to different paths!!!**
-
-Have a class of sorts, ask to locate game files manually IF it can't be located automatically. maybe maybe
-
-
-For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
+- For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
 Actually don't expose anything, the overhead and the risk, instead, make them globally-available constants that can easily be changed
 so in the event of Minecraft files restructuing, you can quickly release an update without having to do much testing, make the code clear, basically
 This Applies to this older todo below as well:
@@ -211,8 +204,7 @@ public static class TunerVariables
     public static string VanillaRTXOpusVersion = string.Empty;
     // We already know names of Vanilla RTX packs so we get version instead, for custom pack, name's enough.
     // We invalidate the retrieved name whenever we want to disable processing of the custom pack, so it has multiple purposes
-    public static ObservableCollection<(string Location, string Name, string Type)> SelectedPacks = new();
-
+    public static ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> SelectedPacks = new();
 
     // Tied to checkboxes
     public static bool IsVanillaRTXEnabled = false;
@@ -1908,7 +1900,7 @@ public sealed partial class MainWindow : Window
                 exportQueue.Add((VanillaRTXOpusLocation, "Vanilla_RTX_Opus_" + VanillaRTXOpusVersion + suffix));
 
             // ── All selected custom packs ─────────────────────────────────────────
-            foreach (var (location, name, _) in TunerVariables.SelectedPacks)
+            foreach (var (location, name, _, _) in TunerVariables.SelectedPacks)
             {
                 if (!string.IsNullOrEmpty(name) && Directory.Exists(location))
                     exportQueue.Add((location, SanitizeFileName(name) + suffix));
@@ -1972,6 +1964,9 @@ public sealed partial class MainWindow : Window
     }
 
 
+    // TODO: Add a timestap, and the completed tuning message to say how many packs were actually tuned
+    // beaware of the dupe paths being sanitized .. maybe the completion message, including timestap tag, should be built BY tuner, and returned here
+    // don't complicate things here...
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))

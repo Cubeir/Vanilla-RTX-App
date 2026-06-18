@@ -15,28 +15,6 @@ using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
-/*
-// Implement the "potentially suitable for alchitex" tag, there are more consierations to this, incomaptible packs have to be able to accept more than 1 tag...!
-// and you have to keep it nice where it is already used, dont mess it up
-// and required or null? the last fieldS!
-
-New ideas to implement:
-
-Currently there are 3 "RTX", "VV", and "Incompatible" tags, need a FOURTH, BLUE rgb(17, 66, 112) tag added called "Potentially suitable for Alchitex"
-
-this tag is bestowed by a special class, this special class's job is determining if the pack is potentially suitable for alchitext or not.
-
-how so?
-
-looks into the directory of the resource pack, if there is a textures/blocks folder that is non - empty and contains at least 10 .png, .jpg, .jpeg, or.tga in total, its a a simple rule, will expand on later, for now this is enough
-this tag can appear only next to Incompatible
-
-CAN NOT appear next to RTX and VV, a pack is either RTX, or VV.
-
-*/
-
-
-
 
 public sealed partial class PackBrowserWindow : Window
 {
@@ -52,6 +30,13 @@ public sealed partial class PackBrowserWindow : Window
     private readonly HashSet<string> _selectedPaths = new();
 
     public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+
+    /// <summary>
+    /// Capability-tag label for packs flagged by <see cref="AlchitexSuitabilityScanner"/>.
+    /// Used both when building the tag list and as the matching switch case in
+    /// <see cref="BuildTagBadge"/>, so the two can never drift out of sync.
+    /// </summary>
+    private const string AlchitexCandidateTag = "Potential Alchitex Candidate";
 
     // ════════════════════════════════════════════════════════════════════════
     //  Constructor
@@ -397,6 +382,10 @@ public sealed partial class PackBrowserWindow : Window
                 text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 75, 0));
                 break;
+            case AlchitexCandidateTag:
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 0, 53, 102));
+                break;
             default:
                 text.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
                 badge.Background = new SolidColorBrush(Microsoft.UI.Colors.Black);
@@ -437,8 +426,9 @@ public sealed partial class PackBrowserWindow : Window
     /// <summary>
     /// Writes the toggled packs to <see cref="TunerVariables.SelectedPacks"/> and closes.
     /// If nothing is toggled the window closes without modifying SelectedPacks.
-    /// Each entry is a (Location, Name, Type) tuple where Type is "RTX",
-    /// "Vibrant Visuals", or "Incompatible".
+    /// Each entry is a (Location, Name, Type, IsAlchitexCandidate) tuple where Type is
+    /// "RTX", "Vibrant Visuals", or "Incompatible", and IsAlchitexCandidate is only
+    /// ever true for "Incompatible" packs that passed the Alchitex suitability scan.
     /// </summary>
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
     {
@@ -449,7 +439,7 @@ public sealed partial class PackBrowserWindow : Window
             foreach (var path in _selectedPaths.Where(p => _packButtonMap.ContainsKey(p)))
             {
                 var pack = (PackData)_packButtonMap[path].Tag;
-                TunerVariables.SelectedPacks.Add((pack.PackPath, pack.PackName, pack.PackType));
+                TunerVariables.SelectedPacks.Add((pack.PackPath, pack.PackName, pack.PackType, pack.PotentiallySuitableForPBRGen));
             }
         }
 
@@ -537,6 +527,11 @@ public sealed partial class PackBrowserWindow : Window
         // PackType is the primary/most-significant tag: RTX > Vibrant Visuals > Incompatible
         var packType = "Incompatible";
 
+        // Optional, orthogonal to PackType — only ever set for "Incompatible" packs.
+        // Kept separate from PackType/CapabilityTags' driving logic so existing
+        // PackType-based decisions elsewhere in the app are completely unaffected.
+        var potentiallySuitableForPbrGen = false;
+
         var capabilities = root["capabilities"];
         if (capabilities != null && capabilities.Type == JTokenType.Array)
         {
@@ -563,7 +558,19 @@ public sealed partial class PackBrowserWindow : Window
         }
 
         if (packType == "Incompatible")
+        {
+            // Being Incompatible is a prerequisite for the Alchitex check — RTX and
+            // Vibrant Visuals packs never reach this branch, so the tag can never
+            // appear alongside theirs. Added before "Incompatible" so its badge
+            // renders to the left of the Incompatible badge.
+            if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
+            {
+                potentiallySuitableForPbrGen = true;
+                capabilityTags.Add(AlchitexCandidateTag);
+            }
+
             capabilityTags.Add("Incompatible");
+        }
 
         // ── Name / description ───────────────────────────────────────────────
         var header = root["header"];
@@ -596,7 +603,8 @@ public sealed partial class PackBrowserWindow : Window
             PackPath = packDir,
             Icon = await LoadIconAsync(packDir),
             CapabilityTags = capabilityTags,
-            PackType = packType   // "RTX", "Vibrant Visuals", or "Incompatible"
+            PackType = packType,   // "RTX", "Vibrant Visuals", or "Incompatible"
+            PotentiallySuitableForPBRGen = potentiallySuitableForPbrGen
         };
     }
 
@@ -685,6 +693,80 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Alchitex PBR-generation suitability scanning
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Determines whether an "Incompatible" pack has enough texture material under
+    /// any textures/blocks hierarchy to be worth flagging as a potential candidate
+    /// for Alchitex PBR texture generation. Intentionally a simple, fast rule —
+    /// counts qualifying image files and bails out the moment the threshold is
+    /// exceeded, so it stays cheap even for large packs.
+    /// </summary>
+    private static class AlchitexSuitabilityScanner
+    {
+        /// <summary>
+        /// Minimum number of qualifying image files required, across all
+        /// textures/blocks directories combined, for a pack to be considered
+        /// potentially suitable for Alchitex PBR texture generation.
+        /// </summary>
+        private const int MinimumQualifyingImageCount = 16;
+
+        private static readonly HashSet<string> QualifyingExtensions =
+            new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".tga" };
+
+        public static bool IsPotentiallySuitable(string packDir)
+        {
+            int matchCount = 0;
+
+            try
+            {
+                foreach (var filePath in Directory.EnumerateFiles(packDir, "*", SearchOption.AllDirectories))
+                {
+                    if (!QualifyingExtensions.Contains(Path.GetExtension(filePath)))
+                        continue;
+
+                    if (!IsUnderTexturesBlocksPath(filePath))
+                        continue;
+
+                    matchCount++;
+                    if (matchCount >= MinimumQualifyingImageCount)
+                        return true; // threshold met — no need to keep scanning
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"Error scanning {packDir} for Alchitex suitability: {ex.Message}");
+                return false;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// True if the file's containing directory has a "textures" segment
+        /// immediately followed by a "blocks" segment anywhere in its path
+        /// (e.g. .../textures/blocks, .../sub/textures/blocks/variant1).
+        /// Compares whole path segments rather than substrings, so something
+        /// like "nontextures/blocksy" can't accidentally match.
+        /// </summary>
+        private static bool IsUnderTexturesBlocksPath(string filePath)
+        {
+            var dir = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrEmpty(dir)) return false;
+
+            var segments = dir.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            for (int i = 0; i < segments.Length - 1; i++)
+            {
+                if (segments[i].Equals("textures", StringComparison.OrdinalIgnoreCase) &&
+                    segments[i + 1].Equals("blocks", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Private data model
     // ════════════════════════════════════════════════════════════════════════
 
@@ -700,5 +782,14 @@ public sealed partial class PackBrowserWindow : Window
         /// Drives sort order and the Type field written to TunerVariables.SelectedPacks.
         /// </summary>
         public required string PackType { get; set; }
+
+        /// <summary>
+        /// True if this pack's textures/blocks hierarchy contains enough qualifying
+        /// image files to be considered a potential Alchitex PBR-generation
+        /// candidate. Only ever set to true for "Incompatible" packs — being
+        /// Incompatible is a prerequisite. Optional; defaults to false and has no
+        /// effect on existing PackType-based logic elsewhere in the app.
+        /// </summary>
+        public bool PotentiallySuitableForPBRGen { get; set; } = false;
     }
 }
