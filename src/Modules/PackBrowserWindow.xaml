@@ -114,105 +114,113 @@
                 <!-- ══════════════════════════════════════════
                      BOTTOM ACTION BAR — Confirm | Import
                 ═══════════════════════════════════════════ -->
-                <Grid Grid.Row="2"
-                      Padding="20,4,20,-4">
-                    <Grid.ColumnDefinitions>
-                        <!-- Confirm  60 % -->
-                        <ColumnDefinition Width="1.5*" />
-                        <!-- Gap       6 px -->
-                        <ColumnDefinition Width="6" />
-                        <!-- Import   40 % -->
-                        <ColumnDefinition Width="1*" />
-                    </Grid.ColumnDefinitions>
+                <!-- Bottom Action Bar Shadow Host -->
+                <Border x:Name="ActionBarShadowHost"
+                        Grid.Row="2"
+                        Margin="20,5,20,16"
+                        CornerRadius="5,5,0,0"
+                        BorderThickness="0"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
 
-                    <!-- ── CONFIRM SELECTION ──────────────────── -->
-                    <Button x:Name="ConfirmButton"
-                            Grid.Column="0"
-                            Click="ConfirmButton_Click"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Stretch"
-                            MinHeight="100"
-                            BorderThickness="0"
-                            CornerRadius="5,0,0,0"
-                            IsTextScaleFactorEnabled="False">
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Spacing="12">
-                            <FontIcon Glyph="&#xE8FB;"
-                                      FontSize="20"
-                                      VerticalAlignment="Center"
-                                      IsTextScaleFactorEnabled="False" />
-                            <TextBlock Text="Confirm selection"
-                                       FontWeight="SemiBold"
-                                       FontSize="14"
-                                       VerticalAlignment="Center"
-                                       IsTextScaleFactorEnabled="False" />
-                        </StackPanel>
-                    </Button>
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
 
-                    <!-- ── IMPORT MORE RESOURCE PACKS ────────── -->
-                    <Button x:Name="AddPackButton"
-                            Grid.Column="2"
-                            Click="AddPackButton_Click"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            HorizontalContentAlignment="Center"
-                            MinHeight="100"
-                            CornerRadius="0,5,0,0"
-                            BorderThickness="0"
-                            IsTextScaleFactorEnabled="False">
-                        <StackPanel HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Spacing="4">
-                            <!-- Top row: glyph + title, mirrors Confirm's layout -->
+                    <Grid Padding="0,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <!-- Confirm  60 % -->
+                            <ColumnDefinition Width="1.5*" />
+                            <!-- Gap       6 px -->
+                            <ColumnDefinition Width="6" />
+                            <!-- Import   40 % -->
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- ── CONFIRM SELECTION ──────────────────── -->
+                        <Button x:Name="ConfirmButton"
+                                Grid.Column="0"
+                                Click="ConfirmButton_Click"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                MinHeight="100"
+                                BorderThickness="0"
+                                CornerRadius="5,0,0,5"
+                                IsTextScaleFactorEnabled="False">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
                                         Spacing="12">
-                                <FontIcon Glyph="&#xE896;"
+                                <FontIcon Glyph="&#xE8FB;"
                                           FontSize="20"
                                           VerticalAlignment="Center"
                                           IsTextScaleFactorEnabled="False" />
-                                <TextBlock Text="Import more resource packs"
+                                <TextBlock Text="Confirm selection"
                                            FontWeight="SemiBold"
                                            FontSize="14"
                                            VerticalAlignment="Center"
                                            IsTextScaleFactorEnabled="False" />
                             </StackPanel>
-                            <!-- Description line below -->
-                            <TextBlock x:Name="AddPackDescriptionText"
-                                       FontSize="12"
-                                       Opacity="0.67"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"
-                                       IsTextScaleFactorEnabled="False" />
-                        </StackPanel>
-                    </Button>
+                        </Button>
 
-                    <!-- ── BEVELLED SPLIT SEAM ────────────────── -->
-                    <!-- Dark border on the RIGHT edge of Confirm -->
-                    <Grid Grid.Column="0"
-                          HorizontalAlignment="Right"
-                          Width="3"
-                          Margin="0,0,-3,0"
-                          IsHitTestVisible="False">
-                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                        <Border BorderBrush="{StaticResource FakeSplitButtonDarkBorderColor}"
-                                BorderThickness="3,0,0,0" />
-                    </Grid>
+                        <!-- ── IMPORT MORE RESOURCE PACKS ────────── -->
+                        <Button x:Name="AddPackButton"
+                                Grid.Column="2"
+                                Click="AddPackButton_Click"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                MinHeight="100"
+                                CornerRadius="0,5,5,0"
+                                BorderThickness="0"
+                                IsTextScaleFactorEnabled="False">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Spacing="4">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Spacing="12">
+                                    <FontIcon Glyph="&#xE896;"
+                                              FontSize="20"
+                                              VerticalAlignment="Center"
+                                              IsTextScaleFactorEnabled="False" />
+                                    <TextBlock Text="Import more resource packs"
+                                               FontWeight="SemiBold"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                                <TextBlock x:Name="AddPackDescriptionText"
+                                           FontSize="12"
+                                           Opacity="0.67"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                        </Button>
 
-                    <!-- Bright border on the LEFT edge of Import -->
-                    <Grid Grid.Column="2"
-                          HorizontalAlignment="Left"
-                          Width="3"
-                          Margin="-3,0,0,0"
-                          IsHitTestVisible="False">
-                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                        <Border BorderBrush="{StaticResource FakeSplitButtonBrightBorderColor}"
-                                BorderThickness="3,0,0,0" />
+                        <!-- ── BEVELLED SPLIT SEAM ────────────────── -->
+                        <Grid Grid.Column="0"
+                              HorizontalAlignment="Right"
+                              Width="3"
+                              Margin="0,0,-3,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{StaticResource FakeSplitButtonDarkBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
+
+                        <Grid Grid.Column="2"
+                              HorizontalAlignment="Left"
+                              Width="3"
+                              Margin="-3,0,0,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{StaticResource FakeSplitButtonBrightBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
                     </Grid>
-                </Grid>
+                </Border>
 
             </Grid>
         </Grid>

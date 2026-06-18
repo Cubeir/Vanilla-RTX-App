@@ -359,7 +359,7 @@
                                   Margin="0,0,8,0"
                                   VerticalAlignment="Center" />
                         <TextBlock x:Name="BrowsePacksButtonText"
-                                   Text="Select other packs"
+                                   Text="{x:Bind PackVM.BrowseButtonLabel, Mode=OneWay}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>

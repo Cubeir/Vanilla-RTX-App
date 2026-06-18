@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -68,6 +71,9 @@ OR DONT do that, only tune has the "selection" but
 others just say Export, Import, Delete
 
 see what u can do, its a cool idea.
+
+- Consider the redesign, pic on discord, its simple but a very good change probably
+rip out the legacy checkboxes for selecting default Vanilla RTX packs
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there! 
 
@@ -227,7 +233,7 @@ public static class TunerVariables
     public static string VanillaRTXOpusVersion = string.Empty;
     // We already know names of Vanilla RTX packs so we get version instead, for custom pack, name's enough.
     // We invalidate the retrieved name whenever we want to disable processing of the custom pack, so it has multiple purposes
-    public static List<(string Location, string Name, string Type)> SelectedPacks = new();
+    public static ObservableCollection<(string Location, string Name, string Type)> SelectedPacks = new();
 
 
     // Tied to checkboxes
@@ -309,6 +315,39 @@ public static class TunerVariables
     }
 }
 
+public class PackSelectionViewModel : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher
+        = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+    public PackSelectionViewModel()
+    {
+        TunerVariables.SelectedPacks.CollectionChanged += OnSelectedPacksChanged;
+    }
+
+    private void OnSelectedPacksChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _dispatcher.TryEnqueue(() =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BrowseButtonLabel))));
+    }
+
+    public string BrowseButtonLabel
+    {
+        get
+        {
+            int count = TunerVariables.SelectedPacks.Count;
+            return count switch
+            {
+                0 => "Select other packs",
+                1 => "Selected 1 other pack",
+                _ => $"Selected {count} other packs"
+            };
+        }
+    }
+}
+
 // ---------------------------------------\                /-------------------------------------------- \\
 
 public sealed partial class MainWindow : Window
@@ -323,6 +362,8 @@ public sealed partial class MainWindow : Window
 
     private LampAnimator? _titlebarLampAnimator;
     private LampAnimator? _splashLampAnimator;
+    public PackSelectionViewModel PackVM { get; } = new PackSelectionViewModel();
+
     private async void InitializeLampAnimators()
     {
         // Titlebar lamp

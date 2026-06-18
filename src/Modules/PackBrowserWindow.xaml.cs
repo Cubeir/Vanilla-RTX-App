@@ -7,7 +7,6 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json.Linq;
@@ -16,6 +15,28 @@ using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
+/*
+// Implement the "potentially suitable for alchitex" tag, there are more consierations to this, incomaptible packs have to be able to accept more than 1 tag...!
+// and you have to keep it nice where it is already used, dont mess it up
+// and required or null? the last fieldS!
+
+New ideas to implement:
+
+Currently there are 3 "RTX", "VV", and "Incompatible" tags, need a FOURTH, BLUE rgb(17, 66, 112) tag added called "Potentially suitable for Alchitex"
+
+this tag is bestowed by a special class, this special class's job is determining if the pack is potentially suitable for alchitext or not.
+
+how so?
+
+looks into the directory of the resource pack, if there is a textures/blocks folder that is non - empty and contains at least 10 .png, .jpg, .jpeg, or.tga in total, its a a simple rule, will expand on later, for now this is enough
+this tag can appear only next to Incompatible
+
+CAN NOT appear next to RTX and VV, a pack is either RTX, or VV.
+
+*/
+
+
+
 
 public sealed partial class PackBrowserWindow : Window
 {
@@ -103,13 +124,16 @@ public sealed partial class PackBrowserWindow : Window
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             SetTitleBarDragRegion);
 
-        WindowTitle.Text = $"Select {gameTitleText} resource packs";
+        WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
 
         // Populate the import button description now that gameTitleText is known
         AddPackDescriptionText.Text =
             $"Select or drag & drop .mcpack or .zip files of your resource packs here to import them to {gameTitleText}";
 
         PopulatePackBrowserAnnouncements();
+
+        ActionBarShadowHost.Translation = new System.Numerics.Vector3(0, 0, 32);
+
         await LoadPacksAsync();
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
@@ -419,14 +443,13 @@ public sealed partial class PackBrowserWindow : Window
     {
         if (_selectedPaths.Count > 0)
         {
-            TunerVariables.SelectedPacks = _selectedPaths
-                .Where(path => _packButtonMap.ContainsKey(path))
-                .Select(path =>
-                {
-                    var pack = (PackData)_packButtonMap[path].Tag;
-                    return (pack.PackPath, pack.PackName, pack.PackType);
-                })
-                .ToList();
+            TunerVariables.SelectedPacks.Clear();
+
+            foreach (var path in _selectedPaths.Where(p => _packButtonMap.ContainsKey(p)))
+            {
+                var pack = (PackData)_packButtonMap[path].Tag;
+                TunerVariables.SelectedPacks.Add((pack.PackPath, pack.PackName, pack.PackType));
+            }
         }
 
         this.Close();
