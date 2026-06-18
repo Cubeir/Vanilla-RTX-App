@@ -273,8 +273,8 @@ public static class TunerVariables
     }
 
     // Set Window size default for all windows
-    public const int WindowSizeX = 1115;
-    public const int WindowSizeY = 615;
+    public const int WindowSizeX = 1150;
+    public const int WindowSizeY = 640;
     public const int WindowMinSizeX = 950;
     public const int WindowMinSizeY = 615;
 
@@ -315,6 +315,7 @@ public static class TunerVariables
     }
 }
 
+// For dynamically updating number of other selected packs in the UI
 public class PackSelectionViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;

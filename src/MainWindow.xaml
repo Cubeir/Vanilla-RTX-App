@@ -327,7 +327,7 @@
                 Margin="16,52,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Stretch"
-                Height="40"
+                Height="42"
                 Translation="0,0,32"
                 CornerRadius="6">
             <Border.Shadow>
@@ -1019,7 +1019,7 @@
                 <Border x:Name="TuneAndExportShadowHost"
                         Grid.Row="2"
                         Margin="16,0,24,0"
-                        Height="45"
+                        Height="43"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Top"
                         Translation="0,0,32"
@@ -1032,7 +1032,7 @@
 
                 <Grid Grid.Row="2"
                       Margin="16,0,24,0"
-                      Height="45"
+                      Height="43"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Top"
                       BorderThickness="0">
@@ -1042,9 +1042,9 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1*" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="0.3*" />
+                        <ColumnDefinition Width="0.33*" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="50" />
+                        <ColumnDefinition Width="44" />
                     </Grid.ColumnDefinitions>
 
                     <!-- Tune Button -->
