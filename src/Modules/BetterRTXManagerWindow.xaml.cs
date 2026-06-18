@@ -519,7 +519,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     private async Task ContinueInitializationWithPath(string minecraftPath)
     {
-        _gameMaterialsPath = Path.Combine(minecraftPath, "Content", "data", "renderer", "materials");
+        _gameMaterialsPath = Path.Combine(minecraftPath, "data", "renderer", "materials");
 
         // Verify materials folder exists
         if (!Directory.Exists(_gameMaterialsPath))

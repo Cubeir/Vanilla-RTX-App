@@ -212,7 +212,7 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private async Task ContinueInitializationWithPath(string minecraftPath)
     {
-        _gameDllPath = Path.Combine(minecraftPath, "Content", "nvngx_dlss.dll");
+        _gameDllPath = Path.Combine(minecraftPath, "nvngx_dlss.dll");
 
         // Establish cache folder
         _cacheFolder = EstablishCacheFolder();

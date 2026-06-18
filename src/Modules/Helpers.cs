@@ -133,7 +133,6 @@ public static class Helpers
             var width = bitmap.Width;
             var height = bitmap.Height;
 
-            // Write TGA file format manually for absolute control
             using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
             using var writer = new BinaryWriter(fs);
             // TGA
@@ -488,6 +487,19 @@ public static class RuntimeFlags
 /// <summary>
 /// Provides tools for locating Minecraft (Bedrock) and Minecraft Preview installations.
 /// Handles caching, validation, system-wide searching, and manual selection.
+///
+/// Contract: every path returned or cached by this class is the PHYSICAL directory
+/// containing Minecraft.Windows.exe — i.e. the Content subfolder of the install root.
+/// Callers reference files as Path.Combine(installPath, "filename") directly.
+/// No symlinks or junctions are ever stored — all paths are resolved to physical targets.
+///
+/// Location flow:
+///   Phase 1 (startup, fast):
+///     Cache check → Stage 0: PackageManager → Stage 1: Common locations
+///   Phase 2 (async, slow):
+///     System-wide recursive search across all fixed drives
+///   Phase 3 (manual):
+///     User picks Minecraft.Windows.exe — directory is validated and cached
 /// </summary>
 public static class MinecraftGDKLocator
 {
@@ -496,17 +508,21 @@ public static class MinecraftGDKLocator
     private const string MinecraftExecutableName = "Minecraft.Windows.exe";
     private const int MaxSearchDepth = 9;
 
-    // WindowsApps symlink prefixes, points to GDK Minecraft's actual location
-    private static readonly string WindowsAppsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "WindowsApps");
-    private const string MinecraftStablePrefix = "MICROSOFT.MINECRAFTUWP_";
-    private const string MinecraftPreviewPrefix = "Microsoft.MinecraftWindowsBeta_";
+    // Package family names — stable post-GDK (1.21.120+)
+    private const string MinecraftStablePackageFamilyName = "Microsoft.MinecraftUWP_8wekyb3d8bbwe";
+    private const string MinecraftPreviewPackageFamilyName = "Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe";
 
     private static readonly HashSet<string> FoldersToSkip = new(StringComparer.OrdinalIgnoreCase)
     {
         "Windows", "System32", "WinSxS", "$Recycle.Bin", "ProgramData",
         "AppData", "Recovery", "System Volume Information", "Config.Msi",
-        "Windows.old", "PerfLogs", "Temp", "tmp"
+        "Windows.old", "PerfLogs", "Temp", "tmp", "Program Files (x86)",
+        "MSOCache", "OneDriveTemp"
     };
+
+    // -------------------------------------------------------------------------
+    // PUBLIC API
+    // -------------------------------------------------------------------------
 
     /// <summary>
     /// PHASE 1: Quick validation of cached paths and common locations.
@@ -517,14 +533,12 @@ public static class MinecraftGDKLocator
     {
         Trace.WriteLine("=== PHASE 1: Quick Validation Starting ===");
 
-        // Validate Minecraft (stable)
         ValidateAndUpdateSingleInstallation(
             isPreview: false,
             cachedPath: TunerVariables.Persistent.MinecraftInstallPath,
             updateCache: (path) => TunerVariables.Persistent.MinecraftInstallPath = path
         );
 
-        // Validate Minecraft Preview
         ValidateAndUpdateSingleInstallation(
             isPreview: true,
             cachedPath: TunerVariables.Persistent.MinecraftPreviewInstallPath,
@@ -536,7 +550,8 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Quick re-validation of a cached path before use.
-    /// Called by windows before trusting the cache.
+    /// Called by feature windows before trusting the cache.
+    /// Also detects and evicts stale symlink paths so they get re-resolved.
     /// </summary>
     public static bool RevalidateCachedPath(string? cachedPath)
     {
@@ -549,9 +564,18 @@ public static class MinecraftGDKLocator
             return false;
         }
 
-        if (!IsValidMinecraftPath(cachedPath))
+        if (!IsValidExecutableDirectory(cachedPath))
         {
             Trace.WriteLine($"⚠ Cached path no longer valid: {cachedPath}");
+            return false;
+        }
+
+        // Evict if the cached path is still a symlink — force re-discovery
+        // so the physical path gets written to cache instead.
+        var resolved = ResolveToPhysicalPath(cachedPath);
+        if (!resolved.Equals(cachedPath, StringComparison.OrdinalIgnoreCase))
+        {
+            Trace.WriteLine($"⚠ Cached path is a symlink — evicting so physical path gets cached: {resolved}");
             return false;
         }
 
@@ -561,7 +585,8 @@ public static class MinecraftGDKLocator
     /// <summary>
     /// PHASE 2: Deep system-wide search for Minecraft installation.
     /// Only searches for the version the user is targeting.
-    /// Can be cancelled by user initiating manual selection.
+    /// Can be cancelled when the user initiates manual selection.
+    /// Returns the physical directory containing Minecraft.Windows.exe.
     /// </summary>
     public static async Task<string?> SearchForMinecraftAsync(bool searchForPreview, CancellationToken cancellationToken)
     {
@@ -587,27 +612,21 @@ public static class MinecraftGDKLocator
 
                 Trace.WriteLine($"Scanning drive: {drive.Name}");
 
-                // Priority search: Check high-probability locations first
-                var priorityPaths = new[]
-                {
-                    Path.Combine(drive.Name, "XboxGames", targetFolderName),
-                    Path.Combine(drive.Name, "Program Files", "Microsoft Games", targetFolderName)
-                };
-
-                foreach (var priorityPath in priorityPaths)
+                // Priority pass: check high-probability locations on this drive first
+                foreach (var priorityPath in GetCommonLocations(searchForPreview, drive))
                 {
                     if (cancellationToken.IsCancellationRequested)
                         return null;
 
-                    if (IsValidMinecraftPath(priorityPath))
+                    if (IsValidExecutableDirectory(priorityPath))
                     {
-                        Trace.WriteLine($"✓ Found target at priority location: {priorityPath}");
+                        Trace.WriteLine($"✓ Found at priority location: {priorityPath}");
                         CacheInstallation(searchForPreview, priorityPath);
                         return priorityPath;
                     }
                 }
 
-                // Deep recursive search
+                // Deep recursive search of this drive
                 var foundPath = await RecursiveSearchAsync(
                     drive.Name,
                     targetFolderName,
@@ -617,7 +636,7 @@ public static class MinecraftGDKLocator
 
                 if (foundPath != null)
                 {
-                    Trace.WriteLine($"✓ Found target via deep search: {foundPath}");
+                    Trace.WriteLine($"✓ Found via deep search: {foundPath}");
                     CacheInstallation(searchForPreview, foundPath);
                     return foundPath;
                 }
@@ -634,8 +653,9 @@ public static class MinecraftGDKLocator
     }
 
     /// <summary>
-    /// PHASE 3: Manual folder selection with validation.
-    /// User must select the correct Minecraft root folder (where Content/Minecraft.Windows.exe exists).
+    /// PHASE 3: Manual selection — user picks Minecraft.Windows.exe directly.
+    /// This is the clearest possible UX: no ambiguity about which folder to pick.
+    /// Returns the physical directory containing the selected executable.
     /// </summary>
     public static async Task<string?> LocateMinecraftManuallyAsync(bool isPreview, IntPtr windowHandle)
     {
@@ -643,68 +663,62 @@ public static class MinecraftGDKLocator
 
         try
         {
-            var picker = new FolderPicker
+            var picker = new FileOpenPicker
             {
                 SuggestedStartLocation = PickerLocationId.ComputerFolder,
                 ViewMode = PickerViewMode.List
             };
-            picker.FileTypeFilter.Add("*");
+            picker.FileTypeFilter.Add(".exe");
 
             InitializeWithWindow.Initialize(picker, windowHandle);
 
-            var folder = await picker.PickSingleFolderAsync();
+            var file = await picker.PickSingleFileAsync();
 
-            if (folder == null)
+            if (file == null)
             {
-                Trace.WriteLine("✗ User cancelled folder selection");
+                Trace.WriteLine("✗ User cancelled file selection");
                 return null;
             }
 
-            Trace.WriteLine($"User selected: {folder.Path}");
+            Trace.WriteLine($"User selected: {file.Path}");
 
-            var expectedFolderName = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
+            // Must be the correct executable
+            if (!file.Name.Equals(MinecraftExecutableName, StringComparison.OrdinalIgnoreCase))
+            {
+                Trace.WriteLine($"✗ Selected file is not {MinecraftExecutableName}: {file.Name}");
+                return null;
+            }
+
+            var exeDirectory = Path.GetDirectoryName(file.Path);
+            if (string.IsNullOrEmpty(exeDirectory))
+            {
+                Trace.WriteLine("✗ Could not determine directory from selected file");
+                return null;
+            }
+
+            // Resolve symlinks — user may have navigated via a junction in Explorer
+            var resolvedDirectory = ResolveToPhysicalPath(exeDirectory);
+            Trace.WriteLine($"  Resolved exe directory: {exeDirectory} → {resolvedDirectory}");
+
+            // Confirm the exe actually exists at the resolved path
+            if (!IsValidExecutableDirectory(resolvedDirectory))
+            {
+                Trace.WriteLine("✗ Resolved directory does not contain a valid Minecraft installation");
+                return null;
+            }
+
+            // Verify the correct edition by checking the install root name (parent of Content)
             var unexpectedFolderName = isPreview ? MinecraftFolderName : MinecraftPreviewFolderName;
-            var selectedFolderName = Path.GetFileName(folder.Path);
-
-            // Check if user selected the wrong version
-            if (selectedFolderName.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
+            var installRoot = Directory.GetParent(resolvedDirectory)?.Name ?? string.Empty;
+            if (installRoot.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
             {
-                Trace.WriteLine($"✗ User selected wrong version: {selectedFolderName}");
+                Trace.WriteLine($"✗ Selected wrong version — install root is: {installRoot}");
                 return null;
             }
 
-            string pathToValidate = folder.Path;
-
-            // Handle if user selected the "Content" subfolder instead of root
-            if (selectedFolderName.Equals("Content", StringComparison.OrdinalIgnoreCase))
-            {
-                var parentPath = Directory.GetParent(folder.Path)?.FullName;
-                if (parentPath != null)
-                {
-                    Trace.WriteLine("User selected Content folder, checking parent");
-                    pathToValidate = parentPath;
-                }
-            }
-
-            // Validate the path
-            if (IsValidMinecraftPath(pathToValidate))
-            {
-                var finalFolderName = Path.GetFileName(pathToValidate);
-                var isUnexpectedVersion = finalFolderName.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase);
-
-                if (isUnexpectedVersion)
-                {
-                    Trace.WriteLine($"✗ Path valid but wrong version: {finalFolderName}");
-                    return null;
-                }
-
-                Trace.WriteLine($"✓ Valid installation selected: {pathToValidate}");
-                CacheInstallation(isPreview, pathToValidate);
-                return pathToValidate;
-            }
-
-            Trace.WriteLine($"✗ Selected folder is not valid Minecraft installation");
-            return null;
+            Trace.WriteLine($"✓ Valid installation selected: {resolvedDirectory}");
+            CacheInstallation(isPreview, resolvedDirectory);
+            return resolvedDirectory;
         }
         catch (Exception ex)
         {
@@ -713,11 +727,35 @@ public static class MinecraftGDKLocator
         }
     }
 
-    #region Private Helper Methods
+    /// <summary>
+    /// Returns common installation locations for a given drive (or all fixed drives).
+    /// Returns the Content subdirectory directly — the directory where the exe lives.
+    /// Covers Xbox App installs (XboxGames\...) and direct installs (Program Files\Microsoft Games\...).
+    /// </summary>
+    public static IEnumerable<string> GetCommonLocations(bool isPreview, DriveInfo? onlyDrive = null)
+    {
+        var folder = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
+
+        var drives = onlyDrive != null
+            ? new[] { onlyDrive }
+            : DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed);
+
+        foreach (var drive in drives)
+        {
+            var root = drive.RootDirectory.FullName;
+            yield return Path.Combine(root, "XboxGames", folder, "Content");
+            yield return Path.Combine(root, "Program Files", "Microsoft Games", folder, "Content");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // PRIVATE HELPERS
+    // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Validates a single installation (stable or preview) and updates cache.
-    /// Follows search priority: cached path -> common locations -> WindowsApps symlinks.
+    /// Core Phase 1 logic for a single edition.
+    /// Order: cache check → Stage 0 PackageManager → Stage 1 common locations.
+    /// Symlink resolution is applied at every point a path is accepted.
     /// </summary>
     private static void ValidateAndUpdateSingleInstallation(
         bool isPreview,
@@ -727,15 +765,26 @@ public static class MinecraftGDKLocator
         var versionName = isPreview ? "Preview" : "Stable";
         Trace.WriteLine($"Validating {versionName} Minecraft...");
 
-        // Check cached path first
+        // Cache check
         if (!string.IsNullOrEmpty(cachedPath))
         {
             Trace.WriteLine($"  Cached path: {cachedPath}");
 
-            if (Directory.Exists(cachedPath) && IsValidMinecraftPath(cachedPath))
+            if (Directory.Exists(cachedPath) && IsValidExecutableDirectory(cachedPath))
             {
-                Trace.WriteLine($"  ✓ Cache valid for {versionName}");
-                return;
+                // Resolve symlinks in the cached path — if the cache was written
+                // before this fix existed it may hold a junction path.
+                var resolved = ResolveToPhysicalPath(cachedPath);
+                if (!resolved.Equals(cachedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    Trace.WriteLine($"  ✓ Cache was a symlink — re-caching physical path: {resolved}");
+                    updateCache(resolved);
+                }
+                else
+                {
+                    Trace.WriteLine($"  ✓ Cache valid for {versionName}");
+                }
+                return; // Physical path is now in cache either way
             }
 
             Trace.WriteLine($"  ✗ Cache invalid for {versionName}, clearing");
@@ -746,13 +795,20 @@ public static class MinecraftGDKLocator
             Trace.WriteLine($"  No cached path for {versionName}");
         }
 
-        // STAGE 1: Try common locations (highest success rate)
-        var commonLocations = GetCommonLocations(isPreview);
-        foreach (var location in commonLocations)
+        // STAGE 0: PackageManager — authoritative OS query, instant
+        var packagePath = TryGetInstallPathFromPackageManager(isPreview);
+        if (packagePath != null)
+        {
+            Trace.WriteLine($"  ✓ Found {versionName} via PackageManager: {packagePath}");
+            updateCache(packagePath);
+            return;
+        }
+
+        // STAGE 1: Common locations across all drives
+        foreach (var location in GetCommonLocations(isPreview))
         {
             Trace.WriteLine($"  Checking common location: {location}");
-
-            if (Directory.Exists(location) && IsValidMinecraftPath(location))
+            if (IsValidExecutableDirectory(location))
             {
                 Trace.WriteLine($"  ✓ Found {versionName} at common location: {location}");
                 updateCache(location);
@@ -760,194 +816,109 @@ public static class MinecraftGDKLocator
             }
         }
 
-        // STAGE 2: Try WindowsApps symlinks as last resort (may fail due to permissions)
-        Trace.WriteLine($"  Common locations failed, trying WindowsApps symlinks...");
-        var symlinkPath = TryResolveWindowsAppsSymlink(isPreview);
-        if (symlinkPath != null)
-        {
-            Trace.WriteLine($"  ✓ Found {versionName} via WindowsApps symlink: {symlinkPath}");
-            updateCache(symlinkPath);
-            return;
-        }
-
         Trace.WriteLine($"  ✗ {versionName} not found in Phase 1");
     }
 
     /// <summary>
-    /// STAGE 2: Resolve WindowsApps symlinks to get actual installation path.
-    /// This is a last resort as the folder requires elevated permissions.
+    /// STAGE 0: Query PackageManager for the game's registered install location.
+    /// PackageManager returns the WindowsApps junction — resolved to the physical
+    /// Content directory (where Minecraft.Windows.exe lives) before returning.
     /// </summary>
-    private static string? TryResolveWindowsAppsSymlink(bool isPreview)
+    private static string? TryGetInstallPathFromPackageManager(bool isPreview)
     {
         try
         {
-            if (!Directory.Exists(WindowsAppsPath))
+            var familyName = isPreview ? MinecraftPreviewPackageFamilyName : MinecraftStablePackageFamilyName;
+            Trace.WriteLine($"  Querying PackageManager for: {familyName}");
+
+            var packageManager = new Windows.Management.Deployment.PackageManager();
+            var packages = packageManager.FindPackagesForUser(string.Empty, familyName);
+
+            foreach (var package in packages)
             {
-                Trace.WriteLine($"  WindowsApps directory not found: {WindowsAppsPath}");
-                return null;
-            }
+                var installLocation = package.InstalledLocation?.Path;
+                if (string.IsNullOrEmpty(installLocation))
+                    continue;
 
-            var prefix = isPreview ? MinecraftPreviewPrefix : MinecraftStablePrefix;
-            Trace.WriteLine($"  Searching WindowsApps for: {prefix}*");
+                Trace.WriteLine($"  PackageManager returned: {installLocation}");
 
-            var directories = Directory.GetDirectories(WindowsAppsPath, $"{prefix}*");
+                // Resolve the junction — this gives us the physical Content directory
+                var resolvedLocation = ResolveToPhysicalPath(installLocation);
+                Trace.WriteLine($"  Resolved to physical path: {resolvedLocation}");
 
-            foreach (var dir in directories)
-            {
-                Trace.WriteLine($"  Found WindowsApps entry: {dir}");
-
-                try
+                if (IsValidExecutableDirectory(resolvedLocation))
                 {
-                    // Check if it's a symlink/junction
-                    var dirInfo = new DirectoryInfo(dir);
-                    var linkTarget = dirInfo.LinkTarget;
-
-                    if (!string.IsNullOrEmpty(linkTarget))
-                    {
-                        Trace.WriteLine($"  Symlink target: {linkTarget}");
-
-                        if (IsValidMinecraftPath(linkTarget))
-                        {
-                            Trace.WriteLine($"  ✓ Symlink resolves to valid Minecraft installation");
-                            return linkTarget;
-                        }
-                    }
-                    else
-                    {
-                        // Not a symlink, might be actual install location
-                        if (IsValidMinecraftPath(dir))
-                        {
-                            Trace.WriteLine($"  ✓ WindowsApps entry is valid installation");
-                            return dir;
-                        }
-                    }
+                    Trace.WriteLine($"  ✓ Executable found at resolved path");
+                    return resolvedLocation;
                 }
-                catch (Exception ex)
+
+                // If the junction pointed one level up (install root rather than Content),
+                // step into Content and check there.
+                var contentSubdir = Path.Combine(resolvedLocation, "Content");
+                if (IsValidExecutableDirectory(contentSubdir))
                 {
-                    Trace.WriteLine($"  Error resolving symlink {dir}: {ex.Message}");
+                    Trace.WriteLine($"  ✓ Executable found in Content subdir: {contentSubdir}");
+                    return contentSubdir;
                 }
             }
 
-            Trace.WriteLine($"  ✗ No valid WindowsApps entry found for {prefix}");
+            Trace.WriteLine($"  PackageManager: no valid install found for {familyName}");
             return null;
         }
-        catch (UnauthorizedAccessException)
+        catch (UnauthorizedAccessException ex)
         {
-            Trace.WriteLine($"  ✗ Access denied to WindowsApps (expected on most systems)");
+            Trace.WriteLine($"  PackageManager access denied: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"  ✗ Error accessing WindowsApps: {ex.Message}");
+            Trace.WriteLine($"  PackageManager query failed: {ex.Message}");
             return null;
         }
     }
 
     /// <summary>
-    /// Validates if a path contains a valid Minecraft installation.
-    /// Checks for Content/Minecraft.Windows.exe
+    /// Resolves a path to its physical target, following symlinks/junctions to the end.
+    /// Returns the original path unchanged if it is not a link or resolution fails.
+    /// Safe to call on any path — non-links are a no-op.
     /// </summary>
-    private static bool IsValidMinecraftPath(string path)
+    private static string ResolveToPhysicalPath(string path)
+    {
+        try
+        {
+            // returnFinalTarget: true follows the full chain, not just one hop
+            var resolved = Directory.ResolveLinkTarget(path, returnFinalTarget: true)?.FullName;
+            if (!string.IsNullOrEmpty(resolved) && Directory.Exists(resolved))
+            {
+                Trace.WriteLine($"  Symlink resolved: {path} → {resolved}");
+                return resolved;
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"  ResolveLinkTarget failed for {path}: {ex.Message}");
+        }
+
+        // Not a symlink or resolution failed — original path is already physical
+        return path;
+    }
+
+    /// <summary>
+    /// Returns true if the directory exists and directly contains Minecraft.Windows.exe.
+    /// This is the canonical validity check — the contract path always satisfies this.
+    /// </summary>
+    private static bool IsValidExecutableDirectory(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
             return false;
 
-        return FindMinecraftExecutable(path) != null;
-    }
-    /// <summary>
-    /// Recursively searches for Minecraft.Windows.exe (case-insensitive).
-    /// Searches top-level folders first for speed.
-    /// </summary>
-    private static string? FindMinecraftExecutable(string rootPath, int maxDepth = 3)
-    {
-        try
-        {
-            // Check root first
-            var files = Directory.GetFiles(rootPath, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
-            if (files.Length > 0)
-                return files[0];
-
-            // BFS approach: check all immediate subdirectories first (Content folder priority)
-            var immediateSubdirs = Directory.GetDirectories(rootPath);
-            foreach (var subdir in immediateSubdirs)
-            {
-                var subdirName = Path.GetFileName(subdir);
-                if (subdirName.Equals("Content", StringComparison.OrdinalIgnoreCase))
-                {
-                    files = Directory.GetFiles(subdir, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
-                    if (files.Length > 0)
-                        return files[0];
-                }
-            }
-
-            // Then check other immediate subdirectories
-            foreach (var subdir in immediateSubdirs)
-            {
-                var subdirName = Path.GetFileName(subdir);
-                if (!subdirName.Equals("Content", StringComparison.OrdinalIgnoreCase))
-                {
-                    files = Directory.GetFiles(subdir, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
-                    if (files.Length > 0)
-                        return files[0];
-                }
-            }
-
-            // Finally, deeper recursive search (limited depth)
-            return RecursiveFindExecutable(rootPath, 0, maxDepth);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string? RecursiveFindExecutable(string path, int currentDepth, int maxDepth)
-    {
-        if (currentDepth >= maxDepth)
-            return null;
-
-        try
-        {
-            var subdirs = Directory.GetDirectories(path);
-            foreach (var subdir in subdirs)
-            {
-                var files = Directory.GetFiles(subdir, MinecraftExecutableName, SearchOption.TopDirectoryOnly);
-                if (files.Length > 0)
-                    return files[0];
-
-                var found = RecursiveFindExecutable(subdir, currentDepth + 1, maxDepth);
-                if (found != null)
-                    return found;
-            }
-        }
-        catch { }
-
-        return null;
+        return File.Exists(Path.Combine(path, MinecraftExecutableName));
     }
 
     /// <summary>
-    /// Returns array of common installation locations.
-    /// STAGE 1 search targets - highest probability locations.
-    /// </summary>
-    public static string[] GetCommonLocations(bool isPreview)
-    {
-        var folder = isPreview ? MinecraftPreviewFolderName : MinecraftFolderName;
-        var programFilesRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)) ?? "C:\\";
-
-        var list = DriveInfo.GetDrives()
-            .Where(d => d.DriveType == DriveType.Fixed)
-            .Select(d => Path.Combine(d.RootDirectory.FullName, "XboxGames", folder))
-            .ToList();
-
-        list.Add(Path.Combine(programFilesRoot, "Program Files", "Microsoft Games", folder));
-        return list.ToArray();
-    }
-
-
-    /// <summary>
-    /// Recursively searches a directory tree for Minecraft installation.
-    /// Limited to MaxSearchDepth levels to prevent excessive scanning.
-    /// Can be cancelled via CancellationToken.
+    /// Recursively searches a directory tree for the Minecraft install folder by name,
+    /// then returns its Content subdirectory (where the exe lives).
+    /// Used in Phase 2 only. Respects FoldersToSkip and CancellationToken.
     /// </summary>
     private static async Task<string?> RecursiveSearchAsync(
         string searchPath,
@@ -960,23 +931,18 @@ public static class MinecraftGDKLocator
 
         try
         {
-            var currentFolderName = Path.GetFileName(searchPath);
-            if (currentFolderName.Equals(targetFolderName, StringComparison.OrdinalIgnoreCase))
+            // If this folder is the install root, return its Content subdirectory
+            if (Path.GetFileName(searchPath).Equals(targetFolderName, StringComparison.OrdinalIgnoreCase))
             {
-                if (IsValidMinecraftPath(searchPath))
-                    return searchPath;
+                var contentPath = Path.Combine(searchPath, "Content");
+                if (IsValidExecutableDirectory(contentPath))
+                    return contentPath;
             }
 
             var subdirectories = await Task.Run(() =>
             {
-                try
-                {
-                    return Directory.GetDirectories(searchPath);
-                }
-                catch
-                {
-                    return Array.Empty<string>();
-                }
+                try { return Directory.GetDirectories(searchPath); }
+                catch { return Array.Empty<string>(); }
             }, cancellationToken);
 
             foreach (var subdir in subdirectories)
@@ -984,28 +950,22 @@ public static class MinecraftGDKLocator
                 if (cancellationToken.IsCancellationRequested)
                     return null;
 
-                var subdirName = Path.GetFileName(subdir);
-                if (FoldersToSkip.Contains(subdirName))
+                if (FoldersToSkip.Contains(Path.GetFileName(subdir)))
                     continue;
 
                 var result = await RecursiveSearchAsync(subdir, targetFolderName, currentDepth + 1, cancellationToken);
                 if (result != null)
                     return result;
             }
-
-            return null;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"Error searching {searchPath}: {ex.Message}");
-            return null;
         }
+
+        return null;
     }
 
-    /// <summary>
-    /// Caches a discovered installation path to persistent storage.
-    /// Stores as string for serialization compatibility.
-    /// </summary>
     private static void CacheInstallation(bool isPreview, string path)
     {
         if (isPreview)
@@ -1019,6 +979,5 @@ public static class MinecraftGDKLocator
             Trace.WriteLine($"✓ Cached Stable installation: {path}");
         }
     }
-
-    #endregion
 }
+

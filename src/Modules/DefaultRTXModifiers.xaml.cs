@@ -67,9 +67,9 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     // Destination path helpers  (always derived fresh from _minecraftRoot)
     // -------------------------------------------------------------------------
 
-    private string DstLut => Path.Combine(_minecraftRoot, "Content", "data", "ray_tracing", FnLut);
-    private string DstSky => Path.Combine(_minecraftRoot, "Content", "data", "ray_tracing", FnSky);
-    private string DstWater => Path.Combine(_minecraftRoot, "Content", "data", "ray_tracing", FnWater);
+    private string DstLut => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnLut);
+    private string DstSky => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnSky);
+    private string DstWater => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnWater);
 
     // Default preset sources live in LocalAppData\Lut_Defaults
     private string DefaultLut => Path.Combine(_defaultsFolder, FnLut);
