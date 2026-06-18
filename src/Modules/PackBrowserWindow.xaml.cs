@@ -50,6 +50,7 @@ public sealed partial class PackBrowserWindow : Window
 
     // Tracks which packs are currently toggled ON.
     private readonly HashSet<string> _selectedPaths = new();
+
     public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
 
     // ════════════════════════════════════════════════════════════════════════
@@ -599,7 +600,7 @@ public sealed partial class PackBrowserWindow : Window
         };
     }
 
-    private async Task<Dictionary<string, string>> TryLoadLangFileAsync(string langFolder)
+    private async Task<Dictionary<string, string>?> TryLoadLangFileAsync(string langFolder)
     {
         if (!Directory.Exists(langFolder)) return null;
 
@@ -634,10 +635,10 @@ public sealed partial class PackBrowserWindow : Window
         return null;
     }
 
-    private async Task<BitmapImage> LoadIconAsync(string packDir)
+    private async Task<BitmapImage?> LoadIconAsync(string packDir)
     {
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
-            .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg" or ".tga")
+            .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg")
             .ToArray();
 
         foreach (var iconPath in iconFiles)
@@ -669,7 +670,7 @@ public sealed partial class PackBrowserWindow : Window
     /// Recursively finds the selection-overlay Border (Tag = "SelectionOverlay")
     /// within a button's visual tree.
     /// </summary>
-    private static Border FindSelectionOverlay(DependencyObject parent)
+    private static Border? FindSelectionOverlay(DependencyObject parent)
     {
         var count = VisualTreeHelper.GetChildrenCount(parent);
         for (int i = 0; i < count; i++)
@@ -689,15 +690,15 @@ public sealed partial class PackBrowserWindow : Window
 
     private class PackData
     {
-        public string PackName { get; set; }
-        public string PackDescription { get; set; }
-        public string PackPath { get; set; }
-        public BitmapImage Icon { get; set; }
-        public List<string> CapabilityTags { get; set; }
+        public required string PackName { get; set; }
+        public required string PackDescription { get; set; }
+        public required string PackPath { get; set; }
+        public BitmapImage? Icon { get; set; }
+        public required List<string> CapabilityTags { get; set; }
         /// <summary>
         /// Primary type string: "RTX", "Vibrant Visuals", or "Incompatible".
         /// Drives sort order and the Type field written to TunerVariables.SelectedPacks.
         /// </summary>
-        public string PackType { get; set; }
+        public required string PackType { get; set; }
     }
 }
