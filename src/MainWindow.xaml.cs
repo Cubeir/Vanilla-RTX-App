@@ -1996,8 +1996,8 @@ public sealed partial class MainWindow : Window
                 _ = BlinkingLamp(true);
                 ToggleControls(this, false);
 
-                await Task.Run(Processor.TuneSelectedPacks);
-                Log("Completed tuning.", LogLevel.Success);
+                var tuningMessage = await Task.Run(Processor.TuneSelectedPacks);
+                Log(tuningMessage, LogLevel.Success);
             }
         }
         finally

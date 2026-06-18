@@ -607,8 +607,9 @@ public class Processor
         }
     }
 
-    public static void TuneSelectedPacks()
+    public static string TuneSelectedPacks()
     {
+        var stopwatch = Stopwatch.StartNew();
         static string NormalizePath(string path)
         {
             if (string.IsNullOrEmpty(path)) return string.Empty;
@@ -793,7 +794,35 @@ public class Processor
             packCtx.HadAmbientLighting = packCtx.HadAmbientLighting || AddEmissivityAmbientLight;
             PackContextFile.Write(pack.Path, packCtx);
         }
+
+        stopwatch.Stop();
+        return BuildTuningCompletionMessage(packs.Length, stopwatch.Elapsed);
     }
+    private static string BuildTuningCompletionMessage(int packCount, TimeSpan elapsed)
+    {
+        if (packCount == 0) return "No packs were processed.";
+
+        var duration = FormatDuration(elapsed);
+        return packCount == 1
+            ? $"Completed tuning. ({duration})"
+            : $"Completed tuning {packCount} packs. ({duration})";
+
+        static string FormatDuration(TimeSpan elapsed)
+        {
+            int totalSeconds = (int)Math.Round(elapsed.TotalSeconds);
+            int minutes = totalSeconds / 60;
+            int seconds = totalSeconds % 60;
+
+            if (minutes == 0)
+                return $"{seconds} second{(seconds == 1 ? "" : "s")}";
+
+            var minutePart = $"{minutes} minute{(minutes == 1 ? "" : "s")}";
+            return seconds == 0
+                ? minutePart
+                : $"{minutePart} and {seconds} second{(seconds == 1 ? "" : "s")}";
+        }
+    }
+
 
     // ══════════════════════════════════════════════════════════════════════════
     //  Fog processor  ──  standalone
