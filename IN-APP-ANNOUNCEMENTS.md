@@ -28,7 +28,7 @@ Beginner tip 2: You can come back here to quickly reinstall packs to restore the
 
 
 # BetterRTXAnnouncements
-## another way to give the same warning
+### another way to give the same warning
 Important tip: If your preset list has been auto reset since your last visit, it is a good idea to wait or check from the BetterRTX Discord whether it has been updated or not for the latest game version before installing a preset.
 If you install presets while BetterRTX remains outdated, your game will crash and you should either revert to Default RTX, or if you've made sure BetterRTX is up-to-date, update your game!
 
@@ -37,7 +37,7 @@ The refresh button at the top exists to give you a way to manually refetch the l
 
 # LutManagerAnnouncements
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
-## A less important note
+### A less important note
 This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
 
 # DLSSAnnouncements
@@ -46,6 +46,5 @@ Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3
 
 # ResourcePackSelectionAnnouncements
 ### Text below is a one time thingy, tutorial type of thing!
-Select compatible RTX or Vibrant Visuals resource pack from the list below and begin tuning! You can also export your selected resource packs afterwards.
-Use the clear selection button to undo your selection.
-You can only select one pack at a time to be tuned alongside the 3 primary Vanilla RTX resource packs.
+Select from your resource packs from the list below and begin processing them in bulk! You can also tune, delete, or export them, you can also import packs back into Minecraft right from here.
+Use the clear selection button in the main window to clear your selection.
