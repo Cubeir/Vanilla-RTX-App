@@ -66,74 +66,154 @@
                 <Grid.RowDefinitions>
                     <!-- Announcements (PSA cards, auto-height) -->
                     <RowDefinition Height="Auto" />
-                    <!-- Pack list + fixed top/bottom panes     -->
+                    <!-- Pack list (scrollable)                 -->
                     <RowDefinition Height="*" />
+                    <!-- Bottom action bar (confirm + import)   -->
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- PSA / announcement cards -->
                 <StackPanel x:Name="PackBrowserAnnouncementsPanel"
                             Grid.Row="0"
                             Spacing="12"
-                            Margin="22,8,22,4" />
+                            Margin="22,8,22,8" />
 
                 <!-- Shadow receiver sits behind everything -->
                 <Grid x:Name="ShadowReceiverGrid"
                       Grid.Row="1" />
 
-                <!--
-                    Three-row grid:
-                      Row 0 – "Confirm selection" sticky pane  (top)
-                      Row 1 – Scrollable dynamic pack list
-                      Row 2 – "Add resource pack" sticky pane  (bottom)
-                -->
-                <Grid Grid.Row="1">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+                <!-- PACK LIST (scrollable) -->
+                <ScrollViewer Grid.Row="1"
+                              Padding="20,4,20,0"
+                              IsTextScaleFactorEnabled="False"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="PackListContainer"
+                                Spacing="8"
+                                Padding="0,0,0,8" />
+                </ScrollViewer>
 
-                    <!-- CONFIRM SELECTION (sticky top) -->
-                    <Grid Grid.Row="0"
-                          Padding="20,0,20,4">
-                        <ContentPresenter x:Name="ConfirmButtonPresenter" />
+                <!-- Empty state overlays the scroll area -->
+                <StackPanel x:Name="EmptyStatePanel"
+                            Grid.Row="1"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Visibility="Collapsed"
+                            Spacing="12">
+                    <FontIcon Glyph="&#xE7C3;"
+                              FontSize="48"
+                              IsTextScaleFactorEnabled="False"
+                              Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock x:Name="EmptyStateText"
+                               Text="No packs found"
+                               FontSize="14"
+                               IsTextScaleFactorEnabled="False"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <!-- ══════════════════════════════════════════
+                     BOTTOM ACTION BAR — Confirm | Import
+                ═══════════════════════════════════════════ -->
+                <Grid Grid.Row="2"
+                      Padding="20,4,20,-4">
+                    <Grid.ColumnDefinitions>
+                        <!-- Confirm  60 % -->
+                        <ColumnDefinition Width="1.5*" />
+                        <!-- Gap       6 px -->
+                        <ColumnDefinition Width="6" />
+                        <!-- Import   40 % -->
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ── CONFIRM SELECTION ──────────────────── -->
+                    <Button x:Name="ConfirmButton"
+                            Grid.Column="0"
+                            Click="ConfirmButton_Click"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            MinHeight="100"
+                            BorderThickness="0"
+                            CornerRadius="5,0,0,0"
+                            IsTextScaleFactorEnabled="False">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="12">
+                            <FontIcon Glyph="&#xE8FB;"
+                                      FontSize="20"
+                                      VerticalAlignment="Center"
+                                      IsTextScaleFactorEnabled="False" />
+                            <TextBlock Text="Confirm selection"
+                                       FontWeight="SemiBold"
+                                       FontSize="14"
+                                       VerticalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ── IMPORT MORE RESOURCE PACKS ────────── -->
+                    <Button x:Name="AddPackButton"
+                            Grid.Column="2"
+                            Click="AddPackButton_Click"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            MinHeight="100"
+                            CornerRadius="0,5,0,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False">
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="4">
+                            <!-- Top row: glyph + title, mirrors Confirm's layout -->
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Spacing="12">
+                                <FontIcon Glyph="&#xE896;"
+                                          FontSize="20"
+                                          VerticalAlignment="Center"
+                                          IsTextScaleFactorEnabled="False" />
+                                <TextBlock Text="Import more resource packs"
+                                           FontWeight="SemiBold"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                            <!-- Description line below -->
+                            <TextBlock x:Name="AddPackDescriptionText"
+                                       FontSize="12"
+                                       Opacity="0.67"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- ── BEVELLED SPLIT SEAM ────────────────── -->
+                    <!-- Dark border on the RIGHT edge of Confirm -->
+                    <Grid Grid.Column="0"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{StaticResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
                     </Grid>
 
-                    <!-- PACK LIST (scrollable) -->
-                    <ScrollViewer Grid.Row="1"
-                                  Padding="20,4,20,0"
-                                  IsTextScaleFactorEnabled="False"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel x:Name="PackListContainer"
-                                    Spacing="8"
-                                    Padding="0,0,0,8" />
-                    </ScrollViewer>
-
-                    <!-- Empty state overlays the scroll area -->
-                    <StackPanel x:Name="EmptyStatePanel"
-                                Grid.Row="1"
-                                VerticalAlignment="Center"
-                                HorizontalAlignment="Center"
-                                Visibility="Collapsed"
-                                Spacing="12">
-                        <FontIcon Glyph="&#xE7C3;"
-                                  FontSize="48"
-                                  IsTextScaleFactorEnabled="False"
-                                  Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock x:Name="EmptyStateText"
-                                   Text="No packs found"
-                                   FontSize="14"
-                                   IsTextScaleFactorEnabled="False"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-
-                    <!-- ADD RESOURCE PACK (sticky bottom) -->
-                    <Grid Grid.Row="2"
-                          Padding="20,4,20,12">
-                        <ContentPresenter x:Name="AddPackButtonPresenter" />
+                    <!-- Bright border on the LEFT edge of Import -->
+                    <Grid Grid.Column="2"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{StaticResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0" />
                     </Grid>
                 </Grid>
+
             </Grid>
         </Grid>
     </Grid>

@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json.Linq;
@@ -29,8 +29,7 @@ public sealed partial class PackBrowserWindow : Window
 
     // Tracks which packs are currently toggled ON.
     private readonly HashSet<string> _selectedPaths = new();
-
-    public static string gameTitleText = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+    public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
 
     // ════════════════════════════════════════════════════════════════════════
     //  Constructor
@@ -104,12 +103,13 @@ public sealed partial class PackBrowserWindow : Window
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             SetTitleBarDragRegion);
 
-
         WindowTitle.Text = $"Select {gameTitleText} resource packs";
 
+        // Populate the import button description now that gameTitleText is known
+        AddPackDescriptionText.Text =
+            $"Select or drag & drop .mcpack or .zip files of your resource packs here to import them to {gameTitleText}";
+
         PopulatePackBrowserAnnouncements();
-        BuildConfirmButton();
-        BuildAddPackButton();
         await LoadPacksAsync();
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
@@ -139,149 +139,6 @@ public sealed partial class PackBrowserWindow : Window
         if (items is null) return;
         foreach (var item in items)
             PackBrowserAnnouncementsPanel.Children.Add(new PsaCard(item));
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    //  Sticky panes
-    // ════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// "Confirm selection" — centred glyph + label, pinned to the top of the list area.
-    /// </summary>
-    private void BuildConfirmButton()
-    {
-        var button = new Button
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 14, 16, 14),
-            CornerRadius = new CornerRadius(5),
-            IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32),
-            MinHeight = 62
-        };
-
-        var shadow = new ThemeShadow();
-        button.Shadow = shadow;
-        button.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                shadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        var panel = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Spacing = 12
-        };
-        panel.Children.Add(new FontIcon
-        {
-            Glyph = "\uE8FB",   // Accept
-            FontSize = 20,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        });
-        panel.Children.Add(new TextBlock
-        {
-            Text = "Confirm selection",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            FontSize = 14,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        });
-
-        button.Content = panel;
-        button.Click += ConfirmButton_Click;
-
-        ConfirmButtonPresenter.Content = button;
-    }
-
-    /// <summary>
-    /// "Add a resource pack" — same visual pattern as a pack card, pinned to the bottom.
-    /// </summary>
-    private void BuildAddPackButton()
-    {
-        var button = new Button
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 16, 20),
-            CornerRadius = new CornerRadius(5),
-            IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32),
-            MinHeight = 115
-        };
-
-        var shadow = new ThemeShadow();
-        button.Shadow = shadow;
-        button.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                shadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        // Icon column — upload glyph
-        var iconBorder = new Border
-        {
-            Width = 75,
-            Height = 75,
-            CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(40, 139, 139, 139)),
-            Translation = new System.Numerics.Vector3(0, 0, 16)
-        };
-        iconBorder.Child = new FontIcon
-        {
-            Glyph = "\uE896",   // Upload / import
-            FontSize = 28,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Opacity = 0.75,
-            IsTextScaleFactorEnabled = false
-        };
-
-        var iconShadow = new ThemeShadow();
-        iconBorder.Shadow = iconShadow;
-        iconBorder.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                iconShadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        Grid.SetColumn(iconBorder, 0);
-        grid.Children.Add(iconBorder);
-
-        // Text column
-        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        infoPanel.Children.Add(new TextBlock
-        {
-            Text = "Import more resource packs",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.Wrap,
-            IsTextScaleFactorEnabled = false
-        });
-        infoPanel.Children.Add(new TextBlock
-        {
-            Text = $"Select or drag & drop your .mcpack or .zip files of your resource packs here to import them to {gameTitleText}",
-            FontSize = 12,
-            Opacity = 0.7,
-            Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.Wrap,
-            IsTextScaleFactorEnabled = false
-        });
-        Grid.SetColumn(infoPanel, 2);
-        grid.Children.Add(infoPanel);
-
-        button.Content = grid;
-        button.Click += AddPackButton_Click;
-
-        AddPackButtonPresenter.Content = button;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -424,7 +281,7 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // Selection overlay: semi-transparent black tint + checkmark, hidden by default
+        // Selection overlay: semi-transparent black tint + checkmark, hidden by default.
         var selectionOverlay = new Border
         {
             Width = 75,
@@ -438,7 +295,7 @@ public sealed partial class PackBrowserWindow : Window
         selectionOverlay.Child = new FontIcon
         {
             Glyph = "\uE73E",   // Checkmark
-            FontSize = 28,
+            FontSize = 48,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center

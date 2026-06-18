@@ -1865,6 +1865,10 @@ public sealed partial class MainWindow : Window
 
 
 
+    private void DeleteSelection_Click(object sender, RoutedEventArgs e)
+    {
+        Log("ONE TWO THREE FOUR!", LogLevel.PSA);
+    }
 
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2058,8 +2062,5 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void DeleteSelection_Click(object sender, RoutedEventArgs e)
-    {
 
-    }
 }
