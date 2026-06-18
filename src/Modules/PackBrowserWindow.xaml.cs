@@ -371,20 +371,21 @@ public sealed partial class PackBrowserWindow : Window
         switch (tag)
         {
             case "Incompatible":
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
-                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 7, 0));
+                text.Text = "Incompatible with Tuner";
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 192, 33, 0));
                 break;
             case "RTX":
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
-                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(255, 110, 175, 0));
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 111, 177, 0));
                 break;
             case "Vibrant Visuals":
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
-                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 110, 75, 0));
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 200, 132, 0));
                 break;
             case AlchitexCandidateTag:
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(230, 255, 255, 255));
-                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(230, 0, 53, 102));
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 0, 72, 138));
                 break;
             default:
                 text.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
