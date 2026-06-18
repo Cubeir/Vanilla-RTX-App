@@ -47,6 +47,15 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.9" />
   </ItemGroup>
+<ItemGroup>
+  <TrimmerRootAssembly Include="Newtonsoft.Json" />
+  <TrimmerRootAssembly Include="Magick.NET-Q16-AnyCPU" />
+  <TrimmerRootAssembly Include="Magick.NET.Core" />
+  <TrimmerRootAssembly Include="Magick.NET.SystemDrawing" />
+  <TrimmerRootAssembly Include="Microsoft.Web.WebView2" />
+  <TrimmerRootAssembly Include="Microsoft.Win32.SystemEvents" />
+  <TrimmerRootAssembly Include="System.Drawing.Common" />
+</ItemGroup>
   <ItemGroup>
     <Content Update="Assets\background_grey.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
