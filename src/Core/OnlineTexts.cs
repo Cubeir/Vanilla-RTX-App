@@ -12,6 +12,8 @@ using Vanilla_RTX_App;
 using System.IO;
 using Windows.Storage;
 
+namespace Vanilla_RTX_App.Core;
+
 // =====================================================================================================================
 // PsaKind — Controls dismiss behaviour and button visibility for a PsaItem.
 //
