@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -14,8 +15,6 @@ public class WindowStateManager : IDisposable
 {
     private AppWindow? _appWindow;
     private Window? _window;
-    private Action<string>? _logAction;
-    private readonly bool _enableLogging;
 
     private const int MIN_WINDOW_WIDTH = WindowMinSizeX;
     private const int MIN_WINDOW_HEIGHT = WindowMinSizeY;
@@ -25,11 +24,9 @@ public class WindowStateManager : IDisposable
     private double? _cachedDpiScale;
     private const double DEFAULT_DPI = 96.0;
 
-    public WindowStateManager(Window window, bool enableLogging = false, Action<string>? logAction = null)
+    public WindowStateManager(Window window)
     {
         _window = window ?? throw new ArgumentNullException(nameof(window));
-        _enableLogging = enableLogging;
-        _logAction = logAction;
 
         try
         {
@@ -51,13 +48,8 @@ public class WindowStateManager : IDisposable
         }
     }
 
-    private void Log(string message)
-    {
-        if (_enableLogging && _logAction != null)
-        {
-            _logAction.Invoke($"[WindowStateManager] {message}");
-        }
-    }
+    private static void Log(string message) =>
+        Trace.WriteLine($"[WindowStateManager] {message}");
 
     public void ApplySavedStateOrDefaults(SizeInt32? defaultSize = null, PointInt32? defaultPosition = null)
     {
@@ -93,7 +85,7 @@ public class WindowStateManager : IDisposable
 
             var savedLogicalPosition = new PointInt32(state.X, state.Y);
             var savedPhysicalPosition = LogicalToPhysical(savedLogicalPosition);
-       
+
 
             if (IsPositionOnActiveMonitor(savedPhysicalPosition, sizeToUse))
             {
@@ -457,7 +449,6 @@ public class WindowStateManager : IDisposable
         }
 
         _appWindow = null;
-        _logAction = null;
         _cachedDpiScale = null;
     }
 

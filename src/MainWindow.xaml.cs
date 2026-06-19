@@ -36,6 +36,8 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
+- TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
+
 - ALT Launch Minecraft RTX button: when shift held, instead do this, Put graphics to fancy, disable in-game graphics mode switching, and enable VSync
 
 - Safeguard loss of default RTX  files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
@@ -99,6 +101,8 @@ All settled there? ensure there isn't a way the app can ddos github AND at the s
 >> MAYBE, while at it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
 could be used for launcher too as well as the 3 above
 
+- Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
+Update them to reflect the latest features/changes
 
 - When targeting preview, a new Dev branch on github
 must be used to receieve updates, compare packages, etc...
@@ -115,9 +119,6 @@ Two different code paths!
 Note: keep PBR for entities subtle THORUGHOUT
 At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
 Fallback to asking for a save location if it fails
-
-
-- Tuning is very slow on certain AMD CPUs, there were some reports on Disc
 
 - We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
 
@@ -150,7 +151,7 @@ Investigate, and after all changes, TEST the whole thing again
 locator, manual locator, all steps, on diff drives, deep in subfolders up to 9, on a busy last drive/worst case
 And lastly the CACHE invalidator, will it continue to work well with it (betterrtx cache invalidator)
 
-- Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
+- Tuning is very slow on certain AMD CPUs, there was that report on Disc
 
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
 Especially release builds, There COULD BE LATENT TRIMMING BUGS!
@@ -380,7 +381,7 @@ public sealed partial class MainWindow : Window
         SplashOverlay.Visibility = Visibility.Visible;
         SetTitleBar(TitleBarDragArea);
 
-        _windowStateManager = new WindowStateManager(this, false, msg => Log(msg));
+        _windowStateManager = new WindowStateManager(this);
         _progressManager = new ProgressBarManager(ProgressBar);
 
         Instance = this;
