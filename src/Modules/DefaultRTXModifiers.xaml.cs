@@ -211,7 +211,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
             string minecraftPath = null;
 
-            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
+            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, Persistent.IsTargetingPreview))
             {
                 Trace.WriteLine($"LUTM: Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;

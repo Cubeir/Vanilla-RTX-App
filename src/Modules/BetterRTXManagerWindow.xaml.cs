@@ -248,7 +248,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             string minecraftPath = null;
 
             // Validate cached path
-            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
+            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, Persistent.IsTargetingPreview))
             {
                 Trace.WriteLine($"✓ Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;

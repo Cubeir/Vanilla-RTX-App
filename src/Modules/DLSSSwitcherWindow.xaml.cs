@@ -160,9 +160,8 @@ public sealed partial class DLSSSwitcherWindow : Window
 
             string minecraftPath = null;
 
-            // SAFETY: Re-validate cache before trusting it
-            // Handles edge case where user moved/deleted folder between startup and window opening
-            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath))
+            // Re-validate cache before trusting it, all similar features do this before accessing cached version
+            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, Persistent.IsTargetingPreview))
             {
                 Trace.WriteLine($"✓ Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;
