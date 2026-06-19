@@ -110,9 +110,10 @@ public class PackLocator
                             latestVanillaRTXOpus = (folder, version);
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    results.Add("Malformed manifest.");
+                    System.Diagnostics.Trace.WriteLine($"[PACK_LOCATOR] Parsed a malformed manifest.json, reason:\n{ex.ToString}\nat file: {file}");
+                    results.Add("⚠️ One of (likely third-party) packages had a malformed manifest.");
                 }
             }
 
