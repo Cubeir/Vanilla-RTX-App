@@ -647,23 +647,24 @@ public class PackUpdater
 
         try
         {
-            string basePath = TunerVariables.Persistent.IsTargetingPreview
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock Preview")
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock");
-
-            if (!Directory.Exists(basePath))
+            var dataRoot = MinecraftUserDataLocator.GetDataRoot(TunerVariables.Persistent.IsTargetingPreview);
+            if (!dataRoot.Exists)
             {
-                Trace.WriteLine("❌ Minecraft data root not found. Please make sure the game is installed or has been launched at least once.");
+                Trace.WriteLine($"❌ {dataRoot.VersionDisplayName} data root not found. Please make sure the game is installed or has been launched at least once.");
                 return false;
             }
 
-            resourcePackPath = Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", InstallToDevelopmentFolder ? "development_resource_packs" : "resource_packs");
+            resourcePackPath = InstallToDevelopmentFolder
+                ? MinecraftUserDataLocator.GetDevelopmentResourcePacksPath(TunerVariables.Persistent.IsTargetingPreview, createIfMissing: true)
+                : MinecraftUserDataLocator.GetResourcePacksPath(TunerVariables.Persistent.IsTargetingPreview, createIfMissing: true);
 
-            if (!Directory.Exists(resourcePackPath))
+            if (string.IsNullOrEmpty(resourcePackPath))
             {
-                Directory.CreateDirectory(resourcePackPath);
-                Trace.WriteLine("📁 Shared resources directory was missing and has been created.");
+                Trace.WriteLine("❌ Could not access or create the resource packs directory.");
+                return false;
             }
+
+            Trace.WriteLine("📁 Resource pack directory ready.");
 
             tempExtractionDir = Path.Combine(resourcePackPath, "__rtxapp_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempExtractionDir);

@@ -33,54 +33,32 @@ public class PackLocator
 
         try
         {
-            string basePath, versionName;
-
-            if (isTargetingPreview)
+            var dataRoot = MinecraftUserDataLocator.GetDataRoot(isTargetingPreview);
+            if (!dataRoot.Exists)
             {
-                basePath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "Minecraft Bedrock Preview"
-                );
-                versionName = "Minecraft Preview";
-            }
-            else
-            {
-                basePath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "Minecraft Bedrock"
-                );
-                versionName = "Minecraft";
+                return $"❌ {dataRoot.VersionDisplayName} data folder not found, is the correct version installed?";
             }
 
-            var scanPaths = new[]
-            {
-            Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "resource_packs"),
-            Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "development_resource_packs")
-            };
-
-            var results = new List<string>();
             var allManifestFiles = new List<string>();
 
-            // Collect manifest files from all valid directories
-            foreach (var scanPath in scanPaths)
+            foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(isTargetingPreview))
             {
-                if (Directory.Exists(scanPath))
-                {
-                    allManifestFiles.AddRange(
-                        Directory.GetFiles(scanPath, "manifest.json", SearchOption.AllDirectories)
-                    );
-                }
+                allManifestFiles.AddRange(
+                    Directory.GetFiles(scanPath, "manifest.json", SearchOption.AllDirectories)
+                );
             }
 
             if (allManifestFiles.Count == 0)
             {
-                return $"❌ Resource pack directory not found, is the correct version of {versionName} installed?";
+                return $"❌ Resource pack directory not found, is the correct version of {dataRoot.VersionDisplayName} installed?";
             }
 
             // Track latest version for each pack type
             (string path, int[] version)? latestVanillaRTX = null;
             (string path, int[] version)? latestVanillaRTXNormals = null;
             (string path, int[] version)? latestVanillaRTXOpus = null;
+
+            var results = new List<string>();
 
             static int CompareVersion(int[] a, int[] b)
             {

@@ -470,7 +470,7 @@ public sealed partial class MainWindow : Window
         // Slower UI update override for a smoother startup
         UpdateUI(0.001);
 
-        // Locate packs, if Preview is enabled, TargetPreview triggers another pack location, avoid redundant operation
+        // Locate packs, if Preview is enabled, TargetPreview triggers another pack location, this avoids redundant operation
         if (!IsTargetingPreview)
         {
             _ = LocatePacksTask();
@@ -870,7 +870,7 @@ public sealed partial class MainWindow : Window
         else
             Instance.DispatcherQueue.TryEnqueue(Prepend);
     }
-    public static ScrollViewer GetScrollViewer(DependencyObject obj)
+    public static ScrollViewer? GetScrollViewer(DependencyObject obj)
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
         {
@@ -1340,6 +1340,9 @@ public sealed partial class MainWindow : Window
             OpusCheckBox.IsEnabled = true;
         }
     }
+
+
+
     private void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleControls(this, false, true, []);
@@ -2071,15 +2074,20 @@ public sealed partial class MainWindow : Window
 
     private async void LaunchButton_Click(object sender, RoutedEventArgs e)
     {
-
         if (Helpers.IsMinecraftRunning())
         {
             Log("The game was already open, please restart the game for options.txt changes to take effect.", LogLevel.Warning);
         }
 
+        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+        var isShiftHeld = shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
         try
         {
-            var logs = await Modules.Launcher.LaunchMinecraftRTXAsync(IsTargetingPreview);
+            var logs = isShiftHeld
+                ? await Modules.Launcher.LaunchMinecraftStandardAsync(IsTargetingPreview)
+                : await Modules.Launcher.LaunchMinecraftRTXAsync(IsTargetingPreview);
+
             Log(logs, LogLevel.Informational);
         }
         finally
@@ -2087,6 +2095,4 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 0.0);
         }
     }
-
-
 }

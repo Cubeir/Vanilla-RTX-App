@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Modules;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
@@ -179,14 +180,15 @@ public sealed partial class PackBrowserWindow : Window
                     : "No packs found in Minecraft data directory.";
                 return;
             }
-
+            // TODO: RE-ENABLE THIS LINE ONCE ALCHITEX IS OUT!
             // Sort: RTX → Vibrant Visuals → Incompatible; alphabetical within each group
             var sortedPacks = packs
-                .OrderBy(p => p.PackType switch
+                .OrderBy(p => p switch
                 {
-                    "RTX" => 0,
-                    "Vibrant Visuals" => 1,
-                    _ => 2   // Incompatible
+                    { PackType: "RTX" } => 0,
+                  //  { PackType: "Incompatible", PotentiallySuitableForPBRGen: true } => 1,  // @ this lineeeeeeeeeeeeeeeee
+                    { PackType: "Vibrant Visuals" } => 2,
+                    _ => 3   // Incompatible, not an Alchitex candidate
                 })
                 .ThenBy(p => p.PackName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -477,24 +479,15 @@ public sealed partial class PackBrowserWindow : Window
     {
         var packs = new List<PackData>();
 
-        var basePath = TunerVariables.Persistent.IsTargetingPreview
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock Preview")
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Minecraft Bedrock");
-
-        var scanPaths = new[]
+        var dataRoot = MinecraftUserDataLocator.GetDataRoot(TunerVariables.Persistent.IsTargetingPreview);
+        if (!dataRoot.Exists)
         {
-            Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "resource_packs"),
-            Path.Combine(basePath, "Users", "Shared", "games", "com.mojang", "development_resource_packs")
-        };
+            System.Diagnostics.Trace.WriteLine($"{dataRoot.VersionDisplayName} data root not found.");
+            return packs;
+        }
 
-        foreach (var scanPath in scanPaths)
+        foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(TunerVariables.Persistent.IsTargetingPreview))
         {
-            if (!Directory.Exists(scanPath))
-            {
-                System.Diagnostics.Trace.WriteLine($"Path doesn't exist: {scanPath}");
-                continue;
-            }
-
             foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
@@ -594,8 +587,12 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
+        // If description couldn't be resolved from manifest or lang file — fall back to
+        // showing the pack's location so the user sees *something* informative
+        // rather than a blank line.
         if (packName == "pack.name") packName = Path.GetFileName(packDir);
-        if (packDesc == "pack.description") packDesc = string.Empty;
+        if (packDesc == "pack.description")
+            packDesc = Helpers.SanitizePathForDisplay(packDir);
 
         return new PackData
         {
