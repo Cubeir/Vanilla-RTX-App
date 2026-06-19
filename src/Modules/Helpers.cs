@@ -505,7 +505,7 @@ public static class MinecraftGDKLocator
 {
     public const string MinecraftFolderName = "Minecraft for Windows";
     public const string MinecraftPreviewFolderName = "Minecraft Preview for Windows";
-    private const string MinecraftExecutableName = "Minecraft.Windows.exe";
+    public const string MinecraftExecutableName = "Minecraft.Windows.exe";
     private const int MaxSearchDepth = 9;
 
     // Package family names — stable post-GDK (1.21.120+)

@@ -164,12 +164,12 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                 : "Minecraft Release";
             WindowTitle.Text = $"RTX lut manager - {target}";
 
-            ManualSelectionText.Text =
-                "If this is taking too long, click to manually locate the game folder. " +
-                "Confirm in File Explorer once you're inside the folder called: " +
-                (TunerVariables.Persistent.IsTargetingPreview
+            ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
+                "Once you're inside the folder called: " +
+                (Persistent.IsTargetingPreview
                     ? MinecraftGDKLocator.MinecraftPreviewFolderName
-                    : MinecraftGDKLocator.MinecraftFolderName);
+                    : MinecraftGDKLocator.MinecraftFolderName) +
+                    $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
 
             await InitializeAsync();
 

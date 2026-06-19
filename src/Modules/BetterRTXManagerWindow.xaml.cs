@@ -207,7 +207,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             this.Activated -= BetterRTXManagerWindow_Activated;
 
-            if (TunerVariables.Persistent.IsTargetingPreview)
+            if (Persistent.IsTargetingPreview)
             {
                 StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
                 this.Close();
@@ -215,7 +215,13 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
 
             WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
-            ManualSelectionText.Text = $"If this is taking too long, click to manually locate the game folder, confirm in file explorer once you're inside the folder called: {MinecraftGDKLocator.MinecraftFolderName}";
+
+            ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
+                "Once you're inside the folder called: " +
+                (Persistent.IsTargetingPreview
+                    ? MinecraftGDKLocator.MinecraftPreviewFolderName
+                    : MinecraftGDKLocator.MinecraftFolderName) +
+                    $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
 
             await InitializeAsync();
 
