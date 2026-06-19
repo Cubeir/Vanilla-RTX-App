@@ -1886,6 +1886,9 @@ public sealed partial class MainWindow : Window
     {
         _progressManager.ShowProgress();
         ToggleControls(this, false);
+
+        int exportedCount = 0;
+
         try
         {
             var exportQueue = new List<(string path, string name)>();
@@ -1937,7 +1940,13 @@ public sealed partial class MainWindow : Window
 
             foreach (var (path, name) in dedupedQueue)
             {
-                await ExpImpDel.ExportMCPACK(path, name);
+                var exportedPath = await ExpImpDel.ExportMCPACK(path, name);
+                if (exportedPath != null)
+                {
+                    exportedCount++;
+                    Log($"Finished exporting {name} to {exportedPath}", LogLevel.Success);
+                }
+
                 _ = BlinkingLamp(true, true, 1.0);
             }
         }
@@ -1955,8 +1964,8 @@ public sealed partial class MainWindow : Window
 
             if (nothingSelected)
                 Log("Select at least one package to export.", LogLevel.Warning);
-            else
-                Log("Export queue finished.", LogLevel.Success);
+            else if (exportedCount == 0)
+                Log("All exports failed.", LogLevel.Warning);
 
             _progressManager.HideProgress();
             ToggleControls(this, true);
@@ -1964,9 +1973,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-    // TODO: Add a timestap, and the completed tuning message to say how many packs were actually tuned
-    // beaware of the dupe paths being sanitized .. maybe the completion message, including timestap tag, should be built BY tuner, and returned here
-    // don't complicate things here...
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -1999,6 +2005,10 @@ public sealed partial class MainWindow : Window
                 var tuningMessage = await Task.Run(Processor.TuneSelectedPacks);
                 Log(tuningMessage, LogLevel.Success);
             }
+        }
+        catch (Exception ex)
+        {
+            Log($"Something went wrong during the tuning process: {ex.ToString}", LogLevel.Error);
         }
         finally
         {

@@ -12,7 +12,7 @@ namespace Vanilla_RTX_App.Modules;
 
 public static class ExpImpDel
 {
-    public static async Task ExportMCPACK(string packFolderPath, string suggestedName)
+    public static async Task<string?> ExportMCPACK(string packFolderPath, string suggestedName)
     {
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(Instance);
         var picker = new FileSavePicker();
@@ -27,7 +27,7 @@ public static class ExpImpDel
                 File.Delete(unneededFile);
         }
         var file = await picker.PickSaveFileAsync();
-        if (file == null) return;
+        if (file == null) return null;
         var tempZipPath = Path.Combine(Path.GetTempPath(), $"temp_{Guid.NewGuid()}.mcpack");
         try
         {
@@ -42,16 +42,18 @@ public static class ExpImpDel
             if (!File.Exists(tempZipPath))
             {
                 Trace.WriteLine($"Temporary .mcpack archive was deleted before writing to output.");
-                return;
+                return null;
             }
             using var destStream = await file.OpenStreamForWriteAsync();
             using var srcStream = File.OpenRead(tempZipPath);
             await srcStream.CopyToAsync(destStream);
             Trace.WriteLine($"{suggestedName}.mcpack exported successfully.");
+            return file.Path;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"Failed to export {suggestedName}: {ex.Message}");
+            return null;
         }
         finally
         {
