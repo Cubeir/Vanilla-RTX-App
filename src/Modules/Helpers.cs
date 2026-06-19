@@ -177,7 +177,7 @@ public static class Helpers
     static Helpers()
     {
         SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
-        Trace.WriteLine("✓ SharedHttpClient configured");
+        Trace.WriteLine("[HttpsHelper] SharedHttpClient configured");
     }
     /// <summary>
     /// Downloads a file with progress tracking and retry logic.
@@ -560,13 +560,13 @@ public static class MinecraftGDKLocator
 
         if (!Directory.Exists(cachedPath))
         {
-            Trace.WriteLine($"⚠ Cached path no longer exists: {cachedPath}");
+            Trace.WriteLine($"[GDKLocator] ⚠ Cached path no longer exists: {cachedPath}");
             return false;
         }
 
         if (!IsValidExecutableDirectory(cachedPath))
         {
-            Trace.WriteLine($"⚠ Cached path no longer valid: {cachedPath}");
+            Trace.WriteLine($"[GDKLocator] ⚠ Cached path no longer valid: {cachedPath}");
             return false;
         }
 
@@ -575,7 +575,7 @@ public static class MinecraftGDKLocator
         var resolved = ResolveToPhysicalPath(cachedPath);
         if (!resolved.Equals(cachedPath, StringComparison.OrdinalIgnoreCase))
         {
-            Trace.WriteLine($"⚠ Cached path is a symlink — evicting so physical path gets cached: {resolved}");
+            Trace.WriteLine($"[GDKLocator] ⚠ Cached path is a symlink — evicting so physical path gets cached: {resolved}");
             return false;
         }
 
@@ -600,17 +600,17 @@ public static class MinecraftGDKLocator
                 .Where(d => d.IsReady && d.DriveType == DriveType.Fixed)
                 .ToList();
 
-            Trace.WriteLine($"Found {drives.Count} fixed drives to search");
+            Trace.WriteLine($"[GDKLocator] Found {drives.Count} fixed drives to search");
 
             foreach (var drive in drives)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    Trace.WriteLine("✗ Search cancelled by user");
+                    Trace.WriteLine("[GDKLocator] Search cancelled by user");
                     return null;
                 }
 
-                Trace.WriteLine($"Scanning drive: {drive.Name}");
+                Trace.WriteLine($"[GDKLocator] Scanning drive: {drive.Name}");
 
                 // Priority pass: check high-probability locations on this drive first
                 foreach (var priorityPath in GetCommonLocations(searchForPreview, drive))
@@ -620,7 +620,7 @@ public static class MinecraftGDKLocator
 
                     if (IsValidExecutableDirectory(priorityPath))
                     {
-                        Trace.WriteLine($"✓ Found at priority location: {priorityPath}");
+                        Trace.WriteLine($"[GDKLocator] Found at priority location: {priorityPath}");
                         CacheInstallation(searchForPreview, priorityPath);
                         return priorityPath;
                     }
@@ -636,18 +636,18 @@ public static class MinecraftGDKLocator
 
                 if (foundPath != null)
                 {
-                    Trace.WriteLine($"✓ Found via deep search: {foundPath}");
+                    Trace.WriteLine($"[GDKLocator] Found via deep search: {foundPath}");
                     CacheInstallation(searchForPreview, foundPath);
                     return foundPath;
                 }
             }
 
-            Trace.WriteLine("✗ Target not found on any drive");
+            Trace.WriteLine("[GDKLocator] Target not found on any drive");
             return null;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"✗ Error during system search: {ex.Message}");
+            Trace.WriteLine($"[GDKLocator] Error during system search: {ex.Message}");
             return null;
         }
     }
@@ -676,34 +676,34 @@ public static class MinecraftGDKLocator
 
             if (file == null)
             {
-                Trace.WriteLine("✗ User cancelled file selection");
+                Trace.WriteLine("[GDKLocator] User cancelled file selection");
                 return null;
             }
 
-            Trace.WriteLine($"User selected: {file.Path}");
+            Trace.WriteLine($"[GDKLocator] User selected: {file.Path}");
 
             // Must be the correct executable
             if (!file.Name.Equals(MinecraftExecutableName, StringComparison.OrdinalIgnoreCase))
             {
-                Trace.WriteLine($"✗ Selected file is not {MinecraftExecutableName}: {file.Name}");
+                Trace.WriteLine($"[GDKLocator] Selected file is not {MinecraftExecutableName}: {file.Name}");
                 return null;
             }
 
             var exeDirectory = Path.GetDirectoryName(file.Path);
             if (string.IsNullOrEmpty(exeDirectory))
             {
-                Trace.WriteLine("✗ Could not determine directory from selected file");
+                Trace.WriteLine("[GDKLocator] Could not determine directory from selected file");
                 return null;
             }
 
             // Resolve symlinks — user may have navigated via a junction in Explorer
             var resolvedDirectory = ResolveToPhysicalPath(exeDirectory);
-            Trace.WriteLine($"  Resolved exe directory: {exeDirectory} → {resolvedDirectory}");
+            Trace.WriteLine($" [GDKLocator] Resolved exe directory: {exeDirectory} → {resolvedDirectory}");
 
             // Confirm the exe actually exists at the resolved path
             if (!IsValidExecutableDirectory(resolvedDirectory))
             {
-                Trace.WriteLine("✗ Resolved directory does not contain a valid Minecraft installation");
+                Trace.WriteLine("[GDKLocator] Resolved directory does not contain a valid Minecraft installation");
                 return null;
             }
 
@@ -712,17 +712,17 @@ public static class MinecraftGDKLocator
             var installRoot = Directory.GetParent(resolvedDirectory)?.Name ?? string.Empty;
             if (installRoot.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
             {
-                Trace.WriteLine($"✗ Selected wrong version — install root is: {installRoot}");
+                Trace.WriteLine($"[GDKLocator] Selected wrong version — install root is: {installRoot}");
                 return null;
             }
 
-            Trace.WriteLine($"✓ Valid installation selected: {resolvedDirectory}");
+            Trace.WriteLine($"[GDKLocator] Valid installation selected: {resolvedDirectory}");
             CacheInstallation(isPreview, resolvedDirectory);
             return resolvedDirectory;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"✗ Error during manual selection: {ex.Message}");
+            Trace.WriteLine($"[GDKLocator] Error during manual selection: {ex.Message}");
             return null;
         }
     }
@@ -763,12 +763,12 @@ public static class MinecraftGDKLocator
         Action<string?> updateCache)
     {
         var versionName = isPreview ? "Preview" : "Stable";
-        Trace.WriteLine($"Validating {versionName} Minecraft...");
+        Trace.WriteLine($"[GDKLocator] Validating {versionName} Minecraft...");
 
         // Cache check
         if (!string.IsNullOrEmpty(cachedPath))
         {
-            Trace.WriteLine($"  Cached path: {cachedPath}");
+            Trace.WriteLine($" [GDKLocator] Cached path: {cachedPath}");
 
             if (Directory.Exists(cachedPath) && IsValidExecutableDirectory(cachedPath))
             {
@@ -777,29 +777,29 @@ public static class MinecraftGDKLocator
                 var resolved = ResolveToPhysicalPath(cachedPath);
                 if (!resolved.Equals(cachedPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    Trace.WriteLine($"  ✓ Cache was a symlink — re-caching physical path: {resolved}");
+                    Trace.WriteLine($"  [GDKLocator] Cache was a symlink — re-caching physical path: {resolved}");
                     updateCache(resolved);
                 }
                 else
                 {
-                    Trace.WriteLine($"  ✓ Cache valid for {versionName}");
+                    Trace.WriteLine($"  [GDKLocator] Cache valid for {versionName}");
                 }
                 return; // Physical path is now in cache either way
             }
 
-            Trace.WriteLine($"  ✗ Cache invalid for {versionName}, clearing");
+            Trace.WriteLine($"  [GDKLocator] Cache invalid for {versionName}, clearing");
             updateCache(null);
         }
         else
         {
-            Trace.WriteLine($"  No cached path for {versionName}");
+            Trace.WriteLine($" [GDKLocator] No cached path for {versionName}");
         }
 
         // STAGE 0: PackageManager — authoritative OS query, instant
         var packagePath = TryGetInstallPathFromPackageManager(isPreview);
         if (packagePath != null)
         {
-            Trace.WriteLine($"  ✓ Found {versionName} via PackageManager: {packagePath}");
+            Trace.WriteLine($"  [GDKLocator] Found {versionName} via PackageManager: {packagePath}");
             updateCache(packagePath);
             return;
         }
@@ -807,16 +807,16 @@ public static class MinecraftGDKLocator
         // STAGE 1: Common locations across all drives
         foreach (var location in GetCommonLocations(isPreview))
         {
-            Trace.WriteLine($"  Checking common location: {location}");
+            Trace.WriteLine($" [GDKLocator] Checking common location: {location}");
             if (IsValidExecutableDirectory(location))
             {
-                Trace.WriteLine($"  ✓ Found {versionName} at common location: {location}");
+                Trace.WriteLine($"  [GDKLocator] Found {versionName} at common location: {location}");
                 updateCache(location);
                 return;
             }
         }
 
-        Trace.WriteLine($"  ✗ {versionName} not found in Phase 1");
+        Trace.WriteLine($"  [GDKLocator] {versionName} not found in Phase 1");
     }
 
     /// <summary>
@@ -829,7 +829,7 @@ public static class MinecraftGDKLocator
         try
         {
             var familyName = isPreview ? MinecraftPreviewPackageFamilyName : MinecraftStablePackageFamilyName;
-            Trace.WriteLine($"  Querying PackageManager for: {familyName}");
+            Trace.WriteLine($" [GDKLocator] Querying PackageManager for: {familyName}");
 
             var packageManager = new Windows.Management.Deployment.PackageManager();
             var packages = packageManager.FindPackagesForUser(string.Empty, familyName);
@@ -840,15 +840,15 @@ public static class MinecraftGDKLocator
                 if (string.IsNullOrEmpty(installLocation))
                     continue;
 
-                Trace.WriteLine($"  PackageManager returned: {installLocation}");
+                Trace.WriteLine($" [GDKLocator] PackageManager returned: {installLocation}");
 
                 // Resolve the junction — this gives us the physical Content directory
                 var resolvedLocation = ResolveToPhysicalPath(installLocation);
-                Trace.WriteLine($"  Resolved to physical path: {resolvedLocation}");
+                Trace.WriteLine($" [GDKLocator] Resolved to physical path: {resolvedLocation}");
 
                 if (IsValidExecutableDirectory(resolvedLocation))
                 {
-                    Trace.WriteLine($"  ✓ Executable found at resolved path");
+                    Trace.WriteLine($" [GDKLocator] Executable found at resolved path");
                     return resolvedLocation;
                 }
 
@@ -857,22 +857,22 @@ public static class MinecraftGDKLocator
                 var contentSubdir = Path.Combine(resolvedLocation, "Content");
                 if (IsValidExecutableDirectory(contentSubdir))
                 {
-                    Trace.WriteLine($"  ✓ Executable found in Content subdir: {contentSubdir}");
+                    Trace.WriteLine($"  [GDKLocator] Executable found in Content subdir: {contentSubdir}");
                     return contentSubdir;
                 }
             }
 
-            Trace.WriteLine($"  PackageManager: no valid install found for {familyName}");
+            Trace.WriteLine($" [GDKLocator] PackageManager: no valid install found for {familyName}");
             return null;
         }
         catch (UnauthorizedAccessException ex)
         {
-            Trace.WriteLine($"  PackageManager access denied: {ex.Message}");
+            Trace.WriteLine($" [GDKLocator] PackageManager access denied: {ex.Message}");
             return null;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"  PackageManager query failed: {ex.Message}");
+            Trace.WriteLine($" [GDKLocator] PackageManager query failed: {ex.Message}");
             return null;
         }
     }
@@ -890,13 +890,13 @@ public static class MinecraftGDKLocator
             var resolved = Directory.ResolveLinkTarget(path, returnFinalTarget: true)?.FullName;
             if (!string.IsNullOrEmpty(resolved) && Directory.Exists(resolved))
             {
-                Trace.WriteLine($"  Symlink resolved: {path} → {resolved}");
+                Trace.WriteLine($" [GDKLocator] Symlink resolved: {path} → {resolved}");
                 return resolved;
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"  ResolveLinkTarget failed for {path}: {ex.Message}");
+            Trace.WriteLine($" [GDKLocator] ResolveLinkTarget failed for {path}: {ex.Message}");
         }
 
         // Not a symlink or resolution failed — original path is already physical
@@ -960,7 +960,7 @@ public static class MinecraftGDKLocator
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Error searching {searchPath}: {ex.Message}");
+            Trace.WriteLine($" [GDKLocator] Error searching {searchPath}: {ex.Message}");
         }
 
         return null;
@@ -971,12 +971,12 @@ public static class MinecraftGDKLocator
         if (isPreview)
         {
             TunerVariables.Persistent.MinecraftPreviewInstallPath = path;
-            Trace.WriteLine($"✓ Cached Preview installation: {path}");
+            Trace.WriteLine($"[GDKLocator] Cached Preview installation: {path}");
         }
         else
         {
             TunerVariables.Persistent.MinecraftInstallPath = path;
-            Trace.WriteLine($"✓ Cached Stable installation: {path}");
+            Trace.WriteLine($"[GDKLocator] Cached Stable installation: {path}");
         }
     }
 }
