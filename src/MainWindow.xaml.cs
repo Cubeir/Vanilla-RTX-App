@@ -38,8 +38,6 @@ namespace Vanilla_RTX_App;
 
 - TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
 
-- ALT Launch Minecraft RTX button: when shift held, instead do this, Put graphics to fancy, disable in-game graphics mode switching, and enable VSync
-
 - Safeguard loss of default RTX  files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
 - resolve all compiler warnings and test one by one, hunt through them with claude! make it fast
@@ -88,11 +86,8 @@ the URLs the app sends requests to + the hardcoded Minecraft paths
 * EXPOSE ALL hardcoded URLs and Tuning parameters
 
 Additionally, while going through params, 
-Examine your github usage patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
+audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
-
-
-- Do the TODOs scattered in the code
 
 >> Do the idea of unifying hardcoded paths while at it!
 -Pack locator
@@ -104,9 +99,17 @@ could be used for launcher too as well as the 3 above
 - Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
 
+- We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
+
+- Do the TODOs scattered in the code
+
+
+
 - When targeting preview, a new Dev branch on github
 must be used to receieve updates, compare packages, etc...
 easier said than done, the code is a clusterfuck
+and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
+if it doesn't, this is too, is a Useless idea.
 
 Alchitex
 Is it going to be a multi-staged Window?
@@ -119,8 +122,6 @@ Two different code paths!
 Note: keep PBR for entities subtle THORUGHOUT
 At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
 Fallback to asking for a save location if it fails
-
-- We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
 
 - Reduce cache retry timers for PACK UPDATER version retrieval
 it hangs too long trying to get from remote
@@ -135,31 +136,10 @@ expects zips or rtpacks to be passed in, extracts bins and makes a custom preset
 basically, instead of changing the current pipeline, integerate this/build it on top of it
 that way it'll surely work without fucking things up
 
-- Do what you promised:
-https://github.com/Cubeir/Vanilla-RTX/issues/60
-
-- https://discord.com/channels/721377277480402985/1455281964138369054/1455548708123840604
-Does the app stop working if Minecraft, for whatever the reason, is named weirdly?
-Should the GDKLocator's behavior be updated to: just find the game's exe?
-But then, how do we differentiate preview and release?
-
-and
-- https://discord.com/channels/721377277480402985/1453451223599546399
-there were some more reports on Discord
-
-Investigate, and after all changes, TEST the whole thing again
-locator, manual locator, all steps, on diff drives, deep in subfolders up to 9, on a busy last drive/worst case
-And lastly the CACHE invalidator, will it continue to work well with it (betterrtx cache invalidator)
-
-- Tuning is very slow on certain AMD CPUs, there was that report on Disc
-
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
 Especially release builds, There COULD BE LATENT TRIMMING BUGS!
 Game detection and cache invalidation could be improved for both
 PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
-
-The biggest issue is the app failing to find the game sometimes, reported several time already
-materials folder
 
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it

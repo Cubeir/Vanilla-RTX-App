@@ -486,6 +486,11 @@ public static class RuntimeFlags
 // Wondering if we're being too strict with Folder names, they could be anything really, maybe third party launchers name them weirdly
 // Auto location fails then right? -- the executable should be the gospel... the only light safeguard against picking the preview executable for release or vice versa is fine but
 // elsewhere, it seems... counterproductive
+/* https://discord.com/channels/721377277480402985/1455281964138369054/1455548708123840604
+Does the app stop working if Minecraft, for whatever the reason, is named weirdly?
+Should the GDKLocator's behavior be updated to: just find the game's exe?
+But then, how do we differentiate preview and release?
+*/
 /// <summary>
 /// Provides tools for locating Minecraft (Bedrock) and Minecraft Preview installations.
 /// Handles caching, validation, system-wide searching, and manual selection.
