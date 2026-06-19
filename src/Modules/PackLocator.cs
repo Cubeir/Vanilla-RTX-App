@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Vanilla_RTX_App.Modules;
 
+/// Scans the user's Minecraft resource pack folders (both regular and dev — see
+/// <see cref="GetOrderedScanPaths"/> for scan order and priority) for installed
+/// Vanilla RTX, Vanilla RTX Normals, and Vanilla RTX Opus packs...
 public class PackLocator
 {
     public const string VANILLA_RTX_HEADER_UUID = "a5c3cc7d-1740-4b5e-ae2c-71bc14b3f63b";
@@ -16,7 +18,7 @@ public class PackLocator
     public const string VANILLA_RTX_OPUS_MODULE_UUID = "be0b22f0-ad13-4bbd-81ba-b457fd9e38b8";
 
     // Change the minimum version of Vanilla RTX packs detected by Tuner
-    private static readonly int[] MinVersion = new int[] { 1, 0, 0 };
+    private static readonly int[] MinVersion = [1, 0, 0];
 
     public static string LocatePacks(bool isTargetingPreview,
     out string vanillaRTXLocation, out string vanillaRTXVersion,
@@ -41,12 +43,13 @@ public class PackLocator
 
             var allManifestFiles = new List<string>();
 
-            foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(isTargetingPreview))
+            foreach (var scanPath in GetOrderedScanPaths(isTargetingPreview))
             {
                 allManifestFiles.AddRange(
                     Directory.GetFiles(scanPath, "manifest.json", SearchOption.AllDirectories)
                 );
             }
+
 
             if (allManifestFiles.Count == 0)
             {
@@ -77,10 +80,10 @@ public class PackLocator
                 try
                 {
                     var json = File.ReadAllText(file);
-                    dynamic data = JsonConvert.DeserializeObject(json);
+                    dynamic data = JObject.Parse(json, new JsonLoadSettings { CommentHandling = CommentHandling.Ignore });
 
-                    string headerUUID = data?.header?.uuid;
-                    string moduleUUID = data?.modules?[0]?.uuid;
+                    string? headerUUID = data?.header?.uuid;
+                    string? moduleUUID = data?.modules?[0]?.uuid;
                     string folder = Path.GetDirectoryName(file)!;
                     var verArray = data?.header?.version;
                     int[] version = new int[] {
@@ -94,19 +97,19 @@ public class PackLocator
                     if (string.Equals(headerUUID, VANILLA_RTX_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(moduleUUID, VANILLA_RTX_MODULE_UUID, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (latestVanillaRTX == null || CompareVersion(version, latestVanillaRTX.Value.version) >= 0)
+                        if (latestVanillaRTX == null || CompareVersion(version, latestVanillaRTX.Value.version) > 0)
                             latestVanillaRTX = (folder, version);
                     }
                     else if (string.Equals(headerUUID, VANILLA_RTX_NORMALS_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
                              string.Equals(moduleUUID, VANILLA_RTX_NORMALS_MODULE_UUID, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (latestVanillaRTXNormals == null || CompareVersion(version, latestVanillaRTXNormals.Value.version) >= 0)
+                        if (latestVanillaRTXNormals == null || CompareVersion(version, latestVanillaRTXNormals.Value.version) > 0)
                             latestVanillaRTXNormals = (folder, version);
                     }
                     else if (string.Equals(headerUUID, VANILLA_RTX_OPUS_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
                              string.Equals(moduleUUID, VANILLA_RTX_OPUS_MODULE_UUID, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (latestVanillaRTXOpus == null || CompareVersion(version, latestVanillaRTXOpus.Value.version) >= 0)
+                        if (latestVanillaRTXOpus == null || CompareVersion(version, latestVanillaRTXOpus.Value.version) > 0)
                             latestVanillaRTXOpus = (folder, version);
                     }
                 }
@@ -157,5 +160,23 @@ public class PackLocator
         {
             return $"Error: {ex.Message}";
         }
+    }
+
+
+    /// <summary>
+    /// Resource pack folders to scan, in priority order. Dev is scanned first so that when the
+    /// same pack/version exists in both locations, the tie-break in LocatePacks treats the dev
+    /// copy as authoritative (assumption: dev packs take priority over regular ones at runtime,
+    /// Test and change later if wrong
+    /// </summary>
+    private static IEnumerable<string> GetOrderedScanPaths(bool isTargetingPreview)
+    {
+        var devResourcePacks = MinecraftUserDataLocator.GetDevelopmentResourcePacksPath(isTargetingPreview);
+        if (!string.IsNullOrEmpty(devResourcePacks) && Directory.Exists(devResourcePacks))
+            yield return devResourcePacks;
+
+        var resourcePacks = MinecraftUserDataLocator.GetResourcePacksPath(isTargetingPreview);
+        if (!string.IsNullOrEmpty(resourcePacks) && Directory.Exists(resourcePacks))
+            yield return resourcePacks;
     }
 }
