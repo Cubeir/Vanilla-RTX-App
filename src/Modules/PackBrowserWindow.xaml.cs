@@ -790,4 +790,9 @@ public sealed partial class PackBrowserWindow : Window
         /// </summary>
         public bool PotentiallySuitableForPBRGen { get; set; } = false;
     }
+
+    private void SelectAll_Button_Click(object sender, RoutedEventArgs e)
+    {
+
+    }
 }
