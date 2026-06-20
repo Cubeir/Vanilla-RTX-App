@@ -40,11 +40,16 @@ namespace Vanilla_RTX_App;
 
 - Vanilla RTX Update window triggers a Relocation of Vanilla RTX packs
 The actual question is, WHY DOES RE-LOCATING Vanilla RTX in general packs reset the array of custom packs?????
-Check the semantics, remove that line!!! HUH?! [[[chrome ^^^^]]]
 
-about displaying pack version in packbrowser menu
-Don't append it to description? have a separate neutral tag constructed  like RTX
-x.x.x, displayed at the top left corner similar to it, that's better!
+You could just do it explicitly wherever needed, but REMOVE IT as a general thing VanillaRTXPack finder does...
+cuz it shouldn't be related!!! truly!
+LocatePacks task's job is to: UPDATE THE CHECKBOXES BASED ON WHAT PACKS ARE INSTALLED AND NOT.
+add this as a comment, and STICK TO IT
+
+You were already confused at Deleter remember, but you pulled through
+claude didn't have enough context of toggle controls and such, it messed up
+
+
 
 - Stress test GDKLocator again
 

@@ -17,7 +17,7 @@ public class PackLocator
     public const string VANILLA_RTX_OPUS_HEADER_UUID = "7c87f859-4d79-4d51-8887-bf450b2b2bfa";
     public const string VANILLA_RTX_OPUS_MODULE_UUID = "be0b22f0-ad13-4bbd-81ba-b457fd9e38b8";
 
-    // Change the minimum version of Vanilla RTX packs detected by Tuner
+    // Change the minimum version of Vanilla RTX packs detected by the app
     private static readonly int[] MinVersion = [1, 0, 0];
 
     public static string LocatePacks(bool isTargetingPreview,

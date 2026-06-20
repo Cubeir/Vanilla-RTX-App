@@ -1175,6 +1175,7 @@ public static class MinecraftUserDataLocator
         var folderName = isTargetingPreview ? PreviewRootFolderName : StableRootFolderName;
         var versionName = isTargetingPreview ? "Minecraft Preview" : "Minecraft";
 
+        // TODO: must expose the root path to user
         var rootPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             folderName
