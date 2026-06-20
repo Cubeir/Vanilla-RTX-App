@@ -935,8 +935,10 @@ public sealed partial class PackBrowserWindow : Window
         packName = StripMinecraftFormatting(packName);
         packDesc = StripMinecraftFormatting(packDesc);
 
-        if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
-        if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
+        if (packName == "pack.name" || string.IsNullOrWhiteSpace(packName))
+            packName = Path.GetFileName(packDir);
+        if (packDesc == "pack.description" || string.IsNullOrWhiteSpace(packDesc))
+            packDesc = Helpers.SanitizePathForDisplay(packDir);
 
         return new PackData
         {
