@@ -242,7 +242,7 @@
                               Margin="0,0,-3,0"
                               IsHitTestVisible="False">
                             <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border BorderBrush="{StaticResource FakeSplitButtonDarkBorderColor}"
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
                                     BorderThickness="3,0,0,0" />
                         </Grid>
 
@@ -252,7 +252,7 @@
                               Margin="-3,0,0,0"
                               IsHitTestVisible="False">
                             <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border BorderBrush="{StaticResource FakeSplitButtonBrightBorderColor}"
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
                                     BorderThickness="3,0,0,0" />
                         </Grid>
                         <!-- ── BEVELLED SPLIT SEAM 2 ────────────────── -->
@@ -262,7 +262,7 @@
                               Margin="0,0,-3,0"
                               IsHitTestVisible="False">
                             <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border BorderBrush="{StaticResource FakeSplitButtonDarkBorderColor}"
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
                                     BorderThickness="3,0,0,0" />
                         </Grid>
 
@@ -272,7 +272,7 @@
                               Margin="-3,0,0,0"
                               IsHitTestVisible="False">
                             <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border BorderBrush="{StaticResource FakeSplitButtonBrightBorderColor}"
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
                                     BorderThickness="3,0,0,0" />
                         </Grid>
                     </Grid>

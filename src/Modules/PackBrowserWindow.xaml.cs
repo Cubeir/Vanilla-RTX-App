@@ -21,8 +21,6 @@ namespace Vanilla_RTX_App.PackBrowser;
 
 // TODO: Try to limit the number of characters of imported packs...
 // it matching whatever it matches now isn't it... heck, generate Short UUIDs, much better!
-// TODO: Also, fix pack.name, pack.description showing for packs without those properties, wtf? when did u fuck it up?
-
 public sealed partial class PackBrowserWindow : Window
 {
     // ── Window infrastructure ────────────────────────────────────────────────
