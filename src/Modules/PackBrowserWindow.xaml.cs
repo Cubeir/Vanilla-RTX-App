@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
@@ -28,8 +29,11 @@ public sealed partial class PackBrowserWindow : Window
     private readonly Dictionary<string, Button> _packButtonMap = new();
     private readonly HashSet<string> _selectedPaths = new();
 
+    // Parallel map for the two info TextBlocks in each pack button.
+    // Keyed by pack path, same lifetime as _packButtonMap.
+    private readonly Dictionary<string, (TextBlock Name, TextBlock Desc)> _packTextMap = new();
+
     // Unique tags seen in the current pack list; rebuilt on each load.
-    // Drives the SelectAll dropdown — new tags appear automatically.
     private readonly List<string> _knownTags = new();
 
     public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview
@@ -92,10 +96,7 @@ public sealed partial class PackBrowserWindow : Window
         this.Activated += PackBrowserWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
 
-        // Wire import status into the title bar.
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
-
-        // Wire the overwrite confirmation dialog so ExpImpDel can ask us on the UI thread.
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
     }
 
@@ -129,7 +130,6 @@ public sealed partial class PackBrowserWindow : Window
 
         ActionBarShadowHost.Translation = new System.Numerics.Vector3(0, 0, 32);
 
-        // Register drag-and-drop on the window content root.
         if (this.Content is UIElement contentRoot)
         {
             contentRoot.AllowDrop = true;
@@ -201,7 +201,7 @@ public sealed partial class PackBrowserWindow : Window
             if (item is Windows.Storage.StorageFolder folder)
                 paths.Add(folder.Path);
             else if (item is Windows.Storage.StorageFile file)
-                paths.Add(file.Path); // filtering by extension happens inside ImportFromPathsAsync
+                paths.Add(file.Path);
         }
 
         if (paths.Count == 0) return;
@@ -212,24 +212,16 @@ public sealed partial class PackBrowserWindow : Window
     //  Overwrite confirmation dialog
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Called by ExpImpDel when a duplicate UUID match is found. Runs on the UI
-    /// thread (via DispatcherQueue) so the ContentDialog can be shown safely.
-    /// Returns true if the user confirms overwrite, false to skip.
-    /// </summary>
     private async Task<bool> ShowOverwriteDialogAsync(string packName, string existingPath)
     {
-        bool result = false;
-
-        // ContentDialog must be shown on the UI thread.
         var tcs = new TaskCompletionSource<bool>();
 
         DispatcherQueue.TryEnqueue(async () =>
         {
             try
             {
-                var existingFolderName = Path.GetFileName(existingPath.TrimEnd(
-                    Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                var existingFolderName = Path.GetFileName(
+                    existingPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
                 var dialog = new ContentDialog
                 {
@@ -241,8 +233,8 @@ public sealed partial class PackBrowserWindow : Window
                     XamlRoot = this.Content.XamlRoot
                 };
 
-                var dialogResult = await dialog.ShowAsync();
-                tcs.SetResult(dialogResult == ContentDialogResult.Primary);
+                var result = await dialog.ShowAsync();
+                tcs.SetResult(result == ContentDialogResult.Primary);
             }
             catch (Exception ex)
             {
@@ -251,8 +243,34 @@ public sealed partial class PackBrowserWindow : Window
             }
         });
 
-        result = await tcs.Task;
-        return result;
+        return await tcs.Task;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  JSON parsing helper — supports // comments in manifests
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Parses a JSON string tolerantly: allows // and /* */ comments (common in
+    /// Minecraft manifests written by hand) and ignores trailing commas.
+    /// Falls back to strict parsing if the tolerant reader fails.
+    /// </summary>
+    private static JObject ParseManifestJson(string json)
+    {
+        try
+        {
+            using var sr = new StringReader(json);
+            using var reader = new JsonTextReader(sr)
+            {
+                DateParseHandling = DateParseHandling.None
+            };
+            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
+            return JObject.Load(reader, loadSettings);
+        }
+        catch
+        {
+            return JObject.Parse(json);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -273,6 +291,7 @@ public sealed partial class PackBrowserWindow : Window
     {
         PackListContainer.Children.Clear();
         _packButtonMap.Clear();
+        _packTextMap.Clear();
         _selectedPaths.Clear();
         _knownTags.Clear();
         EmptyStatePanel.Visibility = Visibility.Collapsed;
@@ -306,7 +325,6 @@ public sealed partial class PackBrowserWindow : Window
                 .ThenBy(p => p.PackName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            // Accumulate unique tags in sort order — drives the dropdown.
             foreach (var pack in sortedPacks)
                 foreach (var tag in pack.CapabilityTags)
                     if (!_knownTags.Contains(tag))
@@ -333,14 +351,9 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  SelectAll dropdown  (DropDownButton — flyout rebuilt after every load)
+    //  SelectAll dropdown
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Rebuilds the MenuFlyout on SelectAll_Button from the current _knownTags.
-    /// Called after every LoadPacksAsync so items always reflect visible packs.
-    /// Adding new tag types anywhere in the codebase automatically adds them here.
-    /// </summary>
     private void RebuildSelectAllDropdown()
     {
         var flyout = new MenuFlyout();
@@ -366,7 +379,6 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // DropDownButton exposes its flyout directly — no Click handler needed.
         SelectAll_Button.Flyout = flyout;
     }
 
@@ -379,6 +391,8 @@ public sealed partial class PackBrowserWindow : Window
 
             if (selected) { _selectedPaths.Add(path); overlay.Visibility = Visibility.Visible; }
             else { _selectedPaths.Remove(path); overlay.Visibility = Visibility.Collapsed; }
+
+            ApplySelectionTextStyle(path, selected);
         }
     }
 
@@ -394,6 +408,7 @@ public sealed partial class PackBrowserWindow : Window
 
             _selectedPaths.Add(path);
             overlay.Visibility = Visibility.Visible;
+            ApplySelectionTextStyle(path, true);
         }
     }
 
@@ -424,6 +439,7 @@ public sealed partial class PackBrowserWindow : Window
                 buttonShadow.Receivers.Add(ShadowReceiverGrid);
         };
 
+        // Columns: [icon 75] [gap 15] [info *] [gap 15] [right panel Auto]
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
@@ -503,15 +519,14 @@ public sealed partial class PackBrowserWindow : Window
         grid.Children.Add(iconContainer);
 
         // ── Pack name + description ──────────────────────────────────────────
-        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        infoPanel.Children.Add(new TextBlock
+        var nameBlock = new TextBlock
         {
             Text = pack.PackName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
-        });
-        infoPanel.Children.Add(new TextBlock
+        };
+        var descBlock = new TextBlock
         {
             Text = pack.PackDescription,
             FontSize = 12,
@@ -519,11 +534,32 @@ public sealed partial class PackBrowserWindow : Window
             Margin = new Thickness(0, 2, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
-        });
+        };
+
+        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        infoPanel.Children.Add(nameBlock);
+        infoPanel.Children.Add(descBlock);
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // ── Capability tags ──────────────────────────────────────────────────
+        // Store TextBlock refs for selection styling.
+        _packTextMap[pack.PackPath] = (nameBlock, descBlock);
+
+        // ── Right panel: version (top) + capability tags (bottom) ────────────
+        //
+        // A small two-row Grid in column 4 keeps both pieces right-aligned and
+        // vertically separated without affecting the info column layout.
+        var rightPanel = new Grid();
+        rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });  // version — top
+        rightPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // spacer
+        rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });  // tags — bottom
+
+        // Version badge — top right
+        var versionBadge = BuildVersionBadge(pack.Version);
+        Grid.SetRow(versionBadge, 0);
+        rightPanel.Children.Add(versionBadge);
+
+        // Capability tags — bottom right
         var tagsPanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -532,12 +568,33 @@ public sealed partial class PackBrowserWindow : Window
         };
         foreach (var tag in pack.CapabilityTags)
             tagsPanel.Children.Add(BuildTagBadge(tag));
-        Grid.SetColumn(tagsPanel, 4);
-        grid.Children.Add(tagsPanel);
+        Grid.SetRow(tagsPanel, 2);
+        rightPanel.Children.Add(tagsPanel);
+
+        Grid.SetColumn(rightPanel, 4);
+        grid.Children.Add(rightPanel);
 
         button.Content = grid;
         button.Click += PackButton_Click;
         return button;
+    }
+
+    private static Border BuildVersionBadge(string version)
+    {
+        var badge = new Border
+        {
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(8, 4, 8, 4),
+            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 32, 32, 32))
+        };
+        badge.Child = new TextBlock
+        {
+            Text = $"Version: {version}",
+            FontSize = 12,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White)
+        };
+        return badge;
     }
 
     private static Border BuildTagBadge(string tag)
@@ -584,6 +641,27 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Selection text styling
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Bolds the pack name and description for selected packs and restores normal
+    /// weight when deselected. Works alongside the checkmark overlay.
+    /// </summary>
+    private void ApplySelectionTextStyle(string packPath, bool selected)
+    {
+        if (!_packTextMap.TryGetValue(packPath, out var blocks)) return;
+
+        blocks.Name.FontWeight = selected
+            ? Microsoft.UI.Text.FontWeights.Bold
+            : Microsoft.UI.Text.FontWeights.SemiBold;
+
+        blocks.Desc.FontWeight = selected
+            ? Microsoft.UI.Text.FontWeights.SemiBold   // desc goes SemiBold (was Normal)
+            : Microsoft.UI.Text.FontWeights.Normal;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Click handlers
     // ════════════════════════════════════════════════════════════════════════
 
@@ -594,16 +672,20 @@ public sealed partial class PackBrowserWindow : Window
         var overlay = FindSelectionOverlay(button);
         if (overlay == null) return;
 
-        if (_selectedPaths.Contains(pack.PackPath))
-        {
-            _selectedPaths.Remove(pack.PackPath);
-            overlay.Visibility = Visibility.Collapsed;
-        }
-        else
+        bool isNowSelected = !_selectedPaths.Contains(pack.PackPath);
+
+        if (isNowSelected)
         {
             _selectedPaths.Add(pack.PackPath);
             overlay.Visibility = Visibility.Visible;
         }
+        else
+        {
+            _selectedPaths.Remove(pack.PackPath);
+            overlay.Visibility = Visibility.Collapsed;
+        }
+
+        ApplySelectionTextStyle(pack.PackPath, isNowSelected);
     }
 
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
@@ -625,8 +707,6 @@ public sealed partial class PackBrowserWindow : Window
 
     private async void AddPackButton_Click(object sender, RoutedEventArgs e)
     {
-        // Pass THIS window's handle so the picker is owned by PackBrowserWindow,
-        // not the main window — prevents the main window from jumping to front.
         var hwnd = WindowNative.GetWindowHandle(this);
         await RunImportAsync(() => ExpImpDel.ImportPackAsync(hwnd));
     }
@@ -645,22 +725,18 @@ public sealed partial class PackBrowserWindow : Window
         }
         finally
         {
-            // Always refresh so newly imported packs appear and the dropdown updates.
             LoadingPanel.Visibility = Visibility.Visible;
             PackSelectionPanel.Visibility = Visibility.Collapsed;
             await LoadPacksAsync();
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
             AddPackButton.IsEnabled = true;
-
-            // Restore the normal title once the import sequence is fully done.
             WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
         }
     }
 
     private void OnImportStatusChanged(string message)
     {
-        // ImportStatusChanged can fire from background tasks — marshal to UI thread.
         DispatcherQueue.TryEnqueue(() => WindowTitle.Text = message);
     }
 
@@ -679,19 +755,32 @@ public sealed partial class PackBrowserWindow : Window
             return packs;
         }
 
-        foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(TunerVariables.Persistent.IsTargetingPreview))
+        // Track pack paths we've already added to avoid processing the same directory
+        // twice if both manifest.json and pack_manifest.json exist in it.
+        var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(
+                     TunerVariables.Persistent.IsTargetingPreview))
         {
-            foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories))
+            // Enumerate both manifest filenames. manifest.json takes priority —
+            // if a directory contains both, manifest.json wins and pack_manifest.json
+            // is ignored for that directory (seenDirs prevents double-processing).
+            var manifestFiles = Directory
+                .EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories)
+                .Concat(Directory.EnumerateFiles(scanPath, "pack_manifest.json", SearchOption.AllDirectories));
+
+            foreach (var manifestPath in manifestFiles)
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
                 if (packDir == null) continue;
+                if (!seenDirs.Add(packDir)) continue; // already processed via manifest.json
 
                 try
                 {
                     var packData = await ParsePackAsync(packDir, manifestPath);
                     if (packData != null) packs.Add(packData);
                 }
-                catch (Newtonsoft.Json.JsonException jsonEx)
+                catch (JsonException jsonEx)
                 {
                     System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
                 }
@@ -705,14 +794,75 @@ public sealed partial class PackBrowserWindow : Window
         return packs;
     }
 
-    private async Task<PackData> ParsePackAsync(string packDir, string manifestPath)
+    // ════════════════════════════════════════════════════════════════════════
+    //  Manifest parsing — handles both manifest.json and pack_manifest.json
+    // ════════════════════════════════════════════════════════════════════════
+
+    private async Task<PackData?> ParsePackAsync(string packDir, string manifestPath)
     {
         var json = await File.ReadAllTextAsync(manifestPath);
-        var root = JObject.Parse(json);
+        var root = ParseManifestJson(json);
 
+        bool isLegacyFormat = Path.GetFileName(manifestPath)
+            .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
+
+        return isLegacyFormat
+            ? ParseLegacyPackManifest(packDir, root)
+            : await ParseModernManifestAsync(packDir, root);
+    }
+
+    /// <summary>
+    /// Parses the old pack_manifest.json format (pre-1.16 era).
+    /// These packs have no "capabilities" array so they are always Incompatible.
+    /// Fields live inside "header" rather than at root level.
+    /// Version is a loose string rather than an int triplet.
+    /// </summary>
+    private PackData ParseLegacyPackManifest(string packDir, JObject root)
+    {
+        var header = root["header"];
+
+        string packName = StripMinecraftFormatting(header?["name"]?.ToString() ?? string.Empty);
+        string packDesc = StripMinecraftFormatting(header?["description"]?.ToString() ?? string.Empty);
+
+        // Loose version string, e.g. "1.4.4.1".
+        string version = header?["packs_version"]?.ToString()
+                      ?? header?["version"]?.ToString()
+                      ?? "Unknown";
+
+        if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
+        if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
+
+        // Legacy packs never have capabilities, always Incompatible.
+        var capabilityTags = new List<string>();
+
+        if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
+            capabilityTags.Add(AlchitexCandidateTag);
+
+        capabilityTags.Add("Incompatible");
+
+        var icon = LoadIconSync(packDir); // sync is fine here — called from async context via Task.Run indirectly
+
+        return new PackData
+        {
+            PackName = packName,
+            PackDescription = packDesc,
+            PackPath = packDir,
+            Icon = icon,
+            CapabilityTags = capabilityTags,
+            PackType = "Incompatible",
+            Version = version,
+            PotentiallySuitableForPBRGen = capabilityTags.Contains(AlchitexCandidateTag),
+            IsLegacyFormat = true
+        };
+    }
+
+    /// <summary>
+    /// Parses the modern manifest.json format.
+    /// </summary>
+    private async Task<PackData> ParseModernManifestAsync(string packDir, JObject root)
+    {
         var capabilityTags = new List<string>();
         var packType = "Incompatible";
-        var potentiallySuitableForPbrGen = false;
 
         var capabilities = root["capabilities"];
         if (capabilities != null && capabilities.Type == JTokenType.Array)
@@ -734,14 +884,24 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
+        var potentiallySuitable = false;
         if (packType == "Incompatible")
         {
             if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
             {
-                potentiallySuitableForPbrGen = true;
+                potentiallySuitable = true;
                 capabilityTags.Add(AlchitexCandidateTag);
             }
             capabilityTags.Add("Incompatible");
+        }
+
+        // Version: header.version is [major, minor, patch]
+        var versionToken = root["header"]?["version"];
+        string version = "Unknown";
+        if (versionToken?.Type == JTokenType.Array)
+        {
+            var parts = versionToken.Select(t => t.ToString()).ToArray();
+            if (parts.Length > 0) version = string.Join(".", parts);
         }
 
         var header = root["header"];
@@ -764,7 +924,6 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // Strip §X Minecraft formatting codes before display.
         packName = StripMinecraftFormatting(packName);
         packDesc = StripMinecraftFormatting(packDesc);
 
@@ -779,7 +938,9 @@ public sealed partial class PackBrowserWindow : Window
             Icon = await LoadIconAsync(packDir),
             CapabilityTags = capabilityTags,
             PackType = packType,
-            PotentiallySuitableForPBRGen = potentiallySuitableForPbrGen
+            Version = version,
+            PotentiallySuitableForPBRGen = potentiallySuitable,
+            IsLegacyFormat = false
         };
     }
 
@@ -845,6 +1006,33 @@ public sealed partial class PackBrowserWindow : Window
         return null;
     }
 
+    /// <summary>
+    /// Synchronous icon load used by the legacy manifest path which doesn't have
+    /// an async context at the point of calling. Returns null on any failure.
+    /// </summary>
+    private static BitmapImage? LoadIconSync(string packDir)
+    {
+        // We can't call SetSourceAsync synchronously, so we fire-and-forget the
+        // async load and return an incomplete BitmapImage. The XAML Image control
+        // will display it once the source resolves on the UI thread.
+        var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
+            .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg")
+            .ToArray();
+
+        if (iconFiles.Length == 0) return null;
+
+        try
+        {
+            // BitmapImage can load from a file URI without async on the UI thread.
+            return new BitmapImage(new Uri(iconFiles[0]));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Error loading legacy icon {iconFiles[0]}: {ex.Message}");
+            return null;
+        }
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     //  Visual-tree helper
     // ════════════════════════════════════════════════════════════════════════
@@ -897,7 +1085,6 @@ public sealed partial class PackBrowserWindow : Window
         {
             var dir = Path.GetDirectoryName(filePath);
             if (string.IsNullOrEmpty(dir)) return false;
-
             var segments = dir.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             for (int i = 0; i < segments.Length - 1; i++)
             {
@@ -921,6 +1108,13 @@ public sealed partial class PackBrowserWindow : Window
         public BitmapImage? Icon { get; set; }
         public required List<string> CapabilityTags { get; set; }
         public required string PackType { get; set; }
+
+        /// <summary>Version string for display. "Unknown" if not resolvable.</summary>
+        public required string Version { get; set; }
+
+        /// <summary>True for pack_manifest.json (legacy pre-1.16 format).</summary>
+        public bool IsLegacyFormat { get; set; } = false;
+
         public bool PotentiallySuitableForPBRGen { get; set; } = false;
     }
 }

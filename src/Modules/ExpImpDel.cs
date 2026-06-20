@@ -5,6 +5,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Windows.Storage.Pickers;
 using static Vanilla_RTX_App.MainWindow;
 
@@ -76,31 +78,23 @@ public static class ExpImpDel
     //  IMPORT — public surface
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// When true, packs land in development_resource_packs instead of resource_packs.
-    /// </summary>
+    /// <summary>When true, packs land in development_resource_packs instead of resource_packs.</summary>
     public static bool InstallToDevelopmentPacks = false;
 
-    /// <summary>
-    /// Progress/status callback fired during import. Callers subscribe to surface
-    /// messages in the UI without this class needing a direct UI reference.
-    /// </summary>
+    /// <summary>Progress/status callback fired during import operations.</summary>
     public static event Action<string>? ImportStatusChanged;
 
     /// <summary>
-    /// Callback invoked when a duplicate is detected so the caller (PackBrowserWindow)
-    /// can show a confirmation dialog on the UI thread. Must return true to overwrite,
-    /// false to skip. If null the duplicate is silently skipped.
+    /// Callback invoked when a duplicate UUID match is found. Must return true to
+    /// overwrite, false to skip. If null, duplicates are silently skipped.
     /// Parameters: (incomingPackName, existingFolderPath)
     /// </summary>
     public static Func<string, string, Task<bool>>? ConfirmOverwrite { get; set; }
 
     /// <summary>
-    /// Opens a file picker and imports the chosen packs. Accepts multiple .mcpack,
-    /// .zip, and .mcaddon files. Folders must arrive via drag-and-drop because WinUI 3
-    /// cannot mix files and folders in a single picker session.
-    /// <paramref name="ownerHwnd"/> must be the handle of the window that should own
-    /// the picker — pass the PackBrowserWindow handle, not the main window handle.
+    /// Opens a file picker and imports the chosen packs. Accepts .mcpack, .zip,
+    /// and .mcaddon. <paramref name="ownerHwnd"/> must be the PackBrowserWindow
+    /// handle — NOT the main window — so the picker stays above the right window.
     /// </summary>
     public static async Task<bool> ImportPackAsync(IntPtr ownerHwnd)
     {
@@ -115,18 +109,17 @@ public static class ExpImpDel
         var files = await picker.PickMultipleFilesAsync();
         if (files == null || files.Count == 0) return false;
 
-        var paths = files.Select(f => f.Path).ToList();
-        return await ImportFromPathsAsync(paths);
+        return await ImportFromPathsAsync(files.Select(f => f.Path));
     }
 
     /// <summary>
-    /// Imports packs from an arbitrary list of file/folder paths. The bulk-import
-    /// rules applied here:
+    /// Imports packs from an arbitrary list of file/folder paths (drag-and-drop entry
+    /// point). Bulk-import rules:
     /// <list type="bullet">
-    ///   <item>.mcpack / .zip  — imported individually.</item>
-    ///   <item>.mcaddon        — opened as a zip; every .mcpack inside is queued.</item>
-    ///   <item>folder          — the root of the folder is scanned (non-recursively)
-    ///                           for .mcpack and .zip files; each is queued.</item>
+    ///   <item>.mcpack / .zip   — imported individually.</item>
+    ///   <item>.mcaddon         — every .mcpack inside is queued.</item>
+    ///   <item>folder           — root of folder scanned (non-recursively) for
+    ///                            .mcpack and .zip files; each queued.</item>
     /// </list>
     /// </summary>
     public static async Task<bool> ImportFromPathsAsync(IEnumerable<string> paths)
@@ -138,23 +131,22 @@ public static class ExpImpDel
             return false;
         }
 
-        // Expand the input list into a flat queue of importable items.
         var queue = new List<ImportItem>();
 
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
             {
-                // Non-recursive folder scan: queue .mcpack and .zip files at root level.
-                var folderItems = Directory
+                var found = Directory
                     .GetFiles(path, "*", SearchOption.TopDirectoryOnly)
                     .Where(f => IsArchiveExtension(Path.GetExtension(f)))
-                    .Select(f => new ImportItem(f, ImportItemKind.Archive));
+                    .Select(f => new ImportItem(f, ImportItemKind.Archive))
+                    .ToList();
 
-                queue.AddRange(folderItems);
-
-                if (!queue.Any())
+                if (found.Count == 0)
                     ReportStatus($"No .mcpack or .zip files found in the root of '{Path.GetFileName(path)}'.");
+                else
+                    queue.AddRange(found);
             }
             else if (File.Exists(path))
             {
@@ -201,7 +193,7 @@ public static class ExpImpDel
         return anySuccess;
     }
 
-    /// <summary>Returns true for file extensions the importer accepts (.mcpack, .zip).</summary>
+    /// <summary>Returns true for .mcpack and .zip extensions.</summary>
     public static bool IsImportableExtension(string ext) =>
         ext.Equals(".mcpack", StringComparison.OrdinalIgnoreCase) ||
         ext.Equals(".zip", StringComparison.OrdinalIgnoreCase);
@@ -222,12 +214,8 @@ public static class ExpImpDel
 
     private static bool IsArchiveExtension(string ext) => IsImportableExtension(ext);
 
-    // ── .mcaddon ────────────────────────────────────────────────────────────
+    // ── .mcaddon ─────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Opens an .mcaddon (which is just a zip) and imports every .mcpack entry
-    /// it contains. Non-mcpack content is ignored.
-    /// </summary>
     private static async Task<bool> ImportFromMcAddonAsync(string addonPath, string destination)
     {
         ReportStatus($"Opening addon '{Path.GetFileName(addonPath)}'…");
@@ -236,7 +224,6 @@ public static class ExpImpDel
 
         using var addonZip = ZipFile.OpenRead(addonPath);
 
-        // Find all .mcpack entries at any depth.
         var mcpackEntries = addonZip.Entries
             .Where(e => Path.GetExtension(e.Name).Equals(".mcpack", StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -251,7 +238,6 @@ public static class ExpImpDel
 
         foreach (var entry in mcpackEntries)
         {
-            // Extract the inner .mcpack to a temp file, then run the normal archive import.
             var tempMcpack = Path.Combine(Path.GetTempPath(), $"mcaddon_extract_{Guid.NewGuid()}.mcpack");
             try
             {
@@ -262,14 +248,14 @@ public static class ExpImpDel
             finally
             {
                 try { if (File.Exists(tempMcpack)) File.Delete(tempMcpack); }
-                catch { /* best-effort cleanup */ }
+                catch { /* best-effort */ }
             }
         }
 
         return anySuccess;
     }
 
-    // ── Archive (.mcpack / .zip) ─────────────────────────────────────────────
+    // ── Archive (.mcpack / .zip) ──────────────────────────────────────────────
 
     private static async Task<bool> ImportFromArchiveAsync(string archivePath, string destination)
     {
@@ -277,19 +263,20 @@ public static class ExpImpDel
 
         using var zip = ZipFile.OpenRead(archivePath);
 
-        // Find the shallowest manifest.json — handles messy zips with deep nesting.
-        var manifestEntry = zip.Entries
-            .Where(e => Path.GetFileName(e.FullName).Equals("manifest.json", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(e => e.FullName.Count(c => c == '/'))
-            .FirstOrDefault();
+        // Find the shallowest manifest.json OR pack_manifest.json entry.
+        // manifest.json is preferred; pack_manifest.json is the legacy fallback.
+        var manifestEntry = FindShallowManifestEntry(zip);
 
         if (manifestEntry == null)
         {
-            ReportStatus($"'{Path.GetFileName(archivePath)}' has no manifest.json — not a valid resource pack, skipped.");
+            ReportStatus($"'{Path.GetFileName(archivePath)}' has no manifest.json or pack_manifest.json — not a valid resource pack, skipped.");
             return false;
         }
 
-        // Read and parse the incoming manifest for dupe detection.
+        bool isLegacy = Path.GetFileName(manifestEntry.FullName)
+            .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
+
+        // Read manifest for dupe detection.
         PackIdentity? incomingIdentity = null;
         try
         {
@@ -297,15 +284,13 @@ public static class ExpImpDel
             using (var entryStream = manifestEntry.Open())
                 await entryStream.CopyToAsync(ms);
             ms.Position = 0;
-            incomingIdentity = ParsePackIdentity(ms);
+            incomingIdentity = ParsePackIdentity(ms, isLegacy);
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[Import] Could not parse incoming manifest for dupe check: {ex.Message}");
-            // Soft fallback — continue without dupe detection.
         }
 
-        // Dupe detection against existing installed packs (both folders).
         if (incomingIdentity != null)
         {
             var existingMatch = FindExistingPackMatch(incomingIdentity);
@@ -317,10 +302,9 @@ public static class ExpImpDel
                 if (overwrite)
                 {
                     ReportStatus($"Replacing existing pack at '{Path.GetFileName(existingMatch)}'…");
-                    var deleted = await DeletePackAsync(existingMatch);
-                    if (deleted == null)
+                    if (await DeletePackAsync(existingMatch) == null)
                     {
-                        ReportStatus($"Could not remove existing pack — import aborted.");
+                        ReportStatus("Could not remove existing pack — import aborted.");
                         return false;
                     }
                 }
@@ -332,7 +316,6 @@ public static class ExpImpDel
             }
         }
 
-        // Determine the pack root prefix inside the archive.
         var packRootInZip = manifestEntry.FullName.Contains('/')
             ? manifestEntry.FullName.Substring(0, manifestEntry.FullName.LastIndexOf('/') + 1)
             : string.Empty;
@@ -381,138 +364,46 @@ public static class ExpImpDel
         return true;
     }
 
-    // ── Dupe detection ────────────────────────────────────────────────────────
-
     /// <summary>
-    /// Identity extracted from a manifest.json for duplicate comparison.
-    /// We match on header UUID + all module UUIDs — version intentionally excluded
-    /// so that importing an update still triggers the "replace?" prompt.
+    /// Finds the shallowest manifest.json in the archive first; falls back to
+    /// the shallowest pack_manifest.json if no manifest.json exists.
     /// </summary>
-    private record PackIdentity(string Name, string HeaderUuid, IReadOnlyList<string> ModuleUuids);
-
-    private static PackIdentity? ParsePackIdentity(Stream manifestStream)
+    private static ZipArchiveEntry? FindShallowManifestEntry(ZipArchive zip)
     {
-        using var reader = new System.IO.StreamReader(manifestStream, leaveOpen: true);
-        var json = reader.ReadToEnd();
-        var root = Newtonsoft.Json.Linq.JObject.Parse(json);
+        ZipArchiveEntry? Shallowest(IEnumerable<ZipArchiveEntry> entries) =>
+            entries
+                .OrderBy(e => e.FullName.Count(c => c == '/'))
+                .FirstOrDefault();
 
-        var headerUuid = root["header"]?["uuid"]?.ToString();
-        var name = root["header"]?["name"]?.ToString() ?? string.Empty;
+        var modern = Shallowest(zip.Entries.Where(e =>
+            Path.GetFileName(e.FullName).Equals("manifest.json", StringComparison.OrdinalIgnoreCase)));
 
-        if (string.IsNullOrEmpty(headerUuid)) return null;
+        if (modern != null) return modern;
 
-        var moduleUuids = root["modules"]
-            ?.Children<Newtonsoft.Json.Linq.JObject>()
-            .Select(m => m["uuid"]?.ToString())
-            .Where(u => !string.IsNullOrEmpty(u))
-            .Cast<string>()
-            .ToList()
-            ?? new List<string>();
-
-        return new PackIdentity(name, headerUuid, moduleUuids);
-    }
-
-    private static PackIdentity? ParsePackIdentityFromFile(string manifestPath)
-    {
-        try
-        {
-            using var fs = File.OpenRead(manifestPath);
-            return ParsePackIdentity(fs);
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[Import] Could not parse manifest at '{manifestPath}': {ex.Message}");
-            return null;
-        }
-    }
-
-    private static bool IdentitiesMatch(PackIdentity a, PackIdentity b)
-    {
-        if (!a.HeaderUuid.Equals(b.HeaderUuid, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        // All module UUIDs must match (order-independent).
-        var setA = new HashSet<string>(a.ModuleUuids, StringComparer.OrdinalIgnoreCase);
-        var setB = new HashSet<string>(b.ModuleUuids, StringComparer.OrdinalIgnoreCase);
-        return setA.SetEquals(setB);
-    }
-
-    /// <summary>
-    /// Scans both resource_packs and development_resource_packs (for the current
-    /// IsTargetingPreview value) up to 2 folder levels deep — the maximum depth
-    /// the game engine reads — and returns the manifest.json path of the first
-    /// existing pack whose identity matches <paramref name="incoming"/>, or null.
-    /// </summary>
-    private static string? FindExistingPackMatch(PackIdentity incoming)
-    {
-        var scanRoots = MinecraftUserDataLocator
-            .GetExistingResourcePackScanPaths(TunerVariables.Persistent.IsTargetingPreview)
-            .ToList();
-
-        foreach (var root in scanRoots)
-        {
-            // Depth 1: root/folder/manifest.json
-            foreach (var dir1 in SafeEnumerateDirectories(root))
-            {
-                var m1 = Path.Combine(dir1, "manifest.json");
-                if (File.Exists(m1))
-                {
-                    var identity = ParsePackIdentityFromFile(m1);
-                    if (identity != null && IdentitiesMatch(incoming, identity))
-                        return dir1; // return the pack folder, not the manifest
-                }
-
-                // Depth 2: root/folder/subfolder/manifest.json
-                foreach (var dir2 in SafeEnumerateDirectories(dir1))
-                {
-                    var m2 = Path.Combine(dir2, "manifest.json");
-                    if (File.Exists(m2))
-                    {
-                        var identity = ParsePackIdentityFromFile(m2);
-                        if (identity != null && IdentitiesMatch(incoming, identity))
-                            return dir2;
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static IEnumerable<string> SafeEnumerateDirectories(string path)
-    {
-        try { return Directory.GetDirectories(path); }
-        catch { return Enumerable.Empty<string>(); }
+        return Shallowest(zip.Entries.Where(e =>
+            Path.GetFileName(e.FullName).Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase)));
     }
 
     // ── Folder import ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Imports a bare folder by finding its shallowest manifest.json, treating
-    /// that manifest's parent as the pack root, zipping to temp, and extracting
-    /// to destination. Cross-drive safe; no partial copies.
-    /// </summary>
     public static async Task<bool> ImportFromFolderAsync(string sourceFolder, string destination)
     {
         ReportStatus($"Inspecting '{Path.GetFileName(sourceFolder)}'…");
 
-        var allManifests = Directory
-            .EnumerateFiles(sourceFolder, "manifest.json", SearchOption.AllDirectories)
-            .Select(p => new { Path = p, Depth = p.Split(Path.DirectorySeparatorChar).Length })
-            .OrderBy(x => x.Depth)
-            .ToList();
+        // Look for manifest.json first; fall back to pack_manifest.json.
+        var allManifests = FindManifestsInFolder(sourceFolder);
 
         if (allManifests.Count == 0)
         {
-            ReportStatus($"'{Path.GetFileName(sourceFolder)}' has no manifest.json — not a valid resource pack, skipped.");
+            ReportStatus($"'{Path.GetFileName(sourceFolder)}' has no manifest — not a valid resource pack, skipped.");
             return false;
         }
 
-        var packRoot = Path.GetDirectoryName(allManifests[0].Path)!;
+        var (manifestPath, isLegacy) = allManifests[0];
+        var packRoot = Path.GetDirectoryName(manifestPath)!;
 
-        // Dupe detection for folder imports.
         PackIdentity? incomingIdentity = null;
-        try { incomingIdentity = ParsePackIdentityFromFile(allManifests[0].Path); }
+        try { incomingIdentity = ParsePackIdentityFromFile(manifestPath, isLegacy); }
         catch (Exception ex) { Trace.WriteLine($"[Import] Could not parse manifest for dupe check: {ex.Message}"); }
 
         if (incomingIdentity != null)
@@ -526,8 +417,7 @@ public static class ExpImpDel
                 if (overwrite)
                 {
                     ReportStatus($"Replacing existing pack at '{Path.GetFileName(existingMatch)}'…");
-                    var deleted = await DeletePackAsync(existingMatch);
-                    if (deleted == null)
+                    if (await DeletePackAsync(existingMatch) == null)
                     {
                         ReportStatus("Could not remove existing pack — import aborted.");
                         return false;
@@ -564,6 +454,190 @@ public static class ExpImpDel
         }
     }
 
+    /// <summary>
+    /// Finds all manifest files in a folder tree, ordered shallowest-first.
+    /// manifest.json entries always sort before pack_manifest.json at the same depth.
+    /// Returns (path, isLegacy) tuples.
+    /// </summary>
+    private static List<(string Path, bool IsLegacy)> FindManifestsInFolder(string root)
+    {
+        var results = new List<(string, bool, int)>();
+
+        foreach (var file in Directory.EnumerateFiles(root, "manifest.json", SearchOption.AllDirectories))
+            results.Add((file, false, file.Split(Path.DirectorySeparatorChar).Length));
+
+        foreach (var file in Directory.EnumerateFiles(root, "pack_manifest.json", SearchOption.AllDirectories))
+        {
+            var dir = Path.GetDirectoryName(file)!;
+            // Skip if manifest.json exists in the same directory — modern wins.
+            if (File.Exists(Path.Combine(dir, "manifest.json"))) continue;
+            results.Add((file, true, file.Split(Path.DirectorySeparatorChar).Length));
+        }
+
+        return results
+            .OrderBy(x => x.Item3)
+            .ThenBy(x => x.Item2) // false (modern) before true (legacy) at same depth
+            .Select(x => (x.Item1, x.Item2))
+            .ToList();
+    }
+
+    // ── Dupe detection ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Identity extracted from a manifest for duplicate comparison.
+    /// We match on header UUID + all module UUIDs; version is excluded so that
+    /// importing an update still triggers the "replace?" prompt.
+    /// </summary>
+    private record PackIdentity(string Name, string HeaderUuid, IReadOnlyList<string> ModuleUuids);
+
+    /// <summary>
+    /// Parses a PackIdentity from a manifest stream. Handles both modern
+    /// manifest.json and legacy pack_manifest.json formats.
+    /// </summary>
+    private static PackIdentity? ParsePackIdentity(Stream manifestStream, bool isLegacy)
+    {
+        using var reader = new StreamReader(manifestStream, leaveOpen: true);
+        var json = reader.ReadToEnd();
+
+        JObject root;
+        try
+        {
+            using var sr = new StringReader(json);
+            using var jsonReader = new JsonTextReader(sr);
+            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
+            root = JObject.Load(jsonReader, loadSettings);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Import] JSON parse error in manifest: {ex.Message}");
+            return null;
+        }
+
+        if (isLegacy)
+        {
+            // Legacy: header.pack_id is the primary UUID; modules are inside header.
+            var header = root["header"];
+            var headerUuid = header?["pack_id"]?.ToString();
+            var name = header?["name"]?.ToString() ?? string.Empty;
+
+            if (string.IsNullOrEmpty(headerUuid)) return null;
+
+            var moduleUuids = header?["modules"]
+                ?.Children<JObject>()
+                .Select(m => m["uuid"]?.ToString())
+                .Where(u => !string.IsNullOrEmpty(u))
+                .Cast<string>()
+                .ToList() ?? new List<string>();
+
+            return new PackIdentity(name, headerUuid, moduleUuids);
+        }
+        else
+        {
+            // Modern: header.uuid at root level; modules[] at root level.
+            var headerUuid = root["header"]?["uuid"]?.ToString();
+            var name = root["header"]?["name"]?.ToString() ?? string.Empty;
+
+            if (string.IsNullOrEmpty(headerUuid)) return null;
+
+            var moduleUuids = root["modules"]
+                ?.Children<JObject>()
+                .Select(m => m["uuid"]?.ToString())
+                .Where(u => !string.IsNullOrEmpty(u))
+                .Cast<string>()
+                .ToList() ?? new List<string>();
+
+            return new PackIdentity(name, headerUuid, moduleUuids);
+        }
+    }
+
+    private static PackIdentity? ParsePackIdentityFromFile(string manifestPath, bool isLegacy)
+    {
+        try
+        {
+            using var fs = File.OpenRead(manifestPath);
+            return ParsePackIdentity(fs, isLegacy);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Import] Could not parse manifest at '{manifestPath}': {ex.Message}");
+            return null;
+        }
+    }
+
+    private static bool IdentitiesMatch(PackIdentity a, PackIdentity b)
+    {
+        if (!a.HeaderUuid.Equals(b.HeaderUuid, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var setA = new HashSet<string>(a.ModuleUuids, StringComparer.OrdinalIgnoreCase);
+        var setB = new HashSet<string>(b.ModuleUuids, StringComparer.OrdinalIgnoreCase);
+        return setA.SetEquals(setB);
+    }
+
+    /// <summary>
+    /// Scans both resource_packs and development_resource_packs up to 2 folder levels
+    /// deep (the game's own read limit) and returns the pack folder path of the first
+    /// existing pack whose identity matches <paramref name="incoming"/>, or null.
+    /// Checks both manifest.json and pack_manifest.json at each location.
+    /// </summary>
+    private static string? FindExistingPackMatch(PackIdentity incoming)
+    {
+        var scanRoots = MinecraftUserDataLocator
+            .GetExistingResourcePackScanPaths(TunerVariables.Persistent.IsTargetingPreview)
+            .ToList();
+
+        foreach (var root in scanRoots)
+        {
+            foreach (var dir1 in SafeEnumerateDirectories(root))
+            {
+                var match = CheckDirForMatch(dir1, incoming);
+                if (match != null) return match;
+
+                foreach (var dir2 in SafeEnumerateDirectories(dir1))
+                {
+                    match = CheckDirForMatch(dir2, incoming);
+                    if (match != null) return match;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Checks a single directory for both manifest.json and pack_manifest.json,
+    /// preferring the modern format. Returns the directory path if a match is found.
+    /// </summary>
+    private static string? CheckDirForMatch(string dir, PackIdentity incoming)
+    {
+        // Try modern manifest first.
+        var modern = Path.Combine(dir, "manifest.json");
+        if (File.Exists(modern))
+        {
+            var identity = ParsePackIdentityFromFile(modern, isLegacy: false);
+            if (identity != null && IdentitiesMatch(incoming, identity))
+                return dir;
+            return null; // modern manifest found but no match — don't also check legacy
+        }
+
+        // Fall back to legacy.
+        var legacy = Path.Combine(dir, "pack_manifest.json");
+        if (File.Exists(legacy))
+        {
+            var identity = ParsePackIdentityFromFile(legacy, isLegacy: true);
+            if (identity != null && IdentitiesMatch(incoming, identity))
+                return dir;
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> SafeEnumerateDirectories(string path)
+    {
+        try { return Directory.GetDirectories(path); }
+        catch { return Enumerable.Empty<string>(); }
+    }
+
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private static string ResolveUniqueDestination(string destination, string baseName)
@@ -596,11 +670,9 @@ public static class ExpImpDel
     // ════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Deletes the top-level pack folder for the given pack location.
-    /// Walks upward from <paramref name="packLocation"/> until the parent is a
-    /// known scan root (resource_packs or development_resource_packs for either
-    /// game variant), then deletes that immediate child folder. Aborts safely
-    /// if no scan root is found, so arbitrary folders can never be nuked.
+    /// Walks upward from <paramref name="packLocation"/> until the parent is a known
+    /// scan root, then deletes that immediate child. Aborts safely if no scan root
+    /// is found so arbitrary folders can never be accidentally removed.
     /// </summary>
     public static async Task<string?> DeletePackAsync(string packLocation)
     {
