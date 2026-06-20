@@ -19,6 +19,10 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
 
+// TODO: Try to limit the number of characters of imported packs...
+// it matching whatever it matches now isn't it... heck, generate Short UUIDs, much better!
+// TODO: Also, fix pack.name, pack.description showing for packs without those properties, wtf? when did u fuck it up?
+
 public sealed partial class PackBrowserWindow : Window
 {
     // ── Window infrastructure ────────────────────────────────────────────────
@@ -498,16 +502,16 @@ public sealed partial class PackBrowserWindow : Window
         {
             Width = 75,
             Height = 75,
-            CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(128, 0, 0, 0)),
-            Translation = new System.Numerics.Vector3(0, 0, 64),
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(ColorHelper.FromArgb(192, 0, 0, 0)),
+            Translation = new System.Numerics.Vector3(0, 0, 128),
             Visibility = Visibility.Collapsed,
             Tag = "SelectionOverlay"
         };
         selectionOverlay.Child = new FontIcon
         {
             Glyph = "\uE73E",
-            FontSize = 48,
+            FontSize = 72,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
@@ -556,6 +560,7 @@ public sealed partial class PackBrowserWindow : Window
 
         // Version badge — top right
         var versionBadge = BuildVersionBadge(pack.Version);
+        versionBadge.HorizontalAlignment = HorizontalAlignment.Right;
         Grid.SetRow(versionBadge, 0);
         rightPanel.Children.Add(versionBadge);
 
@@ -563,6 +568,7 @@ public sealed partial class PackBrowserWindow : Window
         var tagsPanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
             Spacing = 6
         };
@@ -585,7 +591,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(8, 4, 8, 4),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 32, 32, 32))
+            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 48, 48, 48))
         };
         badge.Child = new TextBlock
         {
@@ -650,15 +656,17 @@ public sealed partial class PackBrowserWindow : Window
     /// </summary>
     private void ApplySelectionTextStyle(string packPath, bool selected)
     {
-        if (!_packTextMap.TryGetValue(packPath, out var blocks)) return;
+        /*
+            if (!_packTextMap.TryGetValue(packPath, out var blocks)) return;
 
-        blocks.Name.FontWeight = selected
-            ? Microsoft.UI.Text.FontWeights.Bold
-            : Microsoft.UI.Text.FontWeights.SemiBold;
+            blocks.Name.FontWeight = selected
+                ? Microsoft.UI.Text.FontWeights.Bold
+                : Microsoft.UI.Text.FontWeights.SemiBold;
 
-        blocks.Desc.FontWeight = selected
-            ? Microsoft.UI.Text.FontWeights.SemiBold   // desc goes SemiBold (was Normal)
-            : Microsoft.UI.Text.FontWeights.Normal;
+            blocks.Desc.FontWeight = selected
+                ? Microsoft.UI.Text.FontWeights.SemiBold   // desc goes SemiBold (was Normal)
+                : Microsoft.UI.Text.FontWeights.Normal;
+        */
     }
 
     // ════════════════════════════════════════════════════════════════════════
