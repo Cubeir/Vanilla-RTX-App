@@ -112,9 +112,10 @@
                 </StackPanel>
 
                 <!-- ══════════════════════════════════════════
-                     BOTTOM ACTION BAR — Confirm | Import
+                     BOTTOM ACTION BAR
                 ═══════════════════════════════════════════ -->
-                <!-- Bottom Action Bar Shadow Host -->
+                
+                <!-- Shadow Host -->
                 <Border x:Name="ActionBarShadowHost"
                         Grid.Row="2"
                         Margin="20,5,20,16"
@@ -126,53 +127,50 @@
                         <ThemeShadow />
                     </Border.Shadow>
 
-                    <Grid Padding="0,0,0,0">
+                    <Grid Padding="0,0,0,0"
+                          MinHeight="92"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Bottom">
                         <Grid.ColumnDefinitions>
                             <!-- Select All Button -->
-                            <ColumnDefinition Width="0.125*" />
+                            <ColumnDefinition Width="0.2*" />
                             <!-- Gap       6 px -->
                             <ColumnDefinition Width="6" />
                             <!-- Confirm  60 % -->
-                            <ColumnDefinition Width="1.4*" />
+                            <ColumnDefinition Width="1.8*" />
                             <!-- Gap       6 px -->
                             <ColumnDefinition Width="6" />
                             <!-- Import   40 % -->
                             <ColumnDefinition Width="1*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Select All Button -->
-                        <Button x:Name="SelectAll_Button"
-                                Grid.Column="0"
-                                Click="SelectAll_Button_Click"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                MinHeight="100"
-                                BorderThickness="0"
-                                CornerRadius="5,0,0,5"
-                                IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Select or deselect all">
-                            <Button.Shadow>
-                                <ThemeShadow />
-                            </Button.Shadow>
+                        <DropDownButton x:Name="SelectAll_Button"
+                                        Grid.Column="0"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        BorderThickness="0"
+                                        CornerRadius="5,0,0,5"
+                                        IsTextScaleFactorEnabled="False"
+                                        ToolTipService.ToolTip="Select all by tag or deselect all">
                             <Grid>
                                 <FontIcon x:Name="SelectAllButton_Glyph"
-                                          Glyph="&#xECCD;"
+                                          Glyph="&#xE762;"
                                           FontSize="18"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
-                                          Margin="0, -3, 0, 0"
+                                          Margin="0,-3,0,0"
                                           IsTextScaleFactorEnabled="False" />
                                 <TextBlock x:Name="SelectAllButton_Text"
                                            FontSize="14"
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Margin="0, -3, 0, 0"
+                                           Margin="0,-3,0,0"
                                            Visibility="Collapsed"
                                            IsTextScaleFactorEnabled="False" />
                             </Grid>
-                        </Button>
+                        </DropDownButton>
 
                         <!-- ── CONFIRM SELECTION ──────────────────── -->
                         <Button x:Name="ConfirmButton"
@@ -181,10 +179,10 @@
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
                                 HorizontalContentAlignment="Stretch"
-                                MinHeight="100"
                                 BorderThickness="0"
                                 CornerRadius="0,0,0,0"
-                                IsTextScaleFactorEnabled="False">
+                                IsTextScaleFactorEnabled="False"
+                                ToolTipService.ToolTip="Confirm selection and return to main menu">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
@@ -208,10 +206,10 @@
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
-                                MinHeight="100"
                                 CornerRadius="0,5,5,0"
                                 BorderThickness="0"
-                                IsTextScaleFactorEnabled="False">
+                                IsTextScaleFactorEnabled="False"
+                                ToolTipService.ToolTip="Allows you to import your resource packs in bulk">
                             <StackPanel HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         Spacing="4">

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -24,20 +25,25 @@ public sealed partial class PackBrowserWindow : Window
     private readonly Window _mainWindow;
 
     // ── Selection state ──────────────────────────────────────────────────────
-    // Maps pack directory path → its toggle button.
     private readonly Dictionary<string, Button> _packButtonMap = new();
-
-    // Tracks which packs are currently toggled ON.
     private readonly HashSet<string> _selectedPaths = new();
 
-    public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+    // Unique tags seen in the current pack list; rebuilt on each load.
+    // Drives the SelectAll dropdown — new tags appear automatically.
+    private readonly List<string> _knownTags = new();
+
+    public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview
+        ? "Minecraft Preview" : "Minecraft";
+
+    private const string AlchitexCandidateTag = "Potential Alchitex Candidate";
 
     /// <summary>
-    /// Capability-tag label for packs flagged by <see cref="AlchitexSuitabilityScanner"/>.
-    /// Used both when building the tag list and as the matching switch case in
-    /// <see cref="BuildTagBadge"/>, so the two can never drift out of sync.
+    /// Matches § followed immediately by any non-whitespace character.
+    /// Strips Minecraft in-game formatting codes before display.
+    /// § followed by a space is left intact (Minecraft renders it literally).
     /// </summary>
-    private const string AlchitexCandidateTag = "Potential Alchitex Candidate";
+    private static readonly Regex MinecraftFormattingCodeRegex =
+        new(@"§\S", RegexOptions.Compiled);
 
     // ════════════════════════════════════════════════════════════════════════
     //  Constructor
@@ -45,10 +51,8 @@ public sealed partial class PackBrowserWindow : Window
     public PackBrowserWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
-
         _mainWindow = mainWindow;
 
-        // ── Theme ────────────────────────────────────────────────────────────
         var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
         if (this.Content is FrameworkElement root)
         {
@@ -60,7 +64,6 @@ public sealed partial class PackBrowserWindow : Window
             };
         }
 
-        // ── AppWindow / title bar ────────────────────────────────────────────
         var hWnd = WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
@@ -88,6 +91,12 @@ public sealed partial class PackBrowserWindow : Window
 
         this.Activated += PackBrowserWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
+
+        // Wire import status into the title bar.
+        ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
+
+        // Wire the overwrite confirmation dialog so ExpImpDel can ask us on the UI thread.
+        ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -113,13 +122,20 @@ public sealed partial class PackBrowserWindow : Window
 
         WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
 
-        // Populate the import button description now that gameTitleText is known
         AddPackDescriptionText.Text =
             $"Select or drag & drop .mcpack or .zip files of your resource packs here to import them to {gameTitleText}";
 
         PopulatePackBrowserAnnouncements();
 
         ActionBarShadowHost.Translation = new System.Numerics.Vector3(0, 0, 32);
+
+        // Register drag-and-drop on the window content root.
+        if (this.Content is UIElement contentRoot)
+        {
+            contentRoot.AllowDrop = true;
+            contentRoot.DragOver += ContentRoot_DragOver;
+            contentRoot.Drop += ContentRoot_Drop;
+        }
 
         await LoadPacksAsync();
 
@@ -153,6 +169,103 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Drag-and-drop
+    // ════════════════════════════════════════════════════════════════════════
+
+    private void ContentRoot_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = "Import pack";
+            e.DragUIOverride.IsGlyphVisible = true;
+            e.DragUIOverride.IsCaptionVisible = true;
+        }
+        else
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+        }
+    }
+
+    private async void ContentRoot_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+            return;
+
+        var items = await e.DataView.GetStorageItemsAsync();
+        if (items == null || items.Count == 0) return;
+
+        var paths = new List<string>();
+        foreach (var item in items)
+        {
+            if (item is Windows.Storage.StorageFolder folder)
+                paths.Add(folder.Path);
+            else if (item is Windows.Storage.StorageFile file)
+                paths.Add(file.Path); // filtering by extension happens inside ImportFromPathsAsync
+        }
+
+        if (paths.Count == 0) return;
+        await RunImportAsync(() => ExpImpDel.ImportFromPathsAsync(paths));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Overwrite confirmation dialog
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Called by ExpImpDel when a duplicate UUID match is found. Runs on the UI
+    /// thread (via DispatcherQueue) so the ContentDialog can be shown safely.
+    /// Returns true if the user confirms overwrite, false to skip.
+    /// </summary>
+    private async Task<bool> ShowOverwriteDialogAsync(string packName, string existingPath)
+    {
+        bool result = false;
+
+        // ContentDialog must be shown on the UI thread.
+        var tcs = new TaskCompletionSource<bool>();
+
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var existingFolderName = Path.GetFileName(existingPath.TrimEnd(
+                    Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+                var dialog = new ContentDialog
+                {
+                    Title = "Pack already installed",
+                    Content = $"\"{packName}\" is already installed as \"{existingFolderName}\".\n\nReplace it with the incoming version?",
+                    PrimaryButtonText = "Replace",
+                    CloseButtonText = "Skip",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
+
+                var dialogResult = await dialog.ShowAsync();
+                tcs.SetResult(dialogResult == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine($"Overwrite dialog error: {ex.Message}");
+                tcs.SetResult(false);
+            }
+        });
+
+        result = await tcs.Task;
+        return result;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Minecraft formatting-code stripping
+    // ════════════════════════════════════════════════════════════════════════
+
+    private static string StripMinecraftFormatting(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        return MinecraftFormattingCodeRegex.Replace(input, string.Empty).Trim();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Pack list loading
     // ════════════════════════════════════════════════════════════════════════
 
@@ -161,6 +274,7 @@ public sealed partial class PackBrowserWindow : Window
         PackListContainer.Children.Clear();
         _packButtonMap.Clear();
         _selectedPaths.Clear();
+        _knownTags.Clear();
         EmptyStatePanel.Visibility = Visibility.Collapsed;
 
         try
@@ -178,20 +292,25 @@ public sealed partial class PackBrowserWindow : Window
                 EmptyStateText.Text = TunerVariables.Persistent.IsTargetingPreview
                     ? "No packs found in Minecraft Preview data directory."
                     : "No packs found in Minecraft data directory.";
+                RebuildSelectAllDropdown();
                 return;
             }
-            // TODO: RE-ENABLE THIS LINE ONCE ALCHITEX IS OUT!
-            // Sort: RTX → Vibrant Visuals → Incompatible; alphabetical within each group
+
             var sortedPacks = packs
                 .OrderBy(p => p switch
                 {
                     { PackType: "RTX" } => 0,
-                  //  { PackType: "Incompatible", PotentiallySuitableForPBRGen: true } => 1,  // @ this lineeeeeeeeeeeeeeeee
-                    { PackType: "Vibrant Visuals" } => 2,
-                    _ => 3   // Incompatible, not an Alchitex candidate
+                    { PackType: "Vibrant Visuals" } => 1,
+                    _ => 2
                 })
                 .ThenBy(p => p.PackName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            // Accumulate unique tags in sort order — drives the dropdown.
+            foreach (var pack in sortedPacks)
+                foreach (var tag in pack.CapabilityTags)
+                    if (!_knownTags.Contains(tag))
+                        _knownTags.Add(tag);
 
             foreach (var pack in sortedPacks)
             {
@@ -200,6 +319,7 @@ public sealed partial class PackBrowserWindow : Window
                 _packButtonMap[pack.PackPath] = btn;
             }
 
+            RebuildSelectAllDropdown();
             System.Diagnostics.Trace.WriteLine("Pack loading complete");
         }
         catch (Exception ex)
@@ -209,6 +329,71 @@ public sealed partial class PackBrowserWindow : Window
             PackSelectionPanel.Visibility = Visibility.Visible;
             EmptyStatePanel.Visibility = Visibility.Visible;
             EmptyStateText.Text = $"Error: {ex.Message}";
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  SelectAll dropdown  (DropDownButton — flyout rebuilt after every load)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Rebuilds the MenuFlyout on SelectAll_Button from the current _knownTags.
+    /// Called after every LoadPacksAsync so items always reflect visible packs.
+    /// Adding new tag types anywhere in the codebase automatically adds them here.
+    /// </summary>
+    private void RebuildSelectAllDropdown()
+    {
+        var flyout = new MenuFlyout();
+
+        var selectAll = new MenuFlyoutItem { Text = "Select all" };
+        selectAll.Click += (_, _) => SetAllPacksSelected(true);
+        flyout.Items.Add(selectAll);
+
+        var deselectAll = new MenuFlyoutItem { Text = "Deselect all" };
+        deselectAll.Click += (_, _) => SetAllPacksSelected(false);
+        flyout.Items.Add(deselectAll);
+
+        if (_knownTags.Count > 0)
+        {
+            flyout.Items.Add(new MenuFlyoutSeparator());
+
+            foreach (var tag in _knownTags)
+            {
+                var capturedTag = tag;
+                var item = new MenuFlyoutItem { Text = $"Select \"{capturedTag}\"" };
+                item.Click += (_, _) => SelectPacksByTag(capturedTag);
+                flyout.Items.Add(item);
+            }
+        }
+
+        // DropDownButton exposes its flyout directly — no Click handler needed.
+        SelectAll_Button.Flyout = flyout;
+    }
+
+    private void SetAllPacksSelected(bool selected)
+    {
+        foreach (var (path, button) in _packButtonMap)
+        {
+            var overlay = FindSelectionOverlay(button);
+            if (overlay == null) continue;
+
+            if (selected) { _selectedPaths.Add(path); overlay.Visibility = Visibility.Visible; }
+            else { _selectedPaths.Remove(path); overlay.Visibility = Visibility.Collapsed; }
+        }
+    }
+
+    private void SelectPacksByTag(string tag)
+    {
+        foreach (var (path, button) in _packButtonMap)
+        {
+            if (button.Tag is not PackData pack) continue;
+            if (!pack.CapabilityTags.Contains(tag)) continue;
+
+            var overlay = FindSelectionOverlay(button);
+            if (overlay == null) continue;
+
+            _selectedPaths.Add(path);
+            overlay.Visibility = Visibility.Visible;
         }
     }
 
@@ -239,7 +424,6 @@ public sealed partial class PackBrowserWindow : Window
                 buttonShadow.Receivers.Add(ShadowReceiverGrid);
         };
 
-        // Columns: [icon 75] [gap 15] [info *] [gap 15] [tags Auto]
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
@@ -269,13 +453,14 @@ public sealed partial class PackBrowserWindow : Window
 
         if (pack.Icon != null)
         {
-            iconBorder.Child = new Image { Source = pack.Icon, Stretch = Stretch.UniformToFill };
+            iconBorder.Child = new Microsoft.UI.Xaml.Controls.Image
+            { Source = pack.Icon, Stretch = Stretch.UniformToFill };
         }
         else
         {
             try
             {
-                iconBorder.Child = new Image
+                iconBorder.Child = new Microsoft.UI.Xaml.Controls.Image
                 {
                     Source = new BitmapImage(new Uri("ms-appx:///Assets/missing.png")),
                     Stretch = Stretch.UniformToFill
@@ -293,7 +478,6 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // Selection overlay: semi-transparent black tint + checkmark, hidden by default.
         var selectionOverlay = new Border
         {
             Width = 75,
@@ -306,7 +490,7 @@ public sealed partial class PackBrowserWindow : Window
         };
         selectionOverlay.Child = new FontIcon
         {
-            Glyph = "\uE73E",   // Checkmark
+            Glyph = "\uE73E",
             FontSize = 48,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -403,10 +587,6 @@ public sealed partial class PackBrowserWindow : Window
     //  Click handlers
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Toggles the selected state of a pack. ALL pack types are selectable,
-    /// including Incompatible — callers decide what to do with the type field.
-    /// </summary>
     private void PackButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button button || button.Tag is not PackData pack) return;
@@ -426,13 +606,6 @@ public sealed partial class PackBrowserWindow : Window
         }
     }
 
-    /// <summary>
-    /// Writes the toggled packs to <see cref="TunerVariables.SelectedPacks"/> and closes.
-    /// If nothing is toggled the window closes without modifying SelectedPacks.
-    /// Each entry is a (Location, Name, Type, IsAlchitexCandidate) tuple where Type is
-    /// "RTX", "Vibrant Visuals", or "Incompatible", and IsAlchitexCandidate is only
-    /// ever true for "Incompatible" packs that passed the Alchitex suitability scan.
-    /// </summary>
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedPaths.Count > 0)
@@ -442,33 +615,53 @@ public sealed partial class PackBrowserWindow : Window
             foreach (var path in _selectedPaths.Where(p => _packButtonMap.ContainsKey(p)))
             {
                 var pack = (PackData)_packButtonMap[path].Tag;
-                TunerVariables.SelectedPacks.Add((pack.PackPath, pack.PackName, pack.PackType, pack.PotentiallySuitableForPBRGen));
+                TunerVariables.SelectedPacks.Add(
+                    (pack.PackPath, pack.PackName, pack.PackType, pack.PotentiallySuitableForPBRGen));
             }
         }
 
         this.Close();
     }
 
-    /// <summary>
-    /// Placeholder for future import functionality.
-    /// The pack list is always refreshed in the finally block.
-    /// </summary>
     private async void AddPackButton_Click(object sender, RoutedEventArgs e)
     {
+        // Pass THIS window's handle so the picker is owned by PackBrowserWindow,
+        // not the main window — prevents the main window from jumping to front.
+        var hwnd = WindowNative.GetWindowHandle(this);
+        await RunImportAsync(() => ExpImpDel.ImportPackAsync(hwnd));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Import orchestration
+    // ════════════════════════════════════════════════════════════════════════
+
+    private async Task RunImportAsync(Func<Task<bool>> importWork)
+    {
+        AddPackButton.IsEnabled = false;
+
         try
         {
-            // TODO: implement ImportPackAsync() and call it here
-            // await ImportPackAsync();
+            await importWork();
         }
         finally
         {
-            // Refresh regardless of success or failure
+            // Always refresh so newly imported packs appear and the dropdown updates.
             LoadingPanel.Visibility = Visibility.Visible;
             PackSelectionPanel.Visibility = Visibility.Collapsed;
             await LoadPacksAsync();
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
+            AddPackButton.IsEnabled = true;
+
+            // Restore the normal title once the import sequence is fully done.
+            WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
         }
+    }
+
+    private void OnImportStatusChanged(string message)
+    {
+        // ImportStatusChanged can fire from background tasks — marshal to UI thread.
+        DispatcherQueue.TryEnqueue(() => WindowTitle.Text = message);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -518,12 +711,7 @@ public sealed partial class PackBrowserWindow : Window
         var root = JObject.Parse(json);
 
         var capabilityTags = new List<string>();
-        // PackType is the primary/most-significant tag: RTX > Vibrant Visuals > Incompatible
         var packType = "Incompatible";
-
-        // Optional, orthogonal to PackType — only ever set for "Incompatible" packs.
-        // Kept separate from PackType/CapabilityTags' driving logic so existing
-        // PackType-based decisions elsewhere in the app are completely unaffected.
         var potentiallySuitableForPbrGen = false;
 
         var capabilities = root["capabilities"];
@@ -538,35 +726,24 @@ public sealed partial class PackBrowserWindow : Window
                 else if (capLower == "pbr") hasPbr = true;
             }
 
-            if (hasRaytraced)
-            {
-                capabilityTags.Add("RTX");
-                packType = "RTX";
-            }
+            if (hasRaytraced) { capabilityTags.Add("RTX"); packType = "RTX"; }
             if (hasPbr)
             {
                 capabilityTags.Add("Vibrant Visuals");
-                // Only promote to VV if not already RTX
                 if (packType == "Incompatible") packType = "Vibrant Visuals";
             }
         }
 
         if (packType == "Incompatible")
         {
-            // Being Incompatible is a prerequisite for the Alchitex check — RTX and
-            // Vibrant Visuals packs never reach this branch, so the tag can never
-            // appear alongside theirs. Added before "Incompatible" so its badge
-            // renders to the left of the Incompatible badge.
             if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
             {
                 potentiallySuitableForPbrGen = true;
                 capabilityTags.Add(AlchitexCandidateTag);
             }
-
             capabilityTags.Add("Incompatible");
         }
 
-        // ── Name / description ───────────────────────────────────────────────
         var header = root["header"];
         string packName = header?["name"]?.ToString() ?? "pack.name";
         string packDesc = header?["description"]?.ToString() ?? "pack.description";
@@ -587,12 +764,12 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // If description couldn't be resolved from manifest or lang file — fall back to
-        // showing the pack's location so the user sees *something* informative
-        // rather than a blank line.
-        if (packName == "pack.name") packName = Path.GetFileName(packDir);
-        if (packDesc == "pack.description")
-            packDesc = Helpers.SanitizePathForDisplay(packDir);
+        // Strip §X Minecraft formatting codes before display.
+        packName = StripMinecraftFormatting(packName);
+        packDesc = StripMinecraftFormatting(packDesc);
+
+        if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
+        if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
 
         return new PackData
         {
@@ -601,7 +778,7 @@ public sealed partial class PackBrowserWindow : Window
             PackPath = packDir,
             Icon = await LoadIconAsync(packDir),
             CapabilityTags = capabilityTags,
-            PackType = packType,   // "RTX", "Vibrant Visuals", or "Incompatible"
+            PackType = packType,
             PotentiallySuitableForPBRGen = potentiallySuitableForPbrGen
         };
     }
@@ -672,10 +849,6 @@ public sealed partial class PackBrowserWindow : Window
     //  Visual-tree helper
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Recursively finds the selection-overlay Border (Tag = "SelectionOverlay")
-    /// within a button's visual tree.
-    /// </summary>
     private static Border? FindSelectionOverlay(DependencyObject parent)
     {
         var count = VisualTreeHelper.GetChildrenCount(parent);
@@ -691,23 +864,11 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Alchitex PBR-generation suitability scanning
+    //  Alchitex suitability scanner
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Determines whether an "Incompatible" pack has enough texture material under
-    /// any textures/blocks hierarchy to be worth flagging as a potential candidate
-    /// for Alchitex PBR texture generation. Intentionally a simple, fast rule —
-    /// counts qualifying image files and bails out the moment the threshold is
-    /// exceeded, so it stays cheap even for large packs.
-    /// </summary>
     private static class AlchitexSuitabilityScanner
     {
-        /// <summary>
-        /// Minimum number of qualifying image files required, across all
-        /// textures/blocks directories combined, for a pack to be considered
-        /// potentially suitable for Alchitex PBR texture generation.
-        /// </summary>
         private const int MinimumQualifyingImageCount = 16;
 
         private static readonly HashSet<string> QualifyingExtensions =
@@ -716,38 +877,22 @@ public sealed partial class PackBrowserWindow : Window
         public static bool IsPotentiallySuitable(string packDir)
         {
             int matchCount = 0;
-
             try
             {
                 foreach (var filePath in Directory.EnumerateFiles(packDir, "*", SearchOption.AllDirectories))
                 {
-                    if (!QualifyingExtensions.Contains(Path.GetExtension(filePath)))
-                        continue;
-
-                    if (!IsUnderTexturesBlocksPath(filePath))
-                        continue;
-
-                    matchCount++;
-                    if (matchCount >= MinimumQualifyingImageCount)
-                        return true; // threshold met — no need to keep scanning
+                    if (!QualifyingExtensions.Contains(Path.GetExtension(filePath))) continue;
+                    if (!IsUnderTexturesBlocksPath(filePath)) continue;
+                    if (++matchCount >= MinimumQualifyingImageCount) return true;
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Trace.WriteLine($"Error scanning {packDir} for Alchitex suitability: {ex.Message}");
-                return false;
             }
-
             return false;
         }
 
-        /// <summary>
-        /// True if the file's containing directory has a "textures" segment
-        /// immediately followed by a "blocks" segment anywhere in its path
-        /// (e.g. .../textures/blocks, .../sub/textures/blocks/variant1).
-        /// Compares whole path segments rather than substrings, so something
-        /// like "nontextures/blocksy" can't accidentally match.
-        /// </summary>
         private static bool IsUnderTexturesBlocksPath(string filePath)
         {
             var dir = Path.GetDirectoryName(filePath);
@@ -775,24 +920,7 @@ public sealed partial class PackBrowserWindow : Window
         public required string PackPath { get; set; }
         public BitmapImage? Icon { get; set; }
         public required List<string> CapabilityTags { get; set; }
-        /// <summary>
-        /// Primary type string: "RTX", "Vibrant Visuals", or "Incompatible".
-        /// Drives sort order and the Type field written to TunerVariables.SelectedPacks.
-        /// </summary>
         public required string PackType { get; set; }
-
-        /// <summary>
-        /// True if this pack's textures/blocks hierarchy contains enough qualifying
-        /// image files to be considered a potential Alchitex PBR-generation
-        /// candidate. Only ever set to true for "Incompatible" packs — being
-        /// Incompatible is a prerequisite. Optional; defaults to false and has no
-        /// effect on existing PackType-based logic elsewhere in the app.
-        /// </summary>
         public bool PotentiallySuitableForPBRGen { get; set; } = false;
-    }
-
-    private void SelectAll_Button_Click(object sender, RoutedEventArgs e)
-    {
-
     }
 }

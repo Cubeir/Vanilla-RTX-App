@@ -38,26 +38,32 @@ namespace Vanilla_RTX_App;
 
 - TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
 
-- Safeguard loss of default RTX  files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
-
-- resolve all compiler warnings and test one by one, hunt through them with claude! make it fast
-
-- Implement the DELETER and IMPORTER in EXPORTER.CS, expand it
-the two new buttons are to appear next to export
-Tune selection | Export selection | Import Selection | Delete Selection
-
-Four buttons will exist, but let's do something special here
-Tune selection has selection text by default, the other 3 only have Icons, no texts
-when each is hovered, it ANIMNATES becoming larger revealing its full text
-
-OR DONT do that, only tune has the "selection" but
-others just say Export, Import, Delete
-
-see what u can do, its a cool idea.
-
 - Vanilla RTX Update window triggers a Relocation of Vanilla RTX packs
 The actual question is, WHY DOES RE-LOCATING Vanilla RTX in general packs reset the array of custom packs?????
-Check the semantics, remove that line!!! HUH?!
+Check the semantics, remove that line!!! HUH?! [[[chrome ^^^^]]]
+
+about displaying pack version in packbrowser menu
+Don't append it to description? have a separate neutral tag constructed  like RTX
+x.x.x, displayed at the top left corner similar to it, that's better!
+
+- Stress test GDKLocator again
+
+- For any feature that deals with user RP directories:
+Ensure it POOLS dev/regular folders, AND across ALL users!
+For importing and selecting packs upstream it is ESPECIALLY important
+PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
+
+- Improve user data locator class further, EXPOSE the root it looks for to a json file
+it shoots straight for appdata right now, let that be the default and the fallback
+try to get a explicit path from a json instead, a constant
+
+- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
+
+- resolve all compiler warnings and test one by one
+
+- Animated the size of exporter and delete buttons?
+the idea u had... export selection, revealing full text when hovered, etc. etc.
+it'd be cool!
 
 - Consider the redesign, pic on discord, its simple but a very good change probably
 rip out the legacy checkboxes for selecting default Vanilla RTX packs
@@ -73,55 +79,22 @@ watchya doing?
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
 Some overrides now disable it while they should not.
 
-- For GDKLocator, and wherever it is used, you could still expose the SPECIFIC file and folder names it looks for
-Actually don't expose anything, the overhead and the risk, instead, make them globally-available constants that can easily be changed
-so in the event of Minecraft files restructuing, you can quickly release an update without having to do much testing, make the code clear, basically
-This Applies to this older todo below as well:
-
-- Expose as many params as you can to a json in app's root
-the URLs the app sends requests to + the hardcoded Minecraft paths
-* Resource packs only end up in shared
-* Options file is in both shared and non-shared, but non-shared is presumably the one that takes priority, still, we take care of both
-* PackLocator, PackUpdater (deployer), Browse Packs, and LaunchMinecraftRTX's options.txt updater are the only things that rely on hardcoded paths on the system
-* EXPOSE ALL hardcoded URLs and Tuning parameters
-
-Additionally, while going through params, 
-audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
+- Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
-
->> Do the idea of unifying hardcoded paths while at it!
--Pack locator
--Pack browser
--Alchitex is due to reuse a lot of the code.
->> MAYBE, while at it, do it like GDKLocator kit, reusable, RP or appdata locator of sorts, reusable, shared cache.
-could be used for launcher too as well as the 3 above
 
 - Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
 
 - We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
+// trying to address it
 
 - Do the TODOs scattered in the code
-
-
 
 - When targeting preview, a new Dev branch on github
 must be used to receieve updates, compare packages, etc...
 easier said than done, the code is a clusterfuck
 and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
 if it doesn't, this is too, is a Useless idea.
-
-Alchitex
-Is it going to be a multi-staged Window?
-First stage: select/drop mcpack/zip/FOLDER a long thing line | LIST of INCOMPATIBLE packs
-YES, this way you DON'T have to make changes to the existing pack browser! AND DON'T, REVERT ALL IF YOU HAVE!
-Don't risk breaking existing code paths, VV/RTX/NoPBR flag and shit, that was a SHIT idea!
-Second: Some very simple options must be provided to the user, Normal Map, Heightmap, None, VV or NOT
-In VV mode, user gets SSS and processes none-block folders too, but not RTX mode stuff, which include water, glass, and a whole bunch of things
-Two different code paths!
-Note: keep PBR for entities subtle THORUGHOUT
-At the end, have it AUTO-imported to the selected Minecraft version, this is better UX than requiring interaction (importing packs has become annoying with GDK)
-Fallback to asking for a save location if it fails
 
 - Reduce cache retry timers for PACK UPDATER version retrieval
 it hangs too long trying to get from remote
@@ -1842,7 +1815,6 @@ public sealed partial class MainWindow : Window
         rtxWindow.Activate();
     }
 
-
     private void AlchitexButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleControls(this, false, true, []);
@@ -1861,10 +1833,94 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void DeleteSelection_Click(object sender, RoutedEventArgs e)
+
+    private async void DeleteSelection_Click(object sender, RoutedEventArgs e)
     {
-        Log("ONE TWO THREE FOUR!", LogLevel.PSA);
+        // Build the full list of pack locations to delete:
+        // the three Vanilla RTX packs (if enabled) plus every custom selected pack.
+        var toDelete = new List<(string location, string displayName)>();
+
+        if (IsVanillaRTXEnabled && Directory.Exists(VanillaRTXLocation))
+            toDelete.Add((VanillaRTXLocation, "Vanilla RTX"));
+        if (IsNormalsEnabled && Directory.Exists(VanillaRTXNormalsLocation))
+            toDelete.Add((VanillaRTXNormalsLocation, "Vanilla RTX Normals"));
+        if (IsOpusEnabled && Directory.Exists(VanillaRTXOpusLocation))
+            toDelete.Add((VanillaRTXOpusLocation, "Vanilla RTX Opus"));
+
+        foreach (var (location, name, _, _) in TunerVariables.SelectedPacks)
+            if (!string.IsNullOrEmpty(location) && Directory.Exists(location))
+                toDelete.Add((location, name));
+
+        if (toDelete.Count == 0)
+        {
+            Log("Select at least one pack to delete.", LogLevel.Warning);
+            return;
+        }
+
+        // Confirm with the user before nuking anything from disk.
+        var dialog = new ContentDialog
+        {
+            Title = "Delete selected packs?",
+            Content = $"This will permanently delete {toDelete.Count} pack{(toDelete.Count == 1 ? "" : "s")} from disk. This cannot be undone.",
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = this.Content.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary) return;
+
+        _progressManager.ShowProgress();
+        ToggleControls(this, false, excludeNames: ["VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"]);
+
+        int deletedCount = 0;
+
+        try
+        {
+            // Deduplicate by normalised path so the same folder isn't deleted twice.
+            var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (location, displayName) in toDelete)
+            {
+                var normalised = Path.GetFullPath(location)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                if (!seenPaths.Add(normalised))
+                {
+                    Log($"{displayName} was in the list more than once — skipping duplicate selection.", LogLevel.Warning);
+                    continue;
+                }
+
+                var deleted = await ExpImpDel.DeletePackAsync(location);
+                if (deleted != null)
+                {
+                    deletedCount++;
+                    Log($"Deleted {displayName}.", LogLevel.Success);
+                }
+                else
+                {
+                    Log($"Could not delete {displayName}.\nsee trace output for details by holding shift while clicking the lamp icon.", LogLevel.Warning);
+                }
+            }
+
+            await LocatePacksTask();
+            UpdateUI();
+        }
+        catch (Exception ex)
+        {
+            Log($"Delete failed: {ex.Message}", LogLevel.Warning);
+        }
+        finally
+        {
+            if (deletedCount == 0)
+                Log("No packs were deleted.", LogLevel.Warning);
+
+            _progressManager.HideProgress();
+            ToggleControls(this, true, excludeNames: ["VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"]);
+        }
     }
+
 
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
