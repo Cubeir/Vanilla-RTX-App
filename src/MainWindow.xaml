@@ -804,8 +804,8 @@
 
                             <Slider x:Name="EmissivityMultiplierSlider"
                                     Grid.Column="0"
-                                    Minimum="0.5"
-                                    Maximum="10"
+                                    Minimum="0.2"
+                                    Maximum="16"
                                     StepFrequency="0.1"
                                     SmallChange="0.1"
                                     Value="1"
@@ -864,7 +864,7 @@
                         <TextBlock Text="Surface normal intensity"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps. 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
+                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps in percentage, 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -890,8 +890,7 @@
                                      Width="60"
                                      Text="100"
                                      LostFocus="NormalIntensity_LostFocus"
-                                     IsTextScaleFactorEnabled="False"
-                                      />
+                                     IsTextScaleFactorEnabled="False"/>
                         </Grid>
                     </StackPanel>
 
@@ -918,7 +917,7 @@
                                     SnapsTo="StepValues"
                                     Grid.Column="0"
                                     Minimum="0"
-                                    Maximum="25"
+                                    Maximum="64"
                                     StepFrequency="1"
                                     SmallChange="1"
                                     Value="0"
@@ -929,8 +928,7 @@
                                      Width="60"
                                      Text="0"
                                      LostFocus="MaterialNoise_LostFocus"
-                                     IsTextScaleFactorEnabled="False"
-                                      />
+                                     IsTextScaleFactorEnabled="False"/>
                         </Grid>
                     </StackPanel>
 
@@ -957,8 +955,8 @@
                                     TickPlacement="BottomRight"
                                     SnapsTo="StepValues"
                                     Grid.Column="0"
-                                    Minimum="-5"
-                                    Maximum="25"
+                                    Minimum="-16"
+                                    Maximum="48"
                                     StepFrequency="1"
                                     SmallChange="1"
                                     Value="0"
@@ -969,8 +967,7 @@
                                      Width="60"
                                      Text="0"
                                      LostFocus="RoughenUp_LostFocus"
-                                     IsTextScaleFactorEnabled="False"
-                                      />
+                                     IsTextScaleFactorEnabled="False"/>
                         </Grid>
                     </StackPanel>
 
