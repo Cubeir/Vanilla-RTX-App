@@ -36,22 +36,18 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
-- TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
-
-- Vanilla RTX Update window triggers a Relocation of Vanilla RTX packs
-The actual question is, WHY DOES RE-LOCATING Vanilla RTX in general packs reset the array of custom packs?????
-
-You could just do it explicitly wherever needed, but REMOVE IT as a general thing VanillaRTXPack finder does...
-cuz it shouldn't be related!!! truly!
-LocatePacks task's job is to: UPDATE THE CHECKBOXES BASED ON WHAT PACKS ARE INSTALLED AND NOT.
-add this as a comment, and STICK TO IT
-
-You were already confused at Deleter remember, but you pulled through
-claude didn't have enough context of toggle controls and such, it messed up
-
-
 
 - Stress test GDKLocator again
+
+
+- It'd be cool if you had something to auto switch all trace-writelines to actual UI facing logs, makes things easier, but proly not worth the effort, just log the idea
+also its just trouble accessing ui thread from all these codes you don't have a clue where they run or how long so forget it, but won't delete the idea
+cuz, might actually do it one day.
+
+- TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
+This is probably not necessary anymore and PROBABLY slows the app down, DON'T DO IT.
+Keep the class though... may be useful later, its just,
+If you do the userdatalocator's development, deploy that gdklocator-like design of yours, it won't be necessary to do this anymore.
 
 - For any feature that deals with user RP directories:
 Ensure it POOLS dev/regular folders, AND across ALL users!
@@ -428,7 +424,7 @@ public sealed partial class MainWindow : Window
         // Slower UI update override for a smoother startup
         UpdateUI(0.001);
 
-        // Locate packs, if Preview is enabled, TargetPreview triggers another pack location, this avoids redundant operation
+        // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
         if (!IsTargetingPreview)
         {
             _ = LocatePacksTask();
@@ -1267,8 +1263,6 @@ public sealed partial class MainWindow : Window
         VanillaRTXNormalsVersion = string.Empty;
         VanillaRTXOpusVersion = string.Empty;
 
-        SelectedPacks.Clear();
-
         // Status message
         var statusMessage = PackLocator.LocatePacks(IsTargetingPreview,
             out VanillaRTXLocation, out VanillaRTXVersion,
@@ -1281,8 +1275,8 @@ public sealed partial class MainWindow : Window
             Log(statusMessage);
             _previousStatusMessages[IsTargetingPreview] = statusMessage;
         }
-        // Status message
 
+        // Enable checkboxes based on installation statuses
         if (!string.IsNullOrEmpty(VanillaRTXLocation) && Directory.Exists(VanillaRTXLocation))
         {
             VanillaRTXCheckBox.IsEnabled = true;
@@ -1337,7 +1331,10 @@ public sealed partial class MainWindow : Window
     private void TargetPreviewToggle_Checked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = true;
+
         _ = LocatePacksTask();
+        SelectedPacks.Clear();
+
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
         var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
         var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
@@ -1351,8 +1348,11 @@ public sealed partial class MainWindow : Window
     {
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
+
         _ = LocatePacksTask();
-        Log("Targeting Minecraft Release.", LogLevel.Informational);
+        SelectedPacks.Clear();
+
+        Log("Targeting Release Minecraft.", LogLevel.Informational);
 
         // Color of that little border next to the button
         var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
@@ -1877,7 +1877,7 @@ public sealed partial class MainWindow : Window
         if (result != ContentDialogResult.Primary) return;
 
         _progressManager.ShowProgress();
-        ToggleControls(this, false, excludeNames: ["VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"]);
+        ToggleControls(this, false);
 
         int deletedCount = 0;
 
@@ -1908,9 +1908,6 @@ public sealed partial class MainWindow : Window
                     Log($"Could not delete {displayName}.\nsee trace output for details by holding shift while clicking the lamp icon.", LogLevel.Warning);
                 }
             }
-
-            await LocatePacksTask();
-            UpdateUI();
         }
         catch (Exception ex)
         {
@@ -1922,7 +1919,11 @@ public sealed partial class MainWindow : Window
                 Log("No packs were deleted.", LogLevel.Warning);
 
             _progressManager.HideProgress();
-            ToggleControls(this, true, excludeNames: ["VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"]);
+            ToggleControls(this, true);
+
+            _ = LocatePacksTask(); // Controls get enabled, their state was captured before deletion, so we re-locate AFTER they're restored, so it properly disables packs that aren't there anymore
+            SelectedPacks.Clear();
+            UpdateUI(); // Just in case, truly don't know why, prolly afraid of checkboxes remaining "on" visually while disabled, while the bool being off
         }
     }
 
@@ -2103,9 +2104,7 @@ public sealed partial class MainWindow : Window
                 {
                     UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
                 }
-
-                // Trigger an automatic pack location check after update (fail or not)
-                _ = LocatePacksTask(true);
+                _ = LocatePacksTask(true); // Trigger an automatic pack location check after update (fail or not) -- only time we log statuses
             };
 
             packUpdaterWindow.Activate();
