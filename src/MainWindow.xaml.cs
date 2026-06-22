@@ -1141,7 +1141,6 @@ public sealed partial class MainWindow : Window
 
 
 
-
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
         Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.Informational);
@@ -1243,7 +1242,7 @@ public sealed partial class MainWindow : Window
     }
 
 
-    // -------
+    // ------- Top action bar stuff
 
 
     private Dictionary<bool, string?> _previousStatusMessages = new();
@@ -1380,7 +1379,7 @@ public sealed partial class MainWindow : Window
     }
 
 
-
+    // Vanilla RTX Checkboxes
     private void Option_Checked(object sender, RoutedEventArgs e)
     {
         if (sender is CheckBox checkbox)
@@ -1584,12 +1583,16 @@ public sealed partial class MainWindow : Window
         if (RuntimeFlags.Set("Said_Extra_Resetting_Information"))
         {
             Log($"To perform a full reset of app's data if necessery, hold SHIFT key while pressing {ResetButton_TextBlock.Text}.", LogLevel.Informational);
-            Log($"Note: this does not restore the packs to their default state!\nTo reset packs back to original you can quickly reinstall the latest versions of Vanilla RTX using the '{UpdateVanillaRTXButtonText.Text}' button. Other packs will require manual reinstallation.\nUse Export button to back them up!", LogLevel.Informational);
+            Log($"Note: this does not restore the packs to their default state!\nTo reset packs back to original you can quickly reinstall the latest versions of Vanilla RTX using the '{UpdateVanillaRTXButtonText.Text}' button. Other packs will require manual reinstallation. Use Export to back them up and quickly reimport them as you need.", LogLevel.Informational);
         }
         Log("Tuning environment reset.", LogLevel.Success);
     }
     private void ClearButton_Click(object sender, RoutedEventArgs e)
     {
+        // Capture previous state
+        bool hadVanillaRTX = IsVanillaRTXEnabled || IsNormalsEnabled || IsOpusEnabled;
+        bool hadCustomPacks = TunerVariables.SelectedPacks.Count > 0;
+
         // Vanilla RTX
         IsVanillaRTXEnabled = false;
         IsNormalsEnabled = false;
@@ -1603,7 +1606,13 @@ public sealed partial class MainWindow : Window
 
         // Lamp single off flash
         _ = BlinkingLamp(true, true, 0.0);
-        Log("Cleared all pack selections.", LogLevel.Success);
+
+        if (hadCustomPacks)
+            Log("Cleared all pack selections.", LogLevel.Success);
+        else if (hadVanillaRTX)
+            Log("Unselected Vanilla RTX packs.", LogLevel.Success);
+        else
+            Log("You haven't selected any packs to clear.", LogLevel.Informational);
     }
 
     private async Task WipeAllStorageData()
@@ -2018,7 +2027,7 @@ public sealed partial class MainWindow : Window
                 TunerVariables.SelectedPacks.Count == 0;
 
             if (nothingSelected)
-                Log("Select at least one package to export.", LogLevel.Warning);
+                Log("Select at least one pack to export.", LogLevel.Warning);
             else if (exportedCount == 0)
                 Log("All exports failed.", LogLevel.Warning);
 
@@ -2048,7 +2057,7 @@ public sealed partial class MainWindow : Window
                 if (hasIncompatibleCustom)
                     Log("None of the selected packs are RTX or Vibrant Visuals compatible. Select at least one compatible pack to tune.", LogLevel.Warning);
                 else
-                    Log("Select at least one package to tune.", LogLevel.Warning);
+                    Log("Select at least one pack to tune.", LogLevel.Warning);
                 return;
             }
             else
