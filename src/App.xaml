@@ -14,21 +14,21 @@
             <!-- Other app resources here -->
             <Style TargetType="TextBlock">
                 <Setter Property="FontFamily"
-                        Value="Segoe UI" />
+                        Value="{StaticResource ContentControlThemeFontFamily}" />
             </Style>
             <Style TargetType="FontIcon">
                 <Setter Property="FontFamily"
-                        Value="Segoe Fluent Icons" />
+                        Value="{StaticResource SymbolThemeFontFamily}" />
             </Style>
             <Style x:Key="TextBlockSegIcons"
                    TargetType="TextBlock">
                 <Setter Property="FontFamily"
-                        Value="Segoe Fluent Icons" />
+                        Value="{StaticResource SymbolThemeFontFamily}" />
             </Style>
             <Style x:Key="ButtonSegIcons"
                    TargetType="Button">
                 <Setter Property="FontFamily"
-                        Value="Segoe Fluent Icons" />
+                        Value="{StaticResource SymbolThemeFontFamily}" />
             </Style>
 
             <ResourceDictionary.ThemeDictionaries>
