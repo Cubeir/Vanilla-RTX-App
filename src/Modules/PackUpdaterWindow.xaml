@@ -15,7 +15,7 @@
                 VerticalAlignment="Stretch"
                 IsHitTestVisible="False"
                 Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-1">
+                Canvas.ZIndex="-999">
             <Border.Background>
                 <SolidColorBrush Color="#17373737" />
             </Border.Background>

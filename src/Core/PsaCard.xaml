@@ -3,18 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              HorizontalAlignment="Stretch"
              PointerEntered="Card_PointerEntered"
-             PointerExited="Card_PointerExited">
+             PointerExited="Card_PointerExited"
+             IsTextScaleFactorEnabled="false">
 
     <Border x:Name="CardBorder"
             CornerRadius="8"
-            Padding="16"
-            Translation="0,0,32">
+            Padding="4"
+            Translation="0,0,32"
+            Background="Transparent">
         <Border.Shadow>
             <ThemeShadow />
         </Border.Shadow>
 
-        <Grid HorizontalAlignment="Stretch"
-              VerticalAlignment="Top">
+<Grid x:Name="InnerGrid"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Top"
+      Margin="16,8,16,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -42,18 +46,19 @@
             <Button x:Name="DismissButton"
                     Grid.Column="2"
                     Opacity="0"
-                    Width="24"
-                    Height="24"
+                    Width="22"
+                    Height="22"
                     Padding="0"
                     VerticalAlignment="Center"
                     Margin="0,0,0,0"
-                    Background="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    Background="{ThemeResource ButtonBackgroundThemeBrush}"
                     BorderThickness="1"
                     Click="DismissButton_Click"
                     ToolTipService.ToolTip="Dismiss">
                 <FontIcon Glyph="&#xE8BB;"
                           VerticalAlignment="Center"
                           HorizontalAlignment="Center"
+                          Opacity="1.0"
                           FontSize="12"
                           FontFamily="{ThemeResource SymbolThemeFontFamily}" />
             </Button>

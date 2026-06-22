@@ -42,6 +42,15 @@ namespace Vanilla_RTX_App;
 
 - manifests with comments, do features play well with them?
 
+- Test memory usage when tuning large packs
+test for memory leaks
+
+- Do PSAs return when perma dismissed upon a new version being fetched? TEST!
+
+- test leave a review prompt's changes
+
+- Fix shadows of selectable panes being cut off in pack browser and similar menus
+
 - It'd be cool if you had something to auto switch all trace-writelines to actual UI facing logs, makes things easier, but proly not worth the effort, just log the idea
 also its just trouble accessing ui thread from all these codes you don't have a clue where they run or how long so forget it, but won't delete the idea
 cuz, might actually do it one day.
@@ -460,7 +469,9 @@ public sealed partial class MainWindow : Window
         // Show Leave a Review prompt
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
-        // By the time we get here, on good internet the OnlineTexts fetch is already done. On bad internet it may be stale cache, it's ok
+        // By the time we get here, on good internet the OnlineTexts fetch is already done. On bad internet it may be stale cache, it's ok, we show it anyway
+        // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
+        // we deal with cache, for showing things, the app deals with updating it later
         var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
         if (psa is { Length: > 0 })
         {

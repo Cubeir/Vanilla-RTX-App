@@ -11,8 +11,8 @@ public sealed partial class PsaCard : UserControl
     private readonly string _text;
     private readonly PsaKind _kind;
 
-    private const double FADE_IN_MS = 120;
-    private const double FADE_OUT_MS = 120;
+    private const double FADE_IN_MS = 50;
+    private const double FADE_OUT_MS = 50;
 
     public double CardFontSize
     {
@@ -31,19 +31,19 @@ public sealed partial class PsaCard : UserControl
         {
             case PsaKind.Pinned:
                 DismissButton.Visibility = Visibility.Collapsed;
-                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"];
+                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
                 ContentText.Opacity = 0.94;
                 break;
             case PsaKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, "Dismiss for a day");
-                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"];
+                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
                 ContentText.Opacity = 0.89;
                 break;
-            case PsaKind.Permanent: //Permanently dismissable
-                CardBorder.Padding = new Thickness(16);
+            case PsaKind.Permanent:
+                CardBorder.Padding = new Thickness(0);
                 CardBorder.Translation = System.Numerics.Vector3.Zero;
                 CardBorder.Shadow = null;
-                ContentText.Opacity = 0.84;
+                ContentText.Opacity = 0.8;
                 break;
         }
     }
