@@ -27,15 +27,11 @@
                 BorderThickness="1"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Tapped="DialogBorder_Tapped">
-
-            <!-- Drop shadow effect -->
+                Tapped="DialogBorder_Tapped"
+                Translation="0,0,64">
             <Border.Shadow>
                 <ThemeShadow />
             </Border.Shadow>
-
-            <!-- Elevation for shadow to work, ignore the VS2026 error -->
-            <Border.Translation>0,0,64</Border.Translation>
 
             <StackPanel Spacing="16">
                 <!-- Header Text -->
