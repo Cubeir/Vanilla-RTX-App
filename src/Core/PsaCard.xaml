@@ -14,11 +14,11 @@
         </Grid.ColumnDefinitions>
 
         <FontIcon Grid.Column="0"
-                  Glyph="&#xF167;"
+                  Glyph="&#xE946;"
                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  FontSize="24"
+                  FontSize="22"
                   VerticalAlignment="Top"
-                  Margin="0,5,0,0"
+                  Margin="0,6,0,0"
                   IsHitTestVisible="False"
                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
@@ -37,13 +37,13 @@
                 Width="24"
                 Height="24"
                 Padding="0"
-                VerticalAlignment="Top"
-                Margin="0,5,0,0"
-                Background="Transparent"
+                VerticalAlignment="Center"
+                Margin="0,0,0,0"
+                Background="{ThemeResource AccentTextFillColorPrimaryBrush}"
                 BorderThickness="2"
                 Click="DismissButton_Click"
                 ToolTipService.ToolTip="Dismiss">
-            <FontIcon Glyph="&#xF78A;"
+            <FontIcon Glyph="&#xE8BB;"
                       FontSize="12"
                       FontFamily="{ThemeResource SymbolThemeFontFamily}" />
         </Button>
