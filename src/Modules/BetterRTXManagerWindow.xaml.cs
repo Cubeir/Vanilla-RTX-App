@@ -103,6 +103,26 @@ public sealed partial class BetterRTXManagerWindow : Window
     private const int REFRESH_COOLDOWN_SECONDS = 9;
     private DispatcherTimer _cooldownTimer;
 
+
+    private static readonly string BETTERRTX_DISCLAIMER_KEY = $"BetterRTXDisclaimerAgreed_{TunerVariables.appVersion}";
+    private static void CleanupOldDisclaimerKeys()
+    {
+        try
+        {
+            var localSettings = ApplicationData.Current.LocalSettings;
+            var keysToRemove = localSettings.Values.Keys
+                .Where(k => k.StartsWith("BetterRTXDisclaimerAgreed_") && k != BETTERRTX_DISCLAIMER_KEY)
+                .ToList();
+            foreach (var key in keysToRemove)
+                localSettings.Values.Remove(key);
+        }
+        catch
+        {
+            Trace.WriteLine("[BetterRTX] Failed to clear orphaned BetterRTXDisclaimerAgreed_ keys");
+        }
+    }
+
+
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
@@ -179,6 +199,72 @@ public sealed partial class BetterRTXManagerWindow : Window
         foreach (var item in items)
             BetterRTXAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
+    private async Task<bool> ShowDisclaimerDialogAsync()
+    {
+        var localSettings = ApplicationData.Current.LocalSettings;
+
+        if (localSettings.Values.ContainsKey(BETTERRTX_DISCLAIMER_KEY))
+            return true;
+
+        var tcs = new TaskCompletionSource<bool>();
+
+        var confirmButton = new Button
+        {
+            Content = "I understand the risks and wish to continue",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Style = Application.Current.Resources["AccentButtonStyle"] as Style,
+            Margin = new Thickness(0, 20, 0, 4),
+            IsTextScaleFactorEnabled = false,
+            Padding = new Thickness(16, 10, 16, 10)
+        };
+
+        var contentPanel = new StackPanel
+        {
+            Spacing = 0,
+            Children =
+        {
+            new TextBlock
+            {
+                Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The app retrieves the files for this feature from a third-party API outside of the developer's control. As such, with Minecraft updates, this feature can potentially break. The app takes it as far as possible to mitigate any issues that may arise and gives you a way to quickly revert to unmodified Default RTX.\n\nPlease read the announcement/info panels to keep updated and help steer yourself away from potential issues.",
+                TextWrapping = TextWrapping.Wrap,
+                IsTextScaleFactorEnabled = false
+            },
+            confirmButton
+        }
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Third-Party API Usage Notice",
+            Content = contentPanel,
+            XamlRoot = this.Content.XamlRoot,
+            IsTextScaleFactorEnabled = false,
+            MinWidth = 0,
+            MaxWidth = double.PositiveInfinity,
+            Width = this.Bounds.Width * 0.55
+        };
+
+        // Only block closing while tcs hasn't been set yet
+        dialog.Closing += (s, e) =>
+        {
+            if (!tcs.Task.IsCompleted)
+                e.Cancel = true;
+        };
+
+        confirmButton.Click += (s, e) =>
+        {
+            localSettings.Values[BETTERRTX_DISCLAIMER_KEY] = true;
+            CleanupOldDisclaimerKeys();
+            tcs.TrySetResult(true);
+            dialog.Hide(); // Closing event now lets it through since tcs.Task.IsCompleted == true
+        };
+
+        await dialog.ShowAsync();
+
+        return await tcs.Task;
+    }
+
+
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
@@ -269,7 +355,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 });
 
                 // Start system-wide search
-                Trace.WriteLine("Starting system-wide search...");
+                Trace.WriteLine("[BetterRTX]Starting system-wide search...");
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
@@ -279,7 +365,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
                 if (minecraftPath == null)
                 {
-                    Trace.WriteLine("System search cancelled or failed - waiting for manual selection");
+                    Trace.WriteLine("[BetterRTX]System search cancelled or failed - waiting for manual selection");
                     return;
                 }
             }
@@ -352,7 +438,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            Trace.WriteLine("=== BETTERRTX RESET BUTTON CLICKED ===");
+            Trace.WriteLine("[BetterRTX]=== BETTERRTX RESET BUTTON CLICKED ===");
 
             // Set cooldown timestamp
             var settings = ApplicationData.Current.LocalSettings;
@@ -374,7 +460,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 try
                 {
-                    Trace.WriteLine("📖 Reading API cache to identify presets to delete...");
+                    Trace.WriteLine("[BetterRTX]📖 Reading API cache to identify presets to delete...");
                     var jsonData = await File.ReadAllTextAsync(_apiCachePath);
                     var apiPresets = ParseApiData(jsonData);
 
@@ -385,7 +471,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                     }
                     else
                     {
-                        Trace.WriteLine("⚠ API cache was empty or invalid");
+                        Trace.WriteLine("[BetterRTX]⚠ API cache was empty or invalid");
                     }
                 }
                 catch (Exception ex)
@@ -395,13 +481,13 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
             else
             {
-                Trace.WriteLine("⚠ API cache didn't exist - no presets to delete");
+                Trace.WriteLine("[BetterRTX]⚠ API cache didn't exist - no presets to delete");
             }
 
             // STEP 2: Delete preset folders (but NOT __DEFAULT)
             if (uuidsToDelete.Count > 0)
             {
-                Trace.WriteLine("🗑️ Deleting preset folders...");
+                Trace.WriteLine("[BetterRTX]🗑️ Deleting preset folders...");
                 int deletedCount = 0;
 
                 foreach (var uuid in uuidsToDelete)
@@ -466,7 +552,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             if (File.Exists(_apiCachePath))
             {
                 File.Delete(_apiCachePath);
-                Trace.WriteLine("✓ Deleted API cache - will fetch fresh data");
+                Trace.WriteLine("[BetterRTX]✓ Deleted API cache - will fetch fresh data");
             }
 
             // STEP 4: Clear download statuses and queue
@@ -488,8 +574,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
 
-            Trace.WriteLine("✓ Reset completed successfully");
-            Trace.WriteLine("✓ __DEFAULT preset preserved (not deleted)");
+            Trace.WriteLine("[BetterRTX]✓ Reset completed successfully");
+            Trace.WriteLine("[BetterRTX]✓ __DEFAULT preset preserved (not deleted)");
         }
         catch (Exception ex)
         {
@@ -503,7 +589,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
-        Trace.WriteLine("Manual selection button clicked - cancelling system search");
+        Trace.WriteLine("[BetterRTX]Manual selection button clicked - cancelling system search");
 
         _scanCancellationTokenSource?.Cancel();
 
@@ -517,7 +603,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         else
         {
-            Trace.WriteLine("✗ User cancelled or selected invalid path");
+            Trace.WriteLine("[BetterRTX]✗ User cancelled or selected invalid path");
             StatusMessage = "No valid Minecraft installation selected";
             this.Close();
         }
@@ -552,7 +638,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         if (versionChanged)
         {
-            Trace.WriteLine("⚠⚠⚠ GAME VERSION CHANGED - WIPING CACHE ⚠⚠⚠");
+            Trace.WriteLine("[BetterRTX]⚠🔥 GAME VERSION CHANGED - WIPING CACHE 🔥⚠");
             WipeEntireCache();
             // Recreate cache folder structure
             Directory.CreateDirectory(_cacheFolder);
@@ -575,7 +661,16 @@ public sealed partial class BetterRTXManagerWindow : Window
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
-        // Initialize PSAs
+        // Show disclaimer -- background work is done, but gate the UI
+        var agreed = await ShowDisclaimerDialogAsync();
+        if (!agreed)
+        {
+            StatusMessage = "Dismissed third-party API usage notice.";
+            this.Close();
+            return;
+        }
+
+        // Initialize PSAs (only after user agrees)
         PopulateBetterRTXAnnouncements();
     }
 
@@ -607,7 +702,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 Trace.WriteLine($"Deleting entire cache folder: {_cacheFolder}");
                 Directory.Delete(_cacheFolder, true);
-                Trace.WriteLine("✓ Cache wiped successfully");
+                Trace.WriteLine("[BetterRTX]✓ Cache wiped successfully");
             }
         }
         catch (Exception ex)
@@ -626,7 +721,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             // Check if cache exists and is valid
             if (File.Exists(_apiCachePath))
             {
-                Trace.WriteLine("✓ Loading API data from cache...");
+                Trace.WriteLine("[BetterRTX]✓ Loading API data from cache...");
                 try
                 {
                     jsonData = await File.ReadAllTextAsync(_apiCachePath);
@@ -643,13 +738,13 @@ public sealed partial class BetterRTXManagerWindow : Window
                         }
                         else
                         {
-                            Trace.WriteLine("⚠ Cache exists but is empty or invalid - will fetch fresh data");
+                            Trace.WriteLine("[BetterRTX]⚠ Cache exists but is empty or invalid - will fetch fresh data");
                             jsonData = null;
                         }
                     }
                     else
                     {
-                        Trace.WriteLine("⚠ Cache file is empty - will fetch fresh data");
+                        Trace.WriteLine("[BetterRTX]⚠ Cache file is empty - will fetch fresh data");
                         jsonData = null;
                     }
                 }
@@ -664,7 +759,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             // If no valid cache, fetch from API
             if (!loadedFromCache)
             {
-                Trace.WriteLine("Fetching API data from server...");
+                Trace.WriteLine("[BetterRTX]Fetching API data from server...");
                 jsonData = await FetchApiDataAsync();
 
                 if (jsonData != null && !string.IsNullOrWhiteSpace(jsonData))
@@ -679,7 +774,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                         try
                         {
                             await File.WriteAllTextAsync(_apiCachePath, jsonData);
-                            Trace.WriteLine("✓ API data cached successfully");
+                            Trace.WriteLine("[BetterRTX]✓ API data cached successfully");
                         }
                         catch (Exception ex)
                         {
@@ -688,13 +783,13 @@ public sealed partial class BetterRTXManagerWindow : Window
                     }
                     else
                     {
-                        Trace.WriteLine("⚠ Fetched data is empty or invalid - not caching");
+                        Trace.WriteLine("[BetterRTX]⚠ Fetched data is empty or invalid - not caching");
                         _apiPresets = new List<ApiPresetData>();
                     }
                 }
                 else
                 {
-                    Trace.WriteLine("⚠ Failed to fetch API data and no valid cache available");
+                    Trace.WriteLine("[BetterRTX]⚠ Failed to fetch API data and no valid cache available");
                     _apiPresets = new List<ApiPresetData>();
                 }
             }
@@ -725,7 +820,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             if (string.IsNullOrWhiteSpace(content))
             {
-                Trace.WriteLine("⚠ API returned empty response");
+                Trace.WriteLine("[BetterRTX]⚠ API returned empty response");
                 return null;
             }
 
@@ -733,7 +828,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            Trace.WriteLine("⚠ API request timed out");
+            Trace.WriteLine("[BetterRTX]⚠ API request timed out");
             return null;
         }
         catch (Exception ex)
@@ -749,7 +844,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             if (string.IsNullOrWhiteSpace(jsonData))
             {
-                Trace.WriteLine("⚠ Cannot parse null or empty JSON data");
+                Trace.WriteLine("[BetterRTX]⚠ Cannot parse null or empty JSON data");
                 return new List<ApiPresetData>();
             }
 
@@ -799,7 +894,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             if (!Directory.Exists(_cacheFolder))
             {
-                Trace.WriteLine("⚠ Cache folder doesn't exist - no local presets");
+                Trace.WriteLine("[BetterRTX]⚠ Cache folder doesn't exist - no local presets");
                 return;
             }
 
@@ -943,13 +1038,13 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             if (_apiPresets == null)
             {
-                Trace.WriteLine("⚠ WARNING: _apiPresets is null in DisplayPresetsAsync!");
+                Trace.WriteLine("[BetterRTX]⚠ WARNING: _apiPresets is null in DisplayPresetsAsync!");
                 _apiPresets = new List<ApiPresetData>();
             }
 
             if (_localPresets == null)
             {
-                Trace.WriteLine("⚠ WARNING: _localPresets is null in DisplayPresetsAsync!");
+                Trace.WriteLine("[BetterRTX]⚠ WARNING: _localPresets is null in DisplayPresetsAsync!");
                 _localPresets = new Dictionary<string, LocalPresetData>();
             }
 
@@ -1071,13 +1166,13 @@ public sealed partial class BetterRTXManagerWindow : Window
                     {
                         // Cache exists but is empty/corrupt
                         EmptyStateText.Text = "No presets available. The preset list may be corrupted - try clicking the Refresh button.";
-                        Trace.WriteLine("⚠ Empty state: Cache exists but no presets loaded (possible corruption)");
+                        Trace.WriteLine("[BetterRTX]⚠ Empty state: Cache exists but no presets loaded (possible corruption)");
                     }
                     else
                     {
                         // No cache, probably offline
                         EmptyStateText.Text = "No presets available. An internet connection is required to load BetterRTX presets.";
-                        Trace.WriteLine("⚠ Empty state: No cache and no presets (offline?)");
+                        Trace.WriteLine("[BetterRTX]⚠ Empty state: No cache and no presets (offline?)");
                     }
                 }
                 else
@@ -1403,7 +1498,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             return;
 
         _isProcessingQueue = true;
-        Trace.WriteLine("▶ Starting download queue processor");
+        Trace.WriteLine("[BetterRTX]▶ Starting download queue processor");
 
         try
         {
@@ -1454,7 +1549,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 // Wait between downloads (be nice to the API)
                 if (_downloadQueue.Count > 0)
                 {
-                    Trace.WriteLine("⏱ Waiting 3 seconds before next download...");
+                    Trace.WriteLine("[BetterRTX]⏱ Waiting 3 seconds before next download...");
                     await Task.Delay(3000);
                 }
             }
@@ -1466,7 +1561,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         finally
         {
             _isProcessingQueue = false;
-            Trace.WriteLine("⏹ Download queue processor stopped");
+            Trace.WriteLine("[BetterRTX]⏹ Download queue processor stopped");
         }
     }
 
@@ -1792,13 +1887,13 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         if (currentHashes == null || presetHashes == null)
         {
-            Trace.WriteLine("⚠ Cannot compare - one or both hash sets are null");
+            Trace.WriteLine("[BetterRTX]⚠ Cannot compare - one or both hash sets are null");
             return false;
         }
 
         if (currentHashes.Count == 0 || presetHashes.Count == 0)
         {
-            Trace.WriteLine("⚠ Cannot compare - one or both hash sets are empty");
+            Trace.WriteLine("[BetterRTX]⚠ Cannot compare - one or both hash sets are empty");
             return false;
         }
 
@@ -1807,7 +1902,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         if (commonFiles.Count == 0)
         {
-            Trace.WriteLine("⚠ No common files to compare");
+            Trace.WriteLine("[BetterRTX]⚠ No common files to compare");
             return false;
         }
 
@@ -1830,7 +1925,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
         }
 
-        Trace.WriteLine("  ✓✓✓ ALL common files match!");
+        Trace.WriteLine("[BetterRTX]  ✓✓✓ ALL common files match!");
         return true;
     }
 
@@ -2050,12 +2145,12 @@ public static class GameVersionDetector
     {
         try
         {
-            Trace.WriteLine("=== GAME VERSION DETECTION START ===");
+            Trace.WriteLine("[BetterRTX]=== GAME VERSION DETECTION START ===");
 
             if (string.IsNullOrEmpty(minecraftInstallPath) || !Directory.Exists(minecraftInstallPath))
             {
-                Trace.WriteLine("⚠ Invalid Minecraft install path - INVALIDATING CACHE (safe default)");
-                Trace.WriteLine("=== GAME VERSION DETECTION END (invalid path) ===");
+                Trace.WriteLine("[BetterRTX]⚠ Invalid Minecraft install path - INVALIDATING CACHE (safe default)");
+                Trace.WriteLine("[BetterRTX]=== GAME VERSION DETECTION END (invalid path) ===");
                 return true; // Invalidate cache when uncertain
             }
 
@@ -2071,22 +2166,22 @@ public static class GameVersionDetector
             // CASE 1: Config file not found
             if (string.IsNullOrEmpty(configPath))
             {
-                Trace.WriteLine("⚠ MicrosoftGame.Config not found in game directory");
+                Trace.WriteLine("[BetterRTX]⚠ MicrosoftGame.Config not found in game directory");
 
                 if (!string.IsNullOrEmpty(storedConfigHash))
                 {
                     // Had hash before, file now missing - INVALIDATE
-                    Trace.WriteLine("🔥 CONFIG FILE DISAPPEARED - CACHE INVALIDATION!");
+                    Trace.WriteLine("[BetterRTX]🔥 CONFIG FILE DISAPPEARED - CACHE INVALIDATION!");
                     settings.Values.Remove(CONFIG_HASH_KEY);
-                    Trace.WriteLine("💾 Cleared stored config hash");
-                    Trace.WriteLine("=== GAME VERSION DETECTION END (file disappeared) ===");
+                    Trace.WriteLine("[BetterRTX]💾 Cleared stored config hash");
+                    Trace.WriteLine("[BetterRTX]=== GAME VERSION DETECTION END (file disappeared) ===");
                     return true;
                 }
                 else
                 {
                     // Never had hash, still can't find file - INVALIDATE (safe default)
-                    Trace.WriteLine("🔥 Unable to locate config file - CACHE INVALIDATION (safe default)");
-                    Trace.WriteLine("=== GAME VERSION DETECTION END (unable to determine) ===");
+                    Trace.WriteLine("[BetterRTX]🔥 Unable to locate config file - CACHE INVALIDATION (safe default)");
+                    Trace.WriteLine("[BetterRTX]=== GAME VERSION DETECTION END (unable to determine) ===");
                     return true;
                 }
             }
@@ -2098,8 +2193,8 @@ public static class GameVersionDetector
             if (string.IsNullOrEmpty(currentConfigHash))
             {
                 // File exists but can't compute hash - INVALIDATE (safe default)
-                Trace.WriteLine("🔥 Failed to compute config hash - CACHE INVALIDATION (safe default)");
-                Trace.WriteLine("=== GAME VERSION DETECTION END (hash computation failed) ===");
+                Trace.WriteLine("[BetterRTX]🔥 Failed to compute config hash - CACHE INVALIDATION (safe default)");
+                Trace.WriteLine("[BetterRTX]=== GAME VERSION DETECTION END (hash computation failed) ===");
                 return true;
             }
 
@@ -2109,13 +2204,13 @@ public static class GameVersionDetector
             if (string.IsNullOrEmpty(storedConfigHash))
             {
                 // First run - no stored hash yet
-                Trace.WriteLine("✓ First run - storing initial config hash (not a version change)");
+                Trace.WriteLine("[BetterRTX]✓ First run - storing initial config hash (not a version change)");
                 versionChanged = false;
             }
             else if (currentConfigHash != storedConfigHash)
             {
                 // Hash changed - version updated
-                Trace.WriteLine("🔥 CONFIG HASH CHANGED - GAME VERSION UPDATED!");
+                Trace.WriteLine("[BetterRTX]🔥 CONFIG HASH CHANGED - GAME VERSION UPDATED!");
                 Trace.WriteLine($"   Old: {storedConfigHash.Substring(0, 16)}...");
                 Trace.WriteLine($"   New: {currentConfigHash.Substring(0, 16)}...");
                 versionChanged = true;
@@ -2123,13 +2218,13 @@ public static class GameVersionDetector
             else
             {
                 // Hash matches - no change
-                Trace.WriteLine("✓ Config hash matches - no version change");
+                Trace.WriteLine("[BetterRTX]✓ Config hash matches - no version change");
                 versionChanged = false;
             }
 
             // Always update stored hash with current value
             settings.Values[CONFIG_HASH_KEY] = currentConfigHash;
-            Trace.WriteLine("💾 Saved current config hash");
+            Trace.WriteLine("[BetterRTX]💾 Saved current config hash");
 
             Trace.WriteLine($"=== GAME VERSION DETECTION END (changed: {versionChanged}) ===");
             return versionChanged;
@@ -2137,8 +2232,8 @@ public static class GameVersionDetector
         catch (Exception ex)
         {
             Trace.WriteLine($"✗ EXCEPTION in version detection: {ex.Message}");
-            Trace.WriteLine("🔥 Exception occurred - CACHE INVALIDATION (safe default)");
-            Trace.WriteLine("=== GAME VERSION DETECTION END (exception) ===");
+            Trace.WriteLine("[BetterRTX]🔥 Exception occurred - CACHE INVALIDATION (safe default)");
+            Trace.WriteLine("[BetterRTX]=== GAME VERSION DETECTION END (exception) ===");
             return true; // Invalidate cache on any error (safe default)
         }
     }
@@ -2216,11 +2311,11 @@ public static class GameVersionDetector
         {
             var settings = ApplicationData.Current.LocalSettings;
             settings.Values.Remove(CONFIG_HASH_KEY);
-            Trace.WriteLine("✓ Cleared stored version hash");
+            Trace.WriteLine("[BetterRTX]✓ Cleared stored version hash");
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Error clearing version hash: {ex.Message}");
+            Trace.WriteLine($"[BetterRTX] Error clearing version hash: {ex.Message}");
         }
     }
 }
