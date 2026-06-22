@@ -19,8 +19,6 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
 
-// TODO: Try to limit the number of characters of imported packs...
-// it matching whatever it matches now isn't it... heck, generate Short UUIDs, much better!
 public sealed partial class PackBrowserWindow : Window
 {
     // ── Window infrastructure ────────────────────────────────────────────────
@@ -31,10 +29,6 @@ public sealed partial class PackBrowserWindow : Window
     private readonly Dictionary<string, Button> _packButtonMap = new();
     private readonly HashSet<string> _selectedPaths = new();
 
-    // Parallel map for the two info TextBlocks in each pack button.
-    // Keyed by pack path, same lifetime as _packButtonMap.
-    private readonly Dictionary<string, (TextBlock Name, TextBlock Desc)> _packTextMap = new();
-
     // Unique tags seen in the current pack list; rebuilt on each load.
     private readonly List<string> _knownTags = new();
 
@@ -43,6 +37,10 @@ public sealed partial class PackBrowserWindow : Window
 
     private const string AlchitexCandidateTag = "Potential Alchitex Candidate";
 
+    // TODO: re-enable Alchitex candidate eligibility for legacy packs if automatic
+    //       manifest format upgrade is implemented downstream in Alchitex.
+    private const bool AlchitexLegacyPacksEligible = false;
+
     /// <summary>
     /// Matches § followed immediately by any non-whitespace character.
     /// Strips Minecraft in-game formatting codes before display.
@@ -50,6 +48,13 @@ public sealed partial class PackBrowserWindow : Window
     /// </summary>
     private static readonly Regex MinecraftFormattingCodeRegex =
         new(@"§\S", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Matches a strict three-part numeric version: digits.digits.digits only.
+    /// Anything else (strings, four-part versions, etc.) is treated as Unknown.
+    /// </summary>
+    private static readonly Regex StrictSemVerRegex =
+        new(@"^\d+\.\d+\.\d+$", RegexOptions.Compiled);
 
     // ════════════════════════════════════════════════════════════════════════
     //  Constructor
@@ -249,23 +254,15 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  JSON parsing helper — supports // comments in manifests
+    //  JSON parsing — tolerant of // and /* */ comments in manifests
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// Parses a JSON string tolerantly: allows // and /* */ comments (common in
-    /// Minecraft manifests written by hand) and ignores trailing commas.
-    /// Falls back to strict parsing if the tolerant reader fails.
-    /// </summary>
     private static JObject ParseManifestJson(string json)
     {
         try
         {
             using var sr = new StringReader(json);
-            using var reader = new JsonTextReader(sr)
-            {
-                DateParseHandling = DateParseHandling.None
-            };
+            using var reader = new JsonTextReader(sr) { DateParseHandling = DateParseHandling.None };
             var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
             return JObject.Load(reader, loadSettings);
         }
@@ -286,6 +283,55 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Version string resolution
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Resolves a display version string from a manifest version token.
+    /// <para>
+    /// For modern manifests, <c>header.version</c> can be either an int array
+    /// <c>[1,26,15]</c> or a string <c>"1.0.6"</c>. Both are only accepted when
+    /// they produce a strict three-part numeric version (digits.digits.digits);
+    /// anything else — four-part versions, alpha suffixes, non-numeric — returns
+    /// <c>"Unknown"</c> to match what the game itself does with invalid versions.
+    /// </para>
+    /// <para>
+    /// For legacy <c>pack_manifest.json</c>, <paramref name="rawString"/> is used
+    /// directly and is subject to the same strict semver check.
+    /// </para>
+    /// </summary>
+    private string ResolveVersion(JToken? versionToken, string? rawString = null)
+    {
+        // Prefer the structured token if present.
+        if (versionToken != null)
+        {
+            if (versionToken.Type == JTokenType.Array)
+            {
+                var parts = versionToken.ToArray();
+                // Must be exactly three elements, all parseable as non-negative integers.
+                if (parts.Length == 3 && parts.All(p => int.TryParse(p.ToString(), out int v) && v >= 0))
+                    return string.Join(".", parts.Select(p => p.ToString()));
+
+                return "Unknown";
+            }
+
+            if (versionToken.Type == JTokenType.String)
+            {
+                var s = versionToken.ToString();
+                return StrictSemVerRegex.IsMatch(s) ? s : "Unknown";
+            }
+
+            return "Unknown";
+        }
+
+        // Legacy fallback: use the raw string from header.packs_version / header.version.
+        if (!string.IsNullOrWhiteSpace(rawString))
+            return StrictSemVerRegex.IsMatch(rawString) ? rawString : "Unknown";
+
+        return "Unknown";
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Pack list loading
     // ════════════════════════════════════════════════════════════════════════
 
@@ -293,7 +339,6 @@ public sealed partial class PackBrowserWindow : Window
     {
         PackListContainer.Children.Clear();
         _packButtonMap.Clear();
-        _packTextMap.Clear();
         _selectedPaths.Clear();
         _knownTags.Clear();
         EmptyStatePanel.Visibility = Visibility.Collapsed;
@@ -393,8 +438,6 @@ public sealed partial class PackBrowserWindow : Window
 
             if (selected) { _selectedPaths.Add(path); overlay.Visibility = Visibility.Visible; }
             else { _selectedPaths.Remove(path); overlay.Visibility = Visibility.Collapsed; }
-
-            ApplySelectionTextStyle(path, selected);
         }
     }
 
@@ -410,7 +453,6 @@ public sealed partial class PackBrowserWindow : Window
 
             _selectedPaths.Add(path);
             overlay.Visibility = Visibility.Visible;
-            ApplySelectionTextStyle(path, true);
         }
     }
 
@@ -496,6 +538,7 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
+        // Selection overlay — user-tuned values preserved: 192 alpha, z=128, 72px glyph, r=4
         var selectionOverlay = new Border
         {
             Width = 75,
@@ -544,25 +587,17 @@ public sealed partial class PackBrowserWindow : Window
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // Store TextBlock refs for selection styling.
-        _packTextMap[pack.PackPath] = (nameBlock, descBlock);
-
         // ── Right panel: version (top) + capability tags (bottom) ────────────
-        //
-        // A small two-row Grid in column 4 keeps both pieces right-aligned and
-        // vertically separated without affecting the info column layout.
         var rightPanel = new Grid();
-        rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });  // version — top
-        rightPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }); // spacer
-        rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });  // tags — bottom
+        rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        rightPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        // Version badge — top right
         var versionBadge = BuildVersionBadge(pack.Version);
         versionBadge.HorizontalAlignment = HorizontalAlignment.Right;
         Grid.SetRow(versionBadge, 0);
         rightPanel.Children.Add(versionBadge);
 
-        // Capability tags — bottom right
         var tagsPanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -645,29 +680,6 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Selection text styling
-    // ════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Bolds the pack name and description for selected packs and restores normal
-    /// weight when deselected. Works alongside the checkmark overlay.
-    /// </summary>
-    private void ApplySelectionTextStyle(string packPath, bool selected)
-    {
-        /*
-            if (!_packTextMap.TryGetValue(packPath, out var blocks)) return;
-
-            blocks.Name.FontWeight = selected
-                ? Microsoft.UI.Text.FontWeights.Bold
-                : Microsoft.UI.Text.FontWeights.SemiBold;
-
-            blocks.Desc.FontWeight = selected
-                ? Microsoft.UI.Text.FontWeights.SemiBold   // desc goes SemiBold (was Normal)
-                : Microsoft.UI.Text.FontWeights.Normal;
-        */
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
     //  Click handlers
     // ════════════════════════════════════════════════════════════════════════
 
@@ -690,8 +702,6 @@ public sealed partial class PackBrowserWindow : Window
             _selectedPaths.Remove(pack.PackPath);
             overlay.Visibility = Visibility.Collapsed;
         }
-
-        ApplySelectionTextStyle(pack.PackPath, isNowSelected);
     }
 
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
@@ -761,25 +771,44 @@ public sealed partial class PackBrowserWindow : Window
             return packs;
         }
 
-        // Track pack paths we've already added to avoid processing the same directory
-        // twice if both manifest.json and pack_manifest.json exist in it.
+        // Track directories already processed. Critically, manifest.json files are
+        // enumerated and processed FIRST — then pack_manifest.json files are enumerated
+        // separately, and seenDirs skips any directory that already has a modern manifest.
+        // Using .Concat() was unsafe because Directory.EnumerateFiles ordering is
+        // filesystem-dependent; a legacy file could be yielded before the modern one
+        // for the same directory on some NTFS configurations.
         var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(
                      TunerVariables.Persistent.IsTargetingPreview))
         {
-            // Enumerate both manifest filenames. manifest.json takes priority —
-            // if a directory contains both, manifest.json wins and pack_manifest.json
-            // is ignored for that directory (seenDirs prevents double-processing).
-            var manifestFiles = Directory
-                .EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories)
-                .Concat(Directory.EnumerateFiles(scanPath, "pack_manifest.json", SearchOption.AllDirectories));
-
-            foreach (var manifestPath in manifestFiles)
+            // Pass 1: modern manifest.json — always wins over legacy in the same directory.
+            foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
-                if (packDir == null) continue;
-                if (!seenDirs.Add(packDir)) continue; // already processed via manifest.json
+                if (packDir == null || !seenDirs.Add(packDir)) continue;
+
+                try
+                {
+                    var packData = await ParsePackAsync(packDir, manifestPath);
+                    if (packData != null) packs.Add(packData);
+                }
+                catch (JsonException jsonEx)
+                {
+                    System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.WriteLine($"Error parsing pack {packDir}: {ex.Message}");
+                }
+            }
+
+            // Pass 2: legacy pack_manifest.json — only reached if the directory
+            // had no manifest.json (seenDirs guard ensures this).
+            foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "pack_manifest.json", SearchOption.AllDirectories))
+            {
+                var packDir = Path.GetDirectoryName(manifestPath);
+                if (packDir == null || !seenDirs.Add(packDir)) continue;
 
                 try
                 {
@@ -820,8 +849,9 @@ public sealed partial class PackBrowserWindow : Window
     /// <summary>
     /// Parses the old pack_manifest.json format (pre-1.16 era).
     /// These packs have no "capabilities" array so they are always Incompatible.
-    /// Fields live inside "header" rather than at root level.
-    /// Version is a loose string rather than an int triplet.
+    /// Version is a loose string inside "header"; only strict X.Y.Z is shown.
+    /// Legacy packs are exempt from the Alchitex candidate tag — see
+    /// <see cref="AlchitexLegacyPacksEligible"/>.
     /// </summary>
     private PackData ParseLegacyPackManifest(string packDir, JObject root)
     {
@@ -830,40 +860,46 @@ public sealed partial class PackBrowserWindow : Window
         string packName = StripMinecraftFormatting(header?["name"]?.ToString() ?? string.Empty);
         string packDesc = StripMinecraftFormatting(header?["description"]?.ToString() ?? string.Empty);
 
-        // Loose version string, e.g. "1.4.4.1".
-        string version = header?["packs_version"]?.ToString()
-                      ?? header?["version"]?.ToString()
-                      ?? "Unknown";
-
         if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
         if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
 
-        // Legacy packs never have capabilities, always Incompatible.
-        var capabilityTags = new List<string>();
+        // Legacy version is a raw string; apply strict semver gate.
+        string rawVersion = header?["packs_version"]?.ToString()
+                         ?? header?["version"]?.ToString()
+                         ?? string.Empty;
+        string version = ResolveVersion(versionToken: null, rawString: rawVersion);
 
-        if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
+        // Legacy packs are always Incompatible — no capabilities field exists.
+        var capabilityTags = new List<string>();
+        bool potentiallySuitable = false;
+
+        // TODO: re-enable Alchitex candidate check for legacy packs if or once automatic manifest format upgrade is implemented downstream in Alchitex.
+        if (AlchitexLegacyPacksEligible && AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
+        {
+            potentiallySuitable = true;
             capabilityTags.Add(AlchitexCandidateTag);
+        }
 
         capabilityTags.Add("Incompatible");
-
-        var icon = LoadIconSync(packDir); // sync is fine here — called from async context via Task.Run indirectly
 
         return new PackData
         {
             PackName = packName,
             PackDescription = packDesc,
             PackPath = packDir,
-            Icon = icon,
+            Icon = LoadIconSync(packDir),
             CapabilityTags = capabilityTags,
             PackType = "Incompatible",
             Version = version,
-            PotentiallySuitableForPBRGen = capabilityTags.Contains(AlchitexCandidateTag),
-            IsLegacyFormat = true
+            IsLegacyFormat = true,
+            PotentiallySuitableForPBRGen = potentiallySuitable
         };
     }
 
     /// <summary>
     /// Parses the modern manifest.json format.
+    /// Version must be a three-element int array or a strict X.Y.Z string;
+    /// anything else is shown as Unknown.
     /// </summary>
     private async Task<PackData> ParseModernManifestAsync(string packDir, JObject root)
     {
@@ -890,7 +926,7 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        var potentiallySuitable = false;
+        bool potentiallySuitable = false;
         if (packType == "Incompatible")
         {
             if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
@@ -901,19 +937,14 @@ public sealed partial class PackBrowserWindow : Window
             capabilityTags.Add("Incompatible");
         }
 
-        // Version: header.version is [major, minor, patch]
-        var versionToken = root["header"]?["version"];
-        string version = "Unknown";
-        if (versionToken?.Type == JTokenType.Array)
-        {
-            var parts = versionToken.Select(t => t.ToString()).ToArray();
-            if (parts.Length > 0) version = string.Join(".", parts);
-        }
+        // Version: array [1,26,15] or string "1.0.6" — strict semver only.
+        string version = ResolveVersion(root["header"]?["version"]);
 
         var header = root["header"];
         string packName = header?["name"]?.ToString() ?? "pack.name";
         string packDesc = header?["description"]?.ToString() ?? "pack.description";
 
+        // Resolve pack.name / pack.description tokens from .lang files if needed.
         if (packName == "pack.name" || packDesc == "pack.description")
         {
             var langFolder = Path.Combine(packDir, "texts");
@@ -933,6 +964,7 @@ public sealed partial class PackBrowserWindow : Window
         packName = StripMinecraftFormatting(packName);
         packDesc = StripMinecraftFormatting(packDesc);
 
+        // Final fallback: folder name for title, sanitized path for description.
         if (packName == "pack.name" || string.IsNullOrWhiteSpace(packName))
             packName = Path.GetFileName(packDir);
         if (packDesc == "pack.description" || string.IsNullOrWhiteSpace(packDesc))
@@ -947,8 +979,8 @@ public sealed partial class PackBrowserWindow : Window
             CapabilityTags = capabilityTags,
             PackType = packType,
             Version = version,
-            PotentiallySuitableForPBRGen = potentiallySuitable,
-            IsLegacyFormat = false
+            IsLegacyFormat = false,
+            PotentiallySuitableForPBRGen = potentiallySuitable
         };
     }
 
@@ -1014,15 +1046,8 @@ public sealed partial class PackBrowserWindow : Window
         return null;
     }
 
-    /// <summary>
-    /// Synchronous icon load used by the legacy manifest path which doesn't have
-    /// an async context at the point of calling. Returns null on any failure.
-    /// </summary>
     private static BitmapImage? LoadIconSync(string packDir)
     {
-        // We can't call SetSourceAsync synchronously, so we fire-and-forget the
-        // async load and return an incomplete BitmapImage. The XAML Image control
-        // will display it once the source resolves on the UI thread.
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
             .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg")
             .ToArray();
@@ -1031,7 +1056,6 @@ public sealed partial class PackBrowserWindow : Window
 
         try
         {
-            // BitmapImage can load from a file URI without async on the UI thread.
             return new BitmapImage(new Uri(iconFiles[0]));
         }
         catch (Exception ex)
@@ -1116,13 +1140,8 @@ public sealed partial class PackBrowserWindow : Window
         public BitmapImage? Icon { get; set; }
         public required List<string> CapabilityTags { get; set; }
         public required string PackType { get; set; }
-
-        /// <summary>Version string for display. "Unknown" if not resolvable.</summary>
         public required string Version { get; set; }
-
-        /// <summary>True for pack_manifest.json (legacy pre-1.16 format).</summary>
         public bool IsLegacyFormat { get; set; } = false;
-
         public bool PotentiallySuitableForPBRGen { get; set; } = false;
     }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -116,11 +117,13 @@ public static class ExpImpDel
     /// Imports packs from an arbitrary list of file/folder paths (drag-and-drop entry
     /// point). Bulk-import rules:
     /// <list type="bullet">
-    ///   <item>.mcpack / .zip   — imported individually.</item>
-    ///   <item>.mcaddon         — every .mcpack inside is queued.</item>
-    ///   <item>folder           — root of folder scanned (non-recursively) for
-    ///                            .mcpack and .zip files; each queued.</item>
+    ///   <item>.mcpack / .zip  — imported individually.</item>
+    ///   <item>.mcaddon        — every .mcpack inside is queued.</item>
+    ///   <item>folder          — root of folder scanned (non-recursively) for
+    ///                           .mcpack and .zip files; each queued.</item>
     /// </list>
+    /// Bare folders are never imported as packs themselves — only archives found
+    /// inside them are queued.
     /// </summary>
     public static async Task<bool> ImportFromPathsAsync(IEnumerable<string> paths)
     {
@@ -137,6 +140,7 @@ public static class ExpImpDel
         {
             if (Directory.Exists(path))
             {
+                // Non-recursive scan: queue archives found at the root of the folder.
                 var found = Directory
                     .GetFiles(path, "*", SearchOption.TopDirectoryOnly)
                     .Where(f => IsArchiveExtension(Path.GetExtension(f)))
@@ -248,7 +252,7 @@ public static class ExpImpDel
             finally
             {
                 try { if (File.Exists(tempMcpack)) File.Delete(tempMcpack); }
-                catch { /* best-effort */ }
+                catch { /* best-effort cleanup */ }
             }
         }
 
@@ -263,8 +267,7 @@ public static class ExpImpDel
 
         using var zip = ZipFile.OpenRead(archivePath);
 
-        // Find the shallowest manifest.json OR pack_manifest.json entry.
-        // manifest.json is preferred; pack_manifest.json is the legacy fallback.
+        // Find the shallowest manifest.json; fall back to pack_manifest.json.
         var manifestEntry = FindShallowManifestEntry(zip);
 
         if (manifestEntry == null)
@@ -276,7 +279,7 @@ public static class ExpImpDel
         bool isLegacy = Path.GetFileName(manifestEntry.FullName)
             .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
 
-        // Read manifest for dupe detection.
+        // Read manifest for dupe detection — soft: any failure falls through to normal import.
         PackIdentity? incomingIdentity = null;
         try
         {
@@ -316,15 +319,19 @@ public static class ExpImpDel
             }
         }
 
+        // Determine the pack root prefix inside the archive.
         var packRootInZip = manifestEntry.FullName.Contains('/')
             ? manifestEntry.FullName.Substring(0, manifestEntry.FullName.LastIndexOf('/') + 1)
             : string.Empty;
 
-        var folderName = string.IsNullOrEmpty(packRootInZip)
+        // Derive and sanitize the destination folder name, capped at 10 chars so that
+        // deeply nested Minecraft paths don't exceed the engine's file path limits.
+        // ResolveUniqueDestination may append _1, _2 … making the final name ≤ ~13 chars.
+        var rawFolderName = string.IsNullOrEmpty(packRootInZip)
             ? Path.GetFileNameWithoutExtension(archivePath)
             : packRootInZip.TrimEnd('/').Split('/').Last();
 
-        folderName = SanitizeFolderName(folderName);
+        var folderName = SanitizeFolderName(rawFolderName);
         var finalDestination = ResolveUniqueDestination(destination, folderName);
 
         ReportStatus($"Extracting '{Path.GetFileName(archivePath)}' → '{Path.GetFileName(finalDestination)}'…");
@@ -365,8 +372,8 @@ public static class ExpImpDel
     }
 
     /// <summary>
-    /// Finds the shallowest manifest.json in the archive first; falls back to
-    /// the shallowest pack_manifest.json if no manifest.json exists.
+    /// Returns the shallowest manifest.json entry in the archive, or the shallowest
+    /// pack_manifest.json if no manifest.json exists. Modern always wins over legacy.
     /// </summary>
     private static ZipArchiveEntry? FindShallowManifestEntry(ZipArchive zip)
     {
@@ -384,126 +391,30 @@ public static class ExpImpDel
             Path.GetFileName(e.FullName).Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase)));
     }
 
-    // ── Folder import ─────────────────────────────────────────────────────────
-
-    public static async Task<bool> ImportFromFolderAsync(string sourceFolder, string destination)
-    {
-        ReportStatus($"Inspecting '{Path.GetFileName(sourceFolder)}'…");
-
-        // Look for manifest.json first; fall back to pack_manifest.json.
-        var allManifests = FindManifestsInFolder(sourceFolder);
-
-        if (allManifests.Count == 0)
-        {
-            ReportStatus($"'{Path.GetFileName(sourceFolder)}' has no manifest — not a valid resource pack, skipped.");
-            return false;
-        }
-
-        var (manifestPath, isLegacy) = allManifests[0];
-        var packRoot = Path.GetDirectoryName(manifestPath)!;
-
-        PackIdentity? incomingIdentity = null;
-        try { incomingIdentity = ParsePackIdentityFromFile(manifestPath, isLegacy); }
-        catch (Exception ex) { Trace.WriteLine($"[Import] Could not parse manifest for dupe check: {ex.Message}"); }
-
-        if (incomingIdentity != null)
-        {
-            var existingMatch = FindExistingPackMatch(incomingIdentity);
-            if (existingMatch != null)
-            {
-                bool overwrite = ConfirmOverwrite != null
-                    && await ConfirmOverwrite(incomingIdentity.Name, existingMatch);
-
-                if (overwrite)
-                {
-                    ReportStatus($"Replacing existing pack at '{Path.GetFileName(existingMatch)}'…");
-                    if (await DeletePackAsync(existingMatch) == null)
-                    {
-                        ReportStatus("Could not remove existing pack — import aborted.");
-                        return false;
-                    }
-                }
-                else
-                {
-                    ReportStatus($"Import of '{incomingIdentity.Name}' skipped (duplicate already installed).");
-                    return false;
-                }
-            }
-        }
-
-        var folderName = SanitizeFolderName(Path.GetFileName(packRoot));
-        var finalDestination = ResolveUniqueDestination(destination, folderName);
-
-        ReportStatus($"Copying '{Path.GetFileName(packRoot)}' → '{Path.GetFileName(finalDestination)}'…");
-
-        var tempZip = Path.Combine(Path.GetTempPath(), $"pack_import_{Guid.NewGuid()}.zip");
-        try
-        {
-            await Task.Run(() =>
-                ZipFile.CreateFromDirectory(packRoot, tempZip, CompressionLevel.Fastest, includeBaseDirectory: false));
-            await Task.Run(() =>
-                ZipFile.ExtractToDirectory(tempZip, finalDestination, overwriteFiles: false));
-
-            ReportStatus($"Imported '{Path.GetFileName(finalDestination)}' successfully.");
-            return true;
-        }
-        finally
-        {
-            try { if (File.Exists(tempZip)) File.Delete(tempZip); }
-            catch (Exception ex) { Trace.WriteLine($"Warning: couldn't delete temp zip: {ex.Message}"); }
-        }
-    }
-
-    /// <summary>
-    /// Finds all manifest files in a folder tree, ordered shallowest-first.
-    /// manifest.json entries always sort before pack_manifest.json at the same depth.
-    /// Returns (path, isLegacy) tuples.
-    /// </summary>
-    private static List<(string Path, bool IsLegacy)> FindManifestsInFolder(string root)
-    {
-        var results = new List<(string, bool, int)>();
-
-        foreach (var file in Directory.EnumerateFiles(root, "manifest.json", SearchOption.AllDirectories))
-            results.Add((file, false, file.Split(Path.DirectorySeparatorChar).Length));
-
-        foreach (var file in Directory.EnumerateFiles(root, "pack_manifest.json", SearchOption.AllDirectories))
-        {
-            var dir = Path.GetDirectoryName(file)!;
-            // Skip if manifest.json exists in the same directory — modern wins.
-            if (File.Exists(Path.Combine(dir, "manifest.json"))) continue;
-            results.Add((file, true, file.Split(Path.DirectorySeparatorChar).Length));
-        }
-
-        return results
-            .OrderBy(x => x.Item3)
-            .ThenBy(x => x.Item2) // false (modern) before true (legacy) at same depth
-            .Select(x => (x.Item1, x.Item2))
-            .ToList();
-    }
-
     // ── Dupe detection ────────────────────────────────────────────────────────
 
     /// <summary>
     /// Identity extracted from a manifest for duplicate comparison.
-    /// We match on header UUID + all module UUIDs; version is excluded so that
-    /// importing an update still triggers the "replace?" prompt.
+    /// Matched on header UUID + all module UUIDs. Version is intentionally excluded
+    /// so that importing an update still triggers the "replace?" prompt.
     /// </summary>
     private record PackIdentity(string Name, string HeaderUuid, IReadOnlyList<string> ModuleUuids);
 
     /// <summary>
-    /// Parses a PackIdentity from a manifest stream. Handles both modern
-    /// manifest.json and legacy pack_manifest.json formats.
+    /// Parses a PackIdentity from a manifest stream.
+    /// Handles both modern manifest.json and legacy pack_manifest.json.
+    /// Tolerant of // and /* */ comments via JsonLoadSettings.
     /// </summary>
     private static PackIdentity? ParsePackIdentity(Stream manifestStream, bool isLegacy)
     {
-        using var reader = new StreamReader(manifestStream, leaveOpen: true);
-        var json = reader.ReadToEnd();
+        using var sr = new StreamReader(manifestStream, leaveOpen: true);
+        var json = sr.ReadToEnd();
 
         JObject root;
         try
         {
-            using var sr = new StringReader(json);
-            using var jsonReader = new JsonTextReader(sr);
+            using var stringReader = new StringReader(json);
+            using var jsonReader = new JsonTextReader(stringReader) { DateParseHandling = DateParseHandling.None };
             var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
             root = JObject.Load(jsonReader, loadSettings);
         }
@@ -515,7 +426,7 @@ public static class ExpImpDel
 
         if (isLegacy)
         {
-            // Legacy: header.pack_id is the primary UUID; modules are inside header.
+            // Legacy: header.pack_id is the primary UUID; modules[] are nested inside header.
             var header = root["header"];
             var headerUuid = header?["pack_id"]?.ToString();
             var name = header?["name"]?.ToString() ?? string.Empty;
@@ -575,10 +486,10 @@ public static class ExpImpDel
     }
 
     /// <summary>
-    /// Scans both resource_packs and development_resource_packs up to 2 folder levels
-    /// deep (the game's own read limit) and returns the pack folder path of the first
-    /// existing pack whose identity matches <paramref name="incoming"/>, or null.
-    /// Checks both manifest.json and pack_manifest.json at each location.
+    /// Scans both resource_packs and development_resource_packs (for the current
+    /// IsTargetingPreview value) up to 2 folder levels deep — the maximum depth the
+    /// game engine reads — and returns the pack folder path of the first existing pack
+    /// whose identity matches <paramref name="incoming"/>, or null.
     /// </summary>
     private static string? FindExistingPackMatch(PackIdentity incoming)
     {
@@ -605,28 +516,25 @@ public static class ExpImpDel
     }
 
     /// <summary>
-    /// Checks a single directory for both manifest.json and pack_manifest.json,
-    /// preferring the modern format. Returns the directory path if a match is found.
+    /// Checks one directory for a manifest match. Prefers manifest.json; if found
+    /// but no match, does NOT also check pack_manifest.json (they can't both be
+    /// authoritative in the same directory).
     /// </summary>
     private static string? CheckDirForMatch(string dir, PackIdentity incoming)
     {
-        // Try modern manifest first.
         var modern = Path.Combine(dir, "manifest.json");
         if (File.Exists(modern))
         {
             var identity = ParsePackIdentityFromFile(modern, isLegacy: false);
-            if (identity != null && IdentitiesMatch(incoming, identity))
-                return dir;
-            return null; // modern manifest found but no match — don't also check legacy
+            if (identity != null && IdentitiesMatch(incoming, identity)) return dir;
+            return null;
         }
 
-        // Fall back to legacy.
         var legacy = Path.Combine(dir, "pack_manifest.json");
         if (File.Exists(legacy))
         {
             var identity = ParsePackIdentityFromFile(legacy, isLegacy: true);
-            if (identity != null && IdentitiesMatch(incoming, identity))
-                return dir;
+            if (identity != null && IdentitiesMatch(incoming, identity)) return dir;
         }
 
         return null;
@@ -640,6 +548,10 @@ public static class ExpImpDel
 
     // ── Shared helpers ────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Returns a unique destination path by appending _1, _2 … to
+    /// <paramref name="baseName"/> until a free slot is found.
+    /// </summary>
     private static string ResolveUniqueDestination(string destination, string baseName)
     {
         var candidate = Path.Combine(destination, baseName);
@@ -652,11 +564,26 @@ public static class ExpImpDel
         }
     }
 
+    /// <summary>
+    /// Strips characters that are invalid in folder names, trims whitespace, and caps
+    /// the result at 10 characters. This keeps installed pack folder names short enough
+    /// that Minecraft's internal path-length limits are not at risk even when user data
+    /// is nested several levels deep. ResolveUniqueDestination may append a short
+    /// numeric suffix (_1 … _N), keeping the final name to ≤ ~13 characters.
+    /// </summary>
     private static string SanitizeFolderName(string name)
     {
         var invalid = Path.GetInvalidFileNameChars();
         var sanitized = new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
-        return string.IsNullOrWhiteSpace(sanitized) ? "ImportedPack" : sanitized;
+
+        if (string.IsNullOrWhiteSpace(sanitized))
+            sanitized = "ImportedPack";
+
+        // Cap at 10 characters to limit total path depth impact.
+        if (sanitized.Length > 10)
+            sanitized = sanitized.Substring(0, 10).TrimEnd('_', ' ');
+
+        return string.IsNullOrWhiteSpace(sanitized) ? "ImportedPk" : sanitized;
     }
 
     private static void ReportStatus(string message)
@@ -671,8 +598,9 @@ public static class ExpImpDel
 
     /// <summary>
     /// Walks upward from <paramref name="packLocation"/> until the parent is a known
-    /// scan root, then deletes that immediate child. Aborts safely if no scan root
-    /// is found so arbitrary folders can never be accidentally removed.
+    /// scan root (resource_packs or development_resource_packs for either game variant),
+    /// then deletes that immediate child folder. Aborts safely if no scan root is found
+    /// in the path, so arbitrary folders can never be accidentally removed.
     /// </summary>
     public static async Task<string?> DeletePackAsync(string packLocation)
     {
