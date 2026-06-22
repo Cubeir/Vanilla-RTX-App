@@ -13,24 +13,6 @@ RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be tim
 # PackUpdateAnnouncements [glyph:"E701"]
 TEST: Resource pack-related announcements will appear here, updated every 3 hours, this one's permanent though
 
-### Update
-1.26.15 Update Summary:
-Fog and atmosphere of many biomes has been overhauled across all three packs! Find detailed changelogs on CurseForge by clicking the names of any pack.
-
-## Chaos Cubes [cd:"1"]
-This one gets dismissed but can come back after 1 min
-
-Support for Chaos Cubed game drop will be arriving soon.
-Check back daily!
-
-## Tip: [cd:"0"]
-This one will return pretty much immedietly
-
-Begineer tip: It is always preferred to activate a Vanilla RTX resource pack in your Global Resources instead of Realm or World.
-
-### Tip #2
-Beginner tip 2: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen from a cached version unless a new version happens to be available.
-
 
 # BetterRTXAnnouncements
 ### Warning 1
