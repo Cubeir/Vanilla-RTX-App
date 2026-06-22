@@ -183,9 +183,9 @@ Because changes stack on each tuning attempt, only use this once on freshly inst
 - The app may occasionally display PSAs from this readme file and caches it for several hours, these announcements will occasionally show up on startup. They are used to inform users of important issues, Vanilla RTX or App updates, etc...
 
 ### Known Issues
-- Missing icons on some older Windows installations (limitation, non-critical)   
+- Missing icons on some Windows installations (limitation, non-critical)   
 If you see missing icons (boxes/squares instead of symbols), your system is missing the Segoe Fluent Icons font. Download and install Segoe Fluent Icons from Microsoft:  
-https://aka.ms/SegoeFluentIcons
+https://aka.ms/SegoeFluentIcons (or http://aka.ms/SegoeMDL2 for Windows 10)
 - Non-English languages are not supported, there may be issues with other system languages. (untested, non-critical)
 - The app's appearance is not properly accounted for with Windows accessibility features. (untested, non-critical)
 
