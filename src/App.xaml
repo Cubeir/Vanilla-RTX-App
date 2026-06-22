@@ -14,21 +14,21 @@
             <!-- Other app resources here -->
             <Style TargetType="TextBlock">
                 <Setter Property="FontFamily"
-                        Value="{StaticResource ContentControlThemeFontFamily}" />
+                        Value="{ThemeResource ContentControlThemeFontFamily}" />
             </Style>
             <Style TargetType="FontIcon">
                 <Setter Property="FontFamily"
-                        Value="{StaticResource SymbolThemeFontFamily}" />
+                        Value="{ThemeResource SymbolThemeFontFamily}" />
             </Style>
             <Style x:Key="TextBlockSegIcons"
                    TargetType="TextBlock">
                 <Setter Property="FontFamily"
-                        Value="{StaticResource SymbolThemeFontFamily}" />
+                        Value="{ThemeResource SymbolThemeFontFamily}" />
             </Style>
             <Style x:Key="ButtonSegIcons"
                    TargetType="Button">
                 <Setter Property="FontFamily"
-                        Value="{StaticResource SymbolThemeFontFamily}" />
+                        Value="{ThemeResource SymbolThemeFontFamily}" />
             </Style>
 
             <ResourceDictionary.ThemeDictionaries>

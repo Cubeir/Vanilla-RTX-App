@@ -278,7 +278,7 @@
 
                 <Button x:Name="AgreeButton"
                         Padding="16,16,16,16"
-                        Style="{StaticResource AccentButtonStyle}"
+                        Style="{ThemeResource AccentButtonStyle}"
                         IsTextScaleFactorEnabled="False"
                         Translation="0,0,32"
                         Content="I have read and agreed to the terms and conditions of this feature"

@@ -237,7 +237,7 @@
                 <!-- Chat Button -->
                 <Button x:Name="ChatButton"
                         Grid.Column="0"
-                        FontFamily="Segoe Fluent Icons"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xE8F2;"
                         Width="42"
@@ -259,8 +259,8 @@
                 <!-- Info/Help Button -->
                 <Button x:Name="HelpButton"
                         Grid.Column="2"
-                        FontFamily="Segoe Fluent Icons"
-                        Style="{StaticResource SubtleButtonStyle}"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xE946;"
                         Width="43"
                         Height="35"
@@ -281,8 +281,8 @@
                 <!-- Donate Button -->
                 <Button x:Name="DonateButton"
                         Grid.Column="4"
-                        FontFamily="Segoe Fluent Icons"
-                        Style="{StaticResource SubtleButtonStyle}"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEB51;"
                         Width="42"
                         Height="35"
@@ -305,8 +305,8 @@
                 <!-- Theme Button -->
                 <Button x:Name="CycleThemeButton"
                         Grid.Column="6"
-                        FontFamily="Segoe Fluent Icons"
-                        Style="{StaticResource SubtleButtonStyle}"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEC46;"
                         Width="42"
                         Height="35"
@@ -843,7 +843,7 @@
                                           IsTextScaleFactorEnabled="False"
                                           VerticalAlignment="Top" />
                             <TextBlock x:Name="EmissivityWarningIcon"
-                                       Style="{StaticResource TextBlockSegIcons}"
+                                       Style="{ThemeResource TextBlockSegIcons}"
                                        Grid.Column="1"
                                        Text="&#xE814;"
                                        FontSize="35"
