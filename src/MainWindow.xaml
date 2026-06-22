@@ -86,9 +86,9 @@
                 VerticalAlignment="Stretch"
                 IsHitTestVisible="False"
                 Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-1">
+                Canvas.ZIndex="-999"> <!-- awesomesoftwareltd.co.uk! -->
             <Border.Background>
-                <SolidColorBrush Color="#2B373737" />
+                <SolidColorBrush Color="#20373737" />
             </Border.Background>
         </Border>
 

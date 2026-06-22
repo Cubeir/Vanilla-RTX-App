@@ -36,6 +36,7 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
+- Art for delete button, new pack browser, and possibly more
 
 - Stress test GDKLocator again
 
