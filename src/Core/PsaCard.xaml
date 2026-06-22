@@ -15,17 +15,18 @@
             <ThemeShadow />
         </Border.Shadow>
 
-<Grid x:Name="InnerGrid"
-      HorizontalAlignment="Stretch"
-      VerticalAlignment="Top"
-      Margin="16,8,16,8">
+        <Grid x:Name="InnerGrid"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              Margin="16,8,16,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <FontIcon Grid.Column="0"
+            <FontIcon x:Name="GlyphIcon"
+                      Grid.Column="0"
                       Glyph="&#xE946;"
                       FontFamily="{ThemeResource SymbolThemeFontFamily}"
                       FontSize="22"

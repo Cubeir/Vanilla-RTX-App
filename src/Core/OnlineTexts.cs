@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Vanilla_RTX_App;
@@ -18,7 +19,14 @@ namespace Vanilla_RTX_App.Core;
 // PsaItem — A single announcement entry.
 // =====================================================================================================================
 
-public record PsaItem(string Text, PsaKind Kind);
+public record PsaItem(
+    string Text,
+    PsaKind Kind,
+    string? Glyph = null,
+    double? FontSize = null,
+    double? Opacity = null,
+    int? CooldownMinutes = null
+);
 
 
 // =====================================================================================================================
@@ -47,12 +55,13 @@ public static class OnlineTextsContent
     public static PsaItem[]? ResourcePackSelectionAnnouncements { get; set; }
 }
 
+
 // =====================================================================================================================
 // PsaKind — Controls dismiss behaviour and button visibility for a PsaItem.
 //
 //   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
-//   Timed     (## body)  — Dismiss button with "Dismiss for now" tooltip.
-//                          Can reappear after 5 minutes. Not added to the permanent blacklist.
+//   Timed     (## body)  — Dismiss button with "Dismiss for a day" tooltip.
+//                          Reappears after cooldown. Not added to the permanent blacklist.
 //   Permanent (### body) — Dismiss button with "Dismiss" tooltip.
 //                          Dismissed once → gone forever (until text changes in the .md).
 // =====================================================================================================================
@@ -64,20 +73,22 @@ public enum PsaKind
     Permanent
 }
 
+
 // =====================================================================================================================
-// OnlineTexts — Online text retrieval, caching, and per-user dismiss tracking.
+// OnlineTexts Usage Documentation
 //
 // ── .md FILE FORMAT ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
 //   # PropertyName          ← Section header. Must match a property in OnlineTextsContent (case-insensitive).
+//                             Spaces before/after the name are trimmed automatically.
 //
 //   Pinned text here.       ← PINNED: no dismiss button, always shown.
 //                              This is any text that appears before the first ## or ### in the section.
 //
-//   ## (any title)          ← Opens a TIMED block. Title is ignored.
-//   Timed text here.        ← TIMED: dismiss button says "Dismiss for now", reappears after 5 minutes.
+//   ## (any title)          ← Opens a TIMED block. Title is ignored beyond modifier extraction.
+//   Timed text here.        ← TIMED: dismiss button says "Dismiss for a day", reappears after cooldown.
 //
-//   ### (any title)         ← Opens a PERMANENT block. Title is ignored.
+//   ### (any title)         ← Opens a PERMANENT block. Title is ignored beyond modifier extraction.
 //   Permanent text here.    ← PERMANENT: dismiss button says "Dismiss", gone forever once dismissed.
 //
 // ── RULES ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -90,22 +101,51 @@ public enum PsaKind
 //   • Empty / whitespace-only blocks are discarded.
 //   • Properties whose # header is absent from the file are set to null.
 //
+// ── MODIFIER FIELDS ─────────────────────────────────────────────────────────────────────────────────────────────────
+//
+//   Optional fields can be embedded anywhere in a section or item title line.
+//   They are extracted and removed before the title is used for anything else,
+//   so they never appear in displayed text and never break section name resolution.
+//
+//   Format:  [key:"value"]
+//
+//   Supported fields (all optional, order-independent, case-insensitive key):
+//
+//     [glyph:"E946"]      — Replaces the default info icon (&#xE946;) with the given Segoe Fluent
+//     [size:"13"]         — Font size override for the item text (positive number).
+//     [opacity:"0.75"]    — Text opacity override (0.0–1.0 inclusive).
+//     [cd:"120"]          — Cooldown in minutes before a Timed item reappears after being dismissed.
+//
+//   Examples:
+//     # PackUpdateAnnouncements [glyph:"E7BA"]
+//     ## Chaos Cubes [cd:"60"] [glyph:"E946"]
+//     ### Update [glyph:"EF2C"] [opacity:"0.6"] [size:"13"]
+//     ##  [glyph:"F003"] [cd:"1440"]          ← title can be empty after modifiers are stripped
+//
+//   Failures are ignored and logged, defaults apply instead.
+//
 // ── DISMISS SYSTEM ──────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   OnlineTexts.Dismiss(text)      — Permanently blacklists text. Use for Permanent items.
-//   OnlineTexts.DismissTimed(text) — Records a 5-minute expiry. Use for Timed items.
-//   OnlineTexts.GetFiltered(…)     — Returns only items that should currently be shown.
-//                                    Pinned items always pass through.
-//                                    Timed items pass through once their expiry has elapsed.
-//                                    Permanent items pass through only if never dismissed.
+//   OnlineTexts.Dismiss(text)                     — Permanently blacklists text.
+//   OnlineTexts.DismissTimed(text, cooldownMins?) — Records expiry. Pass item.CooldownMinutes.
+//   OnlineTexts.GetFiltered(…)                    — Returns only items that should currently show.
 //
-//   PsaCard calls the correct method automatically based on PsaKind — you never call these directly.
+//   PsaCard calls the correct method automatically — you never call these directly.
+//
+// ── DISMISS CLEANUP ─────────────────────────────────────────────────────────────────────────────────────────────────
+//
+//   After every successful fresh fetch, orphaned dismiss hashes are pruned automatically.
+//   A hash is "orphaned" when the PSA it was dismissing no longer exists in the current .md.
+//   Only permanent dismissals that have no matching item in the current content are removed.
+//   Timed dismissals are already self-expiring and are pruned on load — no extra cleanup needed.
+//
+//   This runs only after a confirmed successful network fetch, never when applying stale cache,
+//   so a temporary fetch failure can never accidentally wipe valid dismissals.
 //
 // ── COOLDOWN ────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   110 minutes. Stale cache is applied immediately on startup; fresh fetch runs in the
-//   background with up to 2 retries spaced 5 seconds apart.
-//   In DEBUG builds the cooldown is zero so every launch fetches fresh content.
+//   3 hours. Stale cache is applied immediately on startup; fresh fetch runs in the
+//   background with retries.
 // =====================================================================================================================
 
 public static class OnlineTexts
@@ -120,22 +160,29 @@ public static class OnlineTexts
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
 #if DEBUG
-    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(1); // Cooldown of fetching the new .md
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(5); // CD of PSAs that can be dismissed but return later (##)
+    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(5);
 #else
     private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(3);
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1);
 #endif
+
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
-    // Built once at startup. Adding a property to OnlineTextsContent is all that's needed.
 
     private static readonly Dictionary<string, PropertyInfo> _propMap =
         typeof(OnlineTextsContent)
             .GetProperties(BindingFlags.Public | BindingFlags.Static)
             .ToDictionary(p => p.Name.ToLowerInvariant(), p => p, StringComparer.Ordinal);
+
+    // ── Modifier regex ────────────────────────────────────────────────────────
+    // Matches [key:"value"] anywhere in a line. Key is word chars; value is anything except ".
+
+    private static readonly Regex _modifierRegex = new(
+        @"\[(\w+):""([^""]*)""\]",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // ── Concurrency ───────────────────────────────────────────────────────────
 
@@ -206,6 +253,7 @@ public static class OnlineTexts
 
                 ParseAndApply(raw);
                 CacheContent(raw);
+                CleanupOrphanedDismissals();
                 Trace.WriteLine("[OnlineTexts] Fetch and parse succeeded");
                 return true;
             }
@@ -242,8 +290,8 @@ public static class OnlineTexts
     /// Filters <paramref name="source"/> down to items that should currently be shown,
     /// according to each item's PsaKind and the user's dismiss history.
     /// <para>
-    /// Pinned   — always passes through.
-    /// Timed    — passes through once the 5-minute dismiss window has elapsed.
+    /// Pinned    — always passes through.
+    /// Timed     — passes through once its cooldown has elapsed.
     /// Permanent — passes through only if never permanently dismissed.
     /// </para>
     /// Always use this instead of reading OnlineTextsContent properties directly.
@@ -301,11 +349,13 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Hides <paramref name="text"/> for 5 minutes.
+    /// Hides <paramref name="text"/> for the item's cooldown duration (or the global default).
     /// After the window elapses it will reappear in <see cref="GetFiltered"/> results.
     /// Only call for Timed items — PsaCard handles this automatically.
+    /// Pass <paramref name="cooldownMinutes"/> from <see cref="PsaItem.CooldownMinutes"/> to
+    /// respect per-item [cd:""] overrides from the .md file.
     /// </summary>
-    public static void DismissTimed(string text)
+    public static void DismissTimed(string text, int? cooldownMinutes = null)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         try
@@ -314,9 +364,13 @@ public static class OnlineTexts
             {
                 var d = GetTimedDismissed();
                 var hash = DismissHash(text);
-                d[hash] = DateTime.UtcNow.Add(TIMED_DURATION);
+                var duration = cooldownMinutes.HasValue
+                    ? TimeSpan.FromMinutes(cooldownMinutes.Value)
+                    : TIMED_DURATION;
+                d[hash] = DateTime.UtcNow.Add(duration);
                 SaveTimedDismissed(d);
-                Trace.WriteLine($"[OnlineTexts] Timed dismiss until {d[hash]:HH:mm:ss}: \"{text.Substring(0, Math.Min(60, text.Length))}\"");
+                Trace.WriteLine($"[OnlineTexts] Timed dismiss until {d[hash]:HH:mm:ss} " +
+                    $"(cd={duration.TotalMinutes:F0}min): \"{text.Substring(0, Math.Min(60, text.Length))}\"");
             }
         }
         catch (Exception ex)
@@ -330,7 +384,7 @@ public static class OnlineTexts
     private static string DismissHash(string text)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();
-        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(text));
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(text));
         return BitConverter.ToString(bytes, 0, 8).Replace("-", "").ToLowerInvariant();
     }
 
@@ -539,6 +593,79 @@ public static class OnlineTexts
     }
 
     // =========================================================================
+    // Modifier parser
+    // =========================================================================
+
+    /// <summary>
+    /// Extracts all [key:"value"] modifier fields from a title line.
+    /// Returns the cleaned title (fields removed, trimmed) plus parsed modifier values.
+    /// Any field that fails to parse is logged and skipped; defaults remain null.
+    /// </summary>
+    private static (string cleanTitle, string? glyph, double? fontSize, double? opacity, int? cooldownMinutes)
+        ExtractModifiers(string titleLine)
+    {
+        string? glyph = null;
+        double? fontSize = null;
+        double? opacity = null;
+        int? cooldownMinutes = null;
+
+        var clean = _modifierRegex.Replace(titleLine, match =>
+        {
+            var key = match.Groups[1].Value.ToLowerInvariant();
+            var val = match.Groups[2].Value.Trim();
+            try
+            {
+                switch (key)
+                {
+                    case "glyph":
+                        // Accept 4–5 hex digit codes, e.g. E946, EF2C, F003F
+                        if (val.Length is >= 4 and <= 5 &&
+                            uint.TryParse(val, System.Globalization.NumberStyles.HexNumber, null, out _))
+                            glyph = val.ToUpperInvariant();
+                        else
+                            Trace.WriteLine($"[OnlineTexts] Invalid glyph value: '{val}' — must be 4–5 hex digits, ignored");
+                        break;
+
+                    case "size":
+                        if (double.TryParse(val, System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out var sz) && sz > 0)
+                            fontSize = sz;
+                        else
+                            Trace.WriteLine($"[OnlineTexts] Invalid size value: '{val}' — must be a positive number, ignored");
+                        break;
+
+                    case "opacity":
+                        if (double.TryParse(val, System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out var op) && op is >= 0.0 and <= 1.0)
+                            opacity = op;
+                        else
+                            Trace.WriteLine($"[OnlineTexts] Invalid opacity value: '{val}' — must be 0.0–1.0, ignored");
+                        break;
+
+                    case "cd":
+                        if (int.TryParse(val, out var cd) && cd > 0)
+                            cooldownMinutes = cd;
+                        else
+                            Trace.WriteLine($"[OnlineTexts] Invalid cd value: '{val}' — must be a positive integer (minutes), ignored");
+                        break;
+
+                    default:
+                        Trace.WriteLine($"[OnlineTexts] Unknown modifier key: '{key}' — ignored");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[OnlineTexts] Modifier parse error for [{key}:\"{val}\"]: {ex.Message}");
+            }
+
+            return string.Empty; // remove the field token from the title string
+        });
+
+        return (clean.Trim(), glyph, fontSize, opacity, cooldownMinutes);
+    }
+
+    // =========================================================================
     // Parser
     // =========================================================================
 
@@ -565,7 +692,13 @@ public static class OnlineTexts
 
                 var items = blocks
                     .Where(b => !string.IsNullOrWhiteSpace(b.text))
-                    .Select(b => new PsaItem(b.text.Trim(), b.kind))
+                    .Select(b => new PsaItem(
+                        b.text.Trim(),
+                        b.kind,
+                        Glyph: b.glyph,
+                        FontSize: b.fontSize,
+                        Opacity: b.opacity,
+                        CooldownMinutes: b.cooldownMinutes))
                     .ToArray();
 
                 prop.SetValue(null, items.Length > 0 ? items : null);
@@ -582,27 +715,45 @@ public static class OnlineTexts
     }
 
     /// <summary>
-    /// Core parser. Returns: lowercase-section-name → ordered list of (text, kind) blocks.
+    /// Core parser. Returns: lowercase-section-name → ordered list of block tuples.
     ///
-    /// Single #    = opens a new section.
-    /// ###         = Permanent item separator (checked before ## to avoid misclassification).
-    /// ## (not ###)= Timed item separator.
-    /// No separator= entire section body is one Pinned item.
-    /// Separator titles are ignored — only the body beneath them matters.
+    /// Single #     = opens a new section. Modifiers on this line apply to the Pinned block.
+    ///               A [glyph:] on a # line also becomes the section-level glyph default,
+    ///               inherited by any ## / ### blocks that don't specify their own.
+    /// ###           = Permanent item separator (checked before ## to avoid misclassification).
+    /// ## (not ###)  = Timed item separator.
+    /// No separator  = entire section body is one Pinned item.
+    /// Separator titles are ignored beyond modifier extraction.
     /// </summary>
-    private static Dictionary<string, List<(string text, PsaKind kind)>> Parse(string raw)
+    private static Dictionary<string, List<(string text, PsaKind kind, string? glyph, double? fontSize, double? opacity, int? cooldownMinutes)>>
+        Parse(string raw)
     {
-        var result = new Dictionary<string, List<(string, PsaKind)>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<(string, PsaKind, string?, double?, double?, int?)>>(StringComparer.Ordinal);
         var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
-        List<(string text, PsaKind kind)>? currentBlocks = null;
+        List<(string text, PsaKind kind, string? glyph, double? fontSize, double? opacity, int? cooldownMinutes)>? currentBlocks = null;
         var block = new StringBuilder();
-        var currentKind = PsaKind.Pinned; // text before first separator is Pinned
+
+        // Per-block state
+        var currentKind = PsaKind.Pinned;
+        string? currentGlyph = null;
+        double? currentFontSize = null;
+        double? currentOpacity = null;
+        int? currentCooldown = null;
+
+        // Section-level glyph default (set by [glyph:] on the # line, inherited by child blocks)
+        string? sectionGlyphDefault = null;
 
         void CommitBlock()
         {
             if (currentBlocks is null) return;
-            currentBlocks.Add((block.ToString(), currentKind));
+            currentBlocks.Add((
+                block.ToString(),
+                currentKind,
+                currentGlyph ?? sectionGlyphDefault, // per-item wins, fall back to section default
+                currentFontSize,
+                currentOpacity,
+                currentCooldown));
             block.Clear();
         }
 
@@ -614,29 +765,59 @@ public static class OnlineTexts
             if (line.StartsWith("# ") && !line.StartsWith("## ") && line.Length > 2)
             {
                 CommitBlock();
-                var name = line.Substring(2).Trim().ToLowerInvariant();
+
+                var (cleanTitle, glyph, fontSize, opacity, _) = ExtractModifiers(line.Substring(2));
+                // cd is intentionally ignored on # lines (Pinned blocks are never dismissed)
+
+                var name = cleanTitle.ToLowerInvariant();
                 if (string.IsNullOrEmpty(name)) continue;
 
-                currentBlocks = new List<(string, PsaKind)>();
+                currentBlocks = new List<(string, PsaKind, string?, double?, double?, int?)>();
                 result[name] = currentBlocks;
                 block.Clear();
-                currentKind = PsaKind.Pinned; // reset for each new section
-                Trace.WriteLine($"[OnlineTexts] Section: '{name}'");
+                currentKind = PsaKind.Pinned;
+                sectionGlyphDefault = glyph;   // becomes the default for all child blocks
+                currentGlyph = glyph;   // also applies to the Pinned block itself
+                currentFontSize = fontSize;
+                currentOpacity = opacity;
+                currentCooldown = null;
+
+                Trace.WriteLine($"[OnlineTexts] Section: '{name}'" +
+                    (glyph != null ? $" glyph={glyph}" : "") +
+                    (fontSize != null ? $" size={fontSize}" : "") +
+                    (opacity != null ? $" opacity={opacity}" : ""));
             }
             // ── ### or deeper → Permanent ─────────────────────────────────────
-            // Must be checked BEFORE ## to avoid treating ### as a ## match.
             else if (currentBlocks is not null && line.StartsWith("###"))
             {
                 CommitBlock();
                 currentKind = PsaKind.Permanent;
-                Trace.WriteLine($"[OnlineTexts] ### in '{result.Keys.Last()}' → Permanent");
+
+                var (_, glyph, fontSize, opacity, cd) = ExtractModifiers(line.Substring(3));
+                currentGlyph = glyph;
+                currentFontSize = fontSize;
+                currentOpacity = opacity;
+                currentCooldown = cd;
+
+                Trace.WriteLine($"[OnlineTexts] ### → Permanent" +
+                    (glyph != null ? $" glyph={glyph}" : "") +
+                    (cd != null ? $" cd={cd}" : ""));
             }
             // ── ## (exactly, not ###) → Timed ─────────────────────────────────
             else if (currentBlocks is not null && line.StartsWith("##"))
             {
                 CommitBlock();
                 currentKind = PsaKind.Timed;
-                Trace.WriteLine($"[OnlineTexts] ## in '{result.Keys.Last()}' → Timed");
+
+                var (_, glyph, fontSize, opacity, cd) = ExtractModifiers(line.Substring(2));
+                currentGlyph = glyph;
+                currentFontSize = fontSize;
+                currentOpacity = opacity;
+                currentCooldown = cd;
+
+                Trace.WriteLine($"[OnlineTexts] ## → Timed" +
+                    (glyph != null ? $" glyph={glyph}" : "") +
+                    (cd != null ? $" cd={cd}" : ""));
             }
             // ── Body line ─────────────────────────────────────────────────────
             else if (currentBlocks is not null)
@@ -647,5 +828,68 @@ public static class OnlineTexts
 
         CommitBlock();
         return result;
+    }
+
+    /// <summary>
+    /// Removes permanently dismissed hashes that no longer match any item in the current .md.
+    /// Called automatically after every successful fresh fetch — never on stale cache.
+    ///
+    /// A dismissal is orphaned when the PSA it suppressed has been removed or reworded in the .md.
+    /// Since the hash is derived from the item text, any text change produces a new hash,
+    /// making the old dismissal inert. This pass finds and removes those inert entries.
+    ///
+    /// Safety: if anything fails (content unset, storage error, etc.) the method returns silently.
+    /// Existing dismissals are never touched unless they are confirmed to be orphaned.
+    /// </summary>
+    private static void CleanupOrphanedDismissals()
+    {
+        try
+        {
+            // Collect hashes of every Permanent item currently in content.
+            // Only Permanent items are ever added to the dismissed set, so we only
+            // need to consider those — Pinned and Timed items are irrelevant here.
+            var liveHashes = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var prop in _propMap.Values)
+            {
+                if (prop.GetValue(null) is not PsaItem[] items) continue;
+                foreach (var item in items)
+                {
+                    if (item.Kind == PsaKind.Permanent && !string.IsNullOrWhiteSpace(item.Text))
+                        liveHashes.Add(DismissHash(item.Text));
+                }
+            }
+
+            lock (_dismissLock)
+            {
+                var d = GetDismissed();
+                var before = d.Count;
+                var removed = d.RemoveWhere(hash => !liveHashes.Contains(hash));
+
+                if (removed > 0)
+                {
+                    SaveDismissed(d);
+                    Trace.WriteLine($"[OnlineTexts] Cleanup: removed {removed} orphaned dismissal(s) " +
+                        $"({before} → {d.Count})");
+                }
+                else
+                {
+                    Trace.WriteLine($"[OnlineTexts] Cleanup: no orphaned dismissals ({d.Count} current)");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] CleanupOrphanedDismissals failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Debug method: clears the cache timestamp to force a fresh fetch on next TriggerUpdate call.
+    /// </summary>
+    public static void ForceExpireCache()
+    {
+        try { ApplicationData.Current.LocalSettings.Values.Remove(KEY_TIMESTAMP); } catch { }
+        Trace.WriteLine("[OnlineTexts] Cache timestamp cleared");
     }
 }

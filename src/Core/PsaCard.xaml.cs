@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using System;
+using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Core;
 
@@ -10,6 +11,7 @@ public sealed partial class PsaCard : UserControl
 {
     private readonly string _text;
     private readonly PsaKind _kind;
+    private readonly int? _cooldownMinutes;
 
     private const double FADE_IN_MS = 50;
     private const double FADE_OUT_MS = 50;
@@ -25,25 +27,54 @@ public sealed partial class PsaCard : UserControl
         InitializeComponent();
         _text = item.Text;
         _kind = item.Kind;
+        _cooldownMinutes = item.CooldownMinutes;
         ContentText.Text = item.Text;
 
+        // ── Glyph override ────────────────────────────────────────────────────
+        // Value is a 4–5 char hex string e.g. "E946". Convert to the char the FontIcon expects.
+        if (!string.IsNullOrEmpty(item.Glyph))
+        {
+            try
+            {
+                var codepoint = Convert.ToInt32(item.Glyph, 16);
+                GlyphIcon.Glyph = char.ConvertFromUtf32(codepoint);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[PsaCard] Failed to apply glyph '{item.Glyph}' — using default. {ex.Message}");
+            }
+        }
+
+        // ── Font size override ────────────────────────────────────────────────
+        if (item.FontSize.HasValue)
+        {
+            try { ContentText.FontSize = item.FontSize.Value; }
+            catch (Exception ex) { Trace.WriteLine($"[PsaCard] Failed to apply font size '{item.FontSize}'. {ex.Message}"); }
+        }
+
+        // ── Per-kind background, opacity, dismiss setup ───────────────────────
         switch (item.Kind)
         {
             case PsaKind.Pinned:
                 DismissButton.Visibility = Visibility.Collapsed;
-                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-                ContentText.Opacity = 0.94;
+                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
+                    Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
+                ContentText.Opacity = item.Opacity ?? 0.94;
                 break;
+
             case PsaKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, "Dismiss for a day");
-                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-                ContentText.Opacity = 0.89;
+                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
+                    Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
+                ContentText.Opacity = item.Opacity ?? 0.89;
                 break;
+
             case PsaKind.Permanent:
+                // No background, no shadow, no extra padding — strip the Border visuals entirely
                 CardBorder.Padding = new Thickness(0);
                 CardBorder.Translation = System.Numerics.Vector3.Zero;
                 CardBorder.Shadow = null;
-                ContentText.Opacity = 0.8;
+                ContentText.Opacity = item.Opacity ?? 0.8;
                 break;
         }
     }
@@ -68,7 +99,9 @@ public sealed partial class PsaCard : UserControl
                 OnlineTexts.Dismiss(_text);
                 break;
             case PsaKind.Timed:
-                OnlineTexts.DismissTimed(_text);
+                // Pass the per-item cooldown so [cd:""] overrides from the .md are respected.
+                // If null, DismissTimed falls back to the global TIMED_DURATION.
+                OnlineTexts.DismissTimed(_text, _cooldownMinutes);
                 break;
             case PsaKind.Pinned:
                 return; // button is hidden, should never fire
