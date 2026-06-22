@@ -1012,16 +1012,16 @@
                 </Grid>
                 <!-- =============== End of Sliders Grid =============== -->
 
-                <!-- Tune and Export button block -->
+                <!-- Tune | Export | Delete button block -->
                 <Border x:Name="TuneAndExportShadowHost"
                         Grid.Row="2"
                         Margin="16,0,24,0"
                         Height="43"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Top"
-                        Translation="0,0,32"
                         CornerRadius="6"
-                        BorderThickness="0">
+                        BorderThickness="0"
+                        Translation="0,0,32">
                     <Border.Shadow>
                         <ThemeShadow x:Name="TuneAndExportShadow" />
                     </Border.Shadow>

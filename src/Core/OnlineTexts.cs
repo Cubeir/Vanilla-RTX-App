@@ -368,7 +368,7 @@ public static class OnlineTexts
                 var d = GetTimedDismissed();
                 var hash = DismissHash(text);
                 var duration = cooldownMinutes.HasValue
-                    ? TimeSpan.FromMinutes(cooldownMinutes.Value)
+                    ? (cooldownMinutes.Value == 0 ? TimeSpan.Zero : TimeSpan.FromMinutes(cooldownMinutes.Value))
                     : TIMED_DURATION;
                 d[hash] = DateTime.UtcNow.Add(duration);
                 SaveTimedDismissed(d);
@@ -628,7 +628,7 @@ public static class OnlineTexts
                         break;
 
                     case "cd":
-                        if (int.TryParse(val, out var cd) && cd > 0)
+                        if (int.TryParse(val, out var cd) && cd >= 0)
                             cooldownMinutes = cd;
                         else
                             Trace.WriteLine($"[OnlineTexts] Invalid cd value: '{val}' — must be a positive integer (minutes), ignored");

@@ -75,6 +75,9 @@ public sealed partial class PsaCard : UserControl
     {
         var minutes = cooldownMinutes ?? (int)OnlineTexts.TimedDuration.TotalMinutes;
 
+        if (minutes == 0)
+            return "Dismiss temporarily";
+
         if (minutes < 60)
             return $"Dismiss for {minutes} minute{(minutes == 1 ? "" : "s")}";
 
@@ -95,7 +98,12 @@ public sealed partial class PsaCard : UserControl
     private void Card_PointerExited(object sender, PointerRoutedEventArgs e)
     {
         if (_kind != PsaKind.Pinned)
-            AnimateOpacity(DismissButton, to: 0, durationMs: FADE_OUT_MS);
+        {
+            // Only fade out if pointer actually left the UserControl bounds entirely
+            var pos = e.GetCurrentPoint(this).Position;
+            if (pos.X < 0 || pos.Y < 0 || pos.X > ActualWidth || pos.Y > ActualHeight)
+                AnimateOpacity(DismissButton, to: 0, durationMs: FADE_OUT_MS);
+        }
     }
 
     private void DismissButton_Click(object sender, RoutedEventArgs e)
