@@ -233,7 +233,7 @@ public sealed partial class PackBrowserWindow : Window
                 var dialog = new ContentDialog
                 {
                     Title = "Pack already installed",
-                    Content = $"\"{packName}\" is already installed as \"{existingFolderName}\".\n\nReplace it with the incoming version?",
+                    Content = $"\"{packName}\" is already installed at \"{existingFolderName}\".\n\nReplace it with the incoming version?",
                     PrimaryButtonText = "Replace",
                     CloseButtonText = "Skip",
                     DefaultButton = ContentDialogButton.Close,
