@@ -39,6 +39,7 @@ namespace Vanilla_RTX_App;
 
 - Stress test GDKLocator again
 
+- manifests with comments, do features play well with them?
 
 - It'd be cool if you had something to auto switch all trace-writelines to actual UI facing logs, makes things easier, but proly not worth the effort, just log the idea
 also its just trouble accessing ui thread from all these codes you don't have a clue where they run or how long so forget it, but won't delete the idea
@@ -146,6 +147,10 @@ Have 5-10 made
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
 */
 
+/// <summary>
+/// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
+/// or for defaults to remain accessible, as well as the methods to save and load these variables
+/// </summary>
 public static class TunerVariables
 {
     public static string? appVersion = null;
@@ -240,7 +245,7 @@ public static class TunerVariables
     }
 }
 
-// For dynamically updating number of other selected packs in the UI
+// For dynamically updating number of other selected packs in the UI (select other packs button)
 public class PackSelectionViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -274,7 +279,7 @@ public class PackSelectionViewModel : INotifyPropertyChanged
     }
 }
 
-// ---------------------------------------\                /-------------------------------------------- \\
+// --------------------------------------------\                       /-------------------------------------------- \\
 
 public sealed partial class MainWindow : Window
 {
@@ -317,14 +322,16 @@ public sealed partial class MainWindow : Window
     }
 
 
+    /// WindowStateManager
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    /// For buttons hidden under shiftkey
     private readonly Dictionary<FrameworkElement, string> _originalTexts = new();
     private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
     private bool _shiftPressed = false;
 
-    // ---------------------------------------| | | | | | | | | | |-------------------------------------------- \\
+    // --------------------------------------------| | | | | | | | | | |-------------------------------------------- \\
 
     public MainWindow()
     {
@@ -449,7 +456,7 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {buttonName} button.", LogLevel.Warning);
         }
 
-        // Show Leave a Review prompt, has a 10 sec cd built in
+        // Show Leave a Review prompt
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
         // By the time we get here, on good internet the OnlineTexts fetch is already done. On bad internet it may be stale cache, it's ok
@@ -1883,6 +1890,8 @@ public sealed partial class MainWindow : Window
 
         try
         {
+            _ = BlinkingLamp(true, true, 0.0);
+
             // Deduplicate by normalised path so the same folder isn't deleted twice.
             var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
