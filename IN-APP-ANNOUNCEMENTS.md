@@ -17,7 +17,7 @@ TEST: Resource pack-related announcements will appear here, updated every 3 hour
 1.26.15 Update Summary:
 Fog and atmosphere of many biomes has been overhauled across all three packs! Find detailed changelogs on CurseForge by clicking the names of any pack.
 
-### Chaos Cubes
+## Chaos Cubes
 Support for Chaos Cubed game drop will be arriving soon.
 Check back daily!
 
