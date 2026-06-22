@@ -125,8 +125,8 @@ public static class OnlineTexts
     private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(1); // Cooldown of fetching the new .md
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(5); // CD of PSAs that can be dismissed but return later (##)
 #else
-    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromMinutes(240);
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromMinutes(16);
+    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(3);
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1);
 #endif
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;

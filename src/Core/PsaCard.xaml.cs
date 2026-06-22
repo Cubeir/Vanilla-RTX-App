@@ -33,7 +33,7 @@ public sealed partial class PsaCard : UserControl
                 DismissButton.Visibility = Visibility.Collapsed;
                 break;
             case PsaKind.Timed:
-                ToolTipService.SetToolTip(DismissButton, "Dismiss for now");
+                ToolTipService.SetToolTip(DismissButton, "Dismiss for a day");
                 break;
             case PsaKind.Permanent:
                 // tooltip already set to "Dismiss" in XAML
