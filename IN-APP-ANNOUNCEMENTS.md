@@ -1,4 +1,4 @@
-﻿# Credits
+# Credits
 Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Spaceowl, Willström, Bastha, Jayssizle, Drackae, PotatoHour, Kittygamer123, Lanaismymommy, Joseph, James Kelly, Aaerox, jessehall(Maneating-Zebras), OmarVillegas, Isttret, Nash Knowlden, Superluminal, Travis Bishop, Dylan, Commander Grub, Kyo Don, The_Asa_Games, Charles D Powell, jamesyoung, Nogi Keita, Koiboi, DomoTurbulence, Rory, Nick Da Fox, Richard Anderson (Rich), Jacob, Luxalios, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Leo Montenero, Bryan Tepox, 67, Ryan S Beers — and to everyone who has supported this project in any way along the way.
 
 Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
@@ -10,8 +10,22 @@ Please read before dismissing them (because that's an option!)
 ### reactor temp announcement
 RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
 
-# PackUpdateAnnouncements [glyph:"E701"]
+# PackUpdateAnnouncements
 TEST: Resource pack-related announcements will appear here, updated every 3 hours, this one's permanent though
+
+### Update
+1.26.15 Update Summary:
+Fog and atmosphere of many biomes has been overhauled across all three packs! Find detailed changelogs on CurseForge by clicking the names of any pack.
+
+## Chaos Cubes
+Support for Chaos Cubed game drop will be arriving soon.
+Check back daily!
+
+### Tip:
+Begineer tip: It is always preferred to activate a Vanilla RTX resource pack in your Global Resources instead of Realm or World.
+
+### Tip #2
+Beginner tip 2: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen from a cached version unless a new version happens to be available.
 
 
 # BetterRTXAnnouncements
