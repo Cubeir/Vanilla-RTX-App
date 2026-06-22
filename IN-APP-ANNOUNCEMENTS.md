@@ -11,12 +11,13 @@ Please read before dismissing them (because that's an option!)
 RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
 
 # PackUpdateAnnouncements
+TEST: Resource pack-related announcements will appear here, updated every 3 hours, this one's permanent though
 
-### Update // totally dismissable
+### Update
 1.26.15 Update Summary:
 Fog and atmosphere of many biomes has been overhauled across all three packs! Find detailed changelogs on CurseForge by clicking the names of any pack.
 
-## Chaos Cubes // dismissable, but should reappear after a few minutes pass
+### Chaos Cubes
 Support for Chaos Cubed game drop will be arriving soon.
 Check back daily!
 
@@ -28,16 +29,17 @@ Beginner tip 2: You can come back here to quickly reinstall packs to restore the
 
 
 # BetterRTXAnnouncements
-### another way to give the same warning
-Important tip: If your preset list has been auto reset since your last visit, it is a good idea to wait or check from the BetterRTX Discord whether it has been updated or not for the latest game version before installing a preset.
+### Warning 1
+Important tip: If your preset list has been auto reset since your last visit, it is a good idea to wait and check from the BetterRTX Discord whether it has been updated or not for the latest game version before installing a preset.
 If you install presets while BetterRTX remains outdated, your game will crash and you should either revert to Default RTX, or if you've made sure BetterRTX is up-to-date, update your game!
 
-Some game updates break BetterRTX, it all depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time.
-The refresh button at the top exists to give you a way to manually refetch the latest presets from the BetterRTX website.
+### Warning 2
+Some Minecraft updates break BetterRTX, it all depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly.
+The refresh button at the top exists to give you a way to manually re-fetch the latest presets from the BetterRTX website, which is normally automatically done by the app when game updates are detected.
 
 # LutManagerAnnouncements
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
-### A less important note
+### Lut Note2
 This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
 
 # DLSSAnnouncements
