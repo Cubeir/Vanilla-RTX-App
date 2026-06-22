@@ -31,12 +31,19 @@ public sealed partial class PsaCard : UserControl
         {
             case PsaKind.Pinned:
                 DismissButton.Visibility = Visibility.Collapsed;
+                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"];
+                ContentText.Opacity = 0.94;
                 break;
             case PsaKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, "Dismiss for a day");
+                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"];
+                ContentText.Opacity = 0.89;
                 break;
-            case PsaKind.Permanent:
-                // tooltip already set to "Dismiss" in XAML
+            case PsaKind.Permanent: //Permanently dismissable
+                CardBorder.Padding = new Thickness(16);
+                CardBorder.Translation = System.Numerics.Vector3.Zero;
+                CardBorder.Shadow = null;
+                ContentText.Opacity = 0.84;
                 break;
         }
     }

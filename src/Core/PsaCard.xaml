@@ -5,48 +5,58 @@
              PointerEntered="Card_PointerEntered"
              PointerExited="Card_PointerExited">
 
-    <Grid HorizontalAlignment="Stretch"
-          VerticalAlignment="Top">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
+    <Border x:Name="CardBorder"
+            CornerRadius="8"
+            Padding="16"
+            Translation="0,0,32">
+        <Border.Shadow>
+            <ThemeShadow />
+        </Border.Shadow>
 
-        <FontIcon Grid.Column="0"
-                  Glyph="&#xE946;"
-                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                  FontSize="22"
-                  VerticalAlignment="Top"
-                  Margin="0,6,0,0"
-                  IsHitTestVisible="False"
-                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+        <Grid HorizontalAlignment="Stretch"
+              VerticalAlignment="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-        <TextBlock x:Name="ContentText"
-                   Grid.Column="1"
-                   TextWrapping="Wrap"
-                   FontSize="14"
-                   Margin="8,0,0,0"
-                   Opacity="0.84"
-                   VerticalAlignment="Center"
-                   IsTextScaleFactorEnabled="False" />
+            <FontIcon Grid.Column="0"
+                      Glyph="&#xE946;"
+                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                      FontSize="22"
+                      VerticalAlignment="Top"
+                      Margin="0,5,0,0"
+                      IsHitTestVisible="False"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
-        <Button x:Name="DismissButton"
-                Grid.Column="2"
-                Opacity="0"
-                Width="24"
-                Height="24"
-                Padding="0"
-                VerticalAlignment="Center"
-                Margin="0,0,0,0"
-                Background="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                BorderThickness="2"
-                Click="DismissButton_Click"
-                ToolTipService.ToolTip="Dismiss">
-            <FontIcon Glyph="&#xE8BB;"
-                      FontSize="12"
-                      FontFamily="{ThemeResource SymbolThemeFontFamily}" />
-        </Button>
-    </Grid>
+            <TextBlock x:Name="ContentText"
+                       Grid.Column="1"
+                       TextWrapping="Wrap"
+                       FontSize="14"
+                       Margin="8,0,0,0"
+                       Opacity="0.9"
+                       VerticalAlignment="Center"
+                       IsTextScaleFactorEnabled="False" />
 
+            <Button x:Name="DismissButton"
+                    Grid.Column="2"
+                    Opacity="0"
+                    Width="24"
+                    Height="24"
+                    Padding="0"
+                    VerticalAlignment="Center"
+                    Margin="0,0,0,0"
+                    Background="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    BorderThickness="1"
+                    Click="DismissButton_Click"
+                    ToolTipService.ToolTip="Dismiss">
+                <FontIcon Glyph="&#xE8BB;"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Center"
+                          FontSize="12"
+                          FontFamily="{ThemeResource SymbolThemeFontFamily}" />
+            </Button>
+        </Grid>
+    </Border>
 </UserControl>

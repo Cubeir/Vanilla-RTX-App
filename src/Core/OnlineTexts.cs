@@ -15,24 +15,6 @@ using Windows.Storage;
 namespace Vanilla_RTX_App.Core;
 
 // =====================================================================================================================
-// PsaKind — Controls dismiss behaviour and button visibility for a PsaItem.
-//
-//   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
-//   Timed     (## body)  — Dismiss button with "Dismiss for now" tooltip.
-//                          Can reappear after 5 minutes. Not added to the permanent blacklist.
-//   Permanent (### body) — Dismiss button with "Dismiss" tooltip.
-//                          Dismissed once → gone forever (until text changes in the .md).
-// =====================================================================================================================
-
-public enum PsaKind
-{
-    Pinned,
-    Timed,
-    Permanent
-}
-
-
-// =====================================================================================================================
 // PsaItem — A single announcement entry.
 // =====================================================================================================================
 
@@ -65,6 +47,22 @@ public static class OnlineTextsContent
     public static PsaItem[]? ResourcePackSelectionAnnouncements { get; set; }
 }
 
+// =====================================================================================================================
+// PsaKind — Controls dismiss behaviour and button visibility for a PsaItem.
+//
+//   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
+//   Timed     (## body)  — Dismiss button with "Dismiss for now" tooltip.
+//                          Can reappear after 5 minutes. Not added to the permanent blacklist.
+//   Permanent (### body) — Dismiss button with "Dismiss" tooltip.
+//                          Dismissed once → gone forever (until text changes in the .md).
+// =====================================================================================================================
+
+public enum PsaKind
+{
+    Pinned,
+    Timed,
+    Permanent
+}
 
 // =====================================================================================================================
 // OnlineTexts — Online text retrieval, caching, and per-user dismiss tracking.
