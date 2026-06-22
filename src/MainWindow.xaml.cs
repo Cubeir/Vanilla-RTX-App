@@ -36,7 +36,7 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG ###
 
-- Art for delete button, new pack browser, and possibly more
+
 
 - Stress test GDKLocator again
 
@@ -710,6 +710,9 @@ public sealed partial class MainWindow : Window
 
         Previewer.Instance.InitializeButton(ExportButton,
             "ms-appx:///Assets/previews/chest.export.png"
+        );
+        Previewer.Instance.InitializeButton(DeleteButton,
+            "ms-appx:///Assets/previews/chest.delete.png"
         );
 
         if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
@@ -1867,7 +1870,7 @@ public sealed partial class MainWindow : Window
 
 
 
-    private async void DeleteSelection_Click(object sender, RoutedEventArgs e)
+    private async void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
         // Build the full list of pack locations to delete:
         // the three Vanilla RTX packs (if enabled) plus every custom selected pack.
