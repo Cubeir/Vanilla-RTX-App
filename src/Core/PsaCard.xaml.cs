@@ -45,13 +45,6 @@ public sealed partial class PsaCard : UserControl
             }
         }
 
-        // ── Font size override ────────────────────────────────────────────────
-        if (item.FontSize.HasValue)
-        {
-            try { ContentText.FontSize = item.FontSize.Value; }
-            catch (Exception ex) { Trace.WriteLine($"[PsaCard] Failed to apply font size '{item.FontSize}'. {ex.Message}"); }
-        }
-
         // ── Per-kind background, opacity, dismiss setup ───────────────────────
         switch (item.Kind)
         {
@@ -59,14 +52,14 @@ public sealed partial class PsaCard : UserControl
                 DismissButton.Visibility = Visibility.Collapsed;
                 CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
                     Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-                ContentText.Opacity = item.Opacity ?? 0.94;
+                ContentText.Opacity = 0.94;
                 break;
 
             case PsaKind.Timed:
-                ToolTipService.SetToolTip(DismissButton, "Dismiss for a day");
+                ToolTipService.SetToolTip(DismissButton, FormatCooldownTooltip(_cooldownMinutes)); // tooltip
                 CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
                     Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-                ContentText.Opacity = item.Opacity ?? 0.89;
+                ContentText.Opacity = 0.89;
                 break;
 
             case PsaKind.Permanent:
@@ -74,9 +67,23 @@ public sealed partial class PsaCard : UserControl
                 CardBorder.Padding = new Thickness(0);
                 CardBorder.Translation = System.Numerics.Vector3.Zero;
                 CardBorder.Shadow = null;
-                ContentText.Opacity = item.Opacity ?? 0.8;
+                ContentText.Opacity = 0.8;
                 break;
         }
+    }
+    private static string FormatCooldownTooltip(int? cooldownMinutes)
+    {
+        var minutes = cooldownMinutes ?? (int)OnlineTexts.TimedDuration.TotalMinutes;
+
+        if (minutes < 60)
+            return $"Dismiss for {minutes} minute{(minutes == 1 ? "" : "s")}";
+
+        var hours = (int)Math.Round(minutes / 60.0);
+        if (hours < 24)
+            return $"Dismiss for {hours} hour{(hours == 1 ? "" : "s")}";
+
+        var days = (int)Math.Round(hours / 24.0);
+        return $"Dismiss for {days} day{(days == 1 ? "" : "s")}";
     }
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)

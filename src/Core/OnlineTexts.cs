@@ -23,8 +23,6 @@ public record PsaItem(
     string Text,
     PsaKind Kind,
     string? Glyph = null,
-    double? FontSize = null,
-    double? Opacity = null,
     int? CooldownMinutes = null
 );
 
@@ -75,7 +73,7 @@ public enum PsaKind
 
 
 // =====================================================================================================================
-// OnlineTexts Usage Documentation
+// OnlineTexts — Online text retrieval, caching, and per-user dismiss tracking.
 //
 // ── .md FILE FORMAT ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
@@ -112,17 +110,20 @@ public enum PsaKind
 //   Supported fields (all optional, order-independent, case-insensitive key):
 //
 //     [glyph:"E946"]      — Replaces the default info icon (&#xE946;) with the given Segoe Fluent
-//     [size:"13"]         — Font size override for the item text (positive number).
-//     [opacity:"0.75"]    — Text opacity override (0.0–1.0 inclusive).
+//                           Icons glyph. Value must be a 4–5 character hex code (no prefix/suffix or anything).
+//                           Examples: E946, EF2C, F003
 //     [cd:"120"]          — Cooldown in minutes before a Timed item reappears after being dismissed.
 //
 //   Examples:
 //     # PackUpdateAnnouncements [glyph:"E7BA"]
 //     ## Chaos Cubes [cd:"60"] [glyph:"E946"]
-//     ### Update [glyph:"EF2C"] [opacity:"0.6"] [size:"13"]
-//     ##  [glyph:"F003"] [cd:"1440"]          ← title can be empty after modifiers are stripped
+//     ### Update [glyph:"EF2C"] [cd:"1440"] // cd useless here
+//     ##  [cd:"720"]
 //
-//   Failures are ignored and logged, defaults apply instead.
+//   Failure handling:
+//     • Unknown field names are logged and ignored.
+//     • Malformed values (wrong type, out of range) are logged and ignored; defaults apply.
+//     • Any exception during modifier parsing is caught; the item is still created with defaults.
 //
 // ── DISMISS SYSTEM ──────────────────────────────────────────────────────────────────────────────────────────────────
 //
@@ -145,7 +146,8 @@ public enum PsaKind
 // ── COOLDOWN ────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
 //   3 hours. Stale cache is applied immediately on startup; fresh fetch runs in the
-//   background with retries.
+//   background with up to 2 retries spaced 5 seconds apart.
+//   In DEBUG builds the cooldown is 1 second so every launch fetches fresh content.
 // =====================================================================================================================
 
 public static class OnlineTexts
@@ -160,12 +162,13 @@ public static class OnlineTexts
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
 #if DEBUG
-    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(0);
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(0);
+    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(5);
 #else
     private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(3);
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1);
 #endif
+    public static TimeSpan TimedDuration => TIMED_DURATION;
 
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 2;
@@ -601,12 +604,10 @@ public static class OnlineTexts
     /// Returns the cleaned title (fields removed, trimmed) plus parsed modifier values.
     /// Any field that fails to parse is logged and skipped; defaults remain null.
     /// </summary>
-    private static (string cleanTitle, string? glyph, double? fontSize, double? opacity, int? cooldownMinutes)
+    private static (string cleanTitle, string? glyph, int? cooldownMinutes)
         ExtractModifiers(string titleLine)
     {
         string? glyph = null;
-        double? fontSize = null;
-        double? opacity = null;
         int? cooldownMinutes = null;
 
         var clean = _modifierRegex.Replace(titleLine, match =>
@@ -624,22 +625,6 @@ public static class OnlineTexts
                             glyph = val.ToUpperInvariant();
                         else
                             Trace.WriteLine($"[OnlineTexts] Invalid glyph value: '{val}' — must be 4–5 hex digits, ignored");
-                        break;
-
-                    case "size":
-                        if (double.TryParse(val, System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out var sz) && sz > 0)
-                            fontSize = sz;
-                        else
-                            Trace.WriteLine($"[OnlineTexts] Invalid size value: '{val}' — must be a positive number, ignored");
-                        break;
-
-                    case "opacity":
-                        if (double.TryParse(val, System.Globalization.NumberStyles.Any,
-                                System.Globalization.CultureInfo.InvariantCulture, out var op) && op is >= 0.0 and <= 1.0)
-                            opacity = op;
-                        else
-                            Trace.WriteLine($"[OnlineTexts] Invalid opacity value: '{val}' — must be 0.0–1.0, ignored");
                         break;
 
                     case "cd":
@@ -662,7 +647,7 @@ public static class OnlineTexts
             return string.Empty; // remove the field token from the title string
         });
 
-        return (clean.Trim(), glyph, fontSize, opacity, cooldownMinutes);
+        return (clean.Trim(), glyph, cooldownMinutes);
     }
 
     // =========================================================================
@@ -696,8 +681,6 @@ public static class OnlineTexts
                         b.text.Trim(),
                         b.kind,
                         Glyph: b.glyph,
-                        FontSize: b.fontSize,
-                        Opacity: b.opacity,
                         CooldownMinutes: b.cooldownMinutes))
                     .ToArray();
 
@@ -717,43 +700,32 @@ public static class OnlineTexts
     /// <summary>
     /// Core parser. Returns: lowercase-section-name → ordered list of block tuples.
     ///
-    /// Single #     = opens a new section. Modifiers on this line apply to the Pinned block.
-    ///               A [glyph:] on a # line also becomes the section-level glyph default,
-    ///               inherited by any ## / ### blocks that don't specify their own.
+    /// Single #     = opens a new section. Modifiers on this line apply to the Pinned block only.
+    ///               [glyph:] on a # line does NOT inherit to ## / ### child blocks.
+    ///               Each child block uses the default glyph unless it specifies its own [glyph:].
     /// ###           = Permanent item separator (checked before ## to avoid misclassification).
     /// ## (not ###)  = Timed item separator.
     /// No separator  = entire section body is one Pinned item.
     /// Separator titles are ignored beyond modifier extraction.
     /// </summary>
-    private static Dictionary<string, List<(string text, PsaKind kind, string? glyph, double? fontSize, double? opacity, int? cooldownMinutes)>>
+    private static Dictionary<string, List<(string text, PsaKind kind, string? glyph, int? cooldownMinutes)>>
         Parse(string raw)
     {
-        var result = new Dictionary<string, List<(string, PsaKind, string?, double?, double?, int?)>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<(string, PsaKind, string?, int?)>>(StringComparer.Ordinal);
         var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
-        List<(string text, PsaKind kind, string? glyph, double? fontSize, double? opacity, int? cooldownMinutes)>? currentBlocks = null;
+        List<(string text, PsaKind kind, string? glyph, int? cooldownMinutes)>? currentBlocks = null;
         var block = new StringBuilder();
 
-        // Per-block state
+        // Per-block state — reset for every ## / ### separator
         var currentKind = PsaKind.Pinned;
         string? currentGlyph = null;
-        double? currentFontSize = null;
-        double? currentOpacity = null;
         int? currentCooldown = null;
-
-        // Section-level glyph default (set by [glyph:] on the # line, inherited by child blocks)
-        string? sectionGlyphDefault = null;
 
         void CommitBlock()
         {
             if (currentBlocks is null) return;
-            currentBlocks.Add((
-                block.ToString(),
-                currentKind,
-                currentGlyph ?? sectionGlyphDefault, // per-item wins, fall back to section default
-                currentFontSize,
-                currentOpacity,
-                currentCooldown));
+            currentBlocks.Add((block.ToString(), currentKind, currentGlyph, currentCooldown));
             block.Clear();
         }
 
@@ -766,26 +738,21 @@ public static class OnlineTexts
             {
                 CommitBlock();
 
-                var (cleanTitle, glyph, fontSize, opacity, _) = ExtractModifiers(line.Substring(2));
-                // cd is intentionally ignored on # lines (Pinned blocks are never dismissed)
+                var (cleanTitle, glyph, _) = ExtractModifiers(line.Substring(2));
+                // cd intentionally ignored on # lines — Pinned blocks are never dismissed
 
                 var name = cleanTitle.ToLowerInvariant();
                 if (string.IsNullOrEmpty(name)) continue;
 
-                currentBlocks = new List<(string, PsaKind, string?, double?, double?, int?)>();
+                currentBlocks = new List<(string, PsaKind, string?, int?)>();
                 result[name] = currentBlocks;
                 block.Clear();
                 currentKind = PsaKind.Pinned;
-                sectionGlyphDefault = glyph;   // becomes the default for all child blocks
-                currentGlyph = glyph;   // also applies to the Pinned block itself
-                currentFontSize = fontSize;
-                currentOpacity = opacity;
+                currentGlyph = glyph;   // applies to the Pinned block only, not inherited by children
                 currentCooldown = null;
 
                 Trace.WriteLine($"[OnlineTexts] Section: '{name}'" +
-                    (glyph != null ? $" glyph={glyph}" : "") +
-                    (fontSize != null ? $" size={fontSize}" : "") +
-                    (opacity != null ? $" opacity={opacity}" : ""));
+                    (glyph != null ? $" glyph={glyph}" : ""));
             }
             // ── ### or deeper → Permanent ─────────────────────────────────────
             else if (currentBlocks is not null && line.StartsWith("###"))
@@ -793,10 +760,8 @@ public static class OnlineTexts
                 CommitBlock();
                 currentKind = PsaKind.Permanent;
 
-                var (_, glyph, fontSize, opacity, cd) = ExtractModifiers(line.Substring(3));
-                currentGlyph = glyph;
-                currentFontSize = fontSize;
-                currentOpacity = opacity;
+                var (_, glyph, cd) = ExtractModifiers(line.Substring(3));
+                currentGlyph = glyph;   // null means default glyph — no inheritance from # line
                 currentCooldown = cd;
 
                 Trace.WriteLine($"[OnlineTexts] ### → Permanent" +
@@ -809,10 +774,8 @@ public static class OnlineTexts
                 CommitBlock();
                 currentKind = PsaKind.Timed;
 
-                var (_, glyph, fontSize, opacity, cd) = ExtractModifiers(line.Substring(2));
-                currentGlyph = glyph;
-                currentFontSize = fontSize;
-                currentOpacity = opacity;
+                var (_, glyph, cd) = ExtractModifiers(line.Substring(2));
+                currentGlyph = glyph;   // null means default glyph — no inheritance from # line
                 currentCooldown = cd;
 
                 Trace.WriteLine($"[OnlineTexts] ## → Timed" +
