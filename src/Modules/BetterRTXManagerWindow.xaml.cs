@@ -100,27 +100,11 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 9;
+    private const int REFRESH_COOLDOWN_SECONDS = 10;
     private DispatcherTimer? _cooldownTimer;
 
 
-    private static readonly string BETTERRTX_DISCLAIMER_KEY = $"BetterRTXDisclaimerAgreed_{TunerVariables.appVersion}";
-    private static void CleanupOldDisclaimerKeys()
-    {
-        try
-        {
-            var localSettings = ApplicationData.Current.LocalSettings;
-            var keysToRemove = localSettings.Values.Keys
-                .Where(k => k.StartsWith("BetterRTXDisclaimerAgreed_") && k != BETTERRTX_DISCLAIMER_KEY)
-                .ToList();
-            foreach (var key in keysToRemove)
-                localSettings.Values.Remove(key);
-        }
-        catch
-        {
-            Trace.WriteLine("[BetterRTX] Failed to clear orphaned BetterRTXDisclaimerAgreed_ keys");
-        }
-    }
+    public const string BETTERRTX_DISCLAIMER_KEY = $"BetterRTXDisclaimerAgreed_Key";
 
 
     public bool OperationSuccessful { get; private set; } = false;
@@ -226,7 +210,9 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 new TextBlock
                 {
-                    Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The app retrieves the files for this feature from a third-party API outside of the developer's control. As such, with Minecraft updates, this feature can potentially break. The app takes it as far as possible to mitigate any issues that may arise and gives you a way to quickly revert to unmodified Default RTX.\n\nPlease read the announcement/info panels to keep updated and help steer yourself away from potential issues.",
+                    Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The app retrieves the files for this feature from a third-party API outside of the developer's control. " +
+                    "As such, with Minecraft updates, BetterRTX can potentially break. Vanilla RTX App gives its best effort to mitigate any issues that may arise and gives you a way to quickly revert to unmodified Default RTX files it has access to from your installations." +
+                    "\n\nPlease read the announcement & info panels that appear at the top to keep updated and help steer yourself away from potential issues.",
                     TextWrapping = TextWrapping.Wrap,
                     IsTextScaleFactorEnabled = false
                 },
@@ -255,7 +241,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         confirmButton.Click += (s, e) =>
         {
             localSettings.Values[BETTERRTX_DISCLAIMER_KEY] = true;
-            CleanupOldDisclaimerKeys();
             tcs.TrySetResult(true);
             dialog.Hide(); // Closing event now lets it through since tcs.Task.IsCompleted == true
         };
@@ -667,16 +652,23 @@ public sealed partial class BetterRTXManagerWindow : Window
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
-        // Show disclaimer -- background work is done, but gate the UI
-        var agreed = await ShowDisclaimerDialogAsync();
-        if (!agreed)
+        // Show disclaimer -- background work is done, but try to gate the UI
+        try
         {
-            StatusMessage = "Dismissed third-party API usage notice.";
-            this.Close();
-            return;
+            bool agreed = await ShowDisclaimerDialogAsync();
+            if (!agreed == true)
+            {
+                StatusMessage = "Dismissed third-party API usage notice.";
+                this.Close();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine("[BetterRTX] Something went wrong while trying to show the BetterRTX disclaimer dialogue:\n" + ex.ToString());
         }
 
-        // Initialize PSAs (only after user agrees)
+        // Initialize PSAs
         PopulateBetterRTXAnnouncements();
     }
 
@@ -2152,6 +2144,7 @@ public static class SmartPresetSorter
 
 public static class GameVersionDetector
 {
+    // Release only
     private const string CONFIG_HASH_KEY = "MinecraftConfigHash";
 
     /// <summary>
@@ -2231,6 +2224,10 @@ public static class GameVersionDetector
                 Trace.WriteLine($"   Old: {storedConfigHash.Substring(0, 16)}...");
                 Trace.WriteLine($"   New: {currentConfigHash.Substring(0, 16)}...");
                 versionChanged = true;
+
+                // Clear disclaimer so user is re-notified after game update
+                settings.Values.Remove(BetterRTXManagerWindow.BETTERRTX_DISCLAIMER_KEY);
+                Trace.WriteLine("[BetterRTX]💾 Cleared BetterRTX disclaimer key — will re-prompt on next open");
             }
             else
             {
