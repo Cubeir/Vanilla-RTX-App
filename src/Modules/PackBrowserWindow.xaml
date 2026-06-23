@@ -209,7 +209,7 @@
                                 CornerRadius="0,5,5,0"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Allows you to import your resource packs in bulk">
+                                ToolTipService.ToolTip="Allows you to import your resource packs in bulk, supports .zip and .mcpacks formats, multiple packs bundled inside .mcaddon, as well as bulk import from packs inside a folder.">
                             <StackPanel HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         Spacing="4">
@@ -227,7 +227,7 @@
                                                IsTextScaleFactorEnabled="False" />
                                 </StackPanel>
                                 <TextBlock x:Name="AddPackDescriptionText"
-                                           FontSize="12"
+                                           FontSize="11"
                                            Opacity="0.67"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
