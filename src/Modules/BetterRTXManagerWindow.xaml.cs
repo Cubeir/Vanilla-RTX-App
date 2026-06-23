@@ -20,13 +20,34 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
-using Vanilla_RTX_App.RTXDefaults;
 using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
 
+/*  <backlog>
+Better RTX foolproofing/reinforcement ideas
+
+ANYTHING in the BetterRtx api json to,
+
+to automatically identify if the API endpoint json has changed???
+
+if you could do something for that
+You could
+
+Have a cache comparison at startup
+that triggers a cache reset (similar to button trigger, doesn't clear default RTX if there) ON startup everytime.
+
+more calls but its fine.
+latest to current api cache get compared,
+and it triggers that
+
+if it FAILS to make the call
+Just continue to load without refreshing api list...
+
+if unknown/edge cases, do trigger a refresh (still got the api, but couldn't decide if its different or not) only if not different, dont refresh api list.
+*/
 
 internal enum DownloadStatus
 {
