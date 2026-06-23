@@ -437,7 +437,7 @@ public sealed partial class Alchitex : Window
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
-        MainWindow.OpenUrl("http://minecraftrtx.net/reactor");
+        _ = MainWindow.OpenUrl("http://minecraftrtx.net/reactor");
     }
 
     // ── Reveal main content ───────────────────────────────────────────────────

@@ -45,15 +45,21 @@ namespace Vanilla_RTX_App;
 - Test memory usage when tuning large packs
 test for memory leaks
 
-- Do PSAs return when perma dismissed upon a new version being fetched? TEST!
-
 - test leave a review prompt's changes
+MAYBE rewrite it as a ContentDialogue, current one's pretty though!
 
-- Fix shadows of selectable panes being cut off in pack browser and similar menus
+- Give all classes to claude one day one by one, explain their workings
+Ask it to complete comment/summary documentations
+AND conform to the debug log styling you've been doing recently
 
-- It'd be cool if you had something to auto switch all trace-writelines to actual UI facing logs, makes things easier, but proly not worth the effort, just log the idea
-also its just trouble accessing ui thread from all these codes you don't have a clue where they run or how long so forget it, but won't delete the idea
-cuz, might actually do it one day.
+- Implement a proper Tuning Progress bar
+Update the progressbar manager, allow it to move slowly, to give an indication of the progress of the tuning process
+have it update in real time, all files/processed, should be easy enough...
+
+- Alongside it, add the ability to Abort the operation, WHILE tuning, change tune button to "Abort Tuning" with a warning glyph
+or &#xE730; would be nicer, &#xECE4; too
+
+
 
 - TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
 This is probably not necessary anymore and PROBABLY slows the app down, DON'T DO IT.
@@ -543,6 +549,7 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
         }
 
+        // TODO: review here, do these two really both take .ico files? what resolutions?! what of .SetIcon, should you set that one too?
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");
         appWindow.SetTaskbarIcon(iconPath);
         appWindow.SetTitleBarIcon(iconPath);
@@ -862,24 +869,25 @@ public sealed partial class MainWindow : Window
     }
 
 
-
-    public static void OpenUrl(string url)
+    // TODO: use Windows.System.Launcher URI Launcher instead, used already in review prompt for example
+    public static async Task OpenUrl(string url)
     {
 #if DEBUG
-        Log("OpenUrl is disabled in debug builds.", LogLevel.Informational);
-        return;
+    Log("OpenUrl is disabled in debug builds.", LogLevel.Informational);
+    return;
 #else
-    try
-    {
-        if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
-            throw new ArgumentException("Malformed URL.");
-        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-    }
-    catch (Exception ex)
-    {
-        Log($"Details: {ex.Message}", LogLevel.Informational);
-        Log("Failed to open URL. Make sure you have a browser installed and associated with web links.", LogLevel.Warning); 
-    }
+        try
+        {
+            if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                throw new ArgumentException("Malformed URL.");
+
+            await Windows.System.Launcher.LaunchUriAsync(new Uri(url));
+        }
+        catch (Exception ex)
+        {
+            Log($"Details: {ex.Message}", LogLevel.Informational);
+            Log("Failed to open URL. Make sure you have a browser installed and associated with web links.", LogLevel.Warning);
+        }
 #endif
     }
 
@@ -1159,14 +1167,14 @@ public sealed partial class MainWindow : Window
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
         Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.Informational);
-        OpenUrl("https://discord.gg/A4wv4wwYud");
+        _ = OpenUrl("https://discord.gg/A4wv4wwYud");
     }
 
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
         Log("Find helpful resources in the README file, launching in your default browser shortly.", LogLevel.Informational);
-        OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation");
+        _ = OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation");
     }
     private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
@@ -1186,7 +1194,7 @@ public sealed partial class MainWindow : Window
     {
         DonateButton.Content = "\uEB52";
         ShowCreditsOnce();
-        OpenUrl("https://ko-fi.com/cubeir");
+        _ = OpenUrl("https://ko-fi.com/cubeir");
     }
     private void DonateButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {

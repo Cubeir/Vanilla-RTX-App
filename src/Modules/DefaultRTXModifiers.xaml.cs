@@ -942,7 +942,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     }
     private void LearnTo_Button_Click(object sender, RoutedEventArgs e)
     {
-        MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md");
+        _ = MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md");
     }
 
 
