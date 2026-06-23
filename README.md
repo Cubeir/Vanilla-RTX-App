@@ -188,6 +188,7 @@ If you see missing icons (boxes/squares instead of symbols), your system is miss
 https://aka.ms/SegoeFluentIcons (or http://aka.ms/SegoeMDL2 for Windows 10)
 - Non-English languages are not supported, there may be issues with other system languages. (untested, non-critical)
 - The app's appearance is not properly accounted for with Windows accessibility features. (untested, non-critical)
+- Light theme is generally not as pretty as Dark theme (tested, non-critical, seriously? what's wrong with you? use dark theme)
 
 ### Need help?
 
