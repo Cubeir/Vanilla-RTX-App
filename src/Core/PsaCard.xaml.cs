@@ -52,22 +52,20 @@ public sealed partial class PsaCard : UserControl
                 DismissButton.Visibility = Visibility.Collapsed;
                 CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
                     Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-                ContentText.Opacity = 0.94;
+                ContentText.Opacity = 0.95;
                 break;
 
             case PsaKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, FormatCooldownTooltip(_cooldownMinutes)); // tooltip
                 CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
                     Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-                ContentText.Opacity = 0.89;
+                ContentText.Opacity = 0.9;
                 break;
 
             case PsaKind.Permanent:
-                // No background, no shadow, no extra padding — strip the Border visuals entirely
-                CardBorder.Padding = new Thickness(0);
                 CardBorder.Translation = System.Numerics.Vector3.Zero;
                 CardBorder.Shadow = null;
-                ContentText.Opacity = 0.8;
+                ContentText.Opacity = 0.85;
                 break;
         }
     }
@@ -92,18 +90,13 @@ public sealed partial class PsaCard : UserControl
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         if (_kind != PsaKind.Pinned)
-            AnimateOpacity(DismissButton, to: 0.65, durationMs: FADE_IN_MS);
+            AnimateOpacity(DismissButton, to: 1.0, durationMs: FADE_IN_MS);
     }
 
     private void Card_PointerExited(object sender, PointerRoutedEventArgs e)
     {
         if (_kind != PsaKind.Pinned)
-        {
-            // Only fade out if pointer actually left the UserControl bounds entirely
-            var pos = e.GetCurrentPoint(this).Position;
-            if (pos.X < 0 || pos.Y < 0 || pos.X > ActualWidth || pos.Y > ActualHeight)
-                AnimateOpacity(DismissButton, to: 0, durationMs: FADE_OUT_MS);
-        }
+            AnimateOpacity(DismissButton, to: 0.0, durationMs: FADE_OUT_MS);
     }
 
     private void DismissButton_Click(object sender, RoutedEventArgs e)
@@ -126,9 +119,6 @@ public sealed partial class PsaCard : UserControl
 
     private void AnimateCollapse()
     {
-        double fromHeight = this.ActualHeight;
-        this.MaxHeight = fromHeight;
-
         var sb = new Storyboard();
 
         var fade = new DoubleAnimation
@@ -141,18 +131,7 @@ public sealed partial class PsaCard : UserControl
         Storyboard.SetTarget(fade, this);
         Storyboard.SetTargetProperty(fade, "Opacity");
 
-        var collapse = new DoubleAnimation
-        {
-            From = fromHeight,
-            To = 0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(220)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
-        };
-        Storyboard.SetTarget(collapse, this);
-        Storyboard.SetTargetProperty(collapse, "MaxHeight");
-
         sb.Children.Add(fade);
-        sb.Children.Add(collapse);
         sb.Completed += (_, _) => Visibility = Visibility.Collapsed;
         sb.Begin();
     }
