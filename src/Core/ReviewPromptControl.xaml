@@ -57,17 +57,32 @@
                     <Button x:Name="ReviewButton"
                             Content="⭐ Leave a review"
                             Padding="16,8"
-                            MinWidth="130" />
+                            MinWidth="130"
+                            Translation="0,0,24">
+                        <Button.Shadow>
+                            <ThemeShadow />
+                        </Button.Shadow>
+                    </Button>
 
                     <Button x:Name="LaterButton"
                             Content="Show later"
                             Padding="16,8"
-                            MinWidth="100" />
+                            MinWidth="100"
+                            Translation="0,0,24">
+                        <Button.Shadow>
+                            <ThemeShadow />
+                        </Button.Shadow>
+                    </Button>
 
                     <Button x:Name="NeverButton"
                             Content="Don't show again"
                             Padding="16,8"
-                            MinWidth="140" />
+                            MinWidth="140"
+                            Translation="0,0,24">
+                        <Button.Shadow>
+                            <ThemeShadow />
+                        </Button.Shadow>
+                    </Button>
                 </StackPanel>
             </StackPanel>
         </Border>

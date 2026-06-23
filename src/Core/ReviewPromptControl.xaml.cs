@@ -81,7 +81,11 @@ public static class ReviewPromptManager
     private static readonly string FIRST_LAUNCH_KEY = "ReviewPromptFirstLaunchTime";
     private static readonly string DONT_SHOW_KEY = $"ReviewPromptDontShow_{TunerVariables.appVersion}"; // Ask again with app updates
     private static readonly string LAST_PROMPT_KEY = "ReviewPromptLastPromptTime";
-    private const double MINUTES_BEFORE_PROMPT = 3600; // how many hours to wait before showing for the first time, or showing again
+#if DEBUG
+    private const double MINUTES_BEFORE_PROMPT = 0; // how many hours to wait before showing for the first time, or showing again
+#else
+    private const double MINUTES_BEFORE_PROMPT = 3600;
+#endif
     private const int SHOW_DELAY_SECONDS = 1; // delay to show it after being called
 
     private static void CleanupOldVersionKeys()

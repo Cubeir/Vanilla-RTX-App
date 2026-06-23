@@ -222,7 +222,9 @@ public sealed partial class BetterRTXManagerWindow : Window
             Style = Application.Current.Resources["AccentButtonStyle"] as Style,
             Margin = new Thickness(0, 20, 0, 0),
             IsTextScaleFactorEnabled = false,
-            Padding = new Thickness(16, 10, 16, 10)
+            Padding = new Thickness(16, 10, 16, 10),
+            Shadow = new ThemeShadow(),
+            Translation = new System.Numerics.Vector3(0, 0, 24)
         };
 
         var closeButton = new Button
@@ -231,7 +233,9 @@ public sealed partial class BetterRTXManagerWindow : Window
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Margin = new Thickness(0, 12, 0, 4),
             IsTextScaleFactorEnabled = false,
-            Padding = new Thickness(16, 8, 16, 8)
+            Padding = new Thickness(16, 8, 16, 8),
+            Shadow = new ThemeShadow(),
+            Translation = new System.Numerics.Vector3(0, 0, 24)
         };
 
         var contentPanel = new StackPanel
@@ -704,8 +708,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             var agreed = await ShowDisclaimerDialogAsync();
             if (!agreed)
             {
-                StatusMessage = "Dismissed third-party API usage notice. You should understand the risks before you use this feature.\n" +
-                    $"If you wish to change up the look of RTX without BetterRTX, try out RTX LUT Manager presets instead.";
+                StatusMessage = "Dismissed third-party API usage notice. You should understand the risks before you can use BetterRTX Manager.\n" +
+                    $"If you wish to change up the look of RTX without BetterRTX, try out RTX LUT Manager instead.";
                 this.Close();
                 return;
             }
