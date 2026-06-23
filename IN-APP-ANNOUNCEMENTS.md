@@ -5,41 +5,43 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PSA
 ### app update announcement
-3.1 Update brings Dynamic Announcements to effectively communicate the latest information surrounding Minecraft RTX, app features, pack updates, and more.
+📯 3.1 Update brings Dynamic Announcements to effectively communicate the latest information surrounding Minecraft RTX, app features, pack updates, and more.
 Please read before dismissing them (because that's an option!)
 ### reactor temp announcement
-RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
+🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
 
 # PackUpdateAnnouncements
-TEST: Resource pack-related announcements will appear here, updated every 3 hours, this one's permanent though
+Resource pack related announcements will appear here. Auto-refreshes every few hours.
 
-### Update
+### Update [glyph:"E789"]
 1.26.15 Update Summary:
-Fog and atmosphere of many biomes has been overhauled across all three packs! Find detailed changelogs on CurseForge by clicking the names of any pack.
+Fog and atmosphere of many biomes has been overhauled across all three packs!
+Find detailed changelogs by clicking name of a pack to go to its CurseForge page.
 
-## Chaos Cubes
+## Chaos Cubes [cd:"120"] [glyph:"F158"]
 Support for Chaos Cubed game drop will be arriving soon.
 Check back daily!
 
-### Tip:
-Begineer tip: It is always preferred to activate a Vanilla RTX resource pack in your Global Resources instead of Realm or World.
+### Tip [glyph:"E95B"]
+Tip: It is always preferred to activate RTX resource packs in your Global Resource Pack settings instead of per-World or Realm.
 
-### Tip #2
-Beginner tip 2: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen from a cached version unless a new version happens to be available.
+### Tip
+Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen faster from a cached version unless a new version happens to be available.
 
 
 # BetterRTXAnnouncements
-### Warning 1
-Important tip: If your preset list has been auto reset since your last visit, it is a good idea to wait and check from the BetterRTX Discord whether it has been updated or not for the latest game version before installing a preset.
-If you install presets while BetterRTX remains outdated, your game will crash and you should either revert to Default RTX, or if you've made sure BetterRTX is up-to-date, update your game!
+### Warning 1 [glyph:"E730"]
+If your preset list has been auto-reset since your last visit, it is a good idea to wait and check from the BetterRTX Discord whether it has been updated for the latest game version before installing a preset.
+Installing presets while it serves outdated files could result in crashes and visual glitches.
+In this scenario, revert to Default RTX, and once BetterRTX is updated, use the refresh button in the top left corner 
 
 ### Warning 2
-Some Minecraft updates break BetterRTX, it all depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly.
-The refresh button at the top exists to give you a way to manually re-fetch the latest presets from the BetterRTX website, which is normally automatically done by the app when game updates are detected.
+Some Minecraft updates break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly.
+The refresh button at the top exists to give you a way to manually re-fetch the latest presets from the BetterRTX website, which is automatically done by the app when game updates are detected.
 
 # LutManagerAnnouncements
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
-### Lut Note2
+### [glyph:"E7BA"]
 This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
 
 # DLSSAnnouncements
@@ -47,6 +49,6 @@ This feature will not work if you're using a BetterRTX Preset (Default RTX must 
 Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most other versions in-between tend to be a bit blurry!
 
 # ResourcePackSelectionAnnouncements
-### Text below is a one time thingy, tutorial type of thing!
-Select from your resource packs from the list below and begin processing them in bulk! You can also tune, delete, or export them, you can also import packs back into Minecraft right from here.
-Use the clear selection button in the main window to clear your selection.
+### Text below is a one time thingy, tutorial type of thing! [glyph:"E95B"]
+Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
+Use the clear selection button in the main window to clear your selections.
