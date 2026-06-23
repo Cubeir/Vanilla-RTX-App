@@ -15,6 +15,7 @@ using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using WinRT.Interop;
+using System.Diagnostics;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
@@ -163,7 +164,7 @@ public sealed partial class PackBrowserWindow : Window
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"Error setting drag region: {ex.Message}");
+            Trace.WriteLine($"[PackBrowser] Error setting drag region: {ex.Message}");
         }
     }
 
@@ -245,7 +246,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"Overwrite dialog error: {ex.Message}");
+                Trace.WriteLine($"[PackBrowser] Overwrite dialog error: {ex.Message}");
                 tcs.SetResult(false);
             }
         });
@@ -345,9 +346,9 @@ public sealed partial class PackBrowserWindow : Window
 
         try
         {
-            System.Diagnostics.Trace.WriteLine("Starting pack scan...");
+            Trace.WriteLine("[PackBrowser] Starting pack scan...");
             var packs = await ScanForCompatiblePacksAsync();
-            System.Diagnostics.Trace.WriteLine($"Found {packs.Count} packs");
+            Trace.WriteLine($"[PackBrowser] Found {packs.Count} packs");
 
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
@@ -385,11 +386,11 @@ public sealed partial class PackBrowserWindow : Window
             }
 
             RebuildSelectAllDropdown();
-            System.Diagnostics.Trace.WriteLine("Pack loading complete");
+            Trace.WriteLine("[PackBrowser] Pack loading complete");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"EXCEPTION in LoadPacksAsync: {ex}");
+            Trace.WriteLine($"[PackBrowser] EXCEPTION in LoadPacksAsync: {ex}");
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
             EmptyStatePanel.Visibility = Visibility.Visible;
@@ -767,7 +768,7 @@ public sealed partial class PackBrowserWindow : Window
         var dataRoot = MinecraftUserDataLocator.GetDataRoot(TunerVariables.Persistent.IsTargetingPreview);
         if (!dataRoot.Exists)
         {
-            System.Diagnostics.Trace.WriteLine($"{dataRoot.VersionDisplayName} data root not found.");
+            Trace.WriteLine($"[PackBrowser] {dataRoot.VersionDisplayName} data root not found.");
             return packs;
         }
 
@@ -795,11 +796,11 @@ public sealed partial class PackBrowserWindow : Window
                 }
                 catch (JsonException jsonEx)
                 {
-                    System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
+                    Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Trace.WriteLine($"Error parsing pack {packDir}: {ex.Message}");
+                    Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}");
                 }
             }
 
@@ -817,11 +818,11 @@ public sealed partial class PackBrowserWindow : Window
                 }
                 catch (JsonException jsonEx)
                 {
-                    System.Diagnostics.Trace.WriteLine($"Invalid JSON in {manifestPath}: {jsonEx.Message}");
+                    Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Trace.WriteLine($"Error parsing pack {packDir}: {ex.Message}");
+                    Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}");
                 }
             }
         }
@@ -1012,7 +1013,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"Error loading lang file {langPath}: {ex.Message}");
+                Trace.WriteLine($"[PackBrowser] Error loading lang file {langPath}: {ex.Message}");
             }
         }
 
@@ -1039,7 +1040,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"Error loading icon {iconPath}: {ex.Message}");
+                Trace.WriteLine($"[PackBrowser] Error loading icon {iconPath}: {ex.Message}");
             }
         }
 
@@ -1060,7 +1061,7 @@ public sealed partial class PackBrowserWindow : Window
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"Error loading legacy icon {iconFiles[0]}: {ex.Message}");
+            Trace.WriteLine($"[PackBrowser] Error loading legacy icon {iconFiles[0]}: {ex.Message}");
             return null;
         }
     }
@@ -1108,7 +1109,7 @@ public sealed partial class PackBrowserWindow : Window
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Trace.WriteLine($"Error scanning {packDir} for Alchitex suitability: {ex.Message}");
+                Trace.WriteLine($"[PackBrowser] Error scanning {packDir} for Alchitex suitability: {ex.Message}");
             }
             return false;
         }

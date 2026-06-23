@@ -52,7 +52,7 @@ public static class ExpImpDel
 
             if (!File.Exists(tempZipPath))
             {
-                Trace.WriteLine("Temporary .mcpack archive was deleted before writing to output.");
+                Trace.WriteLine("[Export] Temporary .mcpack archive was deleted before writing to output.");
                 return null;
             }
 
@@ -60,23 +60,23 @@ public static class ExpImpDel
             using var srcStream = File.OpenRead(tempZipPath);
             await srcStream.CopyToAsync(destStream);
 
-            Trace.WriteLine($"{suggestedName}.mcpack exported successfully.");
+            Trace.WriteLine($"[Export] {suggestedName}.mcpack exported successfully.");
             return file.Path;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Failed to export {suggestedName}: {ex.Message}");
+            Trace.WriteLine($"[Export] Failed to export {suggestedName}: {ex.Message}");
             return null;
         }
         finally
         {
             try { if (File.Exists(tempZipPath)) File.Delete(tempZipPath); }
-            catch (Exception ex) { Trace.WriteLine($"Warning: Couldn't delete temp file: {ex.Message}"); }
+            catch (Exception ex) { Trace.WriteLine($"[Export] Warning: Couldn't delete temp file: {ex.Message}"); }
         }
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  IMPORT — public surface
+    //  IMPORT
     // ════════════════════════════════════════════════════════════════════════
 
     /// <summary>When true, packs land in development_resource_packs instead of resource_packs.</summary>
@@ -189,7 +189,7 @@ public static class ExpImpDel
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"Import failed for '{item.Path}': {ex}");
+                Trace.WriteLine($"[Import] Import failed for '{item.Path}': {ex}");
                 ReportStatus($"Failed to import '{Path.GetFileName(item.Path)}': {ex.Message}");
             }
         }
