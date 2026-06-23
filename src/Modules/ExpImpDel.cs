@@ -28,12 +28,13 @@ public static class ExpImpDel
         picker.SuggestedFileName = suggestedName;
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
 
-        var unneededFiles = new[] { "contents.json", "textures_list.json" };
-        foreach (var unneededFile in Directory.GetFiles(packFolderPath, "*", SearchOption.TopDirectoryOnly))
+        var unneededFiles = new[] { "contents.json", "textures_list.json", "signatures.json", "texture_list.json", "signature.json" };
+        await Task.Run(() =>
         {
-            if (unneededFiles.Contains(Path.GetFileName(unneededFile), StringComparer.OrdinalIgnoreCase))
-                File.Delete(unneededFile);
-        }
+            foreach (var name in unneededFiles)
+                foreach (var file in Directory.GetFiles(packFolderPath, name, SearchOption.AllDirectories))
+                    File.Delete(file);
+        });
 
         var file = await picker.PickSaveFileAsync();
         if (file == null) return null;
@@ -41,14 +42,15 @@ public static class ExpImpDel
         var tempZipPath = Path.Combine(Path.GetTempPath(), $"temp_{Guid.NewGuid()}.mcpack");
         try
         {
-            using (var zip = ZipFile.Open(tempZipPath, ZipArchiveMode.Create))
+            await Task.Run(() =>
             {
+                using var zip = ZipFile.Open(tempZipPath, ZipArchiveMode.Create);
                 foreach (var filePath in Directory.GetFiles(packFolderPath, "*", SearchOption.AllDirectories))
                 {
                     var relativePath = Path.GetRelativePath(packFolderPath, filePath);
                     zip.CreateEntryFromFile(filePath, relativePath, CompressionLevel.Optimal);
                 }
-            }
+            });
 
             if (!File.Exists(tempZipPath))
             {
