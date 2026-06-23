@@ -34,7 +34,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private const string FnWater = "water_n.tga";
     private const string FnPreviewImg = "image.png";
     private const string FnPlaceholder = "placeholder.png"; // For unknown presets
-    private const string FnDefaultImg = "default.png";    // UI image for the Default preset
+    private const string FnDefaultImg = "default.png";      // UI image for the Default preset
 
     private static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -45,17 +45,17 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
 
-    private string _minecraftRoot;      // e.g. C:\Program Files\Microsoft Games\Minecraft for Windows
-    private string _defaultsFolder;     // LocalAppData\<pkg>\Lut_Defaults  — the Default preset's files
-    private string _lutRootFolder;      // AppDir\Assets\lut
-    private string _placeholderImagePath;
-    private string _defaultImagePath;   // AppDir\Assets\lut\Default.png
+    private string _minecraftRoot = string.Empty;
+    private string _defaultsFolder = string.Empty;
+    private string _lutRootFolder = string.Empty;
+    private string _placeholderImagePath = string.Empty;
+    private string _defaultImagePath = string.Empty;
 
     private List<LutPreset> _presets = new();
-    private LutPreset _selectedPreset;   // currently highlighted in the dropdown
-    private LutPreset _installedPreset;  // what is actually on disk right now
+    private LutPreset? _selectedPreset;
+    private LutPreset? _installedPreset;
 
-    private CancellationTokenSource _scanCancellationTokenSource;
+    private CancellationTokenSource? _scanCancellationTokenSource;
 
     // Crossfade state
     private bool _crossfadeInProgress = false;
@@ -191,7 +191,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"LUTM: Error setting drag region: {ex.Message}");
+                Trace.WriteLine($"[LUTManager] Error setting drag region: {ex.Message}");
             }
         }
     }
@@ -209,18 +209,18 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                 ? TunerVariables.Persistent.MinecraftPreviewInstallPath
                 : TunerVariables.Persistent.MinecraftInstallPath;
 
-            string minecraftPath = null;
+            string? minecraftPath = null;
 
             if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, Persistent.IsTargetingPreview))
             {
-                Trace.WriteLine($"LUTM: Using cached path: {cachedPath}");
+                Trace.WriteLine($"[LUTManager] Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;
             }
             else
             {
                 if (!string.IsNullOrEmpty(cachedPath))
                 {
-                    Trace.WriteLine("LUTM: Cache became invalid, clearing");
+                    Trace.WriteLine("[LUTManager] Cache became invalid, clearing");
                     if (isPreview)
                         TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
                     else
@@ -236,12 +236,13 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
                 if (minecraftPath == null)
                 {
-                    Trace.WriteLine("LUTM: System search cancelled or failed");
+                    Trace.WriteLine("[LUTManager] System search cancelled or failed");
                     return;
                 }
             }
 
-            await ContinueInitializationWithPath(minecraftPath);
+            if (minecraftPath != null)
+                await ContinueInitializationWithPath(minecraftPath);
         }
         catch (Exception ex)
         {
@@ -258,21 +259,22 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         _placeholderImagePath = Path.Combine(_lutRootFolder, FnPlaceholder);
         _defaultImagePath = Path.Combine(_lutRootFolder, FnDefaultImg);
 
-        Trace.WriteLine($"LUTM: Root     : {_minecraftRoot}");
-        Trace.WriteLine($"LUTM: AppDir   : {AppDir}");
-        Trace.WriteLine($"LUTM: LutRoot  : {_lutRootFolder}");
-        Trace.WriteLine($"LUTM: DstLut   : {DstLut}   exists={File.Exists(DstLut)}");
-        Trace.WriteLine($"LUTM: DstSky   : {DstSky}   exists={File.Exists(DstSky)}");
-        Trace.WriteLine($"LUTM: DstWater : {DstWater}  exists={File.Exists(DstWater)}");
+        Trace.WriteLine($"[LUTManager] Root     : {_minecraftRoot}");
+        Trace.WriteLine($"[LUTManager] AppDir   : {AppDir}");
+        Trace.WriteLine($"[LUTManager] LutRoot  : {_lutRootFolder}");
+        Trace.WriteLine($"[LUTManager] DstLut   : {DstLut}   exists={File.Exists(DstLut)}");
+        Trace.WriteLine($"[LUTManager] DstSky   : {DstSky}   exists={File.Exists(DstSky)}");
+        Trace.WriteLine($"[LUTManager] DstWater : {DstWater}  exists={File.Exists(DstWater)}");
 
         // Step 1: Establish the LocalAppData defaults folder (Lut_Defaults)
-        _defaultsFolder = EstablishDefaultsFolder();
-        if (_defaultsFolder == null)
+        var defaultsFolder = EstablishDefaultsFolder();
+        if (defaultsFolder == null)
         {
             StatusMessage = "Could not establish defaults folder";
             this.Close();
             return;
         }
+        _defaultsFolder = defaultsFolder;
 
         // Step 2: Back up game defaults into Lut_Defaults — all-or-none
         await EnsureDefaultsBackedUpAsync();
@@ -282,7 +284,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         // Step 4: Detect which preset is currently installed
         _installedPreset = await DetectCurrentPresetAsync();
-        Trace.WriteLine($"LUTM: Detected preset: {_installedPreset?.Name ?? "Unknown"}");
+        Trace.WriteLine($"[LUTManager] Detected preset: {_installedPreset?.Name ?? "Unknown"}");
 
         // Step 5: Populate dropdown and settle the UI
         PopulateDropdown(_installedPreset);
@@ -316,28 +318,24 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     // Defaults folder  (LocalAppData\<pkg>\Lut_Defaults)
     // -------------------------------------------------------------------------
 
-    private string EstablishDefaultsFolder()
+    private string? EstablishDefaultsFolder()
     {
         try
         {
             var location = Path.Combine(ApplicationData.Current.LocalFolder.Path, "Lut_Defaults");
             Directory.CreateDirectory(location);
-            Trace.WriteLine($"LUTM: Defaults folder: {location}");
+            Trace.WriteLine($"[LUTManager] Defaults folder: {location}");
             return location;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"LUTM: Failed to create defaults folder: {ex.Message}");
+            Trace.WriteLine($"[LUTManager] Failed to create defaults folder: {ex.Message}");
             return null;
         }
     }
 
     // -------------------------------------------------------------------------
     // Ensure game defaults are backed up into Lut_Defaults.
-    // Mirrors the old code's logic exactly:
-    //   - All three backups present → skip (originals are preserved forever).
-    //   - Game files present        → copy them (all-or-none, overwrite partials).
-    //   - Game files missing        → mend from best available bundled preset.
     // -------------------------------------------------------------------------
 
     private async Task EnsureDefaultsBackedUpAsync()
@@ -347,11 +345,11 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         if (allBackupsPresent)
         {
-            Trace.WriteLine("LUTM: Default backup already complete - skipping");
+            Trace.WriteLine("[LUTManager] Default backup already complete - skipping");
             return;
         }
 
-        Trace.WriteLine("LUTM: Default backup incomplete - attempting from game files");
+        Trace.WriteLine("[LUTManager] Default backup incomplete - attempting from game files");
 
         bool allGameFilesPresent =
             File.Exists(DstLut) && File.Exists(DstSky) && File.Exists(DstWater);
@@ -366,21 +364,19 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     File.Copy(DstLut, DefaultLut, overwrite: true);
                     File.Copy(DstSky, DefaultSky, overwrite: true);
                     File.Copy(DstWater, DefaultWater, overwrite: true);
-                    Trace.WriteLine("LUTM: Default backup created from game files");
+                    Trace.WriteLine("[LUTManager] Default backup created from game files");
                 }
                 catch (Exception ex)
                 {
-                    Trace.WriteLine($"LUTM: Backup error: {ex.Message}");
+                    Trace.WriteLine($"[LUTManager] Backup error: {ex.Message}");
                 }
             });
         }
         else
         {
-            // Game files missing — mend from a bundled preset so the player isn't left broken.
-            // Priority: "Gamescom 2019 Demo" (always bundled) → first complete preset alphabetically.
-            Trace.WriteLine("LUTM: Game files missing - mending from bundled preset");
+            Trace.WriteLine("[LUTManager] Game files missing - mending from bundled preset");
 
-            string mendLut = null, mendSky = null, mendWater = null;
+            string? mendLut = null, mendSky = null, mendWater = null;
 
             if (Directory.Exists(_lutRootFolder))
             {
@@ -395,7 +391,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     mendLut = prefLut;
                     mendSky = prefSky;
                     mendWater = prefWater;
-                    Trace.WriteLine("LUTM: Mending with preferred preset [" + PreferredMendPreset + "]");
+                    Trace.WriteLine("[LUTManager] Mending with preferred preset [" + PreferredMendPreset + "]");
                 }
 
                 if (mendLut == null)
@@ -411,42 +407,37 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                             mendLut = lut;
                             mendSky = sky;
                             mendWater = water;
-                            Trace.WriteLine("LUTM: Mending with fallback preset [" + Path.GetFileName(dir) + "]");
+                            Trace.WriteLine("[LUTManager] Mending with fallback preset [" + Path.GetFileName(dir) + "]");
                             break;
                         }
                     }
                 }
             }
 
-            if (mendLut != null)
+            if (mendLut != null && mendSky != null && mendWater != null)
             {
                 bool mended = await ReplaceRtxFilesWithElevation(mendLut, mendSky, mendWater);
                 Trace.WriteLine(mended ? "LUTM: Game mended" : "LUTM: Mend failed or cancelled");
             }
             else
             {
-                Trace.WriteLine("LUTM: No complete presets found for mending - user must install manually");
+                Trace.WriteLine("[LUTManager] No complete presets found for mending - user must install manually");
             }
         }
     }
 
     // -------------------------------------------------------------------------
     // Preset discovery
-    // Default preset is always first, sourced from _defaultsFolder.
-    // Its UI image comes from Assets\lut\Default.png (optional, falls back to placeholder).
-    // All other presets come from Assets\lut\ subfolders, sorted alphabetically.
     // -------------------------------------------------------------------------
 
     private void LoadPresets()
     {
         _presets.Clear();
 
-        // Default preset — always first, RTX files live in Lut_Defaults
         var defaultPreset = new LutPreset("Default", _defaultsFolder, _defaultImagePath, isDefault: true);
         _presets.Add(defaultPreset);
-        Trace.WriteLine($"LUTM: Default preset — complete={defaultPreset.IsComplete}  folder={_defaultsFolder}");
+        Trace.WriteLine($"[LUTManager] Default preset — complete={defaultPreset.IsComplete}  folder={_defaultsFolder}");
 
-        // Additional presets from Assets\lut\ subfolders
         if (Directory.Exists(_lutRootFolder))
         {
             foreach (var dir in Directory.GetDirectories(_lutRootFolder)
@@ -455,27 +446,26 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                 var name = Path.GetFileName(dir);
                 var preset = new LutPreset(name, dir);
                 _presets.Add(preset);
-                Trace.WriteLine($"LUTM: Preset [{name}] complete={preset.IsComplete} folder={dir}");
+                Trace.WriteLine($"[LUTManager] Preset [{name}] complete={preset.IsComplete} folder={dir}");
             }
         }
         else
         {
-            Trace.WriteLine($"LUTM: LUT folder not found: {_lutRootFolder}");
+            Trace.WriteLine($"[LUTManager] LUT folder not found: {_lutRootFolder}");
         }
 
-        Trace.WriteLine($"LUTM: {_presets.Count} preset(s) loaded");
+        Trace.WriteLine($"[LUTManager] {_presets.Count} preset(s) loaded");
     }
 
     // -------------------------------------------------------------------------
-    // Detect currently installed preset by SHA-256 hashing all 3 game files.
-    // Returns null if game files are missing or don't match any preset.
+    // Detect currently installed preset
     // -------------------------------------------------------------------------
 
-    private async Task<LutPreset> DetectCurrentPresetAsync()
+    private async Task<LutPreset?> DetectCurrentPresetAsync()
     {
         if (!File.Exists(DstLut) || !File.Exists(DstSky) || !File.Exists(DstWater))
         {
-            Trace.WriteLine("LUTM: One or more game files missing - cannot detect preset");
+            Trace.WriteLine("[LUTManager] One or more game files missing - cannot detect preset");
             return null;
         }
 
@@ -498,7 +488,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     // Dropdown population
     // -------------------------------------------------------------------------
 
-    private void PopulateDropdown(LutPreset installedPreset)
+    private void PopulateDropdown(LutPreset? installedPreset)
     {
         _ = this.DispatcherQueue.TryEnqueue(() =>
         {
@@ -520,12 +510,10 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
             if (installedPreset != null)
             {
-                // Auto-select the currently installed preset so dropdown and image match reality
                 ApplySelection(installedPreset);
             }
             else
             {
-                // Nothing matched — prompt user to pick
                 _selectedPreset = null;
                 SelectPresetMenu.Content = "Select a preset...";
                 InstallButton.IsEnabled = false;
@@ -540,13 +528,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             ApplySelection(preset);
     }
 
-    /// <summary>
-    /// Central method for changing the active selection.
-    /// Updates _selectedPreset, the dropdown label, the install button, and the preview image.
-    /// The dropdown label reads "Installed Preset: X" when X is currently on disk,
-    /// or "Selected Preset: X" otherwise.
-    /// </summary>
-    private void ApplySelection(LutPreset preset)
+    private void ApplySelection(LutPreset? preset)
     {
         _selectedPreset = preset;
 
@@ -558,25 +540,24 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             return;
         }
 
-        // Dropdown label
         bool isInstalled = _installedPreset != null &&
                            string.Equals(preset.Name, _installedPreset.Name, StringComparison.OrdinalIgnoreCase);
+
         SelectPresetMenu.Content = isInstalled
             ? $"Installed Preset: {preset.Name}"
             : $"Selected Preset: {preset.Name}";
 
-
-        // Install button content
         InstallButton.IsEnabled = preset.IsComplete;
+
         if (isInstalled)
         {
             InstallButton.Content = "Reinstall";
             InstallButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
 
-            // Pane thingy
             var theme = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Dark ? "Dark" : "Light";
             var themeDict = Application.Current.Resources.ThemeDictionaries[theme] as ResourceDictionary;
-            var color = (Windows.UI.Color)themeDict["FakeSplitButtonBrightBorderColor"];
+            // themeDict is non-null for "Dark"/"Light" — these are always present in WinUI theme dicts
+            var color = (Windows.UI.Color)themeDict!["FakeSplitButtonBrightBorderColor"];
             LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(color);
         }
         else
@@ -584,39 +565,28 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             InstallButton.Content = "Install";
             InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
 
-            // Pane thingy
-            var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
-            LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
+            var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light
+                ? "SystemAccentColorLight1"
+                : "SystemAccentColorLight3";
+            LeftEdgeOfInstallButton.BorderBrush =
+                new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
         }
 
         UpdatePresetImage(preset);
     }
 
     // -------------------------------------------------------------------------
-    // Preset preview image — crossfade between two layered Image vessels.
-    //
-    // State: both vessels start transparent/empty.
-    //
-    // First call (both empty):
-    //   Load image into Top, fade both Bottom and Top to 1.
-    //   After fade: copy source to Bottom, reset Top opacity to 0.
-    //
-    // Subsequent calls (Bottom holds the current image):
-    //   Load new image into Top, fade Top from 0 → 1.
-    //   After fade: copy source to Bottom, reset Top to 0.
-    //
-    // Result: the viewer always sees a smooth 0.2s crossfade with no flash.
+    // Preset preview image — crossfade between two layered Image vessels
     // -------------------------------------------------------------------------
 
-    private string _currentImagePath = null;   // path settled in Bottom vessel
+    private string? _currentImagePath = null;
 
-    private void UpdatePresetImage(LutPreset preset)
+    private void UpdatePresetImage(LutPreset? preset)
     {
-        string imagePath = null;
+        string? imagePath = null;
 
         if (preset != null)
         {
-            // For the Default preset, use _defaultImagePath; otherwise use the preset's own image
             imagePath = preset.IsDefault ? _defaultImagePath : preset.ImagePath;
 
             if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
@@ -627,32 +597,27 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             imagePath = _placeholderImagePath;
         }
 
-        // Avoid redundant crossfades when the image hasn't changed
         if (string.Equals(imagePath, _currentImagePath, StringComparison.OrdinalIgnoreCase))
             return;
 
         _ = this.DispatcherQueue.TryEnqueue(() => CrossfadeToImage(imagePath));
     }
 
-    private void CrossfadeToImage(string newImagePath)
+    private void CrossfadeToImage(string? newImagePath)
     {
         if (_crossfadeInProgress)
-        {
-            // Queue will catch the next call naturally; skip to avoid stacking animations
             return;
-        }
 
-        BitmapImage newBitmap = null;
+        BitmapImage? newBitmap = null;
 
         if (!string.IsNullOrEmpty(newImagePath) && File.Exists(newImagePath))
         {
             try { newBitmap = new BitmapImage(new Uri(newImagePath)); }
-            catch (Exception ex) { Trace.WriteLine($"LUTM: Image load error: {ex.Message}"); }
+            catch (Exception ex) { Trace.WriteLine($"[LUTManager] Image load error: {ex.Message}"); }
         }
 
         bool bottomIsEmpty = _currentImagePath == null;
 
-        // Load the incoming image into the Top vessel (currently transparent)
         PresetImageTop.Source = newBitmap;
         PresetImageTop.Opacity = 0;
 
@@ -662,26 +627,22 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         if (bottomIsEmpty)
         {
-            // First image ever — fade both vessels in together so there is no pop
             var fadeInBottom = MakeOpacityAnimation(PresetImageBottom, from: 0, to: 1, duration: 0.2);
             var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: 0.2);
             storyboard.Children.Add(fadeInBottom);
             storyboard.Children.Add(fadeInTop);
 
-            // Prime Bottom with the same image so the vessels are in sync
             PresetImageBottom.Source = newBitmap;
             PresetImageBottom.Opacity = 0;
         }
         else
         {
-            // Normal transition — just fade the Top vessel in over the settled Bottom
             var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: 0.2);
             storyboard.Children.Add(fadeInTop);
         }
 
         storyboard.Completed += (s, e) =>
         {
-            // Settle: copy the new image into Bottom, hide Top
             PresetImageBottom.Source = newBitmap;
             PresetImageBottom.Opacity = 1;
             PresetImageTop.Opacity = 0;
@@ -694,7 +655,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         storyboard.Begin();
     }
 
-    /// <summary>Creates a DoubleAnimation targeting UIElement.Opacity and wires the Storyboard targets.</summary>
     private static DoubleAnimation MakeOpacityAnimation(UIElement target, double from, double to, double duration)
     {
         var anim = new DoubleAnimation
@@ -717,16 +677,16 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     {
         if (_selectedPreset == null || !_selectedPreset.IsComplete)
         {
-            Trace.WriteLine("LUTM: InstallButton_Click with no valid preset - ignoring");
+            Trace.WriteLine("[LUTManager] InstallButton_Click with no valid preset - ignoring");
             return;
         }
 
-        var preset = _selectedPreset;   // capture before async yields
+        var preset = _selectedPreset;
         InstallButton.IsEnabled = false;
 
         try
         {
-            Trace.WriteLine($"LUTM: Installing preset [{preset.Name}]");
+            Trace.WriteLine($"[LUTManager] Installing preset [{preset.Name}]");
 
             bool success = await ReplaceRtxFilesWithElevation(
                 preset.LutPath, preset.SkyPath, preset.WaterPath);
@@ -735,48 +695,44 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             {
                 OperationSuccessful = true;
                 StatusMessage = $"Installed LUT preset: {preset.Name}";
-                Trace.WriteLine($"LUTM: Preset [{preset.Name}] installed");
+                Trace.WriteLine($"[LUTManager] Preset [{preset.Name}] installed");
 
-                // Re-detect to confirm what is now on disk, then refresh the dropdown label
                 _installedPreset = await DetectCurrentPresetAsync();
-                Trace.WriteLine("LUTM: Post-install detection: " + (_installedPreset?.Name ?? "Unknown"));
+                Trace.WriteLine("[LUTManager] Post-install detection: " + (_installedPreset?.Name ?? "Unknown"));
 
                 _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
-                    // Refresh the dropdown label without changing the selection
                     if (_selectedPreset != null)
                         ApplySelection(_selectedPreset);
                 });
             }
             else
             {
-                Trace.WriteLine($"LUTM: Install of [{preset.Name}] failed or was cancelled");
+                Trace.WriteLine($"[LUTManager] Install of [{preset.Name}] failed or was cancelled");
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"LUTM: Error in InstallButton_Click: {ex.Message}");
+            Trace.WriteLine($"[LUTManager] Error in InstallButton_Click: {ex.Message}");
         }
         finally
         {
             _ = this.DispatcherQueue.TryEnqueue(() =>
             {
-                // Use _installedPreset — only updated by DetectCurrentPresetAsync on success.
-                // If UAC was denied, _installedPreset still reflects what was on disk before.
                 bool isInstalled = _installedPreset != null &&
                                    string.Equals(_installedPreset.Name, preset.Name, StringComparison.OrdinalIgnoreCase);
 
                 InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
-                // Install button content
+
                 if (isInstalled)
                 {
                     InstallButton.Content = "Reinstall";
                     InstallButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
 
-                    // Pane thingy
                     var theme = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Dark ? "Dark" : "Light";
                     var themeDict = Application.Current.Resources.ThemeDictionaries[theme] as ResourceDictionary;
-                    var color = (Windows.UI.Color)themeDict["FakeSplitButtonBrightBorderColor"];
+                    // themeDict is non-null for "Dark"/"Light" keys — always present in WinUI theme dicts
+                    var color = (Windows.UI.Color)themeDict!["FakeSplitButtonBrightBorderColor"];
                     LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(color);
                 }
                 else
@@ -784,9 +740,11 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     InstallButton.Content = "Install";
                     InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
 
-                    // Pane thingy
-                    var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
-                    LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
+                    var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light
+                        ? "SystemAccentColorLight1"
+                        : "SystemAccentColorLight3";
+                    LeftEdgeOfInstallButton.BorderBrush =
+                        new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
                 }
             });
         }
@@ -798,7 +756,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
     private Task<bool> ReplaceRtxFilesWithElevation(string srcLut, string srcSky, string srcWater)
     {
-        Trace.WriteLine("LUTM: ReplaceRtxFilesWithElevation");
+        Trace.WriteLine("[LUTManager] ReplaceRtxFilesWithElevation");
         Trace.WriteLine("  srcLut  =" + srcLut + "  exists=" + File.Exists(srcLut));
         Trace.WriteLine("  srcSky  =" + srcSky + "  exists=" + File.Exists(srcSky));
         Trace.WriteLine("  srcWater=" + srcWater + "  exists=" + File.Exists(srcWater));
@@ -806,9 +764,9 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         Trace.WriteLine("  dstSky  =" + DstSky);
         Trace.WriteLine("  dstWater=" + DstWater);
 
-        if (!File.Exists(srcLut)) { Trace.WriteLine("LUTM: Aborting - srcLut missing"); return Task.FromResult(false); }
-        if (!File.Exists(srcSky)) { Trace.WriteLine("LUTM: Aborting - srcSky missing"); return Task.FromResult(false); }
-        if (!File.Exists(srcWater)) { Trace.WriteLine("LUTM: Aborting - srcWater missing"); return Task.FromResult(false); }
+        if (!File.Exists(srcLut)) { Trace.WriteLine("[LUTManager] Aborting - srcLut missing"); return Task.FromResult(false); }
+        if (!File.Exists(srcSky)) { Trace.WriteLine("[LUTManager] Aborting - srcSky missing"); return Task.FromResult(false); }
+        if (!File.Exists(srcWater)) { Trace.WriteLine("[LUTManager] Aborting - srcWater missing"); return Task.FromResult(false); }
 
         var files = new List<(string, string)>
         {
@@ -836,8 +794,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     "rtx_defaults_" + Guid.NewGuid().ToString("N") + ".bat");
                 File.WriteAllText(tempBatchPath, batchScript);
 
-                Trace.WriteLine("LUTM: Batch: " + tempBatchPath);
-                Trace.WriteLine("LUTM: Contents:\n" + batchScript);
+                Trace.WriteLine("[LUTManager] Batch: " + tempBatchPath);
+                Trace.WriteLine("[LUTManager] Contents:\n" + batchScript);
 
                 try
                 {
@@ -855,11 +813,11 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                     if (process != null)
                     {
                         process.WaitForExit();
-                        Trace.WriteLine("LUTM: Exit code: " + process.ExitCode);
+                        Trace.WriteLine("[LUTManager] Exit code: " + process.ExitCode);
                         return process.ExitCode == 0;
                     }
 
-                    Trace.WriteLine("LUTM: Process.Start returned null");
+                    Trace.WriteLine("[LUTManager] Process.Start returned null");
                     return false;
                 }
                 finally
@@ -875,7 +833,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         }
         catch (Exception ex)
         {
-            Trace.WriteLine("LUTM: Error in ReplaceFilesWithElevation: " + ex.Message);
+            Trace.WriteLine("[LUTManager] Error in ReplaceFilesWithElevation: " + ex.Message);
             return false;
         }
     }
@@ -898,15 +856,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     }
 
     // -------------------------------------------------------------------------
-    // LutPreset  — a folder containing the 3 required RTX files + optional image
-    //
-    // For the Default preset:
-    //   FolderPath = LocalAppData\Lut_Defaults
-    //   ImagePath  = overridden to Assets\lut\Default.png  (passed via constructor)
-    //
-    // For all other presets:
-    //   FolderPath = Assets\lut\<PresetName>
-    //   ImagePath  = Assets\lut\<PresetName>\image.png  (optional)
+    // LutPreset
     // -------------------------------------------------------------------------
 
     private sealed class LutPreset
@@ -915,24 +865,18 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         public string FolderPath { get; }
         public bool IsDefault { get; }
 
-        // RTX file paths are always inside FolderPath
         public string LutPath => Path.Combine(FolderPath, "look_up_tables.png");
         public string SkyPath => Path.Combine(FolderPath, "sky.png");
         public string WaterPath => Path.Combine(FolderPath, "water_n.tga");
 
-        // UI image: for Default the caller supplies an override path; others use image.png in folder
-        private readonly string _imagePathOverride;
+        private readonly string? _imagePathOverride;
         public string ImagePath => _imagePathOverride ?? Path.Combine(FolderPath, "image.png");
 
         public bool IsComplete =>
             File.Exists(LutPath) && File.Exists(SkyPath) && File.Exists(WaterPath);
 
-        /// <param name="imagePathOverride">
-        ///   Optional override for the preview image path (used by the Default preset
-        ///   so its UI image can live in Assets\lut\ rather than in Lut_Defaults).
-        /// </param>
         public LutPreset(string name, string folderPath,
-                         string imagePathOverride = null, bool isDefault = false)
+                         string? imagePathOverride = null, bool isDefault = false)
         {
             Name = name;
             FolderPath = folderPath;
@@ -940,13 +884,15 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             _imagePathOverride = imagePathOverride;
         }
     }
+
     private void LearnTo_Button_Click(object sender, RoutedEventArgs e)
     {
         _ = MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md");
     }
 
-
+    // -------------------------------------------------------------------------
     // PSA
+    // -------------------------------------------------------------------------
 
     private void PopulateLutAnnouncements()
     {
