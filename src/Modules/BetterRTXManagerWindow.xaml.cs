@@ -20,6 +20,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
+using Vanilla_RTX_App.RTXDefaults;
 using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
@@ -196,11 +197,20 @@ public sealed partial class BetterRTXManagerWindow : Window
         var confirmButton = new Button
         {
             Content = "I understand the risks and wish to continue",
-            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             Style = Application.Current.Resources["AccentButtonStyle"] as Style,
-            Margin = new Thickness(0, 20, 0, 4),
+            Margin = new Thickness(0, 20, 0, 0),
             IsTextScaleFactorEnabled = false,
             Padding = new Thickness(16, 10, 16, 10)
+        };
+
+        var closeButton = new Button
+        {
+            Content = "Dismiss",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 12, 0, 4),
+            IsTextScaleFactorEnabled = false,
+            Padding = new Thickness(16, 8, 16, 8)
         };
 
         var contentPanel = new StackPanel
@@ -208,15 +218,15 @@ public sealed partial class BetterRTXManagerWindow : Window
             Spacing = 0,
             Children =
             {
-                new TextBlock
-                {
-                    Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The app retrieves the files for this feature from a third-party API outside of the developer's control. " +
+            new TextBlock
+                 {
+                Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The app retrieves the files for this feature from a third-party API outside of the developer's control. " +
                     "As such, with Minecraft updates, BetterRTX can potentially break. Vanilla RTX App gives its best effort to mitigate any issues that may arise and gives you a way to quickly revert to unmodified Default RTX files it has access to from your installations." +
-                    "\n\nPlease read the announcement & info panels that appear at the top to keep updated and help steer yourself away from potential issues.",
-                    TextWrapping = TextWrapping.Wrap,
-                    IsTextScaleFactorEnabled = false
-                },
-                confirmButton
+                    "\n\nPlease read the announcement & info panels that appear at the top to keep updated and help steer yourself away from potential issues.",                TextWrapping = TextWrapping.Wrap,
+                IsTextScaleFactorEnabled = false
+                 },
+            confirmButton,
+            closeButton
             }
         };
 
@@ -231,23 +241,38 @@ public sealed partial class BetterRTXManagerWindow : Window
             Width = this.Bounds.Width * 0.55
         };
 
-        // Only block closing while tcs hasn't been set yet
+        // Block all closes until one of our buttons sets the tcs
         dialog.Closing += (s, e) =>
         {
             if (!tcs.Task.IsCompleted)
                 e.Cancel = true;
         };
 
+        // If the window itself is closed while dialog is open, resolve gracefully
+        void onWindowClosed(object s, WindowEventArgs e)
+        {
+            tcs.TrySetResult(false);
+        }
+        this.Closed += onWindowClosed;
+
         confirmButton.Click += (s, e) =>
         {
             localSettings.Values[BETTERRTX_DISCLAIMER_KEY] = true;
             tcs.TrySetResult(true);
-            dialog.Hide(); // Closing event now lets it through since tcs.Task.IsCompleted == true
+            dialog.Hide();
+        };
+
+        closeButton.Click += (s, e) =>
+        {
+            tcs.TrySetResult(false);
+            dialog.Hide();
         };
 
         await dialog.ShowAsync();
+        await tcs.Task; // ensure tcs is always resolved before we return
 
-        return await tcs.Task;
+        this.Closed -= onWindowClosed; // clean up listener
+        return tcs.Task.Result;
     }
 
 
@@ -655,10 +680,11 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Show disclaimer -- background work is done, but try to gate the UI
         try
         {
-            bool agreed = await ShowDisclaimerDialogAsync();
-            if (!agreed == true)
+            var agreed = await ShowDisclaimerDialogAsync();
+            if (!agreed)
             {
-                StatusMessage = "Dismissed third-party API usage notice.";
+                StatusMessage = "Dismissed third-party API usage notice. You should understand the risks before you use this feature.\n" +
+                    $"If you wish to change up the look of RTX without BetterRTX, try out RTX LUT Manager presets instead.";
                 this.Close();
                 return;
             }
