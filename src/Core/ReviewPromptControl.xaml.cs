@@ -9,7 +9,7 @@ namespace Vanilla_RTX_App.Core;
 
 public sealed partial class ReviewPromptControl : UserControl
 {
-    public event EventHandler Closed;
+    public event EventHandler? Closed;
 
     public ReviewPromptControl()
     {
@@ -34,7 +34,7 @@ public sealed partial class ReviewPromptControl : UserControl
     private void RootGrid_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
         // Clicking the backdrop (outside dialog) = "Show later"
-        _ = ReviewPromptManager.ResetTimerAsync();
+        ReviewPromptManager.ResetTimer();
         Hide();
     }
 
@@ -47,19 +47,19 @@ public sealed partial class ReviewPromptControl : UserControl
     private async void ReviewButton_Click(object sender, RoutedEventArgs e)
     {
         await Windows.System.Launcher.LaunchUriAsync(new Uri("ms-windows-store://review/?ProductId=9N6PCRZ5V9DJ"));
-        await ReviewPromptManager.MarkAsCompletedAsync();
+        ReviewPromptManager.MarkAsCompleted();
         Hide();
     }
 
     private async void LaterButton_Click(object sender, RoutedEventArgs e)
     {
-        await ReviewPromptManager.ResetTimerAsync();
+        ReviewPromptManager.ResetTimer();
         Hide();
     }
 
     private async void NeverButton_Click(object sender, RoutedEventArgs e)
     {
-        await ReviewPromptManager.NeverShowAgainAsync();
+        ReviewPromptManager.NeverShowAgain();
         Hide();
     }
 
@@ -255,21 +255,21 @@ public static class ReviewPromptManager
         System.Diagnostics.Trace.WriteLine("=== ShowPrompt() complete ===");
     }
 
-    internal static async Task ResetTimerAsync()
+    internal static void ResetTimer()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[LAST_PROMPT_KEY] = DateTime.UtcNow.Ticks;
         System.Diagnostics.Trace.WriteLine("Timer reset - will show again after delay");
     }
 
-    internal static async Task NeverShowAgainAsync()
+    internal static void NeverShowAgain()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[DONT_SHOW_KEY] = true;
         System.Diagnostics.Trace.WriteLine("Never show again flag set");
     }
 
-    internal static async Task MarkAsCompletedAsync()
+    internal static void MarkAsCompleted()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[DONT_SHOW_KEY] = true;
