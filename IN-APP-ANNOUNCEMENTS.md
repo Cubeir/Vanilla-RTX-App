@@ -4,7 +4,6 @@ Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: natt
 Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
 
 # PSA
-This thing's ignored here yeah? probably not, it gets poured in like the others, it tries to retrieve and print all #/##/### types regardless
 ### app update announcement
 📯 3.1 Update brings Dynamic Announcements to effectively communicate the latest information surrounding Minecraft RTX, app features, pack updates, and more.
 Please read before dismissing them (because that's an option!)
@@ -19,8 +18,6 @@ Please read before dismissing them (because that's an option!)
 
 
 # PackUpdateAnnouncements
-Resource pack related announcements will appear here. Auto-refreshes every few hours.
-
 ### Update [glyph:"E789"]
 1.26.15 Update Summary:
 Fog and atmosphere of many biomes has been overhauled across all three packs!
@@ -31,7 +28,7 @@ Support for Chaos Cubed game drop will be arriving soon.
 Check back daily!
 
 ### Tip [glyph:"E95B"]
-Tip: It is always preferred to activate RTX resource packs in your Global Resource Pack settings instead of per-World or Realm.
+Hint: It is always preferred to activate RTX resource packs in your Global Resource Pack settings instead of per-World or Realm.
 
 ### Tip
 Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen faster from a cached version unless a new version happens to be available.
@@ -61,7 +58,7 @@ If installing BetterRTX has caused issues for you:
 
 
 
-# LutManagerAnnouncements
+# LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
 
 ### [glyph:"E7BA"]
