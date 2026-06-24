@@ -110,6 +110,8 @@ that's actually good design! And gives some breathing room/makes it look a lot l
 
 And do the idea of making pack tags have Unique effects, that was nice.
 
+For delete and export, keep using the Titlebar updates -> finish the job -> reload window strategy that importer already does
+
 - Begin using Bindings for:
 Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
 The code surrounding it, especially checkboxes, is very messy

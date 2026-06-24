@@ -12,10 +12,10 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Diagnostics;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using WinRT.Interop;
-using System.Diagnostics;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
@@ -106,6 +106,7 @@ public sealed partial class PackBrowserWindow : Window
 
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
+        ExpImpDel.ConfirmNonResourceImport = ShowNonResourceDialogAsync;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -247,6 +248,46 @@ public sealed partial class PackBrowserWindow : Window
             catch (Exception ex)
             {
                 Trace.WriteLine($"[PackBrowser] Overwrite dialog error: {ex.Message}");
+                tcs.SetResult(false);
+            }
+        });
+
+        return await tcs.Task;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Non-resource-pack confirmation dialog
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Called by ExpImpDel when a pack has no module of type "resources" — or when
+    /// the type could not be determined. Runs on the UI thread. Returns true to
+    /// import anyway, false to skip.
+    /// </summary>
+    private async Task<bool> ShowNonResourceDialogAsync(string packName)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "Not a resource pack",
+                    Content = $"\"{packName}\" does not appear to be a resource pack — no module of type \"resources\" was found in its manifest.\n\nImport it anyway?",
+                    PrimaryButtonText = "Import anyway",
+                    CloseButtonText = "Skip",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+                tcs.SetResult(result == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[PackBrowser] Non-resource dialog error: {ex.Message}");
                 tcs.SetResult(false);
             }
         });
@@ -544,7 +585,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             Width = 75,
             Height = 75,
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = new CornerRadius(3),
             Background = new SolidColorBrush(ColorHelper.FromArgb(192, 0, 0, 0)),
             Translation = new System.Numerics.Vector3(0, 0, 128),
             Visibility = Visibility.Collapsed,
@@ -651,6 +692,8 @@ public sealed partial class PackBrowserWindow : Window
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         };
 
+        // TODO: Could Animate the tags here later... It'd be fun, alchitex having its colors moving around
+        // Glowing on and off for red one, RTX glowing constantly, glow effects would be nice, overall, but forget it if it comes to needing Win2D
         switch (tag)
         {
             case "Incompatible":
@@ -874,7 +917,8 @@ public sealed partial class PackBrowserWindow : Window
         var capabilityTags = new List<string>();
         bool potentiallySuitable = false;
 
-        // TODO: re-enable Alchitex candidate check for legacy packs if or once automatic manifest format upgrade is implemented downstream in Alchitex.
+        // TODO: re-enable Alchitex candidate check for legacy packs if automatic
+        //       manifest format upgrade is implemented downstream in Alchitex.
         if (AlchitexLegacyPacksEligible && AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
         {
             potentiallySuitable = true;
