@@ -1,24 +1,16 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
-using Vanilla_RTX_App.Modules;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables; // For Public Pack version variables, if null or empty = not installed
-
-// TODO: Revise how "Up to date" text is displayed, it should be in front of "Installed" not "Available!"
-// Or rather.. ok maybe you're wrong, think about it more..
-// cuz, it says more things, like, availablity is from cache or not,
-// besides, the install button already CLARIFIES if it is latest ya have, or not, by saying either update, install, or reinstall, etc...
 
 namespace Vanilla_RTX_App.PackUpdate;
 
@@ -295,18 +287,20 @@ public sealed partial class PackUpdateWindow : Window
         string suffix = "";
         if (source == VersionSource.ZipballFallback)
         {
-            suffix = isUpToDate ? " (Up-to-date, from offline cache)" : " (from offline cache)";
+            // does the case where installed version is older than an offline cache really ever happen? NAH! offline cache would only be there if user has updated recently
+            // But we're ready! lovely overengineered bullshit
+            suffix = isUpToDate ? "(Up-to-date, from offline cache)" : "(from offline cache)";
         }
         else if (source == VersionSource.CachedRemote)
         {
-            suffix = isUpToDate ? " (Up-to-date)*" : "";
+            suffix = isUpToDate ? "(You're up-to-date)*" : "";
         }
         else
         {
-            suffix = isUpToDate ? " (Up-to-date)" : "";
+            suffix = isUpToDate ? "(You're up-to-date!)" : "";
         }
 
-        return $"{availableVersion}{suffix}";
+        return $"{availableVersion} {suffix}";
     }
 
     private async Task UpdateAllButtonStates(
