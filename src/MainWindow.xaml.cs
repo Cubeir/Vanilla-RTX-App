@@ -303,7 +303,7 @@ public static class TunerVariables
             }
             catch
             {
-                Trace.WriteLine($"An issue occured loading settings");
+                Trace.WriteLine($"[MainWindow] An issue occured loading settings");
             }
         }
     }
@@ -941,13 +941,21 @@ public sealed partial class MainWindow : Window
 
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75)
     {
-        if (_splashLampAnimator == null || _titlebarLampAnimator == null) return;
+        if (_titlebarLampAnimator == null)
+        {
+            Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
+            return;
+        }
         await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
-        if (_splashLampAnimator == null || _titlebarLampAnimator == null) return;
-        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
+        if (_splashLampAnimator == null)
+        {
+            Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
+            return;
+        }
+        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
     }
 
 
@@ -1135,7 +1143,7 @@ public sealed partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"Error during lamp interaction debug copy: {ex}");
+                Trace.WriteLine($"[MainWindow] Error during lamp interaction debug copy: {ex}");
             }
         }
         else
@@ -1280,10 +1288,8 @@ public sealed partial class MainWindow : Window
             Persistent.AppThemeMode = mode;
         }
 
-        if (Instance == null) return;
-        var root = Instance.Content as FrameworkElement;
-        if (root == null) return;
-        root.RequestedTheme = mode switch
+        var root = Instance!.Content as FrameworkElement;
+        root!.RequestedTheme = mode switch
         {
             "Light" => ElementTheme.Light,
             "Dark" => ElementTheme.Dark,
