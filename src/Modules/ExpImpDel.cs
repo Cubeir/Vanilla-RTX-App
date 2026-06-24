@@ -14,9 +14,7 @@ namespace Vanilla_RTX_App.Modules;
 
 public static class ExpImpDel
 {
-    // ════════════════════════════════════════════════════════════════════════
-    //  EXPORT
-    // ════════════════════════════════════════════════════════════════════════
+    #region Export
 
     public static async Task<string?> ExportMCPACK(string packFolderPath, string suggestedName)
     {
@@ -76,9 +74,9 @@ public static class ExpImpDel
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  IMPORT
-    // ════════════════════════════════════════════════════════════════════════
+    #endregion
+
+    #region Import — public surface
 
     /// <summary>When true, packs land in development_resource_packs instead of resource_packs.</summary>
     public static bool InstallToDevelopmentPacks = false;
@@ -87,25 +85,24 @@ public static class ExpImpDel
     public static event Action<string>? ImportStatusChanged;
 
     /// <summary>
-    /// Callback invoked when a duplicate UUID match is found. Must return true to
-    /// overwrite, false to skip. If null, duplicates are silently skipped.
+    /// Invoked when a duplicate header UUID match is found. Return true to overwrite,
+    /// false to skip. If null, duplicates are silently skipped.
     /// Parameters: (incomingPackName, existingFolderPath)
     /// </summary>
     public static Func<string, string, Task<bool>>? ConfirmOverwrite { get; set; }
 
     /// <summary>
-    /// Invoked when a pack's manifest contains no module of type "resources" — or
-    /// when the type cannot be determined at all. Return true to import anyway,
-    /// false to skip. If null, non-resource packs are silently skipped.
-    /// Parameter: pack display name extracted from the manifest (or the filename
-    /// if the manifest couldn't be read).
+    /// Invoked when a pack's manifest has no module of type "resources", or when the
+    /// type cannot be determined. Return true to import anyway, false to skip.
+    /// If null, non-resource packs are silently skipped.
+    /// Parameter: pack display name from the manifest, or filename if unreadable.
     /// </summary>
     public static Func<string, Task<bool>>? ConfirmNonResourceImport { get; set; }
 
     /// <summary>
     /// Opens a file picker and imports the chosen packs. Accepts .mcpack, .zip,
     /// and .mcaddon. <paramref name="ownerHwnd"/> must be the PackBrowserWindow
-    /// handle — NOT the main window — so the picker stays above the right window.
+    /// handle so the picker stays above the right window.
     /// </summary>
     public static async Task<bool> ImportPackAsync(IntPtr ownerHwnd)
     {
@@ -132,7 +129,6 @@ public static class ExpImpDel
     ///   <item>folder          — root scanned non-recursively for .mcpack, .zip,
     ///                           and .mcaddon files; each queued by its own rule.</item>
     /// </list>
-    /// Bare folders are never imported as packs themselves.
     /// All dialogs (overwrite, non-resource) block the queue until answered.
     /// </summary>
     public static async Task<bool> ImportFromPathsAsync(IEnumerable<string> paths)
@@ -150,8 +146,6 @@ public static class ExpImpDel
         {
             if (Directory.Exists(path))
             {
-                // Non-recursive scan: queue all importable files at the folder root,
-                // including .mcaddon files which are expanded by ImportFromMcAddonAsync.
                 var found = Directory
                     .GetFiles(path, "*", SearchOption.TopDirectoryOnly)
                     .Where(f => IsQueueableExtension(Path.GetExtension(f)))
@@ -210,17 +204,14 @@ public static class ExpImpDel
         ext.Equals(".mcpack", StringComparison.OrdinalIgnoreCase) ||
         ext.Equals(".zip", StringComparison.OrdinalIgnoreCase);
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  IMPORT — internals
-    // ════════════════════════════════════════════════════════════════════════
+    #endregion
+
+    #region Import — internals
 
     private enum ImportItemKind { Archive, McAddon }
     private record ImportItem(string Path, ImportItemKind Kind);
 
-    /// <summary>
-    /// True for all three extensions that can appear in a folder scan or be
-    /// dropped directly: .mcpack, .zip, .mcaddon.
-    /// </summary>
+    /// <summary>True for .mcpack, .zip, and .mcaddon — all types that can be queued.</summary>
     private static bool IsQueueableExtension(string ext) =>
         IsImportableExtension(ext) ||
         ext.Equals(".mcaddon", StringComparison.OrdinalIgnoreCase);
@@ -243,9 +234,9 @@ public static class ExpImpDel
     // ── .mcaddon ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Opens an .mcaddon (zip containing .mcpack files) and imports each .mcpack
-    /// individually through the normal archive path, which includes the resource-type
-    /// check and dupe detection. Behaviour packs are filtered out at that stage.
+    /// Opens an .mcaddon and imports each .mcpack it contains through the normal
+    /// archive path, which handles resource-type checking and dupe detection.
+    /// Behaviour packs are filtered out automatically at that stage.
     /// </summary>
     private static async Task<bool> ImportFromMcAddonAsync(string addonPath, string destination)
     {
@@ -261,7 +252,7 @@ public static class ExpImpDel
 
         if (mcpackEntries.Count == 0)
         {
-            ReportStatus($"'{Path.GetFileName(addonPath)}' contains no .mcpack files — skipped.");
+            ReportStatus($"'{Path.GetFileName(addonPath)}' contains no .mcpack files, skipped.");
             return false;
         }
 
@@ -273,7 +264,6 @@ public static class ExpImpDel
             try
             {
                 await Task.Run(() => entry.ExtractToFile(tempMcpack, overwrite: true));
-                // ImportFromArchiveAsync handles resource-type check and dupe detection.
                 bool ok = await ImportFromArchiveAsync(tempMcpack, destination);
                 if (ok) anySuccess = true;
             }
@@ -295,19 +285,19 @@ public static class ExpImpDel
 
         using var zip = ZipFile.OpenRead(archivePath);
 
-        // Find the shallowest manifest.json; fall back to pack_manifest.json.
         var manifestEntry = FindShallowManifestEntry(zip);
 
         if (manifestEntry == null)
         {
-            ReportStatus($"'{Path.GetFileName(archivePath)}' has no manifest.json or pack_manifest.json — not a valid resource pack, skipped.");
+            ReportStatus($"'{Path.GetFileName(archivePath)}' has no manifest — not a valid resource pack, skipped.");
             return false;
         }
 
         bool isLegacy = Path.GetFileName(manifestEntry.FullName)
             .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
 
-        // Read the manifest once — extracts both identity (dupe check) and resource-type flag.
+        // Parse manifest once — extracts resource-type flag (from modules) and
+        // header UUID (for dupe detection). Single stream read, no redundancy.
         ParsedManifest? parsed = null;
         try
         {
@@ -320,21 +310,15 @@ public static class ExpImpDel
         catch (Exception ex)
         {
             Trace.WriteLine($"[Import] Could not parse incoming manifest: {ex.Message}");
-            // Soft fallback — both checks below handle null parsed gracefully.
         }
 
-        // ── Resource-type check ───────────────────────────────────────────────
-        // Runs BEFORE dupe detection — no point checking for a duplicate of
-        // something we might not import.
-        //
-        // HasResourceModule = true  → confirmed resource pack, proceed.
-        // HasResourceModule = false → either not a resource pack, or type couldn't
-        //                             be determined; ask the user either way.
+        // ── Resource-type check (modules section) ─────────────────────────────
+        // Runs BEFORE dupe detection. Behaviour packs are caught here.
         bool isResourcePack = parsed?.HasResourceModule ?? false;
 
         if (!isResourcePack)
         {
-            string packDisplayName = parsed?.Identity?.Name is { Length: > 0 } n
+            string packDisplayName = parsed?.HeaderName is { Length: > 0 } n
                 ? n
                 : Path.GetFileNameWithoutExtension(archivePath);
 
@@ -350,14 +334,18 @@ public static class ExpImpDel
             ReportStatus($"Importing '{packDisplayName}' as requested (not confirmed resource pack).");
         }
 
-        // ── Dupe detection ────────────────────────────────────────────────────
-        if (parsed?.Identity != null)
+        // ── Dupe detection (header UUID only) ────────────────────────────────
+        // The game uses header UUID to identify packs. Module UUID is separate
+        // and optional; checking it would over-restrict matching.
+        if (parsed?.HeaderUuid is { Length: > 0 } headerUuid)
         {
-            var existingMatch = FindExistingPackMatch(parsed.Identity);
+            var existingMatch = FindExistingPackMatch(headerUuid);
             if (existingMatch != null)
             {
+                string displayName = parsed.HeaderName ?? Path.GetFileNameWithoutExtension(archivePath);
+
                 bool overwrite = ConfirmOverwrite != null
-                    && await ConfirmOverwrite(parsed.Identity.Name, existingMatch);
+                    && await ConfirmOverwrite(displayName, existingMatch);
 
                 if (overwrite)
                 {
@@ -370,7 +358,7 @@ public static class ExpImpDel
                 }
                 else
                 {
-                    ReportStatus($"Import of '{parsed.Identity.Name}' skipped (duplicate already installed).");
+                    ReportStatus($"Import of '{displayName}' skipped (duplicate already installed).");
                     return false;
                 }
             }
@@ -425,10 +413,6 @@ public static class ExpImpDel
         return true;
     }
 
-    /// <summary>
-    /// Returns the shallowest manifest.json entry in the archive, or the shallowest
-    /// pack_manifest.json if no manifest.json exists. Modern always wins over legacy.
-    /// </summary>
     private static ZipArchiveEntry? FindShallowManifestEntry(ZipArchive zip)
     {
         ZipArchiveEntry? Shallowest(IEnumerable<ZipArchiveEntry> entries) =>
@@ -448,16 +432,22 @@ public static class ExpImpDel
     // ── Manifest parsing ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Everything needed from a manifest in one pass: the pack identity for dupe
-    /// detection, plus whether at least one module declares type="resources".
+    /// Everything needed from one manifest parse:
+    /// <list type="bullet">
+    ///   <item><see cref="HeaderUuid"/> — for dupe detection (header section only).</item>
+    ///   <item><see cref="HeaderName"/> — display name for dialog messages.</item>
+    ///   <item><see cref="HasResourceModule"/> — type check (modules section only).</item>
+    /// </list>
+    /// Separation of concerns: UUID/identity lives in the header; resource/behaviour
+    /// distinction lives in the modules array. Neither bleeds into the other.
     /// </summary>
     private record ParsedManifest(
-        PackIdentity? Identity,
+        string? HeaderUuid,
+        string? HeaderName,
         bool HasResourceModule);
 
     /// <summary>
-    /// Parses a manifest stream once and extracts both the <see cref="PackIdentity"/>
-    /// for dupe detection and whether at least one module declares type="resources".
+    /// Parses a manifest stream into a <see cref="ParsedManifest"/>.
     /// Handles both modern manifest.json and legacy pack_manifest.json.
     /// Tolerant of // and /* */ comments via JsonLoadSettings.
     /// </summary>
@@ -480,42 +470,28 @@ public static class ExpImpDel
             return null;
         }
 
-        PackIdentity? identity;
-        bool hasResourceModule;
-
         if (isLegacy)
         {
-            // Legacy: primary UUID is header.pack_id; modules[] lives inside header.
+            // Legacy: UUID lives at header.pack_id; modules[] nested inside header.
             var header = root["header"];
-            var headerUuid = header?["pack_id"]?.ToString();
-            var name = header?["name"]?.ToString() ?? string.Empty;
-
-            identity = string.IsNullOrEmpty(headerUuid)
-                ? null
-                : new PackIdentity(name, headerUuid, ExtractModuleUuids(header?["modules"]));
-
-            hasResourceModule = HasModuleOfTypeResources(header?["modules"]);
+            return new ParsedManifest(
+                HeaderUuid: header?["pack_id"]?.ToString(),
+                HeaderName: header?["name"]?.ToString(),
+                HasResourceModule: HasModuleOfTypeResources(header?["modules"]));
         }
         else
         {
-            // Modern: header.uuid at root level; modules[] at root level.
-            var headerUuid = root["header"]?["uuid"]?.ToString();
-            var name = root["header"]?["name"]?.ToString() ?? string.Empty;
-
-            identity = string.IsNullOrEmpty(headerUuid)
-                ? null
-                : new PackIdentity(name, headerUuid, ExtractModuleUuids(root["modules"]));
-
-            hasResourceModule = HasModuleOfTypeResources(root["modules"]);
+            // Modern: UUID lives at header.uuid; modules[] at root level.
+            return new ParsedManifest(
+                HeaderUuid: root["header"]?["uuid"]?.ToString(),
+                HeaderName: root["header"]?["name"]?.ToString(),
+                HasResourceModule: HasModuleOfTypeResources(root["modules"]));
         }
-
-        return new ParsedManifest(identity, hasResourceModule);
     }
 
     /// <summary>
     /// Returns true if the modules token contains at least one entry whose "type"
-    /// field equals "resources" (case-insensitive). Returns false if the token is
-    /// null, not an array, or contains no matching entry.
+    /// equals "resources" (case-insensitive). Returns false for null/empty/missing.
     /// </summary>
     private static bool HasModuleOfTypeResources(JToken? modulesToken)
     {
@@ -525,19 +501,6 @@ public static class ExpImpDel
             .Children<JObject>()
             .Any(m => m["type"]?.ToString()
                           .Equals("resources", StringComparison.OrdinalIgnoreCase) == true);
-    }
-
-    private static IReadOnlyList<string> ExtractModuleUuids(JToken? modulesToken)
-    {
-        if (modulesToken?.Type != JTokenType.Array)
-            return Array.Empty<string>();
-
-        return modulesToken
-            .Children<JObject>()
-            .Select(m => m["uuid"]?.ToString())
-            .Where(u => !string.IsNullOrEmpty(u))
-            .Cast<string>()
-            .ToList();
     }
 
     private static ParsedManifest? ParseManifestFullFromFile(string manifestPath, bool isLegacy)
@@ -554,27 +517,14 @@ public static class ExpImpDel
         }
     }
 
-    // ── Dupe detection ────────────────────────────────────────────────────────
-
-    private record PackIdentity(string Name, string HeaderUuid, IReadOnlyList<string> ModuleUuids);
-
-    private static bool IdentitiesMatch(PackIdentity a, PackIdentity b)
-    {
-        if (!a.HeaderUuid.Equals(b.HeaderUuid, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        var setA = new HashSet<string>(a.ModuleUuids, StringComparer.OrdinalIgnoreCase);
-        var setB = new HashSet<string>(b.ModuleUuids, StringComparer.OrdinalIgnoreCase);
-        return setA.SetEquals(setB);
-    }
+    // ── Dupe detection — header UUID only ────────────────────────────────────
 
     /// <summary>
-    /// Scans both resource_packs and development_resource_packs (for the current
-    /// IsTargetingPreview value) up to 2 folder levels deep — the maximum depth the
-    /// game engine reads — and returns the pack folder path of the first existing pack
-    /// whose identity matches <paramref name="incoming"/>, or null.
+    /// Scans resource_packs and development_resource_packs up to 2 folder levels
+    /// deep (the game's own read limit) and returns the folder path of the first
+    /// existing pack whose header UUID matches <paramref name="headerUuid"/>, or null.
     /// </summary>
-    private static string? FindExistingPackMatch(PackIdentity incoming)
+    private static string? FindExistingPackMatch(string headerUuid)
     {
         var scanRoots = MinecraftUserDataLocator
             .GetExistingResourcePackScanPaths(TunerVariables.Persistent.IsTargetingPreview)
@@ -584,12 +534,12 @@ public static class ExpImpDel
         {
             foreach (var dir1 in SafeEnumerateDirectories(root))
             {
-                var match = CheckDirForMatch(dir1, incoming);
+                var match = CheckDirForMatch(dir1, headerUuid);
                 if (match != null) return match;
 
                 foreach (var dir2 in SafeEnumerateDirectories(dir1))
                 {
-                    match = CheckDirForMatch(dir2, incoming);
+                    match = CheckDirForMatch(dir2, headerUuid);
                     if (match != null) return match;
                 }
             }
@@ -599,26 +549,26 @@ public static class ExpImpDel
     }
 
     /// <summary>
-    /// Checks one directory for a manifest UUID match. Prefers manifest.json; if a
-    /// modern manifest is found but doesn't match, does NOT also check
+    /// Checks one directory for a header UUID match. Prefers manifest.json; if a
+    /// modern manifest is found but doesn't match, does not also check
     /// pack_manifest.json — they can't both be authoritative in the same directory.
     /// </summary>
-    private static string? CheckDirForMatch(string dir, PackIdentity incoming)
+    private static string? CheckDirForMatch(string dir, string headerUuid)
     {
         var modern = Path.Combine(dir, "manifest.json");
         if (File.Exists(modern))
         {
             var parsed = ParseManifestFullFromFile(modern, isLegacy: false);
-            if (parsed?.Identity != null && IdentitiesMatch(incoming, parsed.Identity))
+            if (parsed?.HeaderUuid?.Equals(headerUuid, StringComparison.OrdinalIgnoreCase) == true)
                 return dir;
-            return null;
+            return null; // modern manifest found, no match — don't also check legacy
         }
 
         var legacy = Path.Combine(dir, "pack_manifest.json");
         if (File.Exists(legacy))
         {
             var parsed = ParseManifestFullFromFile(legacy, isLegacy: true);
-            if (parsed?.Identity != null && IdentitiesMatch(incoming, parsed.Identity))
+            if (parsed?.HeaderUuid?.Equals(headerUuid, StringComparison.OrdinalIgnoreCase) == true)
                 return dir;
         }
 
@@ -669,9 +619,9 @@ public static class ExpImpDel
         ImportStatusChanged?.Invoke(message);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  DELETE
-    // ════════════════════════════════════════════════════════════════════════
+    #endregion
+
+    #region Delete
 
     /// <summary>
     /// Walks upward from <paramref name="packLocation"/> until the parent is a known
@@ -730,4 +680,6 @@ public static class ExpImpDel
         Trace.WriteLine($"[Delete] Could not resolve pack root for '{packLocation}' — no known scan root in path. Aborted.");
         return null;
     }
+
+    #endregion
 }

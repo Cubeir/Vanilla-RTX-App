@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -16,6 +15,7 @@ using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using WinRT.Interop;
+using System.Diagnostics;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.PackBrowser;
@@ -218,7 +218,7 @@ public sealed partial class PackBrowserWindow : Window
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  Overwrite confirmation dialog
+    //  Confirmation dialogs
     // ════════════════════════════════════════════════════════════════════════
 
     private async Task<bool> ShowOverwriteDialogAsync(string packName, string existingPath)
@@ -255,14 +255,9 @@ public sealed partial class PackBrowserWindow : Window
         return await tcs.Task;
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  Non-resource-pack confirmation dialog
-    // ════════════════════════════════════════════════════════════════════════
-
     /// <summary>
-    /// Called by ExpImpDel when a pack has no module of type "resources" — or when
-    /// the type could not be determined. Runs on the UI thread. Returns true to
-    /// import anyway, false to skip.
+    /// Shown when a pack's manifest has no module of type "resources", or when the
+    /// type could not be determined. Defaults to Skip (safe).
     /// </summary>
     private async Task<bool> ShowNonResourceDialogAsync(string packName)
     {
@@ -275,7 +270,7 @@ public sealed partial class PackBrowserWindow : Window
                 var dialog = new ContentDialog
                 {
                     Title = "Not a resource pack",
-                    Content = $"\"{packName}\" does not appear to be a resource pack — no module of type \"resources\" was found in its manifest.\n\nImport it anyway?",
+                    Content = $"\"{packName}\" does not appear to be a resource pack, no module of type \"resources\" was found in its manifest.\n\nImport it anyway?",
                     PrimaryButtonText = "Import anyway",
                     CloseButtonText = "Skip",
                     DefaultButton = ContentDialogButton.Close,
@@ -329,31 +324,20 @@ public sealed partial class PackBrowserWindow : Window
     // ════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Resolves a display version string from a manifest version token.
-    /// <para>
-    /// For modern manifests, <c>header.version</c> can be either an int array
-    /// <c>[1,26,15]</c> or a string <c>"1.0.6"</c>. Both are only accepted when
-    /// they produce a strict three-part numeric version (digits.digits.digits);
-    /// anything else — four-part versions, alpha suffixes, non-numeric — returns
-    /// <c>"Unknown"</c> to match what the game itself does with invalid versions.
-    /// </para>
-    /// <para>
-    /// For legacy <c>pack_manifest.json</c>, <paramref name="rawString"/> is used
-    /// directly and is subject to the same strict semver check.
-    /// </para>
+    /// Resolves a display version string from a manifest header version token.
+    /// Accepts a three-element int array [1,26,15] or a strict X.Y.Z string.
+    /// Anything else returns "Unknown" — matching the game's own fallback behaviour.
+    /// For legacy manifests, pass the raw string via <paramref name="rawString"/>.
     /// </summary>
     private string ResolveVersion(JToken? versionToken, string? rawString = null)
     {
-        // Prefer the structured token if present.
         if (versionToken != null)
         {
             if (versionToken.Type == JTokenType.Array)
             {
                 var parts = versionToken.ToArray();
-                // Must be exactly three elements, all parseable as non-negative integers.
                 if (parts.Length == 3 && parts.All(p => int.TryParse(p.ToString(), out int v) && v >= 0))
                     return string.Join(".", parts.Select(p => p.ToString()));
-
                 return "Unknown";
             }
 
@@ -366,7 +350,6 @@ public sealed partial class PackBrowserWindow : Window
             return "Unknown";
         }
 
-        // Legacy fallback: use the raw string from header.packs_version / header.version.
         if (!string.IsNullOrWhiteSpace(rawString))
             return StrictSemVerRegex.IsMatch(rawString) ? rawString : "Unknown";
 
@@ -580,12 +563,12 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // Selection overlay — user-tuned values preserved: 192 alpha, z=128, 72px glyph, r=4
+        // Selection overlay — 192 alpha, z=128, 72px glyph, r=4
         var selectionOverlay = new Border
         {
             Width = 75,
             Height = 75,
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = new CornerRadius(4),
             Background = new SolidColorBrush(ColorHelper.FromArgb(192, 0, 0, 0)),
             Translation = new System.Numerics.Vector3(0, 0, 128),
             Visibility = Visibility.Collapsed,
@@ -629,17 +612,28 @@ public sealed partial class PackBrowserWindow : Window
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        // ── Right panel: version (top) + capability tags (bottom) ────────────
+        // ── Right panel: [size | version] top-right, tags bottom-right ───────
+        //
+        // Row 0 holds a horizontal StackPanel with size badge on the left and
+        // version badge on the right. Row 2 holds capability tags.
         var rightPanel = new Grid();
         rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rightPanel.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         rightPanel.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var versionBadge = BuildVersionBadge(pack.Version);
-        versionBadge.HorizontalAlignment = HorizontalAlignment.Right;
-        Grid.SetRow(versionBadge, 0);
-        rightPanel.Children.Add(versionBadge);
+        // Top row: size badge + version badge side by side, right-aligned
+        var topBadgeRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 6
+        };
+        topBadgeRow.Children.Add(BuildSizeBadge(pack.PackSizeText));
+        topBadgeRow.Children.Add(BuildVersionBadge(pack.Version));
+        Grid.SetRow(topBadgeRow, 0);
+        rightPanel.Children.Add(topBadgeRow);
 
+        // Bottom row: capability tags
         var tagsPanel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -658,6 +652,24 @@ public sealed partial class PackBrowserWindow : Window
         button.Content = grid;
         button.Click += PackButton_Click;
         return button;
+    }
+
+    private static Border BuildSizeBadge(string sizeText)
+    {
+        var badge = new Border
+        {
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(8, 4, 8, 4),
+            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 48, 48, 48))
+        };
+        badge.Child = new TextBlock
+        {
+            Text = sizeText,
+            FontSize = 12,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White)
+        };
+        return badge;
     }
 
     private static Border BuildVersionBadge(string version)
@@ -815,18 +827,14 @@ public sealed partial class PackBrowserWindow : Window
             return packs;
         }
 
-        // Track directories already processed. Critically, manifest.json files are
-        // enumerated and processed FIRST — then pack_manifest.json files are enumerated
-        // separately, and seenDirs skips any directory that already has a modern manifest.
-        // Using .Concat() was unsafe because Directory.EnumerateFiles ordering is
-        // filesystem-dependent; a legacy file could be yielded before the modern one
-        // for the same directory on some NTFS configurations.
+        // Two passes per scan path: manifest.json first so modern always wins over legacy
+        // in the same directory. .Concat() ordering was filesystem-dependent and unsafe.
         var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(
                      TunerVariables.Persistent.IsTargetingPreview))
         {
-            // Pass 1: modern manifest.json — always wins over legacy in the same directory.
+            // Pass 1: modern manifest.json
             foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
@@ -837,18 +845,11 @@ public sealed partial class PackBrowserWindow : Window
                     var packData = await ParsePackAsync(packDir, manifestPath);
                     if (packData != null) packs.Add(packData);
                 }
-                catch (JsonException jsonEx)
-                {
-                    Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}");
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}");
-                }
+                catch (JsonException jsonEx) { Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}"); }
+                catch (Exception ex) { Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}"); }
             }
 
-            // Pass 2: legacy pack_manifest.json — only reached if the directory
-            // had no manifest.json (seenDirs guard ensures this).
+            // Pass 2: legacy pack_manifest.json (seenDirs skips dirs already handled above)
             foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "pack_manifest.json", SearchOption.AllDirectories))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
@@ -859,14 +860,8 @@ public sealed partial class PackBrowserWindow : Window
                     var packData = await ParsePackAsync(packDir, manifestPath);
                     if (packData != null) packs.Add(packData);
                 }
-                catch (JsonException jsonEx)
-                {
-                    Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}");
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}");
-                }
+                catch (JsonException jsonEx) { Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}"); }
+                catch (Exception ex) { Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}"); }
             }
         }
 
@@ -886,18 +881,17 @@ public sealed partial class PackBrowserWindow : Window
             .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
 
         return isLegacyFormat
-            ? ParseLegacyPackManifest(packDir, root)
+            ? await ParseLegacyPackManifestAsync(packDir, root)
             : await ParseModernManifestAsync(packDir, root);
     }
 
     /// <summary>
     /// Parses the old pack_manifest.json format (pre-1.16 era).
-    /// These packs have no "capabilities" array so they are always Incompatible.
-    /// Version is a loose string inside "header"; only strict X.Y.Z is shown.
-    /// Legacy packs are exempt from the Alchitex candidate tag — see
+    /// Always Incompatible — no capabilities field exists.
+    /// Legacy packs are exempt from the Alchitex candidate tag; see
     /// <see cref="AlchitexLegacyPacksEligible"/>.
     /// </summary>
-    private PackData ParseLegacyPackManifest(string packDir, JObject root)
+    private async Task<PackData> ParseLegacyPackManifestAsync(string packDir, JObject root)
     {
         var header = root["header"];
 
@@ -907,13 +901,11 @@ public sealed partial class PackBrowserWindow : Window
         if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
         if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
 
-        // Legacy version is a raw string; apply strict semver gate.
         string rawVersion = header?["packs_version"]?.ToString()
                          ?? header?["version"]?.ToString()
                          ?? string.Empty;
         string version = ResolveVersion(versionToken: null, rawString: rawVersion);
 
-        // Legacy packs are always Incompatible — no capabilities field exists.
         var capabilityTags = new List<string>();
         bool potentiallySuitable = false;
 
@@ -932,10 +924,11 @@ public sealed partial class PackBrowserWindow : Window
             PackName = packName,
             PackDescription = packDesc,
             PackPath = packDir,
-            Icon = LoadIconSync(packDir),
+            Icon = await LoadIconAsync(packDir),
             CapabilityTags = capabilityTags,
             PackType = "Incompatible",
             Version = version,
+            PackSizeText = await GetPackSizeTextAsync(packDir),
             IsLegacyFormat = true,
             PotentiallySuitableForPBRGen = potentiallySuitable
         };
@@ -943,8 +936,7 @@ public sealed partial class PackBrowserWindow : Window
 
     /// <summary>
     /// Parses the modern manifest.json format.
-    /// Version must be a three-element int array or a strict X.Y.Z string;
-    /// anything else is shown as Unknown.
+    /// Version must be a three-element int array or a strict X.Y.Z string.
     /// </summary>
     private async Task<PackData> ParseModernManifestAsync(string packDir, JObject root)
     {
@@ -982,14 +974,12 @@ public sealed partial class PackBrowserWindow : Window
             capabilityTags.Add("Incompatible");
         }
 
-        // Version: array [1,26,15] or string "1.0.6" — strict semver only.
         string version = ResolveVersion(root["header"]?["version"]);
 
         var header = root["header"];
         string packName = header?["name"]?.ToString() ?? "pack.name";
         string packDesc = header?["description"]?.ToString() ?? "pack.description";
 
-        // Resolve pack.name / pack.description tokens from .lang files if needed.
         if (packName == "pack.name" || packDesc == "pack.description")
         {
             var langFolder = Path.Combine(packDir, "texts");
@@ -1009,7 +999,6 @@ public sealed partial class PackBrowserWindow : Window
         packName = StripMinecraftFormatting(packName);
         packDesc = StripMinecraftFormatting(packDesc);
 
-        // Final fallback: folder name for title, sanitized path for description.
         if (packName == "pack.name" || string.IsNullOrWhiteSpace(packName))
             packName = Path.GetFileName(packDir);
         if (packDesc == "pack.description" || string.IsNullOrWhiteSpace(packDesc))
@@ -1024,10 +1013,15 @@ public sealed partial class PackBrowserWindow : Window
             CapabilityTags = capabilityTags,
             PackType = packType,
             Version = version,
+            PackSizeText = await GetPackSizeTextAsync(packDir),
             IsLegacyFormat = false,
             PotentiallySuitableForPBRGen = potentiallySuitable
         };
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Lang file loading — en_US first, en_GB fallback, then any other en_*
+    // ════════════════════════════════════════════════════════════════════════
 
     private async Task<Dictionary<string, string>?> TryLoadLangFileAsync(string langFolder)
     {
@@ -1035,6 +1029,16 @@ public sealed partial class PackBrowserWindow : Window
 
         var langFiles = Directory.GetFiles(langFolder, "*.lang")
             .Where(f => Path.GetFileName(f).StartsWith("en", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(f =>
+            {
+                var name = Path.GetFileNameWithoutExtension(f).ToLowerInvariant();
+                return name switch
+                {
+                    "en_us" => 0,
+                    "en_gb" => 1,
+                    _ => 2
+                };
+            })
             .ToArray();
 
         foreach (var langPath in langFiles)
@@ -1064,6 +1068,13 @@ public sealed partial class PackBrowserWindow : Window
         return null;
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    //  Icon loading
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Loads a pack icon from disk, supports common types, but not Targa.
+    /// </summary>
     private async Task<BitmapImage?> LoadIconAsync(string packDir)
     {
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
@@ -1091,22 +1102,34 @@ public sealed partial class PackBrowserWindow : Window
         return null;
     }
 
-    private static BitmapImage? LoadIconSync(string packDir)
+    // ════════════════════════════════════════════════════════════════════════
+    //  Pack size calculation
+    // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Returns a formatted size string for the pack directory, e.g. "12.34 MB".
+    /// Runs the directory walk on a thread-pool thread to avoid blocking the UI.
+    /// Returns "? MB" on any failure.
+    /// </summary>
+    private static async Task<string> GetPackSizeTextAsync(string packDir)
     {
-        var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
-            .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg")
-            .ToArray();
-
-        if (iconFiles.Length == 0) return null;
-
         try
         {
-            return new BitmapImage(new Uri(iconFiles[0]));
+            var totalBytes = await Task.Run(() =>
+                Directory.EnumerateFiles(packDir, "*", SearchOption.AllDirectories)
+                         .Sum(f =>
+                         {
+                             try { return new FileInfo(f).Length; }
+                             catch { return 0L; }
+                         }));
+
+            double mb = totalBytes / (1024.0 * 1024.0);
+            return mb.ToString("F2") + " MB";
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[PackBrowser] Error loading legacy icon {iconFiles[0]}: {ex.Message}");
-            return null;
+            Trace.WriteLine($"[PackBrowser] Error calculating size for {packDir}: {ex.Message}");
+            return "? MB";
         }
     }
 
@@ -1186,6 +1209,8 @@ public sealed partial class PackBrowserWindow : Window
         public required List<string> CapabilityTags { get; set; }
         public required string PackType { get; set; }
         public required string Version { get; set; }
+        /// <summary>Pre-formatted pack folder size, e.g. "12.34 MB".</summary>
+        public required string PackSizeText { get; set; }
         public bool IsLegacyFormat { get; set; } = false;
         public bool PotentiallySuitableForPBRGen { get; set; } = false;
     }

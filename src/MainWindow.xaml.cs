@@ -38,6 +38,12 @@ namespace Vanilla_RTX_App;
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
+- Remove all code paths related to the checkboxes
+Do the redesign. TODAY. Delete PackLocator
+perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
+so other classes could use it
+Not manually constructing every little thing for callers.
+
 - do the userdatalocator expansion idea
 - Stress test GDKLocator again
 
@@ -63,6 +69,9 @@ Update them to reflect the latest features/changes
 
 
 ==================== ENOUGH FOR 3.1
+
+Btw random thought
+indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
 
 - Do the redesign.
 Offload export and delete to PackBrowser menu, allow deletion and export on the spot
