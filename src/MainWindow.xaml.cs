@@ -36,28 +36,9 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG // TODO ###
 
-- Fix any remaining compiler warnings
-
-- ExmpImpDel and PackBrowser changes
-
->> About pack browser, relying on a single UUID and Version field is enough, hopefully we aren't comparing BOTH, RIGHT?!
-header one is enough.
-modules should only really be used for detecting if its a resource pack or not, good separation of concerns, where to "look"
-
-- Just to be certain
-not compatible with tuner, if neither tags are present
-rtx, vv, rtx and vv, can co exist, the tags, capbalities
-Do the animation ideas?
-Or at least a static glow effect of sorts for RTX and Alchitex?
-
-- Check the report on Discord,
-Adolf Glitter of the woke reich, his report is incoherent, but try to understand
-he says tuning opus a few times and the app freezes
-okay, he also said there may be value mismatch between what sliders display, and what actually applies to packs in the backgroumd alright.
+- Fix shadows of selectable panes being cut off in pack browser and similar menus
 
 - do the userdatalocator expansion idea
-
-
 - Stress test GDKLocator again
 
 - manifests with comments, do features play well with them?
@@ -70,23 +51,14 @@ Ensure it POOLS dev/regular folders, AND across ALL users!
 For importing and selecting packs upstream it is ESPECIALLY important
 PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
 
-
 - Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 in the context where u already gave it all 3 classes, remember
 
-- Fix shadows of selectable panes being cut off in pack browser and similar menus
-
-- Do a review of all cooldowns and retry times. Audit all classes.
-How psa cooldowns play with pack update cooldowns, etc..
-and
-Cached key accumulation 
-be more cautious where it can accumulate and varies...
-review web calls and GitHub usage patterns too so to speak
-
+- Do a review of all cooldowns and retry times.
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
 
-- Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
+- Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
 
 
@@ -242,6 +214,9 @@ public static class TunerVariables
 
         public static string? MinecraftInstallPath = null;
         public static string? MinecraftPreviewInstallPath = null;
+
+        public static string? MinecraftDataPath = null;
+        public static string? MinecraftPreviewDataPath = null;
 
         public static double FogMultiplier = Defaults.FogMultiplier;
         public static double EmissivityMultiplier = Defaults.EmissivityMultiplier;

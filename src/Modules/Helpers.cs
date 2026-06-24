@@ -1127,14 +1127,8 @@ public static class MinecraftGDKLocator
 
 /// <summary>
 /// Centralizes every path Minecraft's GDK build uses for user data — worlds, options,
-/// resource packs, and the Shared cross-account tree. This is NOT installer-controlled;
-/// these paths are dictated entirely by the GDK runtime itself and have been stable since
-/// the UWP→GDK migration. Unlike install-location discovery, no searching or symlink
-/// resolution is needed here — the paths are deterministic given only IsTargetingPreview.
-///
-/// Every consumer in the app should go through this class instead of constructing
-/// "%AppData%\Minecraft Bedrock..." paths independently. If Mojang ever restructures
-/// this, there is exactly one place to fix it.
+/// resource packs, and the Shared cross-account tree.
+/// Every consumer in the app should go through this class instead of constructing paths independently.
 /// </summary>
 public static class MinecraftUserDataLocator
 {
@@ -1175,7 +1169,6 @@ public static class MinecraftUserDataLocator
         var folderName = isTargetingPreview ? PreviewRootFolderName : StableRootFolderName;
         var versionName = isTargetingPreview ? "Minecraft Preview" : "Minecraft";
 
-        // TODO: must expose the root path to user
         var rootPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             folderName
