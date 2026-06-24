@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage.Streams;
 
 namespace Vanilla_RTX_App.Core;
 
@@ -132,7 +133,7 @@ public class LampAnimator
     /// Each flash or blink event delivers an angular impulse that accelerates it;
     /// friction then naturally decelerates it on its own — no forced reset.
     /// </param>
-    public async Task Animate(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double? duration = null, bool rotate = false)
+    public async Task Animate(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double? duration = null, bool rotate = false, double rapidFlashChance = 0.0)
     {
         const double initialDelayMs = 900;
         const double minDelayMs = 150;
@@ -141,7 +142,15 @@ public class LampAnimator
 
         double fadeAnimationMs = _context == LampContext.Splash ? 100 : 75;
 
-        await _animationLock.WaitAsync();
+        if (singleFlash)
+        {
+            if (!await _animationLock.WaitAsync(0)) // 0ms timeout = don't wait at all
+                return;
+        }
+        else
+        {
+            await _animationLock.WaitAsync();
+        }
         try
         {
             var random = new Random();
@@ -193,7 +202,7 @@ public class LampAnimator
                 try
                 {
                     if (rotate) EnsureSpinLoopRunning();
-                    await ExecuteSingleFlash(random, singleFlashOnChance, fadeAnimationMs, rotate: rotate);
+                    await ExecuteSingleFlash(random, singleFlashOnChance, fadeAnimationMs, rotate: rotate, rapidFlashChance: rapidFlashChance);
                 }
                 finally
                 {
@@ -545,10 +554,18 @@ public class LampAnimator
         await SetupSteadyOnState(fadeMs);
     }
 
-    private async Task ExecuteSingleFlash(Random random, double superFlashChance, double fadeMs, int? customDuration = null, bool rotate = false)
+    private async Task ExecuteSingleFlash(Random random, double superFlashChance, double fadeMs, int? customDuration = null, bool rotate = false, double rapidFlashChance = 0.0)
     {
-        bool doSuperFlash = random.NextDouble() < superFlashChance;
         int flashDuration = customDuration ?? random.Next(300, 800);
+
+        // Roll for rapid flash first — it overrides the normal super/off decision entirely
+        if (random.NextDouble() < rapidFlashChance)
+        {
+            await ExecuteRapidFlash(random, fadeMs, rotate);
+            return;
+        }
+
+        bool doSuperFlash = random.NextDouble() < superFlashChance;
 
         // Every flash gives the halo a push. Super flashes hit harder.
         if (rotate)
@@ -631,6 +648,86 @@ public class LampAnimator
         }
     }
 
+    /// <summary>
+    /// Fires a rapid burst of flashes (flashCount pops). Each pop randomly targets either
+    /// SUPER (bright) or OFF (dark), so the burst can mix directions.
+    /// Halo opacity is set instantly during pops (fades are too slow for rapid timing)
+    /// and only smoothly animated on the final settle back to resting state.
+    /// Used both by BlinkLoop's scheduled super-flash events and optionally by single flashes.
+    /// </summary>
+    private async Task ExecuteRapidFlash(Random random, double fadeMs, bool rotate = false, CancellationToken ct = default)
+    {
+        if (_overlayImage == null && _context == LampContext.Titlebar) return;
+
+        var flashCount = random.Next(1, 15);
+        var flashSpeed = random.Next(33, 96);
+
+        for (int i = 0; i < flashCount; i++)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            bool flashToSuper = random.NextDouble() < 0.5;
+
+            if (rotate)
+                ApplySpinImpulse(SuperFlashImpulse * 0.4);
+
+            if (flashToSuper)
+            {
+                // Flash to SUPER — halo jumps bright instantly
+                if (_context == LampContext.Titlebar)
+                {
+                    await SetImageAsync(_baseImage, _superPath);
+                    if (_overlayImage != null) _overlayImage.Opacity = 0;
+                    if (_haloImage != null) _haloImage.Opacity = 0.6;
+                }
+                else if (_context == LampContext.Splash && _superImage != null)
+                {
+                    await SetImageAsync(_superImage, _superPath);
+                    _superImage.Opacity = 1.0;
+                    if (_haloImage != null) _haloImage.Opacity = 0.6;
+                }
+            }
+            else
+            {
+                // Flash to OFF — halo drops to near zero instantly
+                if (_context == LampContext.Titlebar && _overlayImage != null)
+                {
+                    await SetImageAsync(_baseImage, _onPath);
+                    _overlayImage.Opacity = 1.0;
+                    if (_haloImage != null) _haloImage.Opacity = 0.025;
+                }
+                else if (_context == LampContext.Splash && _superImage != null)
+                {
+                    await SetImageAsync(_superImage, _offPath);
+                    _superImage.Opacity = 1.0;
+                    if (_haloImage != null) _haloImage.Opacity = 0.025;
+                }
+            }
+
+            await Task.Delay(75, ct);
+
+            // Return to base ON state between pops — instant snap, no fade
+            if (_context == LampContext.Titlebar)
+            {
+                await SetImageAsync(_baseImage, _onPath);
+                if (_overlayImage != null) _overlayImage.Opacity = _defaultOverlayOpacity;
+                if (_haloImage != null) _haloImage.Opacity = _defaultHaloOpacity;
+            }
+            else if (_context == LampContext.Splash && _superImage != null)
+            {
+                _superImage.Opacity = _defaultSuperOpacity;
+                if (_haloImage != null) _haloImage.Opacity = _defaultHaloOpacity;
+            }
+
+            if (i < flashCount - 1)
+                await Task.Delay(flashSpeed, ct);
+        }
+
+        // Smooth settle after the burst is done
+        if (_haloImage != null)
+            await AnimateOpacity(_haloImage, _defaultHaloOpacity, fadeMs, ct);
+    }
+
     private async Task BlinkLoop(CancellationToken token, double fadeMs, double initialDelayMs, double minDelayMs,
         double minRampSec, double maxRampSec, Random random, bool rotate = false)
     {
@@ -657,28 +754,11 @@ public class LampAnimator
 
                 if (now >= nextSuperFlash)
                 {
-                    bool isRapidFlash = random.NextDouble() < 0.20;
+                    bool isRapidFlash = random.NextDouble() < 0.33;
 
                     if (isRapidFlash)
                     {
-                        var flashCount = random.Next(1, 6);
-                        var flashSpeed = random.Next(50, 100);
-
-                        for (int i = 0; i < flashCount && !token.IsCancellationRequested; i++)
-                        {
-                            // Each rapid flash pop gives a smaller-but-cumulative kick
-                            if (rotate)
-                                ApplySpinImpulse(SuperFlashImpulse * 0.4);
-
-                            await SetImageAsync(_baseImage, _superPath);
-                            _overlayImage.Opacity = 0;
-                            if (_haloImage != null) _ = AnimateOpacity(_haloImage, 0.6, fadeMs, token);
-                            await Task.Delay(75, token);
-
-                            await SetImageAsync(_baseImage, _onPath);
-                            if (_haloImage != null) _ = AnimateOpacity(_haloImage, 0.5, fadeMs, token);
-                            await Task.Delay(flashSpeed, token);
-                        }
+                        await ExecuteRapidFlash(random, fadeMs, rotate, token);
                     }
                     else
                     {

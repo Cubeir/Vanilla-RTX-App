@@ -39,6 +39,7 @@ namespace Vanilla_RTX_App;
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
+
 - Remove all code paths related to the checkboxes
 Do the redesign. TODAY. Delete PackLocator
 perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
@@ -58,7 +59,10 @@ Maybe postpone this redesign for now. indeed. don't go too far, sleep on the ide
 
 
 
-- do the userdatalocator expansion idea
+- do the userdatalocator expansion idea, done, just stress test it, figure out edge cases
+y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
+locate button allows u to select it, it gets cached, revalidated all the time, its good good good.
+
 - Stress test GDKLocator again
 
 - manifests with comments, do features play well with them?
@@ -148,23 +152,6 @@ easier said than done, the code is a clusterfuck
 and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
 if it doesn't, this is too, is a Useless idea.
 
-- TTService.GetToolTip could be very useful,
-users don't read tooltips, hide verbose guides in there, its fine
-AND PRINT THEM TO USER when they repeat a mistake a few times and cause errors.
-just an idea
-
-- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
-Give it special treatment same as default preset and avoid changing existing logic
-they appear at the bottom
-expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
-basically, instead of changing the current pipeline, integerate this/build it on top of it
-that way it'll surely work without fucking things up
-
-- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
-Especially release builds, There COULD BE LATENT TRIMMING BUGS!
-Game detection and cache invalidation could be improved for both
-PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
-
 - With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
 It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
 It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
@@ -184,6 +171,29 @@ Allow rapid flash in Lamp.cs to happen to OFF in addition to SUPERON, decided ra
 
 - Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
 watchya doing?
+
+
+
+
+
+
+- TTService.GetToolTip could be very useful,
+users don't read tooltips, hide verbose guides in there, its fine
+AND PRINT THEM TO USER when they repeat a mistake a few times and cause errors.
+just an idea
+
+- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
+Give it special treatment same as default preset and avoid changing existing logic
+they appear at the bottom
+expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
+basically, instead of changing the current pipeline, integerate this/build it on top of it
+that way it'll surely work without fucking things up
+
+- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
+Especially release builds, There COULD BE LATENT TRIMMING BUGS!
+Game detection and cache invalidation could be improved for both
+PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
+
 
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging
@@ -495,6 +505,7 @@ public sealed partial class MainWindow : Window
 
 
         // Set reinstall latest packs button visuals based on cache status (TODO: COULD maybe have a third "Update to latest" stat, but it requires checking remote on startup)
+        // It is also set after closing pack update window, don't forget to update it there.
         if (_updater.HasDeployableCache())
         {
             UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
@@ -962,7 +973,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
             return;
         }
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.05);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
@@ -971,7 +982,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
             return;
         }
-        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
+        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.01);
     }
 
 
@@ -1092,6 +1103,7 @@ public sealed partial class MainWindow : Window
 
 
     // ------- Titlebar stuff
+    private static int lampSecretMessageCounter = 0;
     private void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
         var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
@@ -1164,6 +1176,76 @@ public sealed partial class MainWindow : Window
         }
         else
         {
+            if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
+            {
+                Log("Hold shift and click the lamp again to copy debug logs to your clipboard, attach these if reporting issues to the developer.", LogLevel.Informational);
+            }
+            else
+            {
+                lampSecretMessageCounter++;
+                if (lampSecretMessageCounter > 7)
+                {
+                    if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
+                    {
+                        Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.Warning);
+                        Task.Run(async () =>
+                        {
+                            await Task.Delay(5000);
+                            Log("But now that you've found this one in particular, I won't leave you empty-handed. Wait a couple of seconds...", LogLevel.Lengthy);
+                            await Task.Delay(4000);
+                            _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
+                            await Task.Delay(3014);
+                            Log("I just love this track! That's it. Hope you like it too.", LogLevel.Success);
+                            await Task.Delay(delay: TimeSpan.FromMinutes(3));
+                            Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.Lengthy);
+                            await Task.Delay(delay: TimeSpan.FromHours(3));
+                            Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
+                            await Task.Delay(2718);
+                            Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
+
+                            int iteration = 0;
+                            var rng = new Random();
+                            string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
+                                                 "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
+                            LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
+                            string[] spookyEmojis = { "👁️", "🖤", "⛓️", "🌑", "🕯️", "🫀", "🧿", "🌒", "🤡", "👁️" };
+
+                            while (true)
+                            {
+                                iteration++;
+
+                                string baseMsg = baseMsgs[rng.Next(baseMsgs.Length)];
+                                char[] chars = baseMsg.ToCharArray();
+                                double c = iteration / 50.0;
+                                int corruptCount = (int)(chars.Length * c);
+                                double t = Math.Max(0, (iteration - 15) / 35.0);
+                                int delay = (int)(500 + 9500 * (t * t * t));
+
+                                for (int i = 0; i < corruptCount; i++)
+                                {
+                                    int pos = rng.Next(chars.Length);
+                                    chars[pos] = (char)rng.Next(33, 126);
+                                }
+
+                                // Sprinkle creepy emojis at random positions
+                                string msg = new string(chars);
+                                int emojiCount = rng.Next(1, 4);
+                                for (int i = 0; i < emojiCount; i++)
+                                {
+                                    if (rng.NextDouble() < 0.1)
+                                    {
+                                        int pos = rng.Next(msg.Length);
+                                        msg = msg.Insert(pos, spookyEmojis[rng.Next(spookyEmojis.Length)]);
+                                    }
+                                }
+
+                                await Task.Delay(delay);
+                                Log(msg, levels[rng.Next(levels.Length)]);
+                            }
+                        });
+                    }
+                }
+            }
             _ = BlinkingLamp(true, true, 1.0);
         }
 
@@ -1437,7 +1519,6 @@ public sealed partial class MainWindow : Window
 
         packBrowserWindow.Activate();
     }
-
     private void UpdateBrowsePacksButton(bool isTargetingPreview)
     {
         var isValid = MinecraftUserDataLocator.IsDataValid(isTargetingPreview);
@@ -1460,6 +1541,7 @@ public sealed partial class MainWindow : Window
                 LogLevel.Warning);
         }
     }
+
     public async Task HandleManualDataLocationAsync()
     {
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(IsTargetingPreview);
