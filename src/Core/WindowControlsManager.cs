@@ -204,6 +204,8 @@ public class WindowControlsManager
     }
 }
 
+// TODO: you forgot you have this?! this would've been so useful to use in other windows wherever you needed to stop user from intracting with the window for a bit
+// Not only that, these would've simplified otherwise convoluted uses of togglecontrols in some scenarios. Check.
 /// <summary>
 /// Extension methods for convenient usage
 /// </summary>
@@ -247,8 +249,8 @@ public static class WindowControlsManagerExtensions
         WindowControlsManager.ClearStates(window);
     }
 }
-
-// TODO: Just marking it, come here and check this out
+// TODO: Just marking it, come here and check this out later, expand on it, non-intermidate states, paused, and error states, support them
+// begin properly utilizing it
 /// <summary>
 /// This shouldn't really be here, a utility class for managing a simple progress bar on/off while preventing race conditions
 /// Update it later to use a more robust solution like IProgress<T> or async/await patterns, show real time progress, etc.

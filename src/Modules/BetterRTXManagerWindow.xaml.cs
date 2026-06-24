@@ -26,8 +26,7 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
 
-/*  <backlog>
-Better RTX foolproofing/reinforcement ideas
+/*  TODO: Better RTX foolproofing/reinforcement ideas
 
 ANYTHING in the BetterRtx api json to,
 

@@ -155,7 +155,7 @@
                                         ToolTipService.ToolTip="Select all by tag or deselect all">
                             <Grid>
                                 <FontIcon x:Name="SelectAllButton_Glyph"
-                                          Glyph="&#xE762;"
+                                          Glyph="&#xE9D5;"
                                           FontSize="20"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
