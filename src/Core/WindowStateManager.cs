@@ -320,6 +320,7 @@ public class WindowStateManager : IDisposable
     {
         try
         {
+            if (_appWindow == null) return;
             var displayArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
             var workArea = displayArea.WorkArea;
 

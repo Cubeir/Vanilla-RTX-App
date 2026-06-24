@@ -23,14 +23,14 @@ public class LampAnimator
 
     private readonly LampContext _context;
     private readonly Image _baseImage;
-    private readonly Image _overlayImage;
-    private readonly Image _haloImage;
-    private readonly Image _superImage;
+    private readonly Image? _overlayImage;
+    private readonly Image? _haloImage;
+    private readonly Image? _superImage;
 
-    private readonly string _onPath;
-    private readonly string _offPath;
-    private readonly string _superPath;
-    private readonly string _haloPath;
+    private readonly string? _onPath;
+    private readonly string? _offPath;
+    private readonly string? _superPath;
+    private readonly string? _haloPath;
 
     // Default opacity values matching XAML
     private readonly double _defaultHaloOpacity;
@@ -38,8 +38,8 @@ public class LampAnimator
     private readonly double _defaultOverlayOpacity = 0.0;
     private readonly double _defaultSuperOpacity = 0.0;
 
-    private CancellationTokenSource _blinkCts;
-    private Task _animationTask;
+    private CancellationTokenSource? _blinkCts;
+    private Task? _animationTask;
     private readonly SemaphoreSlim _animationLock = new(1, 1);
     private bool _isInitialized;
     private bool _isBusy;
@@ -50,8 +50,8 @@ public class LampAnimator
     // Degrees per second. Positive = clockwise.
     private double _haloVelocity = 0.0;
     // Background spin loop, shared across all callers while the lamp lives.
-    private CancellationTokenSource _spinCts;
-    private Task _spinTask;
+    private CancellationTokenSource? _spinCts;
+    private Task? _spinTask;
     private readonly SemaphoreSlim _spinLock = new(1, 1);
 
     // Physics constants
@@ -78,13 +78,13 @@ public class LampAnimator
     public LampAnimator(
         LampContext context,
         Image baseImage,
-        string onPath = null,
-        string offPath = null,
-        string superPath = null,
-        string haloPath = null,
-        Image overlayImage = null,
-        Image haloImage = null,
-        Image superImage = null)
+        string? onPath = null,
+        string? offPath = null,
+        string? superPath = null,
+        string? haloPath = null,
+        Image? overlayImage = null,
+        Image? haloImage = null,
+        Image? superImage = null)
     {
         _context = context;
         _baseImage = baseImage ?? throw new ArgumentNullException(nameof(baseImage));
@@ -335,9 +335,9 @@ public class LampAnimator
     // Existing private helpers (unchanged except spin impulse injections)
     // -------------------------------------------------------------------------
 
-    private (string on, string off, string super, string halo) ResolveImagePaths()
+    private (string? on, string? off, string? super, string? halo) ResolveImagePaths()
     {
-        string specialName = GetSpecialOccasionName(DateTime.Today);
+        string? specialName = GetSpecialOccasionName(DateTime.Today);
 
         if (!string.IsNullOrEmpty(specialName))
         {
@@ -368,7 +368,7 @@ public class LampAnimator
         );
     }
 
-    public string GetSpecialOccasionName(DateTime date)
+    public string? GetSpecialOccasionName(DateTime date)
     {
         if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
             return "birthday";
@@ -391,7 +391,7 @@ public class LampAnimator
         if (_isInitialized)
             return;
 
-        string specialName = GetSpecialOccasionName(DateTime.Today);
+        string? specialName = GetSpecialOccasionName(DateTime.Today);
 
         // Always preload images for instant access during animations
         var loadTasks = new List<Task>();
@@ -454,7 +454,7 @@ public class LampAnimator
             await AnimateOpacity(_haloImage, _defaultHaloOpacity, fadeMs);
     }
 
-    private async Task<BitmapImage> GetCachedImageAsync(string path)
+    private async Task<BitmapImage?> GetCachedImageAsync(string? path)
     {
         if (string.IsNullOrEmpty(path)) return null;
 
@@ -488,7 +488,7 @@ public class LampAnimator
         }
     }
 
-    private async Task SetImageAsync(Image imageControl, string path)
+    private async Task SetImageAsync(Image? imageControl, string? path)
     {
         if (imageControl == null || string.IsNullOrEmpty(path)) return;
 
@@ -497,7 +497,7 @@ public class LampAnimator
             imageControl.Source = image;
     }
 
-    private async Task AnimateOpacity(FrameworkElement element, double targetOpacity, double durationMs, CancellationToken ct = default)
+    private async Task AnimateOpacity(FrameworkElement? element, double targetOpacity, double durationMs, CancellationToken ct = default)
     {
         if (element == null) return;
 

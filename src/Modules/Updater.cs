@@ -171,7 +171,7 @@ public class PackUpdater
             return false;
         }
 
-        bool needsInvalidation = await DoesCacheNeedUpdate(cacheInfo.path, remote.Value);
+        bool needsInvalidation = await DoesCacheNeedUpdate(cacheInfo.path!, remote.Value);
 
         if (needsInvalidation)
         {
@@ -325,7 +325,7 @@ public class PackUpdater
             }
 
             Trace.WriteLine("✅ Using cached zipball for deployment");
-            var deploySuccess = await DeployPackage(cacheInfo.path, packType, enableEnhancements);
+            var deploySuccess = await DeployPackage(cacheInfo.path!, packType, enableEnhancements);
             return (deploySuccess, new List<string>(_logMessages));
         }
         catch (Exception ex)
@@ -379,7 +379,7 @@ public class PackUpdater
             }
         }
 
-        string rtxVersion = null, normalsVersion = null, opusVersion = null;
+        string? rtxVersion = null, normalsVersion = null, opusVersion = null;
         VersionSource rtxSource = VersionSource.Remote;
         VersionSource normalsSource = VersionSource.Remote;
         VersionSource opusSource = VersionSource.Remote;
@@ -427,7 +427,7 @@ public class PackUpdater
         {
             try
             {
-                var zipballVersions = await GetVersionsFromCachedZipball(cacheInfo.path);
+                var zipballVersions = await GetVersionsFromCachedZipball(cacheInfo.path!);
                 if (zipballVersions.HasValue)
                 {
                     if (rtxVersion == null && zipballVersions.Value.rtx != null)
@@ -642,8 +642,8 @@ public class PackUpdater
         }
 
         bool anyPackDeployed = false;
-        string tempExtractionDir = null;
-        string resourcePackPath = null;
+        string? tempExtractionDir = null;
+        string? resourcePackPath = null;
 
         try
         {
@@ -674,7 +674,7 @@ public class PackUpdater
 
             var extractedManifests = Directory.GetFiles(tempExtractionDir, "manifest.json", SearchOption.AllDirectories);
 
-            var packsToProcess = new List<(string uuid, string moduleUuid, string sourcePath, string finalName, string displayName, PackType packType)>();
+            var packsToProcess = new List<(string uuid, string moduleUuid, string? sourcePath, string finalName, string displayName, PackType packType)>();
 
             foreach (var manifestPath in extractedManifests)
             {
@@ -722,7 +722,7 @@ public class PackUpdater
                     await DeleteExistingPackByUUID(resourcePackPath, pack.uuid, pack.moduleUuid, pack.displayName);
 
                     var finalDestination = GetSafeDirectoryName(resourcePackPath, pack.finalName);
-                    Directory.Move(pack.sourcePath, finalDestination);
+                    Directory.Move(pack.sourcePath!, finalDestination);
 
                     if (enableEnhancements)
                     {
@@ -797,10 +797,10 @@ public class PackUpdater
             var dirInfo = new DirectoryInfo(resourcePackPath);
             string opposingPath = InstallToDevelopmentFolder
                 ? dirInfo.Name.Equals("development_resource_packs", StringComparison.OrdinalIgnoreCase)
-                    ? Path.Combine(dirInfo.Parent.FullName, "resource_packs")
+                    ? Path.Combine(dirInfo.Parent!.FullName, "resource_packs")
                     : resourcePackPath
                 : dirInfo.Name.Equals("resource_packs", StringComparison.OrdinalIgnoreCase)
-                    ? Path.Combine(dirInfo.Parent.FullName, "development_resource_packs")
+                    ? Path.Combine(dirInfo.Parent!.FullName, "development_resource_packs")
                     : resourcePackPath;
 
             if (Directory.Exists(opposingPath))
@@ -956,9 +956,9 @@ public class PackUpdater
 
         try
         {
-            using var archive = ZipFile.OpenRead(cacheInfo.path);
+            using var archive = ZipFile.OpenRead(cacheInfo.path!);
 
-            string manifestPath = packType switch
+            string? manifestPath = packType switch
             {
                 PackType.VanillaRTX => "Vanilla-RTX/manifest.json",
                 PackType.VanillaRTXNormals => "Vanilla-RTX-Normals/manifest.json",
@@ -1096,10 +1096,10 @@ public class PackUpdater
 
             string opposingPath = InstallToDevelopmentFolder
                 ? dirInfo.Name.Equals("development_resource_packs", StringComparison.OrdinalIgnoreCase)
-                    ? Path.Combine(dirInfo.Parent.FullName, "resource_packs")
+                    ? Path.Combine(dirInfo.Parent!.FullName, "resource_packs")
                     : resourcePackPath
                 : dirInfo.Name.Equals("resource_packs", StringComparison.OrdinalIgnoreCase)
-                    ? Path.Combine(dirInfo.Parent.FullName, "development_resource_packs")
+                    ? Path.Combine(dirInfo.Parent!.FullName, "development_resource_packs")
                     : resourcePackPath;
 
             if (Directory.Exists(opposingPath))
@@ -1162,8 +1162,11 @@ public class PackUpdater
             var json = await File.ReadAllTextAsync(manifestPath);
             var data = JObject.Parse(json);
 
-            string headerUUID = data["header"]?["uuid"]?.ToString();
-            string moduleUUID = data["modules"]?[0]?["uuid"]?.ToString();
+            string? headerUUID = data["header"]?["uuid"]?.ToString();
+            string? moduleUUID = data["modules"]?[0]?["uuid"]?.ToString();
+
+            if (headerUUID == null || moduleUUID == null)
+                return null;
 
             return (headerUUID, moduleUUID);
         }
@@ -1173,7 +1176,7 @@ public class PackUpdater
         }
     }
 
-    private (bool exists, string path) GetCacheInfo()
+    private (bool exists, string? path) GetCacheInfo()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         var cachedPath = localSettings.Values["CachedZipballPath"] as string;
@@ -1182,7 +1185,7 @@ public class PackUpdater
         {
             try
             {
-                using (ZipFile.OpenRead(cachedPath)) { }
+                using (ZipFile.OpenRead(cachedPath!)) { }
             }
             catch
             {
@@ -1206,11 +1209,11 @@ public class PackUpdater
         return exists;
     }
 
-    private string GetTopLevelFolderForManifest(string manifestPath, string resourcePackPath)
+    private string? GetTopLevelFolderForManifest(string manifestPath, string resourcePackPath)
     {
         var manifestDir = Path.GetDirectoryName(manifestPath);
         var resourcePackDir = new DirectoryInfo(resourcePackPath);
-        var currentDir = new DirectoryInfo(manifestDir);
+        var currentDir = manifestDir != null ? new DirectoryInfo(manifestDir) : null;
 
         while (currentDir != null && currentDir.Parent != null)
         {

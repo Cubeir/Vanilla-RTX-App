@@ -34,134 +34,6 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-/* ### BACKLOG ###
-
-
-
-- Stress test GDKLocator again
-
-- manifests with comments, do features play well with them?
-
-- Test memory usage when tuning large packs
-test for memory leaks
-
-- test leave a review prompt's changes
-MAYBE rewrite it as a ContentDialogue, current one's pretty though!
-
-- Give all classes to claude one day one by one, explain their workings
-Ask it to complete comment/summary documentations
-AND conform to the debug log styling you've been doing recently
-
-- Implement a proper Tuning Progress bar
-Update the progressbar manager, allow it to move slowly, to give an indication of the progress of the tuning process
-have it update in real time, all files/processed, should be easy enough...
-
-- Alongside it, add the ability to Abort the operation, WHILE tuning, change tune button to "Abort Tuning" with a warning glyph
-or &#xE730; would be nicer, &#xECE4; too
-
-
-
-- TODO: Begin exposing most if not all constants by utilizing the new Constants.json class all throughout the app
-This is probably not necessary anymore and PROBABLY slows the app down, DON'T DO IT.
-Keep the class though... may be useful later, its just,
-If you do the userdatalocator's development, deploy that gdklocator-like design of yours, it won't be necessary to do this anymore.
-
-- For any feature that deals with user RP directories:
-Ensure it POOLS dev/regular folders, AND across ALL users!
-For importing and selecting packs upstream it is ESPECIALLY important
-PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
-
-- Improve user data locator class further, EXPOSE the root it looks for to a json file
-it shoots straight for appdata right now, let that be the default and the fallback
-try to get a explicit path from a json instead, a constant
-
-- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
-
-- resolve all compiler warnings and test one by one
-
-- Animated the size of exporter and delete buttons?
-the idea u had... export selection, revealing full text when hovered, etc. etc.
-it'd be cool!
-
-- Consider the redesign, pic on discord, its simple but a very good change probably
-rip out the legacy checkboxes for selecting default Vanilla RTX packs
-would wanna do the idea of dynamically resizing the action buttons near tune selection, but give you MIGHT do this redesign down the line, it is NOT worth the effort yet.
-until the ideas are more concrete 
-
-- Create a BetterRTX-like lut preset, gets the looks 80% there! 
-
-- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
-watchya doing?
-
-- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
-Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
-Some overrides now disable it while they should not.
-
-- Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
-All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
-
-- Update the docs to be less verbose, more accurate and helpful instead, cut off unneeded details.
-Update them to reflect the latest features/changes
-
-- We seem to be having issues with installations done from third party launchers or even the official mc launcher which names things differently?!
-// trying to address it
-
-- Do the TODOs scattered in the code
-
-- When targeting preview, a new Dev branch on github
-must be used to receieve updates, compare packages, etc...
-easier said than done, the code is a clusterfuck
-and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
-if it doesn't, this is too, is a Useless idea.
-
-- Reduce cache retry timers for PACK UPDATER version retrieval
-it hangs too long trying to get from remote
-the whole deal is that user quickly gets access to the cached version if no internet is available
-this defeats the purpose if they gotta wait 59 or 30 seconds
-Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
-
-- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
-Give it special treatment same as default preset and avoid changing existing logic
-they appear at the bottom
-expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
-basically, instead of changing the current pipeline, integerate this/build it on top of it
-that way it'll surely work without fucking things up
-
-- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
-Especially release builds, There COULD BE LATENT TRIMMING BUGS!
-Game detection and cache invalidation could be improved for both
-PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
-
-- With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
-It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
-It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
-
-In fact, manually calling UpdateUI is NECESSERY, thank GOD you're not using bindings
-UpdateUI is VERY NEEDED for Previewer class, it is already implemented everywhere and freezes vessel updates as necessery
-You would've had to manually done this anyway
-
-And the smooth transitions are worth it.
-
-- A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
-Besides that you're gonna need something to unify the logging
-A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
-This way direct interaction with non-UI threads will be zero
-Long running tasks dump their text, UI thread gradually writes it out on its own.
-only concern is performance with large logs
-This idea can be a public static method and it won't ever ever block Ui thread
-A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
-
-^ yeah lets dedicate more code clutter to visual things
-
-- Set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
-Or simple pixel arts you'd like to make in the same style
-Have 5-10 made
-
-- Make holding shift turn the lamp Green to indicate its debugging functionality
-
-- Account for different font scalings, windows accessibility settings, etc...
-gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
-*/
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
@@ -373,7 +245,7 @@ public sealed partial class MainWindow : Window
 
         Log($"App Version: {appVersion}" + new string('\n', 2) +
             $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
-
+        ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
 
         // Do upon app closure
         this.Closed += (s, e) =>
@@ -482,7 +354,7 @@ public sealed partial class MainWindow : Window
         if (psa is { Length: > 0 })
         {
             for (int i = psa.Length - 1; i >= 0; i--)
-                Log(psa[i].Text, LogLevel.PSA);
+                Log(psa[i].Text);
         }
 
 
@@ -549,7 +421,6 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
         }
 
-        // TODO: review here, do these two really both take .ico files? what resolutions?! what of .SetIcon, should you set that one too?
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");
         appWindow.SetTaskbarIcon(iconPath);
         appWindow.SetTitleBarIcon(iconPath);
@@ -809,8 +680,10 @@ public sealed partial class MainWindow : Window
     {
         void Prepend()
         {
-            var textBox = Instance.SidebarLog;
+            if (Instance == null)
+                return;
 
+            var textBox = Instance.SidebarLog;
             string prefix = level switch
             {
                 LogLevel.Success => "✅ ",
@@ -847,7 +720,7 @@ public sealed partial class MainWindow : Window
             var sv = GetScrollViewer(textBox);
             sv?.ChangeView(null, 0, null);
         }
-
+        if (Instance == null) { return; }
         if (Instance.DispatcherQueue.HasThreadAccess)
             Prepend();
         else
@@ -869,12 +742,11 @@ public sealed partial class MainWindow : Window
     }
 
 
-    // TODO: use Windows.System.Launcher URI Launcher instead, used already in review prompt for example
     public static async Task OpenUrl(string url)
     {
 #if DEBUG
-    Log("OpenUrl is disabled in debug builds.", LogLevel.Informational);
-    return;
+        Log("OpenUrl is disabled in debug builds.", LogLevel.Informational);
+        return;
 #else
         try
         {
@@ -893,10 +765,12 @@ public sealed partial class MainWindow : Window
 
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75)
     {
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate:_titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
+        if (_splashLampAnimator == null || _titlebarLampAnimator == null) return;
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
+        if (_splashLampAnimator == null || _titlebarLampAnimator == null) return;
         await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "");
     }
 
@@ -982,7 +856,7 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void SetShiftText(FrameworkElement control, string shiftText, FontIcon icon = null, string shiftGlyph = null)
+    private void SetShiftText(FrameworkElement control, string shiftText, FontIcon? icon = null, string? shiftGlyph = null)
     {
         // Save + apply text
         if (!_originalTexts.ContainsKey(control))
@@ -1003,7 +877,7 @@ public sealed partial class MainWindow : Window
             icon.Glyph = shiftGlyph;
         }
     }
-    private void RestoreShiftText(FrameworkElement control, FontIcon icon = null)
+    private void RestoreShiftText(FrameworkElement control, FontIcon? icon = null)
     {
         if (_originalTexts.TryGetValue(control, out var originalText))
         {
@@ -1230,7 +1104,9 @@ public sealed partial class MainWindow : Window
             TunerVariables.Persistent.AppThemeMode = mode;
         }
 
-        var root = MainWindow.Instance.Content as FrameworkElement;
+        if (Instance == null) return;
+        var root = Instance.Content as FrameworkElement;
+        if (root == null) return;
         root.RequestedTheme = mode switch
         {
             "Light" => ElementTheme.Light,
@@ -1560,6 +1436,7 @@ public sealed partial class MainWindow : Window
     private void EmissivityAmbientLightToggle_Toggled(object sender, RoutedEventArgs e)
     {
         var toggle = sender as ToggleSwitch;
+        if (toggle == null) { return; }
         AddEmissivityAmbientLight = toggle.IsOn;
 
         // Show/hide the warning icon
@@ -1573,7 +1450,7 @@ public sealed partial class MainWindow : Window
         // ----- HARD RESET 
         var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
         if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
-        {   
+        {
             ToggleControls(this, false, true, ["LogCopyButton"]);
             _progressManager.ShowProgress();
             _ = BlinkingLamp(true);
@@ -2149,7 +2026,7 @@ public sealed partial class MainWindow : Window
             };
 
             packUpdaterWindow.Activate();
-        }   
+        }
     }
 
 

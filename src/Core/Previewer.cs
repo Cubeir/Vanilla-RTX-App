@@ -599,7 +599,7 @@ public class Previewer
         var data = button.GetValue(FrameworkElement.TagProperty) as ButtonPreviewData;
         if (data == null) return;
 
-        string imagePath = isPressed ? data.ImageOnPath : data.ImageOffPath;
+        string? imagePath = isPressed ? data.ImageOnPath : data.ImageOffPath;
         double bottomOpacity = !string.IsNullOrEmpty(imagePath) ? 1.0 : 0.0;
 
         SetVesselState(imagePath ?? "", "", bottomOpacity, 0.0, true);
