@@ -24,7 +24,6 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
-
         TraceManager.Initialize();
     }
 
@@ -107,7 +106,6 @@ public partial class App : Application
     private const int SW_RESTORE = 9;
 }
 
-
 /// <summary>
 /// Custom TraceListener that captures all Trace.WriteLine calls
 /// </summary>
@@ -115,19 +113,20 @@ public class InMemoryTraceListener : TraceListener
 {
     private readonly ConcurrentQueue<TraceEntry> _entries = new();
     private readonly int _maxEntries;
+    private int _count;
 
     public InMemoryTraceListener(int maxEntries = 1000)
     {
         _maxEntries = maxEntries;
     }
 
-    public override void Write(string message)
+    public override void Write(string? message)
     {
         // Usually not used, but implement for completeness
         WriteLine(message);
     }
 
-    public override void WriteLine(string message)
+    public override void WriteLine(string? message)
     {
         var entry = new TraceEntry
         {
@@ -137,11 +136,10 @@ public class InMemoryTraceListener : TraceListener
         };
 
         _entries.Enqueue(entry);
-
-        // Keep buffer size under control
-        while (_entries.Count > _maxEntries)
+        if (Interlocked.Increment(ref _count) > _maxEntries)
         {
-            _entries.TryDequeue(out _);
+            if (_entries.TryDequeue(out _))
+                Interlocked.Decrement(ref _count);
         }
     }
 
@@ -166,7 +164,7 @@ public class InMemoryTraceListener : TraceListener
     private class TraceEntry
     {
         public DateTime Timestamp { get; set; }
-        public string Message { get; set; }
+        public string? Message { get; set; }
         public int ThreadId { get; set; }
     }
 }
