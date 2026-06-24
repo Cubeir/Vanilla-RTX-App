@@ -1,9 +1,9 @@
+using System;
+using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
-using System;
-using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Core;
 

@@ -1279,7 +1279,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         string name = "";
         string description = "";
         string uuid = "";
-        BitmapImage? icon = null; 
+        BitmapImage? icon = null;
 
         if (presetData is LocalPresetData localPreset)
         {

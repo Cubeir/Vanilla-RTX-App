@@ -11,10 +11,10 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Vanilla_RTX_App.Core;
 using WinRT.Interop;
 using static Vanilla_RTX_App.TunerVariables;
 

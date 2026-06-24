@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
-using static Vanilla_RTX_App.TunerVariables;
-using static Vanilla_RTX_App.TunerVariables.Persistent;
 using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.Modules.ProcessorVariables;
-using System.Diagnostics;
+using static Vanilla_RTX_App.TunerVariables;
+using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App.Modules;
 
