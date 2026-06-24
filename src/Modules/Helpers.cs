@@ -11,7 +11,6 @@ using System.Xml.Linq;
 using ImageMagick;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-
 using static Vanilla_RTX_App.MainWindow;
 
 namespace Vanilla_RTX_App.Modules;
@@ -1126,151 +1125,181 @@ public static class MinecraftGDKLocator
 
 
 /// <summary>
-/// Centralizes every path Minecraft's GDK build uses for user data — worlds, options,
-/// resource packs, and the Shared cross-account tree.
-/// Every consumer in the app should go through this class instead of constructing paths independently.
+/// Centralizes discovery and validation of Minecraft's GDK user data root —
+/// the folder that contains worlds, options, resource packs, and the Shared tree.
+///
+/// Contract: the path stored in TunerVariables.Persistent.MinecraftDataPath (and
+/// MinecraftPreviewDataPath) is always the "Minecraft Bedrock" or "Minecraft Bedrock
+/// Preview" root folder — the one that directly contains a "Users" subfolder.
+/// All deeper paths (com.mojang, resource_packs, options.txt) are derived from this
+/// root on demand via the helper methods below.
+///
+/// Unlike GDKLocator, there is no exe or config file to serve as an absolute gospel
+/// here — validation is based on folder structure (presence of the "Users" subfolder).
+/// If the default AppData location is absent, we cannot reliably auto-discover an
+/// alternative (third-party launchers like LeviLauncher can put this anywhere), so
+/// we surface that as a user-actionable warning rather than attempting a blind search.
+///
+/// The result of the last validation is exposed as a simple bool per edition so that
+/// the main window and any other caller can gate features without re-checking the path
+/// themselves.
 /// </summary>
 public static class MinecraftUserDataLocator
 {
-    private const string StableRootFolderName = "Minecraft Bedrock";
-    private const string PreviewRootFolderName = "Minecraft Bedrock Preview";
+    // ── Folder names ──────────────────────────────────────────────────────────
+    public const string StableRootFolderName = "Minecraft Bedrock";
+    public const string PreviewRootFolderName = "Minecraft Bedrock Preview";
 
+    // ── Internal sub-paths ────────────────────────────────────────────────────
+    private const string UsersFolderName = "Users";
+    private static readonly string SharedComMojangSubPath = Path.Combine("Shared", "games", "com.mojang");
     private const string ResourcePacksFolderName = "resource_packs";
     private const string DevResourcePacksFolderName = "development_resource_packs";
     private const string OptionsFileName = "options.txt";
 
-    /// <summary>
-    /// Result of a data-root resolution. <see cref="Exists"/> indicates whether the
-    /// root folder was found at all — false means the targeted game version has
-    /// never been launched (or isn't installed), and callers should fail gracefully
-    /// rather than throwing or crashing.
-    /// </summary>
-    public readonly struct DataRoot
-    {
-        public bool Exists { get; init; }
-        public string RootPath { get; init; }
-        public string VersionDisplayName { get; init; }
+    // ── Last-known validation state (set by ValidateAndUpdateCachedLocations) ─
+    public static bool IsStableDataValid { get; private set; }
+    public static bool IsPreviewDataValid { get; private set; }
 
-        public static DataRoot Missing(string versionDisplayName) => new()
+    // =========================================================================
+    //  PUBLIC API — startup + path resolution
+    // =========================================================================
+
+    /// <summary>
+    /// Called on app startup (and on Preview/Release toggle) to verify cached
+    /// user data paths and attempt to fill them from the default AppData location
+    /// if missing. Updates <see cref="IsStableDataValid"/> and
+    /// <see cref="IsPreviewDataValid"/> so callers can gate features without
+    /// re-checking themselves.
+    /// Call this after LoadSettings() so the cached paths are already loaded.
+    /// </summary>
+    public static void ValidateAndUpdateCachedLocations()
+    {
+        Trace.WriteLine("=== [UserDataLocator] Validation Starting ===");
+
+        IsStableDataValid = ValidateSingleEdition(isPreview: false);
+        IsPreviewDataValid = ValidateSingleEdition(isPreview: true);
+
+        Trace.WriteLine($"=== [UserDataLocator] Complete — Stable={IsStableDataValid}, Preview={IsPreviewDataValid} ===");
+    }
+
+    /// <summary>
+    /// Returns the validated data root for the given edition, or null if it isn't
+    /// known/valid. Callers that only care about one edition at a time (most of them)
+    /// use this rather than reading the Persistent fields directly.
+    /// </summary>
+    public static string? GetDataRoot(bool isPreview)
+    {
+        var path = isPreview
+            ? TunerVariables.Persistent.MinecraftPreviewDataPath
+            : TunerVariables.Persistent.MinecraftDataPath;
+
+        return IsValidDataRoot(path) ? path : null;
+    }
+
+    /// <summary>
+    /// True if the data root for the given edition is currently valid.
+    /// Mirrors <see cref="IsStableDataValid"/>/<see cref="IsPreviewDataValid"/>
+    /// but addressable by bool rather than two separate properties.
+    /// </summary>
+    public static bool IsDataValid(bool isPreview)
+        => isPreview ? IsPreviewDataValid : IsStableDataValid;
+
+    /// <summary>
+    /// Attempts to accept a user-supplied path as the data root for the given edition.
+    /// Validates structure, caches on success, updates the validity flag.
+    /// Returns true if the path was accepted.
+    /// </summary>
+    public static bool TrySetCustomDataRoot(bool isPreview, string path)
+    {
+        if (!IsValidDataRoot(path))
         {
-            Exists = false,
-            RootPath = string.Empty,
-            VersionDisplayName = versionDisplayName
-        };
+            Trace.WriteLine($"[UserDataLocator] Rejected custom path (no Users subfolder): {path}");
+            return false;
+        }
+
+        Trace.WriteLine($"[UserDataLocator] Accepted custom path for {(isPreview ? "Preview" : "Stable")}: {path}");
+        SetCachedPath(isPreview, path);
+
+        if (isPreview) IsPreviewDataValid = true;
+        else IsStableDataValid = true;
+
+        return true;
+    }
+
+    // ── Derived paths ---------------------------------------------------------
+    // All return empty string (never null, never throw) when the root isn't valid,
+    // so callers can pass the result to Directory.Exists / File.Exists without a
+    // null-check dance.
+
+    public static string GetUsersPath(bool isPreview)
+    {
+        var root = GetDataRoot(isPreview);
+        return root is null ? string.Empty : Path.Combine(root, UsersFolderName);
+    }
+
+    public static string GetSharedComMojangPath(bool isPreview)
+    {
+        var users = GetUsersPath(isPreview);
+        return string.IsNullOrEmpty(users) ? string.Empty
+            : Path.Combine(users, SharedComMojangSubPath);
     }
 
     /// <summary>
-    /// Resolves the root data folder for the targeted edition
-    /// (%AppData%\Minecraft Bedrock[ Preview]). Does not guarantee the folder
-    /// exists — check <see cref="DataRoot.Exists"/> before using <see cref="DataRoot.RootPath"/>.
+    /// resource_packs or development_resource_packs under Shared\games\com.mojang.
+    /// Pass createIfMissing=true for write-path callers (e.g. DeployPackage).
     /// </summary>
-    public static DataRoot GetDataRoot(bool isTargetingPreview)
+    public static string GetResourcePacksPath(bool isPreview, bool development = false, bool createIfMissing = false)
     {
-        var folderName = isTargetingPreview ? PreviewRootFolderName : StableRootFolderName;
-        var versionName = isTargetingPreview ? "Minecraft Preview" : "Minecraft";
+        var comMojang = GetSharedComMojangPath(isPreview);
+        if (string.IsNullOrEmpty(comMojang)) return string.Empty;
 
-        var rootPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            folderName
-        );
+        var folder = development ? DevResourcePacksFolderName : ResourcePacksFolderName;
+        var fullPath = Path.Combine(comMojang, folder);
 
-        if (!Directory.Exists(rootPath))
-            return DataRoot.Missing(versionName);
-
-        return new DataRoot
+        if (!Directory.Exists(fullPath) && createIfMissing)
         {
-            Exists = true,
-            RootPath = rootPath,
-            VersionDisplayName = versionName
-        };
+            try { Directory.CreateDirectory(fullPath); }
+            catch { return string.Empty; }
+        }
+
+        return fullPath;
     }
 
     /// <summary>
-    /// The per-user/shared "Users" folder, e.g. ...\Minecraft Bedrock\Users.
-    /// This is where each signed-in account gets its own XUID-named subfolder,
-    /// plus the special "Shared" subfolder used for packs and cross-account data.
-    /// Returns empty string if the data root doesn't exist.
+    /// Both resource_packs and development_resource_packs paths that actually
+    /// exist on disk. Convenient for scan-all operations (PackLocator, PackBrowser).
     /// </summary>
-    public static string GetUsersPath(bool isTargetingPreview)
+    public static IEnumerable<string> GetExistingResourcePackScanPaths(bool isPreview)
     {
-        var root = GetDataRoot(isTargetingPreview);
-        return root.Exists ? Path.Combine(root.RootPath, "Users") : string.Empty;
+        var rp = GetResourcePacksPath(isPreview, development: false);
+        var dev = GetResourcePacksPath(isPreview, development: true);
+
+        if (!string.IsNullOrEmpty(rp) && Directory.Exists(rp)) yield return rp;
+        if (!string.IsNullOrEmpty(dev) && Directory.Exists(dev)) yield return dev;
     }
 
     /// <summary>
-    /// The Shared com.mojang folder: ...\Users\Shared\games\com.mojang.
-    /// This is where resource packs, behavior packs, and marketplace content live —
-    /// shared across every signed-in account on the machine. Returns empty string
-    /// if the data root doesn't exist.
+    /// All options.txt files under the Users tree (one per XUID + Shared).
+    /// Returns empty array if the data root is unknown or the Users folder is absent.
     /// </summary>
-    public static string GetSharedComMojangPath(bool isTargetingPreview)
+    public static string[] FindAllOptionsFiles(bool isPreview)
     {
-        var usersPath = GetUsersPath(isTargetingPreview);
-        return string.IsNullOrEmpty(usersPath)
-            ? string.Empty
-            : Path.Combine(usersPath, "Shared", "games", "com.mojang");
-    }
-
-    /// <summary>
-    /// The Shared resource_packs folder. Created on demand if <paramref name="createIfMissing"/>
-    /// is true and the parent com.mojang tree exists. Returns empty string if the data
-    /// root itself doesn't exist (game never launched / not installed).
-    /// </summary>
-    public static string GetResourcePacksPath(bool isTargetingPreview, bool createIfMissing = false)
-        => GetPacksSubfolder(isTargetingPreview, ResourcePacksFolderName, createIfMissing);
-
-    /// <summary>
-    /// The Shared development_resource_packs folder. Same semantics as <see cref="GetResourcePacksPath"/>.
-    /// </summary>
-    public static string GetDevelopmentResourcePacksPath(bool isTargetingPreview, bool createIfMissing = false)
-        => GetPacksSubfolder(isTargetingPreview, DevResourcePacksFolderName, createIfMissing);
-
-    /// <summary>
-    /// Both resource_packs and development_resource_packs paths, only including
-    /// ones that actually exist on disk. Convenient for scan-everywhere style
-    /// operations like PackLocator and PackBrowser.
-    /// </summary>
-    public static IEnumerable<string> GetExistingResourcePackScanPaths(bool isTargetingPreview)
-    {
-        var resourcePacks = GetResourcePacksPath(isTargetingPreview);
-        var devResourcePacks = GetDevelopmentResourcePacksPath(isTargetingPreview);
-
-        if (!string.IsNullOrEmpty(resourcePacks) && Directory.Exists(resourcePacks))
-            yield return resourcePacks;
-
-        if (!string.IsNullOrEmpty(devResourcePacks) && Directory.Exists(devResourcePacks))
-            yield return devResourcePacks;
-    }
-
-    /// <summary>
-    /// Every options.txt file under the Users tree — one per signed-in account that
-    /// has launched the game, plus potentially one under Shared. Returns an empty
-    /// array (never null) if the data root or Users folder doesn't exist, so callers
-    /// can safely foreach without a null check.
-    /// </summary>
-    public static string[] FindAllOptionsFiles(bool isTargetingPreview)
-    {
-        var usersPath = GetUsersPath(isTargetingPreview);
+        var usersPath = GetUsersPath(isPreview);
         if (string.IsNullOrEmpty(usersPath) || !Directory.Exists(usersPath))
             return Array.Empty<string>();
 
-        try
-        {
-            return Directory.GetFiles(usersPath, OptionsFileName, SearchOption.AllDirectories);
-        }
-        catch
-        {
-            return Array.Empty<string>();
-        }
+        try { return Directory.GetFiles(usersPath, OptionsFileName, SearchOption.AllDirectories); }
+        catch { return Array.Empty<string>(); }
     }
 
     /// <summary>
-    /// Human-readable label for the account/Shared folder an options.txt or pack
-    /// belongs to — the first path segment under Users\. Used for per-file log messages.
+    /// Human-readable label for the XUID or "Shared" folder that owns a given
+    /// path (first segment under Users\). Used for per-file log messages.
     /// </summary>
-    public static string GetOwningFolderLabel(bool isTargetingPreview, string fullPath)
+    public static string GetOwningFolderLabel(bool isPreview, string fullPath)
     {
-        var usersPath = GetUsersPath(isTargetingPreview);
+        var usersPath = GetUsersPath(isPreview);
         if (string.IsNullOrEmpty(usersPath))
             return Path.GetFileName(Path.GetDirectoryName(fullPath)) ?? fullPath;
 
@@ -1285,30 +1314,75 @@ public static class MinecraftUserDataLocator
         }
     }
 
-    // -------------------------------------------------------------------------
-    // PRIVATE HELPERS
-    // -------------------------------------------------------------------------
+    /// <summary>
+    /// Display name for the targeted edition — "Minecraft" or "Minecraft Preview".
+    /// </summary>
+    public static string GetVersionDisplayName(bool isPreview)
+        => isPreview ? "Minecraft Preview" : "Minecraft";
 
-    private static string GetPacksSubfolder(bool isTargetingPreview, string subfolderName, bool createIfMissing)
+    // =========================================================================
+    //  PRIVATE HELPERS
+    // =========================================================================
+
+    /// <summary>
+    /// Validates the cached path for one edition and attempts to fill it from
+    /// AppData if missing. Returns true if a valid path is now in cache.
+    /// </summary>
+    private static bool ValidateSingleEdition(bool isPreview)
     {
-        var sharedComMojang = GetSharedComMojangPath(isTargetingPreview);
-        if (string.IsNullOrEmpty(sharedComMojang))
-            return string.Empty; // data root doesn't exist — nothing we can do
+        var versionName = isPreview ? "Preview" : "Stable";
+        var cachedPath = isPreview
+            ? TunerVariables.Persistent.MinecraftPreviewDataPath
+            : TunerVariables.Persistent.MinecraftDataPath;
 
-        var fullPath = Path.Combine(sharedComMojang, subfolderName);
-
-        if (!Directory.Exists(fullPath) && createIfMissing)
+        // 1. Cached path — still there and valid?
+        if (!string.IsNullOrEmpty(cachedPath))
         {
-            try
+            if (IsValidDataRoot(cachedPath))
             {
-                Directory.CreateDirectory(fullPath);
+                Trace.WriteLine($"[UserDataLocator] {versionName} cache valid: {cachedPath}");
+                return true;
             }
-            catch
-            {
-                return string.Empty; // creation failed (permissions etc.) — caller must handle
-            }
+
+            Trace.WriteLine($"[UserDataLocator] {versionName} cache invalid, clearing: {cachedPath}");
+            SetCachedPath(isPreview, null);
         }
 
-        return fullPath;
+        // 2. Default AppData location
+        var folderName = isPreview ? PreviewRootFolderName : StableRootFolderName;
+        var defaultPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            folderName);
+
+        if (IsValidDataRoot(defaultPath))
+        {
+            Trace.WriteLine($"[UserDataLocator] {versionName} found at default location: {defaultPath}");
+            SetCachedPath(isPreview, defaultPath);
+            return true;
+        }
+
+        // 3. Not found anywhere we can check automatically
+        Trace.WriteLine($"[UserDataLocator] {versionName} data root not found");
+        return false;
+    }
+
+    /// <summary>
+    /// A data root is valid if it exists on disk and contains a "Users" subfolder.
+    /// This is the closest equivalent to GDKLocator's exe-presence check — the
+    /// "Users" folder is created by the game on first launch and is required for
+    /// all per-user data to exist under it.
+    /// </summary>
+    private static bool IsValidDataRoot(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        if (!Directory.Exists(path)) return false;
+
+        return Directory.Exists(Path.Combine(path, UsersFolderName));
+    }
+
+    private static void SetCachedPath(bool isPreview, string? path)
+    {
+        if (isPreview) TunerVariables.Persistent.MinecraftPreviewDataPath = path;
+        else TunerVariables.Persistent.MinecraftDataPath = path;
     }
 }

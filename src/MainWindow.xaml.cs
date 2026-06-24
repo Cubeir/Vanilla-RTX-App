@@ -28,6 +28,7 @@ using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
+using WinRT.Interop;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -43,6 +44,19 @@ Do the redesign. TODAY. Delete PackLocator
 perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
 so other classes could use it
 Not manually constructing every little thing for callers.
+
+- Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
+Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
+
+Pack locator is busted right now with your new centralized userdata locator rework
+But its ok, no need to fix it, you're doing a redesign that retires it anyway.
+
+But you can't just retire it?!
+It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
+
+Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
+
+
 
 - do the userdatalocator expansion idea
 - Stress test GDKLocator again
@@ -301,6 +315,10 @@ public class PackSelectionViewModel : INotifyPropertyChanged
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher
         = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
+    // When set, overrides the count-based label entirely.
+    // Set to null to restore normal behavior.
+    private string? _labelOverride;
+
     public PackSelectionViewModel()
     {
         TunerVariables.SelectedPacks.CollectionChanged += OnSelectedPacksChanged;
@@ -316,6 +334,9 @@ public class PackSelectionViewModel : INotifyPropertyChanged
     {
         get
         {
+            if (_labelOverride != null)
+                return _labelOverride;
+
             int count = TunerVariables.SelectedPacks.Count;
             return count switch
             {
@@ -324,6 +345,13 @@ public class PackSelectionViewModel : INotifyPropertyChanged
                 _ => $"Selected {count} other packs"
             };
         }
+    }
+
+    public void SetLabelOverride(string? label)
+    {
+        _labelOverride = label;
+        _dispatcher.TryEnqueue(() =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BrowseButtonLabel))));
     }
 }
 
@@ -491,6 +519,10 @@ public sealed partial class MainWindow : Window
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
+        // Similar to GDKLocator but for user data:
+        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
+        // Updates the button responsible for allowing the user to select another root path.
+        UpdateBrowsePacksButton(IsTargetingPreview);
 
         // Brief delay to ensure everything is fully rendered, then fade out splash screen
         await Task.Delay(750);
@@ -1366,8 +1398,17 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
+    private async void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
+        // If user data isn't valid for the current edition, repurpose this click
+        // to let the user locate the data folder manually instead.
+        if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
+        {
+            await HandleManualDataLocationAsync();
+            return;
+        }
+
+        // Normal pack browser flow
         ToggleControls(this, false, true, []);
 
         var packBrowserWindow = new Vanilla_RTX_App.PackBrowser.PackBrowserWindow(this);
@@ -1397,16 +1438,87 @@ public sealed partial class MainWindow : Window
         packBrowserWindow.Activate();
     }
 
+    private void UpdateBrowsePacksButton(bool isTargetingPreview)
+    {
+        var isValid = MinecraftUserDataLocator.IsDataValid(isTargetingPreview);
+        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
+
+        if (isValid)
+        {
+            PackVM.SetLabelOverride(null); // restores count-based label
+            ToolTipService.SetToolTip(BrowsePacksButton,
+                "Select resource packs that you want to process, you can also import more packs from this menu.");
+        }
+        else
+        {
+            PackVM.SetLabelOverride("Locate game data");
+            ToolTipService.SetToolTip(BrowsePacksButton,
+                $"Could not find {versionName} data folder — click to locate it manually.");
+
+            Log($"⚠️ Could not find {versionName} user data folder. " +
+                $"If you're using a third-party launcher, click \"Locate game data\" to point the app to it.",
+                LogLevel.Warning);
+        }
+    }
+    public async Task HandleManualDataLocationAsync()
+    {
+        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(IsTargetingPreview);
+        var expectedName = IsTargetingPreview
+            ? MinecraftUserDataLocator.PreviewRootFolderName
+            : MinecraftUserDataLocator.StableRootFolderName;
+
+        var picker = new Windows.Storage.Pickers.FolderPicker
+        {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
+            ViewMode = Windows.Storage.Pickers.PickerViewMode.List
+        };
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder == null) return;
+
+        // Accept the selected folder directly, or its parent if the user navigated
+        // one level too deep (e.g. selected "Users" instead of "Minecraft Bedrock")
+        string? acceptedPath = null;
+
+        if (MinecraftUserDataLocator.TrySetCustomDataRoot(IsTargetingPreview, folder.Path))
+        {
+            acceptedPath = folder.Path;
+        }
+        else
+        {
+            var parent = Directory.GetParent(folder.Path)?.FullName;
+            if (parent != null && MinecraftUserDataLocator.TrySetCustomDataRoot(IsTargetingPreview, parent))
+                acceptedPath = parent;
+        }
+
+        if (acceptedPath == null)
+        {
+            Log($"❌ That doesn't look like a valid {versionName} data folder. " +
+                $"Please select the folder named \"{expectedName}\" — it should contain a \"Users\" subfolder.",
+                LogLevel.Warning);
+            return;
+        }
+
+        Log($"✅ {versionName} data folder set: {acceptedPath}", LogLevel.Success);
+
+        // Update button state and kick off pack detection now that the path is known
+        UpdateBrowsePacksButton(IsTargetingPreview);
+        _ = LocatePacksTask();
+    }
+
+
+
 
 
     private void TargetPreviewToggle_Checked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = true;
-
-        _ = LocatePacksTask();
         SelectedPacks.Clear();
 
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
+
         var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
         var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
         LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
@@ -1414,35 +1526,37 @@ public sealed partial class MainWindow : Window
         RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
 
         BetterRTXPresetManagerButton.IsEnabled = false;
+
+        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
+        UpdateBrowsePacksButton(IsTargetingPreview);
+        _ = LocatePacksTask();
     }
+
     private void TargetPreviewToggle_Unchecked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
-
-        _ = LocatePacksTask();
         SelectedPacks.Clear();
 
         Log("Targeting Release Minecraft.", LogLevel.Informational);
 
-        // Color of that little border next to the button
         var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
         var themeKey = theme == ElementTheme.Light ? "Light" : "Dark";
         var themeDictionaries = Application.Current.Resources.ThemeDictionaries;
         if (themeDictionaries.TryGetValue(themeKey, out var themeDict) && themeDict is ResourceDictionary dict)
         {
             if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
-            {
                 LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
-            }
             if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
-            {
                 RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
-            }
         }
-        BetterRTXPresetManagerButton.IsEnabled = true;
-    }
 
+        BetterRTXPresetManagerButton.IsEnabled = true;
+
+        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
+        UpdateBrowsePacksButton(IsTargetingPreview);
+        _ = LocatePacksTask();
+    }
 
     // Vanilla RTX Checkboxes
     private void Option_Checked(object sender, RoutedEventArgs e)
@@ -1948,7 +2062,7 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             Title = "Delete selected packs?",
-            Content = $"This will permanently delete {toDelete.Count} pack{(toDelete.Count == 1 ? "" : "s")} from disk. This cannot be undone.",
+            Content = $"This will delete {toDelete.Count} pack{(toDelete.Count == 1 ? "" : "s")} forever (a very long time).",
             PrimaryButtonText = "Delete",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,

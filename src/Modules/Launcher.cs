@@ -53,17 +53,18 @@ public class Launcher
         if (updates == null || updates.Length == 0)
             return "❗ No options were specified to update.";
 
-        var dataRoot = MinecraftUserDataLocator.GetDataRoot(isTargetingPreview);
-        if (!dataRoot.Exists)
+        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
+
+        if (!MinecraftUserDataLocator.IsDataValid(isTargetingPreview))
         {
-            return $"❗ {dataRoot.VersionDisplayName} data folder not found.\n" +
+            return $"❗ {versionName} data folder not found.\n" +
                    "Make sure the correct version of the game is installed and has been launched at least once.";
         }
 
         var optionsFiles = MinecraftUserDataLocator.FindAllOptionsFiles(isTargetingPreview);
         if (optionsFiles.Length == 0)
         {
-            return $"❗ No options.txt files found for {dataRoot.VersionDisplayName}.\n" +
+            return $"❗ No options.txt files found for {versionName}.\n" +
                    "Make sure the game has been launched at least once.";
         }
 
@@ -97,7 +98,7 @@ public class Launcher
         await Task.Delay(250);
 
         var protocol = isTargetingPreview ? "minecraft-preview://" : "minecraft://";
-        TryLaunchGame(protocol, dataRoot.VersionDisplayName, anyModificationsMade, allStatusMessages);
+        TryLaunchGame(protocol, versionName, anyModificationsMade, allStatusMessages);
 
         return string.Join("\n", allStatusMessages);
     }

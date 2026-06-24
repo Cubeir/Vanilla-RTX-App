@@ -647,16 +647,18 @@ public class PackUpdater
 
         try
         {
-            var dataRoot = MinecraftUserDataLocator.GetDataRoot(TunerVariables.Persistent.IsTargetingPreview);
-            if (!dataRoot.Exists)
+            var versionName = MinecraftUserDataLocator.GetVersionDisplayName(TunerVariables.Persistent.IsTargetingPreview);
+
+            if (!MinecraftUserDataLocator.IsDataValid(TunerVariables.Persistent.IsTargetingPreview))
             {
-                Trace.WriteLine($"❌ {dataRoot.VersionDisplayName} data root not found. Please make sure the game is installed or has been launched at least once.");
+                Trace.WriteLine($"❌ {versionName} data root not found. Please make sure the game is installed or has been launched at least once.");
                 return false;
             }
 
-            resourcePackPath = InstallToDevelopmentFolder
-                ? MinecraftUserDataLocator.GetDevelopmentResourcePacksPath(TunerVariables.Persistent.IsTargetingPreview, createIfMissing: true)
-                : MinecraftUserDataLocator.GetResourcePacksPath(TunerVariables.Persistent.IsTargetingPreview, createIfMissing: true);
+            resourcePackPath = MinecraftUserDataLocator.GetResourcePacksPath(
+                TunerVariables.Persistent.IsTargetingPreview,
+                development: InstallToDevelopmentFolder,
+                createIfMissing: true);
 
             if (string.IsNullOrEmpty(resourcePackPath))
             {

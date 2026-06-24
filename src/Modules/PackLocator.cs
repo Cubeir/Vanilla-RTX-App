@@ -21,11 +21,10 @@ public class PackLocator
     private static readonly int[] MinVersion = [1, 0, 0];
 
     public static string LocatePacks(bool isTargetingPreview,
-    out string vanillaRTXLocation, out string vanillaRTXVersion,
-    out string vanillaRTXNormalsLocation, out string vanillaRTXNormalsVersion,
-    out string vanillaRTXOpusLocation, out string vanillaRTXOpusVersion)
+        out string vanillaRTXLocation, out string vanillaRTXVersion,
+        out string vanillaRTXNormalsLocation, out string vanillaRTXNormalsVersion,
+        out string vanillaRTXOpusLocation, out string vanillaRTXOpusVersion)
     {
-        // Out parameters
         vanillaRTXLocation = string.Empty;
         vanillaRTXVersion = string.Empty;
         vanillaRTXNormalsLocation = string.Empty;
@@ -35,11 +34,10 @@ public class PackLocator
 
         try
         {
-            var dataRoot = MinecraftUserDataLocator.GetDataRoot(isTargetingPreview);
-            if (!dataRoot.Exists)
-            {
-                return $"❌ {dataRoot.VersionDisplayName} data folder not found, is the correct version installed?";
-            }
+            var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
+
+            if (!MinecraftUserDataLocator.IsDataValid(isTargetingPreview))
+                return $"❌ {versionName} data folder not found, is the correct version installed?";
 
             var allManifestFiles = new List<string>();
 
@@ -50,11 +48,8 @@ public class PackLocator
                 );
             }
 
-
             if (allManifestFiles.Count == 0)
-            {
-                return $"❌ Resource pack directory not found, is the correct version of {dataRoot.VersionDisplayName} installed?";
-            }
+                return $"❌ Resource pack directory not found, is the correct version of {versionName} installed?";
 
             // Track latest version for each pack type
             (string path, int[] version)? latestVanillaRTX = null;
@@ -171,12 +166,12 @@ public class PackLocator
     /// </summary>
     private static IEnumerable<string> GetOrderedScanPaths(bool isTargetingPreview)
     {
-        var devResourcePacks = MinecraftUserDataLocator.GetDevelopmentResourcePacksPath(isTargetingPreview);
-        if (!string.IsNullOrEmpty(devResourcePacks) && Directory.Exists(devResourcePacks))
-            yield return devResourcePacks;
+        var dev = MinecraftUserDataLocator.GetResourcePacksPath(isTargetingPreview, development: true);
+        if (!string.IsNullOrEmpty(dev) && Directory.Exists(dev))
+            yield return dev;
 
-        var resourcePacks = MinecraftUserDataLocator.GetResourcePacksPath(isTargetingPreview);
-        if (!string.IsNullOrEmpty(resourcePacks) && Directory.Exists(resourcePacks))
-            yield return resourcePacks;
+        var rp = MinecraftUserDataLocator.GetResourcePacksPath(isTargetingPreview, development: false);
+        if (!string.IsNullOrEmpty(rp) && Directory.Exists(rp))
+            yield return rp;
     }
 }

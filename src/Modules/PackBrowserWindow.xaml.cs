@@ -628,7 +628,8 @@ public sealed partial class PackBrowserWindow : Window
             HorizontalAlignment = HorizontalAlignment.Right,
             Spacing = 6
         };
-        topBadgeRow.Children.Add(BuildSizeBadge(pack.PackSizeText));
+        if (!string.IsNullOrEmpty(pack.PackSizeText))
+            topBadgeRow.Children.Add(BuildSizeBadge(pack.PackSizeText)); // Only build size badge if not null or empty, it is, for now, intentionally disabled (returns empty all the time)
         topBadgeRow.Children.Add(BuildVersionBadge(pack.Version));
         Grid.SetRow(topBadgeRow, 0);
         rightPanel.Children.Add(topBadgeRow);
@@ -656,6 +657,7 @@ public sealed partial class PackBrowserWindow : Window
 
     private static Border BuildSizeBadge(string sizeText)
     {
+
         var badge = new Border
         {
             CornerRadius = new CornerRadius(4),
@@ -819,11 +821,11 @@ public sealed partial class PackBrowserWindow : Window
     private async Task<List<PackData>> ScanForCompatiblePacksAsync()
     {
         var packs = new List<PackData>();
+        var isTargetingPreview = TunerVariables.Persistent.IsTargetingPreview;
 
-        var dataRoot = MinecraftUserDataLocator.GetDataRoot(TunerVariables.Persistent.IsTargetingPreview);
-        if (!dataRoot.Exists)
+        if (!MinecraftUserDataLocator.IsDataValid(isTargetingPreview))
         {
-            Trace.WriteLine($"[PackBrowser] {dataRoot.VersionDisplayName} data root not found.");
+            Trace.WriteLine($"[PackBrowser] {MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview)} data root not found.");
             return packs;
         }
 
@@ -1115,6 +1117,8 @@ public sealed partial class PackBrowserWindow : Window
     {
         try
         {
+            return string.Empty;
+
             var totalBytes = await Task.Run(() =>
                 Directory.EnumerateFiles(packDir, "*", SearchOption.AllDirectories)
                          .Sum(f =>

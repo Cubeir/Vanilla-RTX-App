@@ -223,11 +223,10 @@ public static class ExpImpDel
             : new ImportItem(path, ImportItemKind.Archive);
 
     private static string GetImportDestination() =>
-        InstallToDevelopmentPacks
-            ? MinecraftUserDataLocator.GetDevelopmentResourcePacksPath(
-                TunerVariables.Persistent.IsTargetingPreview, createIfMissing: true)
-            : MinecraftUserDataLocator.GetResourcePacksPath(
-                TunerVariables.Persistent.IsTargetingPreview, createIfMissing: true);
+        MinecraftUserDataLocator.GetResourcePacksPath(
+            TunerVariables.Persistent.IsTargetingPreview,
+            development: InstallToDevelopmentPacks,
+            createIfMissing: true);
 
     private static bool IsArchiveExtension(string ext) => IsImportableExtension(ext);
 
@@ -641,14 +640,15 @@ public static class ExpImpDel
 
         foreach (bool preview in new[] { false, true })
         {
-            var rp = MinecraftUserDataLocator.GetResourcePacksPath(preview);
-            var drp = MinecraftUserDataLocator.GetDevelopmentResourcePacksPath(preview);
+            var rp = MinecraftUserDataLocator.GetResourcePacksPath(preview, development: false);
+            var drp = MinecraftUserDataLocator.GetResourcePacksPath(preview, development: true);
 
             if (!string.IsNullOrEmpty(rp))
                 scanRoots.Add(Path.GetFullPath(rp).TrimEnd(Path.DirectorySeparatorChar));
             if (!string.IsNullOrEmpty(drp))
                 scanRoots.Add(Path.GetFullPath(drp).TrimEnd(Path.DirectorySeparatorChar));
         }
+
 
         var current = Path.GetFullPath(packLocation).TrimEnd(Path.DirectorySeparatorChar);
 
