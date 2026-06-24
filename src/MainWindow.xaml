@@ -173,6 +173,7 @@
                         Width="20"
                         Canvas.ZIndex="5"
                         CornerRadius="0"
+                        ToolTipService.ToolTip="Hold shift and click the lamp to copy logs for debugging."
                         Click="LampInteraction_Click" />
             </Canvas>
 
@@ -184,7 +185,8 @@
                        Canvas.ZIndex="0"
                        FontWeight="Normal"
                        IsTextScaleFactorEnabled="False"
-                       IsHitTestVisible="False" />
+                       ToolTipService.ToolTip="App Version: Unknown"
+                       IsHitTestVisible="True" />
         </Grid>
 
         <!-- Titlebar Buttons -->
@@ -336,7 +338,7 @@
                         CornerRadius="6,0,0,6"
                         BorderThickness="0"
                         IsTextScaleFactorEnabled="False"
-                        ToolTipService.ToolTip="Select a pack from the list of your local Minecraft PBR-enabled resource packs for tuning or export.">
+                        ToolTipService.ToolTip="Select resource packs that you want to process, you can also import more packs from this menu.">
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xF78B;"
@@ -425,7 +427,7 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderThickness="0"
                         CornerRadius="0,6,6,0"
-                        ToolTipService.ToolTip="Select from the list of installed Vanilla RTX resource packs for tuning or export.">
+                        ToolTipService.ToolTip="Select which Vanilla RTX packs to process, if a checkbox isn't selectable, it means that pack isn't installed.">
                     <Grid HorizontalAlignment="Stretch"
                           BorderThickness="0">
                         <Grid.ColumnDefinitions>
@@ -668,7 +670,7 @@
                                 CornerRadius="6,0,0,6"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Clears">
+                                ToolTipService.ToolTip="Clears all pack sections">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xEA99;"
@@ -923,7 +925,7 @@
                                 Grid.Row="4"
                                 Spacing="2"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="Roughness Control"
+                        <TextBlock Text="Roughness control"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Adjust roughness of materials, higher values result in overall fewer glossy surfaces and metallic metals, negative values strengthen glossy or metallic surfaces, uses a decaying curve to impact values that are relevant." />
@@ -1040,7 +1042,7 @@
                             CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Begins the tuning process based on selected packs and given parameters. Make sure Minecraft is closed while tuning.">
+                            ToolTipService.ToolTip="Begins the tuning process based on selected packs and current parameters. Make sure Minecraft is closed while tuning.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF4A5;"
@@ -1251,7 +1253,7 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Yup, you heard it right, coming soon, hopefully!">
+                            ToolTipService.ToolTip="Yup, you heard it right, RTX Reactor is coming to Vanilla RTX App!">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF196;"
@@ -1276,7 +1278,7 @@
                             CornerRadius="0, 0, 0, 0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Manage BetterRTX presets">
+                            ToolTipService.ToolTip="Manage and install BetterRTX presets.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE794;"
@@ -1329,7 +1331,7 @@
                             BorderThickness="0"
                             FontWeight="SemiBold"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Change DLSS versions">
+                            ToolTipService.ToolTip="Import various DLSS versions that you want, and quickly swap between them.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE81E;"
