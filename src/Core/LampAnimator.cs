@@ -14,7 +14,6 @@ namespace Vanilla_RTX_App.Core;
 
 /// <summary>
 /// Unified lamp animation system for both titlebar and splash screen contexts.
-/// Handles special occasion theming as alternative texture sets.
 /// </summary>
 public class LampAnimator
 {
