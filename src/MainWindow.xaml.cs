@@ -57,7 +57,7 @@ It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are inst
 
 Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
 
-
+so yeah, you can't actually just scrap all this and call it a day, there's more involved
 
 - do the userdatalocator expansion idea, done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
@@ -422,7 +422,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         // Properties to set before it is rendered
-        SetMainWindowProperties();
+        SetMainWindowProperties(); // track down what causes flashing on startup, could be window state manager actually
         InitializeComponent();
         InitializeLampAnimators();
         SplashOverlay.Visibility = Visibility.Visible;
@@ -495,9 +495,12 @@ public sealed partial class MainWindow : Window
         InitializeShadows();
 
         // Splash Blinking Animation
-        _ = AnimateSplash(375);
+        _ = AnimateSplash(50);
 
+        // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
+
+        // Load back in persistent variables
         LoadSettings();
 
         // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
@@ -515,8 +518,15 @@ public sealed partial class MainWindow : Window
             UpdateVanillaRTXGlyph.Glyph = "\uEBD3"; // Default cloud icon
         }
 
-        // Slower UI update override for a smoother startup
+        // Update UI to reflect loaded settings
         UpdateUI(0.001);
+
+        // Calling it last since it might add a bit of delay as it searches a few dirs and files
+        MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
+        // Similar to GDKLocator but for user data:
+        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
+        // Updates the button responsible for allowing the user to select another root path.
+        UpdateBrowsePacksButton(IsTargetingPreview);
 
         // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
         if (!IsTargetingPreview)
@@ -528,16 +538,9 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
-        // Calling it last since it might add a bit of delay as it searches a few dirs and files
-        MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
-        // Similar to GDKLocator but for user data:
-        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        // Updates the button responsible for allowing the user to select another root path.
-        UpdateBrowsePacksButton(IsTargetingPreview);
-
         // Brief delay to ensure everything is fully rendered, then fade out splash screen
-        await Task.Delay(750);
-        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and what you want seen AFTER ======================= 
+        await Task.Delay(700);
+        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here ======================= 
         await FadeOutSplashScreen();
 
         // Warning if MC is running
@@ -973,7 +976,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
             return;
         }
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.05);
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.025);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
@@ -982,7 +985,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
             return;
         }
-        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.01);
+        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.001);
     }
 
 
@@ -1183,7 +1186,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 lampSecretMessageCounter++;
-                if (lampSecretMessageCounter > 7)
+                if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, 21 today
                 {
                     if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
                     {
@@ -1196,9 +1199,11 @@ public sealed partial class MainWindow : Window
                             _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
                             await Task.Delay(3014);
                             Log("I just love this track! That's it. Hope you like it too.", LogLevel.Success);
-                            await Task.Delay(delay: TimeSpan.FromMinutes(3));
+                            await Task.Delay(delay: TimeSpan.FromMinutes(10));
+                            Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
+                            await Task.Delay(delay: TimeSpan.FromHours(5));
                             Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.Lengthy);
-                            await Task.Delay(delay: TimeSpan.FromHours(3));
+                            await Task.Delay(2718);
                             Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
                             await Task.Delay(2718);
                             Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
@@ -1208,8 +1213,9 @@ public sealed partial class MainWindow : Window
                             string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
                                                  "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
                             LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
-                            string[] spookyEmojis = { "👁️", "🖤", "⛓️", "🌑", "🕯️", "🫀", "🧿", "🌒", "🤡", "👁️" };
+                            string[] spookyEmojis = { "👁️" };
 
+                            // Deteriorate the message over time, then make it seem like It's lagging to creep out the user
                             while (true)
                             {
                                 iteration++;
