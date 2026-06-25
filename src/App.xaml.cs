@@ -40,7 +40,7 @@ public partial class App : Application
         {
             BringExistingWindowToFront();
 
-            // then xit without creating any new windows
+            // then exit without creating any new windows
             Exit();
             return;
         }

@@ -39,14 +39,12 @@ namespace Vanilla_RTX_App;
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
-
 - Remove all code paths related to the checkboxes
 Do the redesign. TODAY. Delete PackLocator
 perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
 so other classes could use it
 Not manually constructing every little thing for callers.
-
-- Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
+>> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
 Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
 
 Pack locator is busted right now with your new centralized userdata locator rework
@@ -371,8 +369,6 @@ public sealed partial class MainWindow : Window
 {
     public static MainWindow? Instance { get; private set; }
 
-    private readonly WindowStateManager _windowStateManager;
-
     private readonly ProgressBarManager _progressManager;
 
     public readonly PackUpdater _updater = new();
@@ -408,7 +404,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-    /// WindowStateManager
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
@@ -424,17 +419,20 @@ public sealed partial class MainWindow : Window
         // Properties to set before it is rendered
         SetMainWindowProperties(); // track down what causes flashing on startup, could be window state manager actually
         InitializeComponent();
+
+        var windowStateManager = WinUIEx.WindowManager.Get(this);
+        windowStateManager.PersistenceId = "MainWindow";
+        windowStateManager.Width = WindowSizeX;
+        windowStateManager.Height = WindowSizeY;
+        windowStateManager.MinWidth = WindowMinSizeX;
+        windowStateManager.MinHeight = WindowMinSizeY;
+
         InitializeLampAnimators();
         SplashOverlay.Visibility = Visibility.Visible;
         SetTitleBar(TitleBarDragArea);
-
-        _windowStateManager = new WindowStateManager(this);
         _progressManager = new ProgressBarManager(ProgressBar);
 
         Instance = this;
-
-        var defaultSize = new SizeInt32(WindowSizeX, WindowSizeY);
-        _windowStateManager.ApplySavedStateOrDefaults();
 
         // Version, title and initial logs
         var version = Windows.ApplicationModel.Package.Current.Id.Version;
@@ -1895,31 +1893,19 @@ public sealed partial class MainWindow : Window
             var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
             int totalKeysWiped = 0;
 
-            var containerStack = new Stack<(Windows.Storage.ApplicationDataContainer container, string path)>();
-            containerStack.Push((localSettings, "LocalSettings"));
-            containerStack.Push((roamingSettings, "RoamingSettings"));
-
-            while (containerStack.Count > 0)
+            foreach (var (root, rootName) in new[] { (localSettings, "LocalSettings"), (roamingSettings, "RoamingSettings") })
             {
-                var (container, path) = containerStack.Pop();
-
-                // Queue sub-containers for processing, then delete them
-                foreach (var subKey in container.Containers.Keys.ToList())
+                foreach (var key in root.Values.Keys.ToList())
                 {
-                    containerStack.Push((container.Containers[subKey], $"{path}/{subKey}"));
-                }
-                foreach (var subKey in container.Containers.Keys.ToList())
-                {
-                    container.DeleteContainer(subKey);
-                    Log($"Deleted container: {path}/{subKey}", LogLevel.Informational);
-                }
-
-                // Wipe all values at this level
-                foreach (var key in container.Values.Keys.ToList())
-                {
-                    container.Values.Remove(key);
-                    Log($"Deleted key: {path}/{key}", LogLevel.Informational);
+                    root.Values.Remove(key);
+                    Log($"Deleted key: {rootName}/{key}", LogLevel.Informational);
                     totalKeysWiped++;
+                }
+
+                foreach (var containerKey in root.Containers.Keys.ToList())
+                {
+                    root.DeleteContainer(containerKey);
+                    Log($"Deleted container: {rootName}/{containerKey}", LogLevel.Informational);
                 }
             }
 
