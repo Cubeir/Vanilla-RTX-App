@@ -234,7 +234,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="ChatButton_Click"
-                        ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server"
+                        ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server."
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
@@ -256,7 +256,7 @@
                         Click="HelpButton_Click"
                         PointerEntered="HelpButton_PointerEntered"
                         PointerExited="HelpButton_PointerExited"
-                        ToolTipService.ToolTip="Documentation"
+                        ToolTipService.ToolTip="Open documentation"
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
@@ -302,7 +302,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="CycleThemeButton_Click"
-                        ToolTipService.ToolTip="Theme: System"
+                        ToolTipService.ToolTip="Switches theme."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>
@@ -338,7 +338,7 @@
                         CornerRadius="6,0,0,6"
                         BorderThickness="0"
                         IsTextScaleFactorEnabled="False"
-                        ToolTipService.ToolTip="Select resource packs that you want to process, you can also import more packs from this menu.">
+                        ToolTipService.ToolTip="Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.">
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xF78B;"
@@ -427,7 +427,7 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderThickness="0"
                         CornerRadius="0,6,6,0"
-                        ToolTipService.ToolTip="Select which Vanilla RTX packs to process, if a checkbox isn't selectable, it means that pack isn't installed.">
+                        ToolTipService.ToolTip="Select which Vanilla RTX packs to process.&#x0a;&#x0a;If a checkbox isn't selectable, it means that pack isn't currently installed, install Vanilla RTX resource packs with Get latest RTX packs button.">
                     <Grid HorizontalAlignment="Stretch"
                           BorderThickness="0">
                         <Grid.ColumnDefinitions>
@@ -533,7 +533,7 @@
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          Padding="12,12,12,138"
                          IsTextScaleFactorEnabled="False"
-                         ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn the user while using the app." />
+                         ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn you as you interact with the app." />
             </Grid>
 
             <!-- Progress Bar -->
@@ -670,7 +670,7 @@
                                 CornerRadius="6,0,0,6"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Clears all pack sections">
+                                ToolTipService.ToolTip="Clears all pack sections.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xEA99;"
@@ -692,9 +692,9 @@
                                 CornerRadius="0,6,6,0"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Resets tuning options back to their default values. Hold Shift and press to perform a hard reset of app's data.
-                                
-                                WARNING: Please revert to game's default files manually (through BetterRTX manager, lut manager, or even DLSS swapper) if performing a hard reset to avoid losing your game's default files! So the app can pick up the defaults again after the hard reset.">
+                                ToolTipService.ToolTip="Default Function: Resets tuning options back to their default values.
+                                &#x0a;&#x0a;Hidden Function: Hold shit while pressing to perform a hard reset that wipes all of app's data. (FOR ADVANCED USERS ONLY)
+                                &#x0a;WARNING: Please revert to game's default files manually (through BetterRTX manager, lut manager, or even DLSS swapper) if performing a hard reset to avoid losing your game's default files! So the app can pick up the defaults again after the hard reset.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xE777;"
@@ -741,7 +741,12 @@
                         <TextBlock Text="Fog multiplier"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Scales all fog densities. Recommended ranges: 0.2–0.8 for lighter fog, 1.5-3.0 for dense fog. 0 to disable air fog. Tip: Multiplier value will be used as a literal density value if fog density is already zero." />
+                                   ToolTipService.ToolTip="Scales all fog densities with the given multiplier.
+                                   &#x0a;&#x0a;Recommended ranges:
+                                   &#x0a;0.2–0.8 for lighter fog
+                                   &#x0a;1.5-3.0 for dense fog
+                                   &#x0a;0 to disable air fog
+                                   &#x0a;&#x0a;Pro tip: The value of the multiplier will be treated as a literal density value if fog density is already too small to multiply." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <!-- Slider room -->
@@ -780,7 +785,10 @@
                         <TextBlock Text="Emissivity multiplier"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Scales emissivity of all emissive blocks. 1 = default, 0.5 = half brightness, higher values = stronger glow." />
+                                   ToolTipService.ToolTip="Scales emissivity of all emissive blocks.
+                                   &#x0a;1 = default
+                                   &#x0a;0.5 = half brightness
+                                   &#x0a;higher values = stronger emissives." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -803,8 +811,7 @@
                                      Width="60"
                                      Text="1.00"
                                      IsTextScaleFactorEnabled="False"
-                                     LostFocus="EmissivityMultiplierBox_LostFocus"
-                                     />
+                                     LostFocus="EmissivityMultiplierBox_LostFocus" />
                         </Grid>
                     </StackPanel>
 
@@ -816,7 +823,8 @@
                         <TextBlock Text="Increase ambient lighting"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Modifies ambient lighting when emissivity is adjusted, higher emissive multipliers strengthen the effect." />
+                                   ToolTipService.ToolTip="Modifies ambient lighting when emissivity is adjusted, higher emissive multipliers strengthen the effect.
+                                   &#x0a;&#x0a;Note: Applying this option to a resource pack will block Emissive multiplier from being applied to that resource pack again unless the resource pack is reset/reintalled." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -839,7 +847,8 @@
                                        Margin="0,0,13.5,0"
                                        Visibility="Collapsed"
                                        IsTextScaleFactorEnabled="False"
-                                       ToolTipService.ToolTip="This option is intended for RTX resource packs only, do not enable for Vibrant Visuals resource packs. Furthermore, If this option is enabled while tuning a resource pack, future tuning attempts on that pack will skip applying the Emissivity Multiplier slider to keep the pack from breaking." />
+                                       ToolTipService.ToolTip="This option is intended for RTX resource packs only, do not enable for Vibrant Visuals resource packs.
+                                       &#x0a;Furthermore, If this option is enabled while tuning a resource pack, future tuning attempts on that pack will skip applying the Emissivity Multiplier slider to keep the pack from breaking." />
                         </Grid>
                     </StackPanel>
 
@@ -851,7 +860,10 @@
                         <TextBlock Text="Surface normal intensity"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps in percentage, 0% = flatten, 100% = default, higher values = stronger 3D effects on surfaces." />
+                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps in percentage if available.
+                                   &#x0a;0% = flattens all textures
+                                   &#x0a;100% = default (no change)
+                                   &#x0a;Higher values = stronger 3D effects on surfaces." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -889,7 +901,8 @@
                         <TextBlock Text="Material grain offset"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise in a manner that keeps the pack's intended look intact, your input determines the maximum deviation from the original values." />
+                                   ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise in a manner that keeps the pack's intended look intact.
+                                   &#x0a;Your input determines the maximum possible deviation from the original values." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -928,7 +941,10 @@
                         <TextBlock Text="Roughness control"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust roughness of materials, higher values result in overall fewer glossy surfaces and metallic metals, negative values strengthen glossy or metallic surfaces, uses a decaying curve to impact values that are relevant." />
+                                   ToolTipService.ToolTip="Adjusts overall balance of roughness and metalness of materials.
+                                   &#x0a;&#x0a;Higher values result in overall fewer glossy surfaces and metallic metals
+                                   &#x0a;Negative values strengthen glossy or metallic surfaces.
+                                   &#x0a;Uses a smart decaying curve to impact values that are relevant, keeping a resource pack's intended look intact." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -966,7 +982,10 @@
                         <TextBlock Text="Lazify surface normals"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness (0 = no change, 255 = fully lazy) resource packs that are already shoddy might see no change or slight improvements, higher quality packs can receive an additional layer of detail, for which a small value of 3-30 is recommended" />
+                                   ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness.
+                                   &#x0a;0 = no change
+                                   &#x0a;255 = fully lazy
+                                   &#x0a;Reresource packs that are already shoddy might see no change or even slight improvements, while higher quality packs can receive an additional layer of detail, for which a small value under 20 is generally recommended." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -1042,7 +1061,7 @@
                             CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Begins modifying the select packs using current set parameters. Make sure Minecraft is closed while tuning.">
+                            ToolTipService.ToolTip="Begins permanently modifying the select packs using current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF4A5;"
@@ -1088,7 +1107,8 @@
                             CornerRadius="0,6,6,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Physically delete the files of the selected packages from game's data directory.">
+                            ToolTipService.ToolTip="Physically delete the files of the selected packages from game's data directory.
+                            &#x0a;&#x0a;WARNING FOR ADVANCED USERS: This functionality walks up to the parent directory of the selected resource pack, as to not leave orphaned empty folders behind, if you keep other files inside a resource pack, or keep multiple resource packs inside one folder for whatever the reason, steer clear of this button.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE74D;"
@@ -1226,7 +1246,7 @@
                             CornerRadius="0, 6, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Click to learn more, this a simpler, more reliable alternative to BetterRTX that works across all game versions by modifying RTX's default color look up tables.">
+                            ToolTipService.ToolTip="Provides simpler, more reliable alternative to BetterRTX that works across all game versions by modifying RTX's default color look up tables.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE790;"
@@ -1278,7 +1298,8 @@
                             CornerRadius="0, 0, 0, 0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Manage and install BetterRTX presets.">
+                            ToolTipService.ToolTip="Manage and install BetterRTX presets.
+                            &#x0a;&#x0a;WARNING: It is your responsibility to make sure your game is up-to-date, and that BetterRTX is up-to-date, before you inject presets into your game, otherwise in case of issues, revert to Default RTX preset which is backed up from YOUR OWN game files upon installing your first preset.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE794;"
@@ -1306,7 +1327,8 @@
                             VerticalAlignment="Stretch"
                             CornerRadius="0,0,0,6"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching. Holding shift while pressing this button disables Minecraft RTX and enables VSync instead.">
+                            ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.
+                            &#x0a;&#x0a;FOR ADVANCED USERS: Holding shift while pressing this button disables Minecraft RTX and enables VSync instead.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE78B;"

@@ -482,7 +482,7 @@ public sealed partial class MainWindow : Window
         // Unsubscribe to avoid running this again
         this.Activated -= MainWindow_Activated;
 
-        // Center window
+        // Center window if not already
         var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
         if (!settings.Containers.ContainsKey("WinUIEx"))
             this.CenterOnScreen();
