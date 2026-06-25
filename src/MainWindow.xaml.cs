@@ -24,11 +24,11 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Graphics;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
 using WinRT.Interop;
+using WinUIEx;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -39,6 +39,10 @@ namespace Vanilla_RTX_App;
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
+- Improve review prompt
+and finally.. &amp; usable, as well as next line in tooltips
+Begin rewriting them properly with this... newfound knowledge (Chrome)
+
 - Remove all code paths related to the checkboxes
 Do the redesign. TODAY. Delete PackLocator
 perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
@@ -46,15 +50,11 @@ so other classes could use it
 Not manually constructing every little thing for callers.
 >> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
 Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
-
 Pack locator is busted right now with your new centralized userdata locator rework
 But its ok, no need to fix it, you're doing a redesign that retires it anyway.
-
 But you can't just retire it?!
 It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
-
 Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
-
 so yeah, you can't actually just scrap all this and call it a day, there's more involved
 
 - do the userdatalocator expansion idea, done, just stress test it, figure out edge cases
@@ -63,7 +63,7 @@ locate button allows u to select it, it gets cached, revalidated all the time, i
 
 - Stress test GDKLocator again
 
-- manifests with comments, do features play well with them?
+- manifests with comments, do all related features finally play well with them? Test and confirm
 
 - Test memory usage when tuning large packs
 test for memory leaks
@@ -420,12 +420,12 @@ public sealed partial class MainWindow : Window
         SetMainWindowProperties(); // track down what causes flashing on startup, could be window state manager actually
         InitializeComponent();
 
-        var windowStateManager = WinUIEx.WindowManager.Get(this);
-        windowStateManager.PersistenceId = "MainWindow";
-        windowStateManager.Width = WindowSizeX;
-        windowStateManager.Height = WindowSizeY;
-        windowStateManager.MinWidth = WindowMinSizeX;
-        windowStateManager.MinHeight = WindowMinSizeY;
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.PersistenceId = "MainWindow";
+        manager.Width = WindowSizeX;
+        manager.Height = WindowSizeY;
+        manager.MinWidth = WindowMinSizeX;
+        manager.MinHeight = WindowMinSizeY;
 
         InitializeLampAnimators();
         SplashOverlay.Visibility = Visibility.Visible;
@@ -481,6 +481,11 @@ public sealed partial class MainWindow : Window
     {
         // Unsubscribe to avoid running this again
         this.Activated -= MainWindow_Activated;
+
+        // Center window
+        var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
+        if (!settings.Containers.ContainsKey("WinUIEx"))
+            this.CenterOnScreen();
 
         // Launch silent update immediately, hopefully by the time the startup sequence is finished, we have new PSAs to show!
         _ = OnlineTexts.TriggerUpdateAsync();
