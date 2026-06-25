@@ -84,9 +84,9 @@ public static class ReviewPromptManager
 #if DEBUG
     private const double MINUTES_BEFORE_PROMPT = 0; // how many hours to wait before showing for the first time, or showing again
 #else
-    private const double MINUTES_BEFORE_PROMPT = 3600;
+    private const double MINUTES_BEFORE_PROMPT = 3840;
 #endif
-    private const int SHOW_DELAY_SECONDS = 1; // delay to show it after being called
+    private const int SHOW_DELAY_Milisecs = 250; // delay to show it after being called
 
     private static void CleanupOldVersionKeys()
     {
@@ -136,8 +136,8 @@ public static class ReviewPromptManager
 
         if (shouldShow)
         {
-            System.Diagnostics.Trace.WriteLine($"Waiting {SHOW_DELAY_SECONDS} seconds before showing...");
-            await Task.Delay(TimeSpan.FromSeconds(SHOW_DELAY_SECONDS));
+            System.Diagnostics.Trace.WriteLine($"Waiting {SHOW_DELAY_Milisecs} seconds before showing...");
+            await Task.Delay(TimeSpan.FromMilliseconds(SHOW_DELAY_Milisecs));
             System.Diagnostics.Trace.WriteLine("Calling ShowPrompt()...");
             ShowPrompt();
         }

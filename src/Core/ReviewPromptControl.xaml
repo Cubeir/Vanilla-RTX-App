@@ -10,7 +10,7 @@
 
     <!-- Semi-transparent overlay that blocks all interaction - clicking dismisses (show later) -->
     <Grid x:Name="RootGrid"
-          Background="#66000000"
+          Background="#C0000000"
           Visibility="Collapsed"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
@@ -18,17 +18,16 @@
 
         <!-- Dialog Card -->
         <Border x:Name="DialogBorder"
-                MaxWidth="480"
                 Padding="24"
                 Margin="24"
                 CornerRadius="8"
-                Background="{ThemeResource SolidBackgroundFillColorSecondary}"
+                Background="{ThemeResource SolidBackgroundFillColorBase}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
+                BorderThickness="0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Tapped="DialogBorder_Tapped"
-                Translation="0,0,64">
+                Translation="0,0,256">
             <Border.Shadow>
                 <ThemeShadow />
             </Border.Shadow>
@@ -40,22 +39,23 @@
                            LineHeight="20"
                            TextAlignment="Center"
                            Foreground="{ThemeResource TextFillColorPrimaryBrush}">
-                    <Run Text="Has the app been useful? Help keep it going with a" />
+                    <Run Text="If you've enjoyed the app and have found it helpful so far, &#x0a;consider supporting me through my" />
                     <Hyperlink x:Name="DonationLink"
                                UnderlineStyle="None">
-                        <Run Text="donation"
+                        <Run Text="Ko-Fi page.&#x0a;&#x0a;"
                              FontWeight="SemiBold" />
                     </Hyperlink>
-                    <Run Text="or by leaving an honest review!" />
+                    <Run Text="Or simply by leaving an honest review!&#x0a;Anything helps, and encourages me to keep my projects going. 🔭💫" />
                 </TextBlock>
 
                 <!-- Button Row -->
                 <StackPanel Orientation="Horizontal"
                             Spacing="8"
                             HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
                             Margin="0,8,0,0">
                     <Button x:Name="ReviewButton"
-                            Content="⭐ Leave a review"
+                            Content="Leave a review ⭐"
                             Padding="16,8"
                             MinWidth="130"
                             Translation="0,0,24">
