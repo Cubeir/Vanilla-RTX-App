@@ -878,23 +878,18 @@ public sealed partial class DLSSSwitcherWindow : Window
         }
     }
 
-    private static async Task<DllData?> ParseDllAsync(string dllPath)
+    private static Task<DllData?> ParseDllAsync(string dllPath)
     {
         try
         {
             var versionInfo = FileVersionInfo.GetVersionInfo(dllPath);
             var version = versionInfo.FileVersion ?? versionInfo.ProductVersion ?? "Unknown";
-
-            return new DllData
-            {
-                Version = version,
-                FilePath = dllPath
-            };
+            return Task.FromResult<DllData?>(new DllData { Version = version, FilePath = dllPath });
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[DLSS] Error parsing DLL {dllPath}: {ex.Message}");
-            return null;
+            return Task.FromResult<DllData?>(null);
         }
     }
 
