@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -26,22 +27,52 @@ public partial class App : Application
     {
         InitializeComponent();
         TraceManager.Initialize();
+
+        // 1. Catches unhandled exceptions on the UI thread from any window
         this.UnhandledException += (s, e) =>
         {
-            try
-            {
-                var logPath = Path.Combine(
-                    Windows.Storage.ApplicationData.Current.LocalFolder.Path,
-                    "crash_log.txt");
-
-                File.WriteAllText(logPath,
-                    $"Version: {TunerVariables.appVersion}\n" +
-                    $"Time: {DateTime.Now}\n" +
-                    $"Message: {e.Message}\n" +
-                    $"Exception:\n{e.Exception}");
-            }
-            catch { }
+            WriteCrashLog("UI Thread", e.Message, e.Exception.ToString());
+            // intentionally not setting e.Handled = true
+            // let it crash naturally so WER still gets the dump
         };
+
+        // 2. Catches exceptions escaping async void after an await,
+        // and anything thrown on the UI thread that XAML doesn't intercept
+        TaskScheduler.UnobservedTaskException += (s, e) =>
+        {
+            WriteCrashLog("Unobserved Task", e.Exception.Message, e.Exception.ToString());
+            e.SetObserved(); // prevents process termination for tasks,
+                             // since we've logged it ourselves
+        };
+
+        // 3. Catches exceptions on background threads, Thread.Start, etc.
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            var ex = e.ExceptionObject as Exception;
+            WriteCrashLog("Background Thread", ex?.Message ?? "Unknown", ex?.ToString() ?? e.ExceptionObject?.ToString() ?? "No details");
+            // can't prevent termination here, but log is written
+        };
+    }
+
+    private static void WriteCrashLog(string source, string message, string detail)
+    {
+        try
+        {
+            var logPath = Path.Combine(
+                Windows.Storage.ApplicationData.Current.LocalFolder.Path,
+                "crash_log.txt");
+
+            // Append rather than overwrite, in case multiple things throw
+            // during the same session before the process dies
+            File.AppendAllText(logPath,
+                $"=== Crash Report ===\n" +
+                $"Version:   {TunerVariables.appVersion ?? "unknown"}\n" +
+                $"Source:    {source}\n" +
+                $"Time:      {DateTime.Now}\n" +
+                $"Message:   {message}\n" +
+                $"Detail:\n{detail}\n\n");
+        }
+        catch { }
     }
 
     /// <summary>

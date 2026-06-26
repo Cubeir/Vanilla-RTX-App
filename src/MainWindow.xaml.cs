@@ -290,20 +290,23 @@ public sealed partial class MainWindow : Window
 
     private async void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
     {
-        // Give the window time to render
-        await Task.Delay(150);
         // Unsubscribe to avoid running this again, just for safety
         this.Activated -= MainWindow_Activated;
-        // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
-        var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
-        if (!settings.Containers.ContainsKey("WinUIEx"))
-            this.CenterOnScreen();
 
-        // Launch silent update immediately, hopefully by the time the startup sequence is finished, we have new PSAs to show!
-        _ = OnlineTexts.TriggerUpdateAsync();
+        // Give the window time to render
+        await Task.Delay(150);
+
+        // Load back in persistent variables
+        LoadSettings();
+
+        // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
+        CycleThemeButton_Click(null, null);
 
         // Check for crash logs, might summon a content dialogue
         await CheckForCrashLog();
+
+        // Launch silent update immediately, hopefully by the time the startup sequence is finished, we have new PSAs to show!
+        _ = OnlineTexts.TriggerUpdateAsync();
 
         // Splash Blinking Animation
         _ = AnimateSplash(150);
@@ -313,12 +316,6 @@ public sealed partial class MainWindow : Window
 
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
-
-        // Load back in persistent variables
-        LoadSettings();
-
-        // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
-        CycleThemeButton_Click(null, null);
 
         // Set reinstall latest packs button visuals based on cache status (TODO: COULD maybe have a third "Update to latest" stat, but it requires checking remote on startup)
         // It is also set after closing pack update window, don't forget to update it there.
@@ -343,13 +340,12 @@ public sealed partial class MainWindow : Window
 
         // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
         if (!IsTargetingPreview)
-        {
             _ = LocatePacksTask();
-        }
         else
         {
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
+
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
         await Task.Delay(700);
@@ -359,8 +355,7 @@ public sealed partial class MainWindow : Window
         // Warning if MC is running
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
-            var buttonName = LaunchButtonText.Text;
-            Log($"Please close Minecraft while using the app. Once finished, launch the game using {buttonName} button.", LogLevel.Warning);
+            Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
 
         // Show Leave a Review prompt
@@ -373,9 +368,12 @@ public sealed partial class MainWindow : Window
         if (psa is { Length: > 0 })
         {
             for (int i = psa.Length - 1; i >= 0; i--)
+            {
+                await Task.Delay(500);
                 Log(psa[i].Text);
+            }
         }
-
+        // ============= End
         async Task FadeOutSplashScreen()
         {
             if (SplashOverlay == null) return;
@@ -384,8 +382,8 @@ public sealed partial class MainWindow : Window
             {
                 From = 1.0,
                 To = 0.0,
-                Duration = new Duration(TimeSpan.FromMilliseconds(250)),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                Duration = new Duration(TimeSpan.FromMilliseconds(125)),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
 
             var storyboard = new Storyboard();
@@ -420,7 +418,7 @@ public sealed partial class MainWindow : Window
 
             var copyButton = new Button
             {
-                Content = "Copy Crash Log",
+                Content = "Copy Crash Logs",
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
@@ -428,14 +426,15 @@ public sealed partial class MainWindow : Window
             {
                 Content = "Create an issue on GitHub",
                 NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/issues"),
-                Padding = new Thickness(0)
+                Margin = new Thickness(0, 2, 0, 0),
+                Padding = new Thickness(4, 4, 4, 4)
             };
 
             var discordLink = new HyperlinkButton
             {
-                Content = "Report through the Discord Server",
+                Content = "Create a post on the Vanilla RTX Discord Server",
                 NavigateUri = new Uri("https://discord.gg/A4wv4wwYud"),
-                Padding = new Thickness(0)
+                Padding = new Thickness(4, 4, 4, 4)
             };
 
             var logBox = new ScrollViewer
@@ -455,7 +454,7 @@ public sealed partial class MainWindow : Window
 
             var dismissButton = new Button
             {
-                Content = "Dismiss",
+                Content = "Continue Using the App (dismisses the report)",
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
 
@@ -463,14 +462,13 @@ public sealed partial class MainWindow : Window
 
             panel.Children.Add(new TextBlock
             {
-                Text = "The app crashed during the previous session. Please consider reporting it to help fix the issue:",
+                Text = "Oh no! Looks like a crash occurred during the previous session, you may continue to use the app, but it would be better if you report it to the developer to see it patched up soon!",
                 TextWrapping = TextWrapping.Wrap
             });
 
             var linksPanel = new StackPanel { Spacing = 2 };
-            linksPanel.Children.Add(new TextBlock { Text = "— GitHub Issues:" });
+            linksPanel.Children.Add(new TextBlock { Text = "Report using one of the following methods:" });
             linksPanel.Children.Add(githubLink);
-            linksPanel.Children.Add(new TextBlock { Text = "— Vanilla RTX Discord:", Margin = new Thickness(0, 4, 0, 0) });
             linksPanel.Children.Add(discordLink);
             panel.Children.Add(linksPanel);
 
@@ -485,7 +483,7 @@ public sealed partial class MainWindow : Window
 
             var dialog = new ContentDialog
             {
-                Title = "Previous Session Crashed",
+                Title = "Previous Session Crash Report",
                 Content = panel,
                 XamlRoot = this.Content.XamlRoot,
             };
@@ -535,6 +533,11 @@ public sealed partial class MainWindow : Window
         manager.IsMaximizable = true;
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
+
+        // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
+        var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
+        if (!settings.Containers.ContainsKey("WinUIEx"))
+            this.CenterOnScreen();
 
         // Force LtR
         if (Content is FrameworkElement root)
@@ -2325,10 +2328,14 @@ there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF
 
 - Fix startup flash
 
+- Use WinUIex TO bring to frONT
+
 KEEP thinking through the initlization sequences, u can fix this, did a few times then lost it
 
 >> Wire up unhandled exception thingy for each feature
 expand on it, in a clever way to keep it clean
+>> Done and its already good, but gotta wrap the feature launchesr in try catch
+and RESTORE button's clickablity upon such exceptions
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
