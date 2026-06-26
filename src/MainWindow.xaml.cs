@@ -24,6 +24,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
@@ -37,11 +38,21 @@ namespace Vanilla_RTX_App;
 
 /* ### BACKLOG // TODO ###
 
+>> READ ALL COMMENTS
+there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
+
+- Fix startup flash
+
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
-- Improve review prompt
-and finally.. &amp; usable, as well as next line in tooltips
-Begin rewriting them properly with this... newfound knowledge (Chrome)
+- Keep writing/rewriting/adding tooltips
+
+- Use winuiex to replace more of your own half baked code
+Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
+
+> Be more explicit about the right channels to give feedback, report issues, etc...
+like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
+maybe you should do it more often, in more places
 
 - Remove all code paths related to the checkboxes
 Do the redesign. TODAY. Delete PackLocator
@@ -472,17 +483,18 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        // Things to do after mainwindow is initialized
+        // Things to do after mainwindow is initialized...
         this.Activated += MainWindow_Activated;
         this.Activated += MainWindow_FocusOpacity;
     }
 
     private async void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
     {
-        // Unsubscribe to avoid running this again
+        // Give the window time to render
+        await Task.Delay(150);
+        // Unsubscribe to avoid running this again, just for safety
         this.Activated -= MainWindow_Activated;
-
-        // Center window if not already
+        // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
         var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
         if (!settings.Containers.ContainsKey("WinUIEx"))
             this.CenterOnScreen();
@@ -490,15 +502,14 @@ public sealed partial class MainWindow : Window
         // Launch silent update immediately, hopefully by the time the startup sequence is finished, we have new PSAs to show!
         _ = OnlineTexts.TriggerUpdateAsync();
 
-        // Give the window time to render for the first time
-        // If one day something goes on the background that needs waiting, increase this, it delays the flash
-        await Task.Delay(50);
+        // Check for crash logs, might summon a content dialogue
+        await CheckForCrashLog();
+
+        // Splash Blinking Animation
+        _ = AnimateSplash(150);
 
         // RTX shaders omg
         InitializeShadows();
-
-        // Splash Blinking Animation
-        _ = AnimateSplash(50);
 
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
@@ -508,7 +519,6 @@ public sealed partial class MainWindow : Window
 
         // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
         CycleThemeButton_Click(null, null);
-
 
         // Set reinstall latest packs button visuals based on cache status (TODO: COULD maybe have a third "Update to latest" stat, but it requires checking remote on startup)
         // It is also set after closing pack update window, don't forget to update it there.
@@ -528,7 +538,7 @@ public sealed partial class MainWindow : Window
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
         // Similar to GDKLocator but for user data:
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        // Updates the button responsible for allowing the user to select another root path.
+        // Updates the button responsible for allowing the user to select another user data path.
         UpdateBrowsePacksButton(IsTargetingPreview);
 
         // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
@@ -541,7 +551,7 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
-        // Brief delay to ensure everything is fully rendered, then fade out splash screen
+        // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
         await Task.Delay(700);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here ======================= 
         await FadeOutSplashScreen();
@@ -565,7 +575,6 @@ public sealed partial class MainWindow : Window
             for (int i = psa.Length - 1; i >= 0; i--)
                 Log(psa[i].Text);
         }
-
 
         async Task FadeOutSplashScreen()
         {
@@ -596,6 +605,108 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async Task CheckForCrashLog()
+    {
+        try
+        {
+            var logPath = Path.Combine(
+                ApplicationData.Current.LocalFolder.Path,
+                "crash_log.txt");
+
+            if (!File.Exists(logPath)) return;
+
+            var content = File.ReadAllText(logPath);
+            File.Delete(logPath);
+
+            var copyButton = new Button
+            {
+                Content = "Copy Crash Log",
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            var githubLink = new HyperlinkButton
+            {
+                Content = "Create an issue on GitHub",
+                NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/issues"),
+                Padding = new Thickness(0)
+            };
+
+            var discordLink = new HyperlinkButton
+            {
+                Content = "Report through the Discord Server",
+                NavigateUri = new Uri("https://discord.gg/A4wv4wwYud"),
+                Padding = new Thickness(0)
+            };
+
+            var logBox = new ScrollViewer
+            {
+                Content = new TextBlock
+                {
+                    Text = content,
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 11,
+                    IsTextSelectionEnabled = true,
+                    TextWrapping = TextWrapping.Wrap
+                },
+                MaxHeight = 200,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+
+            var dismissButton = new Button
+            {
+                Content = "Dismiss",
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            var panel = new StackPanel { Spacing = 12 };
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "The app crashed during the previous session. Please consider reporting it to help fix the issue:",
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            var linksPanel = new StackPanel { Spacing = 2 };
+            linksPanel.Children.Add(new TextBlock { Text = "— GitHub Issues:" });
+            linksPanel.Children.Add(githubLink);
+            linksPanel.Children.Add(new TextBlock { Text = "— Vanilla RTX Discord:", Margin = new Thickness(0, 4, 0, 0) });
+            linksPanel.Children.Add(discordLink);
+            panel.Children.Add(linksPanel);
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Crash details:",
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+            });
+            panel.Children.Add(logBox);
+            panel.Children.Add(copyButton);
+            panel.Children.Add(dismissButton);
+
+            var dialog = new ContentDialog
+            {
+                Title = "Previous Session Crashed",
+                Content = panel,
+                XamlRoot = this.Content.XamlRoot,
+            };
+
+            copyButton.Click += async (s, e) =>
+            {
+                var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                dataPackage.SetText(content);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+
+                copyButton.Content = "Copied!";
+                await Task.Delay(1500);
+                copyButton.Content = "Copy Crash Log";
+            };
+
+            dismissButton.Click += (s, e) => dialog.Hide();
+
+            await dialog.ShowAsync();
+        }
+        catch { }
+    }
 
     private void MainWindow_FocusOpacity(object sender, WindowActivatedEventArgs e)
     {
@@ -702,16 +813,19 @@ public sealed partial class MainWindow : Window
                     onThemeChanged(root.ActualTheme);
                 };
 
-                // also call once now
                 onThemeChanged(root.ActualTheme);
             }
         }
 
-        // Safe way to defer until content is ready
-        window.Activated += (_, __) =>
+        TypedEventHandler<object, WindowActivatedEventArgs>? handler = null;
+        handler = (_, __) =>
         {
+            window.Activated -= handler; // unsubscribe immediately, run once only
+            // there's no reason to keep listening to Activated after tha
             HookThemeChangeListener();
         };
+
+        window.Activated += handler;
     }
 
 

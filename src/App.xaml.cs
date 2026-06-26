@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading;
 using Microsoft.UI.Xaml;
@@ -25,6 +26,22 @@ public partial class App : Application
     {
         InitializeComponent();
         TraceManager.Initialize();
+        this.UnhandledException += (s, e) =>
+        {
+            try
+            {
+                var logPath = Path.Combine(
+                    Windows.Storage.ApplicationData.Current.LocalFolder.Path,
+                    "crash_log.txt");
+
+                File.WriteAllText(logPath,
+                    $"Version: {TunerVariables.appVersion}\n" +
+                    $"Time: {DateTime.Now}\n" +
+                    $"Message: {e.Message}\n" +
+                    $"Exception:\n{e.Exception}");
+            }
+            catch { }
+        };
     }
 
     /// <summary>
