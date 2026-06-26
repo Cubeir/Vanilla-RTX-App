@@ -20,6 +20,7 @@
 
         <!-- Splash Blocker -->
         <Grid x:Name="SplashOverlay"
+              Visibility="Visible"
               Grid.ColumnSpan="2"
               Canvas.ZIndex="9999">
             <Grid.Background>

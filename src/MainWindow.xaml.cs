@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -245,8 +244,6 @@ public sealed partial class MainWindow : Window
         var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
         appVersion = versionString;
 
-
-        SplashOverlay.Visibility = Visibility.Visible;
         InitializeLampAnimators();
         SetTitleBar(TitleBarDragArea);
         _progressManager = new ProgressBarManager(ProgressBar);
@@ -1759,8 +1756,7 @@ public sealed partial class MainWindow : Window
 
         if (RuntimeFlags.Set("Said_Extra_Resetting_Information"))
         {
-            Log($"To perform a full reset of app's data if necessery, hold SHIFT key while pressing {ResetButton_TextBlock.Text}.", LogLevel.Informational);
-            Log($"Note: this does not restore the packs to their default state!\nTo reset packs back to original you can quickly reinstall the latest versions of Vanilla RTX using the '{UpdateVanillaRTXButtonText.Text}' button. Other packs will require manual reinstallation. Use Export to back them up and quickly reimport them as you need.", LogLevel.Informational);
+            Log($"Note:\nThis does not restore the packs to their default state!\nTo reset packs back to original you can quickly reinstall the latest versions of Vanilla RTX using the '{UpdateVanillaRTXButtonText.Text}' button. Other packs will require manual reinstallation. Use Export to back them up and quickly reimport them as you need.", LogLevel.Informational);
         }
         Log("Tuning environment reset.", LogLevel.Success);
     }
@@ -2324,52 +2320,33 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG // TODO ###
 
->> Make and set unique icons for each feature
-maybe just the lamp icon, with mini-icons appended, looks nice in the taskbar
-
->> READ ALL COMMENTS
-there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
-
-- Fix startup flash
-
-- Use WinUIex TO bring to frONT
-
-KEEP thinking through the initlization sequences, u can fix this, did a few times then lost it
-
->> Wire up unhandled exception thingy for each feature
-expand on it, in a clever way to keep it clean
->> Done and its already good, but gotta wrap the feature launchesr in try catch
-and RESTORE button's clickablity upon such exceptions
-
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
-- Keep writing/rewriting/adding tooltips
+- READ ALL MS Store COMMENTS
+there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
 
+- Keep writing/rewriting/adding more tooltips
+
+- Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
+
+- Use Winuiex to bring to front, ditch your own methods
 - Use winuiex to replace more of your own half baked code
 Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
 replace inferestructure of all other windows with WinUIex
 
-> Be more explicit about the right channels to give feedback, report issues, etc...
-like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
-maybe you should do it more often, in more places
+- Test unhandled exception log catcher thingy, especially with startup and close crashes
+on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
+// Seek help from claude... explain what each one does, perfect the sequence, ease your brain.
+// say you had the flash fixed there, but lost it
 
-- Remove all code paths related to the checkboxes
-Do the redesign. TODAY. Delete PackLocator
-perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
-so other classes could use it
-Not manually constructing every little thing for callers.
->> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
-Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
-Pack locator is busted right now with your new centralized userdata locator rework
-But its ok, no need to fix it, you're doing a redesign that retires it anyway.
-But you can't just retire it?!
-It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
-Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
-so yeah, you can't actually just scrap all this and call it a day, there's more involved
-
-- do the userdatalocator expansion idea, done, just stress test it, figure out edge cases
+- userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
 locate button allows u to select it, it gets cached, revalidated all the time, its good good good.
+
+must probably focus userdata locator more on concerning itself with validating and filling up the persistent path variables
+and have features construct the rest htemselves
+buts its nice focusing even that in one place.
+think about it
 
 - Stress test GDKLocator again
 
@@ -2393,6 +2370,22 @@ All settled there? ensure there isn't a way the app can ddos github AND at the s
 - Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
 
+>> Be more explicit about the right channels to give feedback, report issues, etc...
+like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
+maybe you should do it more often, in more places
+
+- Make and set unique icons for each feature
+maybe just the lamp icon, with mini-icons appended, looks nice in the taskbar
+
+- Reduce cache retry timers for PACK UPDATER version retrieval
+it hangs too long trying to get from remote
+the whole deal is that user quickly gets access to the cached version if no internet is available
+this defeats the purpose if they gotta wait 59 or 30 seconds
+Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
+
+- BEFORE RELEASE:
+Test thoroughly, ensure no latent trimming bugs, on a fresh release build
+TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1
 
@@ -2416,8 +2409,23 @@ Make it sit Directly below the VANILLA RTX APP title text and logo roughly, so i
 that's actually good design! And gives some breathing room/makes it look a lot less overwhelming
 
 And do the idea of making pack tags have Unique effects, that was nice.
-
 For delete and export, keep using the Titlebar updates -> finish the job -> reload window strategy that importer already does
+
+But there are more considerations to this:
+Remove all code paths related to the checkboxes
+Do the redesign. TODAY. Delete PackLocator
+perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
+so other classes could use it
+Not manually constructing every little thing for callers.
+>> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
+Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
+Pack locator is busted right now with your new centralized userdata locator rework
+But its ok, no need to fix it, you're doing a redesign that retires it anyway.
+But you can't just retire it?!
+It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
+Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
+so yeah, you can't actually just scrap all this and call it a day? there's more involved
+
 
 - Begin using Bindings for:
 Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
@@ -2427,18 +2435,9 @@ LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled)
 but you may be able to shorten UpdateUI,
 its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
 
-
 - Do the TODOs scattered in the code
 
-
-- Reduce cache retry timers for PACK UPDATER version retrieval
-it hangs too long trying to get from remote
-the whole deal is that user quickly gets access to the cached version if no internet is available
-this defeats the purpose if they gotta wait 59 or 30 seconds
-Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
-
 - Create a BetterRTX-like lut preset, gets the looks 80% there! 
-
 
 - Review use of OpenURL/Prcoess.start where you use those
 Use the built-in Laucnh URI as necessary
@@ -2449,6 +2448,10 @@ Update the progressbar manager, allow it to move slowly, to give an indication o
 have it update in real time, all files/processed, should be easy enough...
 >> Alongside it, add the ability to Abort the operation, WHILE tuning, change tune button to "Abort Tuning Process" with a warning glyph
 or &#xE730; would be nicer, &#xECE4; too
+
+Maybe call it Scram or Back out, or, something
+Will require redoing of progress bar managaer, but thats fine -- here's what, move the progrssbar itself to the bottom, under previewer vessels, on that thin line???
+or WIDE at the very bottom or top of the app! OR VERTICAL ON THE SIDEBAR LOG! leftside!
 
 - Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
