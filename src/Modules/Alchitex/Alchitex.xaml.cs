@@ -99,13 +99,7 @@ public sealed partial class Alchitex : Window
     // ── Version-keyed keys ───────────────────────────────────────────────────
     // In DEBUG builds a fresh GUID is appended so the license + splash sequence
     // always re-runs, letting you test the full flow without clearing app data.
-    private static string LicenseAcceptedKey =>
-#if DEBUG
-        $"Alchitex_LicenseAccepted_{GetAppVersion()}_{Guid.NewGuid()}";
-#else
-        $"TEMPORARY_LICENSEWINDOW_{GetAppVersion()}_{Guid.NewGuid()}"; // show all the time for now
-        // $"Alchitex_LicenseAccepted_{GetAppVersion()}";
-#endif
+    private static string LicenseAcceptedKey => $"Alchitex_LicenseAccepted_{GetAppVersion()}";
 
     private static string GetAppVersion()
     {

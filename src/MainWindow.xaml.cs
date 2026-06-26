@@ -821,7 +821,7 @@ public sealed partial class MainWindow : Window
         handler = (_, __) =>
         {
             window.Activated -= handler; // unsubscribe immediately, run once only
-            // there's no reason to keep listening to Activated after tha
+            // there's no reason to keep listening to Activated after that
             HookThemeChangeListener();
         };
 

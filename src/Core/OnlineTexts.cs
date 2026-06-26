@@ -160,13 +160,8 @@ public static class OnlineTexts
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
-#if DEBUG
-    private static readonly TimeSpan COOLDOWN = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromSeconds(5);
-#else
     private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(3);
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1);
-#endif
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
