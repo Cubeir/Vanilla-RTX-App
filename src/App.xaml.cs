@@ -18,6 +18,7 @@ public partial class App : Application
 {
     private Window? _window;
     private static Mutex? _mutex = null;
+    private static EventWaitHandle? _wakeEvent = null;
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -82,23 +83,40 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         bool isNewInstance;
-        _mutex = new Mutex(true, $"{GetUniqueFolderName()}", out isNewInstance);
+        _mutex = new Mutex(true, GetUniqueName(), out isNewInstance);
 
         if (!isNewInstance)
         {
-            BringExistingWindowToFront();
-
-            // then exit without creating any new windows
+            // Signal the existing instance to bring itself to front
+            if (EventWaitHandle.TryOpenExisting($"{GetUniqueName()}_wake", out var existing))
+            {
+                existing.Set();
+                existing.Dispose();
+            }
             Exit();
             return;
         }
 
-        // Continue with app initialization only if this is a new instance
+        // Create the wake event for this instance to listen on
+        _wakeEvent = new EventWaitHandle(false, EventResetMode.AutoReset, $"{GetUniqueName()}_wake");
+        _ = Task.Run(() =>
+        {
+            while (_wakeEvent.WaitOne())
+            {
+                MainWindow.Instance?.DispatcherQueue.TryEnqueue(() =>
+                {
+                    var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(MainWindow.Instance);
+                    ShowWindow(hwnd, SW_RESTORE);
+                    SetForegroundWindow(hwnd);
+                });
+            }
+        });
+
         _window = new MainWindow();
         _window.Activate();
     }
 
-    public static string GetUniqueFolderName()
+    public static string GetUniqueName()
     {
         try
         {
@@ -124,24 +142,10 @@ public partial class App : Application
 
     public static void CleanupMutex()
     {
+        _wakeEvent?.Set();  // unblock the wait thread so it can exit
+        _wakeEvent?.Dispose();
         _mutex?.ReleaseMutex();
         _mutex?.Dispose();
-    }
-
-    private void BringExistingWindowToFront()
-    {
-        // Find the existing window process
-        var processes = System.Diagnostics.Process.GetProcessesByName("Vanilla RTX App");
-        foreach (var process in processes)
-        {
-            if (process.Id != Environment.ProcessId)
-            {
-                // Bring the existing window to foreground
-                ShowWindow(process.MainWindowHandle, SW_RESTORE);
-                SetForegroundWindow(process.MainWindowHandle);
-                break;
-            }
-        }
     }
 
     // Windows API
@@ -153,6 +157,16 @@ public partial class App : Application
 
     private const int SW_RESTORE = 9;
 }
+
+
+
+
+
+
+
+
+
+
 
 /// <summary>
 /// Custom TraceListener that captures all Trace.WriteLine calls
