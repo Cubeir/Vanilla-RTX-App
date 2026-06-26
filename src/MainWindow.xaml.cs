@@ -23,7 +23,6 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Foundation;
 using Windows.Storage;
 using Windows.System;
 using Windows.UI;
@@ -293,7 +292,7 @@ public sealed partial class MainWindow : Window
         CycleThemeButton_Click(null, null);
 
         // Give the window time to render
-        await Task.Delay(125);
+        await Task.Delay(150);
 
         // Watches theme changes and adjusts based on theme
         if (Content is FrameworkElement root)
@@ -309,7 +308,7 @@ public sealed partial class MainWindow : Window
         _ = OnlineTexts.TriggerUpdateAsync();
 
         // Splash Blinking Animation
-        _ = AnimateSplash(125);
+        _ = AnimateSplash(150);
 
         // RTX shaders omg
         InitializeShadows();
@@ -329,7 +328,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Update UI to reflect loaded settings
-        UpdateUI(0.001);
+        UpdateUI(0.01);
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -348,7 +347,7 @@ public sealed partial class MainWindow : Window
 
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
-        await Task.Delay(750);
+        await Task.Delay(700);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here ======================= 
         await FadeOutSplashScreen();
 
@@ -2310,11 +2309,15 @@ there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF
 - Keep writing/rewriting/adding more tooltips
 
 - Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
+// commenting out bits also helps tracking down what causes it
+improvements were made last night
+but its not enough
+Keep Perfecting it
+what makese sense to be where. that's the question
 
-- Use Winuiex to bring to front, ditch your own methods
-- Use winuiex to replace more of your own half baked code
+- Use winuiex to replace more of your own half baked code / other windows' infrastructure
 Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
-replace inferestructure of all other windows with WinUIex
+replace infrastructure of all other windows with WinUIex
 
 - Test unhandled exception log catcher thingy, especially with startup and close crashes
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
