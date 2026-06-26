@@ -16,6 +16,7 @@ using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
+using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.DLSSBrowser;
@@ -62,7 +63,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             presenter.IsResizable = true;
             presenter.IsMaximizable = true;
-            var dpi = MainWindow.GetDpiForWindow(hWnd);
+            var dpi = this.GetDpiForWindow();
             var scaleFactor = dpi / 96.0;
             presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
             presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);

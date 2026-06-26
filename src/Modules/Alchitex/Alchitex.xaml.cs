@@ -19,6 +19,7 @@ using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage;
 using WinRT.Interop;
+using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
@@ -135,7 +136,7 @@ public sealed partial class Alchitex : Window
         {
             presenter.IsResizable = true;
             presenter.IsMaximizable = true;
-            var dpi = MainWindow.GetDpiForWindow(hWnd);
+            var dpi = this.GetDpiForWindow();
             var scaleFactor = dpi / 96.0;
             presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
             presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
@@ -151,6 +152,8 @@ public sealed partial class Alchitex : Window
             _appWindow.TitleBar.InactiveForegroundColor = ColorHelper.FromArgb(128, 139, 139, 139);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
+
+        this.SetIcon(System.IO.Path.Combine("Modules", "Alchitex", "Assets", "icon.ico"));
 
         // Initialise lamp animators (images are already in the visual tree)
         InitializeLampAnimators();

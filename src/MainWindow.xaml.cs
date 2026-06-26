@@ -36,195 +36,6 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-/* ### BACKLOG // TODO ###
-
->> READ ALL COMMENTS
-there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
-
-- Fix startup flash
-
-- Fix shadows of selectable panes being cut off in pack browser and similar menus
-
-- Keep writing/rewriting/adding tooltips
-
-- Use winuiex to replace more of your own half baked code
-Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
-
-> Be more explicit about the right channels to give feedback, report issues, etc...
-like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
-maybe you should do it more often, in more places
-
-- Remove all code paths related to the checkboxes
-Do the redesign. TODAY. Delete PackLocator
-perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
-so other classes could use it
-Not manually constructing every little thing for callers.
->> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
-Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
-Pack locator is busted right now with your new centralized userdata locator rework
-But its ok, no need to fix it, you're doing a redesign that retires it anyway.
-But you can't just retire it?!
-It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
-Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
-so yeah, you can't actually just scrap all this and call it a day, there's more involved
-
-- do the userdatalocator expansion idea, done, just stress test it, figure out edge cases
-y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
-locate button allows u to select it, it gets cached, revalidated all the time, its good good good.
-
-- Stress test GDKLocator again
-
-- manifests with comments, do all related features finally play well with them? Test and confirm
-
-- Test memory usage when tuning large packs
-test for memory leaks
-
-- For any feature that deals with user RP directories:
-Ensure it POOLS dev/regular folders, AND across ALL users!
-For importing and selecting packs upstream it is ESPECIALLY important
-PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
-
-- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
-in the context where u already gave it all 3 classes, remember
-
-- Do a review of all cooldowns and retry times.
-- Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
-All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
-
-- Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
-Update them to reflect the latest features/changes
-
-
-==================== ENOUGH FOR 3.1
-
-Btw random thought
-indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
-
-- Do the redesign.
-Offload export and delete to PackBrowser menu, allow deletion and export on the spot
-
-While using bindings for everything else, rip out old checkboxes code paths
-Replace with a dynamic dropdown instead, allow selection of AVAILABLE/Installed Vanilla RTX resource packs, decided by PackLocator
-Reset and Clear are moved to the top
-Tune selection takes spot of Surface normal intensity as surface normal itnensity is moved to the right, cuz there's now enough space.
-
-This way you can shrink the app's min height too. One Row effectively gone -- Possibly move Preview button to the Left side
-
-It sounds a bit redundant having two select packs button, actually, rip out the ENTIRE CODE PATHs for checkboxes
-PackUpdater menu prints statuses anyway, there's no use to it
-LEAVE THAT AREA EMPTY, there's no harm in it
-Make it sit Directly below the VANILLA RTX APP title text and logo roughly, so it draws more attention
-that's actually good design! And gives some breathing room/makes it look a lot less overwhelming
-
-And do the idea of making pack tags have Unique effects, that was nice.
-
-For delete and export, keep using the Titlebar updates -> finish the job -> reload window strategy that importer already does
-
-- Begin using Bindings for:
-Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
-The code surrounding it, especially checkboxes, is very messy
-it's FUNCTIONALLY CORRECT all throughout at the moment, but it was a lot of hassle, and its messy
-LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled) or not is something u can't do with binding, and the existing code's perfect for it.
-but you may be able to shorten UpdateUI,
-its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
-
-
-- Do the TODOs scattered in the code
-
-
-- Reduce cache retry timers for PACK UPDATER version retrieval
-it hangs too long trying to get from remote
-the whole deal is that user quickly gets access to the cached version if no internet is available
-this defeats the purpose if they gotta wait 59 or 30 seconds
-Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
-
-- Create a BetterRTX-like lut preset, gets the looks 80% there! 
-
-
-- Review use of OpenURL/Prcoess.start where you use those
-Use the built-in Laucnh URI as necessary
-already doing in OpenURL, It's the more correct way there 
-
-- Implement a proper Tuning Progress bar
-Update the progressbar manager, allow it to move slowly, to give an indication of the progress of the tuning process
-have it update in real time, all files/processed, should be easy enough...
->> Alongside it, add the ability to Abort the operation, WHILE tuning, change tune button to "Abort Tuning Process" with a warning glyph
-or &#xE730; would be nicer, &#xECE4; too
-
-- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
-Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
-Some overrides now disable it while they should not.
-
-- When targeting preview, a new Dev branch on github
-must be used to receieve updates, compare packages, etc...
-easier said than done, the code is a clusterfuck
-and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
-if it doesn't, this is too, is a Useless idea.
-
-- With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
-It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
-It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
-
-In fact, manually calling UpdateUI is NECESSERY, thank GOD you're not using bindings
-UpdateUI is VERY NEEDED for Previewer class, it is already implemented everywhere and freezes vessel updates as necessery
-You would've had to manually done this anyway
-
-And the smooth transitions are worth it.
-
-- Smoothen the startup sequence, it flashes right now. 🌟 
-Use more correct ways to implement splash screen
-Scrap the animation
-Scrap the animation on alchitex startup sequence (it is annoying have to see it every time, hinders user)
-Scrap the code for it in Lamp.cs
-Allow rapid flash in Lamp.cs to happen to OFF in addition to SUPERON, decided randomly, no changes downstream
-
-- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
-watchya doing?
-
-
-
-
-
-
-- TTService.GetToolTip could be very useful,
-users don't read tooltips, hide verbose guides in there, its fine
-AND PRINT THEM TO USER when they repeat a mistake a few times and cause errors.
-just an idea
-
-- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
-Give it special treatment same as default preset and avoid changing existing logic
-they appear at the bottom
-expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
-basically, instead of changing the current pipeline, integerate this/build it on top of it
-that way it'll surely work without fucking things up
-
-- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
-Especially release builds, There COULD BE LATENT TRIMMING BUGS!
-Game detection and cache invalidation could be improved for both
-PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
-
-
-- A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
-Besides that you're gonna need something to unify the logging
-A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
-This way direct interaction with non-UI threads will be zero
-Long running tasks dump their text, UI thread gradually writes it out on its own.
-only concern is performance with large logs
-This idea can be a public static method and it won't ever ever block Ui thread
-A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
-
-^ yeah lets dedicate more code clutter to visual things
-
-- Set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
-Or simple pixel arts you'd like to make in the same style
-Have 5-10 made
-
-- Make holding shift turn the lamp Green to indicate its debugging functionality
-
-- Account for different font scalings, windows accessibility settings, etc...
-gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
-*/
-
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -415,9 +226,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-    [DllImport("user32.dll")]
-    public static extern uint GetDpiForWindow(IntPtr hWnd);
-
     /// For buttons hidden under shiftkey
     private readonly Dictionary<FrameworkElement, string> _originalTexts = new();
     private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
@@ -428,15 +236,8 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         // Properties to set before it is rendered
-        SetMainWindowProperties(); // track down what causes flashing on startup, could be window state manager actually
+        SetMainWindowProperties();
         InitializeComponent();
-
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.PersistenceId = "MainWindow";
-        manager.Width = WindowSizeX;
-        manager.Height = WindowSizeY;
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
 
         InitializeLampAnimators();
         SplashOverlay.Visibility = Visibility.Visible;
@@ -449,7 +250,6 @@ public sealed partial class MainWindow : Window
         var version = Windows.ApplicationModel.Package.Current.Id.Version;
         var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
         appVersion = versionString;
-
         Log($"App Version: {appVersion}" + new string('\n', 2) +
             $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
         ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
@@ -725,35 +525,25 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         this.AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
 
-        var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
-        var appWindow = AppWindow.GetFromWindowId(windowId);
-        appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.PersistenceId = "MainWindow";
+        manager.Width = WindowSizeX;        // DIPs, WinUIEx scales internally
+        manager.Height = WindowSizeY;
+        manager.MinWidth = WindowMinSizeX;
+        manager.MinHeight = WindowMinSizeY;
+        manager.IsResizable = true;
+        manager.IsMaximizable = true;
 
-        if (appWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsResizable = true;
-            presenter.IsMaximizable = true;
-
-            var dpi = GetDpiForWindow(hWnd);
-            var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
-        }
-
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico");
-        appWindow.SetTaskbarIcon(iconPath);
-        appWindow.SetTitleBarIcon(iconPath);
+        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
 
         // Force LtR
         if (Content is FrameworkElement root)
             root.FlowDirection = FlowDirection.LeftToRight;
 
         // Watches theme changes and adjusts based on theme
-        // use only for stuff that can be altered before mainwindow initlization
         ThemeWatcher(this, theme =>
         {
-            var titleBar = appWindow.TitleBar;
+            var titleBar = this.AppWindow.TitleBar;
             if (titleBar == null) return;
 
             bool isLight = theme == ElementTheme.Light;
@@ -799,8 +589,6 @@ public sealed partial class MainWindow : Window
                 }
             }
         });
-
-
     }
     public static void ThemeWatcher(Window window, Action<ElementTheme> onThemeChanged)
     {
@@ -2527,3 +2315,200 @@ public sealed partial class MainWindow : Window
         }
     }
 }
+
+
+
+/* ### BACKLOG // TODO ###
+
+>> READ ALL COMMENTS
+there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
+
+- Fix startup flash
+
+KEEP thinking through the initlization sequences, u can fix this, did a few times then lost it
+
+>> Wire up unhandled exception thingy for each feature
+expand on it, in a clever way to keep it clean
+
+- Fix shadows of selectable panes being cut off in pack browser and similar menus
+
+- Keep writing/rewriting/adding tooltips
+
+- Use winuiex to replace more of your own half baked code
+Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
+replace inferestructure of all other windows with WinUIex
+
+> Be more explicit about the right channels to give feedback, report issues, etc...
+like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
+maybe you should do it more often, in more places
+
+- Remove all code paths related to the checkboxes
+Do the redesign. TODAY. Delete PackLocator
+perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
+so other classes could use it
+Not manually constructing every little thing for callers.
+>> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
+Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
+Pack locator is busted right now with your new centralized userdata locator rework
+But its ok, no need to fix it, you're doing a redesign that retires it anyway.
+But you can't just retire it?!
+It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
+Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
+so yeah, you can't actually just scrap all this and call it a day, there's more involved
+
+- do the userdatalocator expansion idea, done, just stress test it, figure out edge cases
+y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
+locate button allows u to select it, it gets cached, revalidated all the time, its good good good.
+
+- Stress test GDKLocator again
+
+- manifests with comments, do all related features finally play well with them? Test and confirm
+
+- Test memory usage when tuning large packs
+test for memory leaks
+
+- For any feature that deals with user RP directories:
+Ensure it POOLS dev/regular folders, AND across ALL users!
+For importing and selecting packs upstream it is ESPECIALLY important
+PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
+
+- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
+in the context where u already gave it all 3 classes, remember
+
+- Do a review of all cooldowns and retry times.
+- Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
+All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
+
+- Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
+Update them to reflect the latest features/changes
+
+
+==================== ENOUGH FOR 3.1
+
+Btw random thought
+indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
+
+- Do the redesign.
+Offload export and delete to PackBrowser menu, allow deletion and export on the spot
+
+While using bindings for everything else, rip out old checkboxes code paths
+Replace with a dynamic dropdown instead, allow selection of AVAILABLE/Installed Vanilla RTX resource packs, decided by PackLocator
+Reset and Clear are moved to the top
+Tune selection takes spot of Surface normal intensity as surface normal itnensity is moved to the right, cuz there's now enough space.
+
+This way you can shrink the app's min height too. One Row effectively gone -- Possibly move Preview button to the Left side
+
+It sounds a bit redundant having two select packs button, actually, rip out the ENTIRE CODE PATHs for checkboxes
+PackUpdater menu prints statuses anyway, there's no use to it
+LEAVE THAT AREA EMPTY, there's no harm in it
+Make it sit Directly below the VANILLA RTX APP title text and logo roughly, so it draws more attention
+that's actually good design! And gives some breathing room/makes it look a lot less overwhelming
+
+And do the idea of making pack tags have Unique effects, that was nice.
+
+For delete and export, keep using the Titlebar updates -> finish the job -> reload window strategy that importer already does
+
+- Begin using Bindings for:
+Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
+The code surrounding it, especially checkboxes, is very messy
+it's FUNCTIONALLY CORRECT all throughout at the moment, but it was a lot of hassle, and its messy
+LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled) or not is something u can't do with binding, and the existing code's perfect for it.
+but you may be able to shorten UpdateUI,
+its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
+
+
+- Do the TODOs scattered in the code
+
+
+- Reduce cache retry timers for PACK UPDATER version retrieval
+it hangs too long trying to get from remote
+the whole deal is that user quickly gets access to the cached version if no internet is available
+this defeats the purpose if they gotta wait 59 or 30 seconds
+Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
+
+- Create a BetterRTX-like lut preset, gets the looks 80% there! 
+
+
+- Review use of OpenURL/Prcoess.start where you use those
+Use the built-in Laucnh URI as necessary
+already doing in OpenURL, It's the more correct way there 
+
+- Implement a proper Tuning Progress bar
+Update the progressbar manager, allow it to move slowly, to give an indication of the progress of the tuning process
+have it update in real time, all files/processed, should be easy enough...
+>> Alongside it, add the ability to Abort the operation, WHILE tuning, change tune button to "Abort Tuning Process" with a warning glyph
+or &#xE730; would be nicer, &#xECE4; too
+
+- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
+Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
+Some overrides now disable it while they should not.
+
+- When targeting preview, a new Dev branch on github
+must be used to receieve updates, compare packages, etc...
+easier said than done, the code is a clusterfuck
+and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
+if it doesn't, this is too, is a Useless idea.
+
+- With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
+It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
+It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
+
+In fact, manually calling UpdateUI is NECESSERY, thank GOD you're not using bindings
+UpdateUI is VERY NEEDED for Previewer class, it is already implemented everywhere and freezes vessel updates as necessery
+You would've had to manually done this anyway
+
+And the smooth transitions are worth it.
+
+- Smoothen the startup sequence, it flashes right now. 🌟 
+Use more correct ways to implement splash screen
+Scrap the animation
+Scrap the animation on alchitex startup sequence (it is annoying have to see it every time, hinders user)
+Scrap the code for it in Lamp.cs
+Allow rapid flash in Lamp.cs to happen to OFF in addition to SUPERON, decided randomly, no changes downstream
+
+- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
+watchya doing?
+
+
+
+
+
+
+- TTService.GetToolTip could be very useful,
+users don't read tooltips, hide verbose guides in there, its fine
+AND PRINT THEM TO USER when they repeat a mistake a few times and cause errors.
+just an idea
+
+- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
+Give it special treatment same as default preset and avoid changing existing logic
+they appear at the bottom
+expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
+basically, instead of changing the current pipeline, integerate this/build it on top of it
+that way it'll surely work without fucking things up
+
+- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
+Especially release builds, There COULD BE LATENT TRIMMING BUGS!
+Game detection and cache invalidation could be improved for both
+PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
+
+
+- A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
+Besides that you're gonna need something to unify the logging
+A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
+This way direct interaction with non-UI threads will be zero
+Long running tasks dump their text, UI thread gradually writes it out on its own.
+only concern is performance with large logs
+This idea can be a public static method and it won't ever ever block Ui thread
+A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
+
+^ yeah lets dedicate more code clutter to visual things
+
+- Set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
+Or simple pixel arts you'd like to make in the same style
+Have 5-10 made
+
+- Make holding shift turn the lamp Green to indicate its debugging functionality
+
+- Account for different font scalings, windows accessibility settings, etc...
+gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
+*/

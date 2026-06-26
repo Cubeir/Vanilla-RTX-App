@@ -22,6 +22,7 @@ using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
+using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.BetterRTXBrowser;
@@ -176,7 +177,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             presenter.IsResizable = true;
             presenter.IsMaximizable = true;
-            var dpi = MainWindow.GetDpiForWindow(hWnd);
+            var dpi = this.GetDpiForWindow();
             var scaleFactor = dpi / 96.0;
             presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
             presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
@@ -244,9 +245,10 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
             new TextBlock
                  {
-                Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The app retrieves the files for this feature from a third-party API outside of the developer's control. " +
+                Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The files for this feature are provided by the following third-party: https://bedrock.graphics/\n" +
                     "As such, with Minecraft updates, BetterRTX can potentially break. Vanilla RTX App gives its best effort to mitigate any issues that may arise and gives you a way to quickly revert to unmodified Default RTX files it has access to from your installations." +
-                    "\n\nPlease read the announcement & info panels that appear at the top to keep updated and help steer yourself away from potential issues.",                TextWrapping = TextWrapping.Wrap,
+                    "\n\nPlease pay attention to the info panels to keep updated and help steer yourself away from potential issues.",
+                TextWrapping = TextWrapping.Wrap,
                 IsTextScaleFactorEnabled = false
                  },
             confirmButton,
