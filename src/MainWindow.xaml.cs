@@ -289,11 +289,18 @@ public sealed partial class MainWindow : Window
         // Unsubscribe to avoid running this again, just for safety
         this.Activated -= MainWindow_Activated;
 
+        // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
+        CycleThemeButton_Click(null, null);
+
         // Give the window time to render
         await Task.Delay(125);
 
-        // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
-        CycleThemeButton_Click(null, null);
+        // Watches theme changes and adjusts based on theme
+        if (Content is FrameworkElement root)
+        {
+            root.ActualThemeChanged += (_, __) => ApplyThemeColors(root.ActualTheme);
+            ApplyThemeColors(root.ActualTheme);
+        }
 
         // Check for crash logs, might summon a content dialogue
         await CheckForCrashLog();
@@ -399,6 +406,7 @@ public sealed partial class MainWindow : Window
             await tcs.Task;
         }
     }
+
 
     private async Task CheckForCrashLog()
     {
@@ -540,82 +548,56 @@ public sealed partial class MainWindow : Window
         // Force LtR
         if (Content is FrameworkElement root)
             root.FlowDirection = FlowDirection.LeftToRight;
+    }
+    private void ApplyThemeColors(ElementTheme theme)
+    {
+        var titleBar = this.AppWindow.TitleBar;
+        if (titleBar == null) return;
 
-        // Watches theme changes and adjusts based on theme
-        ThemeWatcher(this, theme =>
+        bool isLight = theme == ElementTheme.Light;
+
+        titleBar.ButtonForegroundColor = isLight ? Colors.Black : Colors.White;
+        titleBar.ButtonHoverForegroundColor = isLight ? Colors.Black : Colors.White;
+        titleBar.ButtonPressedForegroundColor = isLight ? Colors.Black : Colors.White;
+        titleBar.ButtonInactiveForegroundColor = isLight
+            ? Color.FromArgb(255, 100, 100, 100)
+            : Color.FromArgb(255, 160, 160, 160);
+
+        titleBar.ButtonBackgroundColor = Colors.Transparent;
+        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+        titleBar.ButtonHoverBackgroundColor = isLight
+            ? Color.FromArgb(20, 0, 0, 0)
+            : Color.FromArgb(40, 255, 255, 255);
+        titleBar.ButtonPressedBackgroundColor = isLight
+            ? Color.FromArgb(40, 0, 0, 0)
+            : Color.FromArgb(60, 255, 255, 255);
+
+        // 🍝 Color of that little border next to the Preview button 🍝
+        if (IsTargetingPreview)
         {
-            var titleBar = this.AppWindow.TitleBar;
-            if (titleBar == null) return;
-
-            bool isLight = theme == ElementTheme.Light;
-
-            titleBar.ButtonForegroundColor = isLight ? Colors.Black : Colors.White;
-            titleBar.ButtonHoverForegroundColor = isLight ? Colors.Black : Colors.White;
-            titleBar.ButtonPressedForegroundColor = isLight ? Colors.Black : Colors.White;
-            titleBar.ButtonInactiveForegroundColor = isLight
-                ? Color.FromArgb(255, 100, 100, 100)
-                : Color.FromArgb(255, 160, 160, 160);
-
-            titleBar.ButtonBackgroundColor = Colors.Transparent;
-            titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            titleBar.ButtonHoverBackgroundColor = isLight
-                ? Color.FromArgb(20, 0, 0, 0)
-                : Color.FromArgb(40, 255, 255, 255);
-            titleBar.ButtonPressedBackgroundColor = isLight
-                ? Color.FromArgb(40, 0, 0, 0)
-                : Color.FromArgb(60, 255, 255, 255);
-
-            // 🍝 Color of that little border next to the Preview button 🍝
-            if (IsTargetingPreview)
+            var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
+            LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
+            var accentColorKeyDark = theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorDark1";
+            RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
+        }
+        else
+        {
+            var themeKey = theme == ElementTheme.Light ? "Light" : "Dark";
+            var themeDictionaries = Application.Current.Resources.ThemeDictionaries;
+            if (themeDictionaries.TryGetValue(themeKey, out var themeDict) && themeDict is ResourceDictionary dict)
             {
-                var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
-                LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
-                var accentColorKeyDark = theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorDark1";
-                RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
-            }
-            else
-            {
-                var themeKey = theme == ElementTheme.Light ? "Light" : "Dark";
-                var themeDictionaries = Application.Current.Resources.ThemeDictionaries;
-                if (themeDictionaries.TryGetValue(themeKey, out var themeDict) && themeDict is ResourceDictionary dict)
+                if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
                 {
-                    if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
-                    {
-                        LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
-                    }
-                    if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
-                    {
-                        RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
-                    }
+                    LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
+                }
+                if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
+                {
+                    RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
                 }
             }
-        });
-    }
-    public static void ThemeWatcher(Window window, Action<ElementTheme> onThemeChanged)
-    {
-        void HookThemeChangeListener()
-        {
-            if (window.Content is FrameworkElement root)
-            {
-                root.ActualThemeChanged += (_, __) =>
-                {
-                    onThemeChanged(root.ActualTheme);
-                };
-
-                onThemeChanged(root.ActualTheme);
-            }
         }
-
-        TypedEventHandler<object, WindowActivatedEventArgs>? handler = null;
-        handler = (_, __) =>
-        {
-            window.Activated -= handler; // unsubscribe immediately, run once only
-            // there's no reason to keep listening to Activated after that
-            HookThemeChangeListener();
-        };
-
-        window.Activated += handler;
     }
+
 
 
     private void SetPreviews()
