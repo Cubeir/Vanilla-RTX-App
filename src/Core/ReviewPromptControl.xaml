@@ -39,13 +39,15 @@
                            LineHeight="20"
                            TextAlignment="Center"
                            Foreground="{ThemeResource TextFillColorPrimaryBrush}">
-                    <Run Text="If you've enjoyed the app and have found it helpful so far, &#x0a;consider supporting me through my" />
-                    <Hyperlink x:Name="DonationLink"
-                               UnderlineStyle="None">
-                        <Run Text="Ko-Fi page.&#x0a;&#x0a;"
-                             FontWeight="SemiBold" />
+                    <Run Text="A message from the developer:&#x0a;&#x0a;"
+                         FontSize="14"/>
+                    <Run Text="If you've enjoyed the app or have found it helpful so far, &#x0a;you can sponser me through my"/>
+                    <Hyperlink UnderlineStyle="Single"
+                               NavigateUri="https://ko-fi.com/cubeir">
+                        <Run Text="Ko-Fi page."
+                             FontWeight="SemiBold"/>
                     </Hyperlink>
-                    <Run Text="Or simply by leaving an honest review!&#x0a;Anything helps, and encourages me to keep my projects going. 🔭💫" />
+                    <Run Text="&#x0a;...or simply by leaving an honest review!&#x0a;Anything helps, and encourages me to continue my projects." />
                 </TextBlock>
 
                 <!-- Button Row -->
@@ -55,7 +57,7 @@
                             VerticalAlignment="Center"
                             Margin="0,8,0,0">
                     <Button x:Name="ReviewButton"
-                            Content="Leave a review ⭐"
+                            Content="Leave an honest review ⭐"
                             Padding="16,8"
                             MinWidth="130"
                             Translation="0,0,24">

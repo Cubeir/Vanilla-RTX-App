@@ -18,17 +18,9 @@ public sealed partial class ReviewPromptControl : UserControl
         ReviewButton.Click += ReviewButton_Click;
         LaterButton.Click += LaterButton_Click;
         NeverButton.Click += NeverButton_Click;
-        DonationLink.Click += DonationLink_Click;
-
         // Make sure the control takes full size of parent
         this.HorizontalAlignment = HorizontalAlignment.Stretch;
         this.VerticalAlignment = VerticalAlignment.Stretch;
-    }
-
-    private async void DonationLink_Click(Microsoft.UI.Xaml.Documents.Hyperlink sender, Microsoft.UI.Xaml.Documents.HyperlinkClickEventArgs args)
-    {
-        // Donation link does NOT close the dialog - user can click it freely
-        await Windows.System.Launcher.LaunchUriAsync(new Uri("https://ko-fi.com/cubeir"));
     }
 
     private void RootGrid_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
