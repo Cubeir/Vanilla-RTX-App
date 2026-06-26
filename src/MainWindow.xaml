@@ -15,7 +15,7 @@
     <Grid x:Name="MainGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
-            <ColumnDefinition Width="3.75*" />
+            <ColumnDefinition Width="3.72*" />
         </Grid.ColumnDefinitions>
 
         <!-- Splash Blocker -->
