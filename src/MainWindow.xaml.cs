@@ -237,22 +237,21 @@ public sealed partial class MainWindow : Window
     {
         // Properties to set before it is rendered
         SetMainWindowProperties();
+        LoadSettings(); // Load variables back in from previous session
+
         InitializeComponent();
 
-        InitializeLampAnimators();
+        var version = Windows.ApplicationModel.Package.Current.Id.Version;
+        var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        appVersion = versionString;
+
+
         SplashOverlay.Visibility = Visibility.Visible;
+        InitializeLampAnimators();
         SetTitleBar(TitleBarDragArea);
         _progressManager = new ProgressBarManager(ProgressBar);
 
         Instance = this;
-
-        // Version, title and initial logs
-        var version = Windows.ApplicationModel.Package.Current.Id.Version;
-        var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
-        appVersion = versionString;
-        Log($"App Version: {appVersion}" + new string('\n', 2) +
-            $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
-        ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
 
         // Do upon app closure
         this.Closed += (s, e) =>
@@ -294,10 +293,7 @@ public sealed partial class MainWindow : Window
         this.Activated -= MainWindow_Activated;
 
         // Give the window time to render
-        await Task.Delay(150);
-
-        // Load back in persistent variables
-        LoadSettings();
+        await Task.Delay(125);
 
         // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
         CycleThemeButton_Click(null, null);
@@ -309,7 +305,7 @@ public sealed partial class MainWindow : Window
         _ = OnlineTexts.TriggerUpdateAsync();
 
         // Splash Blinking Animation
-        _ = AnimateSplash(150);
+        _ = AnimateSplash(125);
 
         // RTX shaders omg
         InitializeShadows();
@@ -348,18 +344,22 @@ public sealed partial class MainWindow : Window
 
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
-        await Task.Delay(700);
+        await Task.Delay(750);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here ======================= 
         await FadeOutSplashScreen();
+
+        // Show Leave a Review prompt
+        _ = ReviewPromptManager.InitializeAsync(MainGrid);
+
+        Log($"App Version: {appVersion}" + new string('\n', 2) +
+            $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
+        ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
 
         // Warning if MC is running
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
-
-        // Show Leave a Review prompt
-        _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
         // By the time we get here, on good internet the OnlineTexts fetch is already done. On bad internet it may be stale cache, it's ok, we show it anyway
         // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
@@ -369,7 +369,7 @@ public sealed partial class MainWindow : Window
         {
             for (int i = psa.Length - 1; i >= 0; i--)
             {
-                await Task.Delay(500);
+                await Task.Delay(333);
                 Log(psa[i].Text);
             }
         }
@@ -525,19 +525,20 @@ public sealed partial class MainWindow : Window
 
         var manager = WinUIEx.WindowManager.Get(this);
         manager.PersistenceId = "MainWindow";
-        manager.Width = WindowSizeX;        // DIPs, WinUIEx scales internally
+        manager.Width = WindowSizeX; // WinUIEx scales internally
         manager.Height = WindowSizeY;
         manager.MinWidth = WindowMinSizeX;
         manager.MinHeight = WindowMinSizeY;
         manager.IsResizable = true;
         manager.IsMaximizable = true;
 
-        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
-
         // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
         var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
         if (!settings.Containers.ContainsKey("WinUIEx"))
             this.CenterOnScreen();
+
+        // Icon
+        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
 
         // Force LtR
         if (Content is FrameworkElement root)
@@ -2322,6 +2323,9 @@ public sealed partial class MainWindow : Window
 
 
 /* ### BACKLOG // TODO ###
+
+>> Make and set unique icons for each feature
+maybe just the lamp icon, with mini-icons appended, looks nice in the taskbar
 
 >> READ ALL COMMENTS
 there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
