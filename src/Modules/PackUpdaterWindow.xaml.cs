@@ -182,8 +182,6 @@ public sealed partial class PackUpdateWindow : Window
             var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
             WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
-            SetupShadows();
-
             await InitializePackInformation();
             SetupButtonHandlers();
 
@@ -207,12 +205,6 @@ public sealed partial class PackUpdateWindow : Window
             }
         }
     }
-
-    private void SetupShadows()
-    {
-        // Shadow setup is handled in XAML
-    }
-
     // ======================= Initialization =======================
 
     private async Task InitializePackInformation()
