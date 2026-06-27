@@ -138,8 +138,6 @@ public sealed partial class PackBrowserWindow : Window
 
         PopulatePackBrowserAnnouncements();
 
-        ActionBarShadowHost.Translation = new System.Numerics.Vector3(0, 0, 32);
-
         if (this.Content is UIElement contentRoot)
         {
             contentRoot.AllowDrop = true;
@@ -681,7 +679,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(8, 4, 8, 4),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 48, 48, 48))
+            Background = new SolidColorBrush(ColorHelper.FromArgb(155, 32, 32, 32))
         };
         badge.Child = new TextBlock
         {

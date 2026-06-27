@@ -19,7 +19,7 @@
                 Visibility="{ThemeResource LightThemeBackgroundVisibility}"
                 Canvas.ZIndex="-1">
             <Border.Background>
-                <SolidColorBrush Color="#17373737" />
+                <SolidColorBrush Color="#20373737" />
             </Border.Background>
         </Border>
 
@@ -84,7 +84,7 @@
 
                 <!-- PACK LIST (scrollable) -->
                 <ScrollViewer Grid.Row="1"
-                              Padding="20,4,20,0"
+                              Padding="20,0,20,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
@@ -121,6 +121,7 @@
                         Margin="20,5,20,16"
                         CornerRadius="5,5,5,5"
                         BorderThickness="0"
+                        Translation="0,0,512"
                         Background="Transparent">
 
                     <Border.Shadow>
