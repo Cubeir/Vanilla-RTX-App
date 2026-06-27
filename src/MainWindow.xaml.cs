@@ -235,8 +235,6 @@ public sealed partial class MainWindow : Window
     {
         // Properties to set before it is rendered
         SetMainWindowProperties();
-        LoadSettings(); // Load variables back in from previous session
-
         InitializeComponent();
 
         InitializeLampAnimators();
@@ -284,6 +282,8 @@ public sealed partial class MainWindow : Window
         // Unsubscribe to avoid running this again, just for safety
         this.Activated -= MainWindow_Activated;
 
+        // Load variables back in from previous session
+        LoadSettings();
         // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
         CycleThemeButton_Click(null, null);
 
@@ -505,6 +505,7 @@ public sealed partial class MainWindow : Window
         }
         catch { }
     }
+
 
     private void MainWindow_FocusOpacity(object sender, WindowActivatedEventArgs e)
     {
