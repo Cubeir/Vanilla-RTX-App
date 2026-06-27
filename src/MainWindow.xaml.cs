@@ -859,7 +859,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
             return;
         }
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.025);
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.075);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
@@ -868,7 +868,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
             return;
         }
-        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.001);
+        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.01);
     }
 
 
