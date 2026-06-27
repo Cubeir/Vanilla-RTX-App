@@ -40,7 +40,11 @@ namespace Vanilla_RTX_App;
 /// </summary>
 public static class TunerVariables
 {
-    public static string? appVersion = null;
+    public static string? appVersion = GetAppVersion();
+    private static string GetAppVersion()
+    {
+        var version = Windows.ApplicationModel.Package.Current.Id.Version; return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+    }
 
     public static string VanillaRTXLocation = string.Empty;
     public static string VanillaRTXNormalsLocation = string.Empty;
@@ -238,10 +242,6 @@ public sealed partial class MainWindow : Window
         LoadSettings(); // Load variables back in from previous session
 
         InitializeComponent();
-
-        var version = Windows.ApplicationModel.Package.Current.Id.Version;
-        var versionString = $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
-        appVersion = versionString;
 
         InitializeLampAnimators();
         SetTitleBar(TitleBarDragArea);
