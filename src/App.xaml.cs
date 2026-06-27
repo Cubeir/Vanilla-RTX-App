@@ -55,27 +55,6 @@ public partial class App : Application
         };
     }
 
-    private static void WriteCrashLog(string source, string message, string detail)
-    {
-        try
-        {
-            var logPath = Path.Combine(
-                Windows.Storage.ApplicationData.Current.LocalFolder.Path,
-                "crash_log.txt");
-
-            // Append rather than overwrite, in case multiple things throw
-            // during the same session before the process dies
-            File.AppendAllText(logPath,
-                $"=== Crash Report ===\n" +
-                $"Version:   {TunerVariables.appVersion ?? "unknown"}\n" +
-                $"Source:    {source}\n" +
-                $"Time:      {DateTime.Now}\n" +
-                $"Message:   {message}\n" +
-                $"Detail:\n{detail}\n\n");
-        }
-        catch { }
-    }
-
     /// <summary>
     /// Invoked when the application is launched.
     /// </summary>
@@ -116,6 +95,27 @@ public partial class App : Application
         _window.Activate();
     }
 
+    private static void WriteCrashLog(string source, string message, string detail)
+    {
+        try
+        {
+            var logPath = Path.Combine(
+                Windows.Storage.ApplicationData.Current.LocalFolder.Path,
+                "crash_log.txt");
+
+            // Append rather than overwrite, in case multiple things throw
+            // during the same session before the process dies
+            File.AppendAllText(logPath,
+                $"=== Crash Report ===\n" +
+                $"Version:   {TunerVariables.appVersion ?? "unknown"}\n" +
+                $"Source:    {source}\n" +
+                $"Time:      {DateTime.Now}\n" +
+                $"Message:   {message}\n" +
+                $"Detail:\n{detail}\n\n");
+        }
+        catch { }
+    }
+
     public static string GetUniqueName()
     {
         try
@@ -131,6 +131,10 @@ public partial class App : Application
         {
             return "vanilla_rtx_app";
         }
+    }
+    public static string GetAppVersion()
+    {
+        var version = Windows.ApplicationModel.Package.Current.Id.Version; return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
     }
 
     // Clean up mutex when app exits

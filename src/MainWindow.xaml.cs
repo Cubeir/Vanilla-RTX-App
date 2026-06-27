@@ -40,11 +40,7 @@ namespace Vanilla_RTX_App;
 /// </summary>
 public static class TunerVariables
 {
-    public static string? appVersion = GetAppVersion();
-    private static string GetAppVersion()
-    {
-        var version = Windows.ApplicationModel.Package.Current.Id.Version; return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
-    }
+    public static string? appVersion = App.GetAppVersion();
 
     public static string VanillaRTXLocation = string.Empty;
     public static string VanillaRTXNormalsLocation = string.Empty;
@@ -2323,6 +2319,9 @@ replace infrastructure of all other windows with WinUIex
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
 // Seek help from claude... explain what each one does, perfect the sequence, ease your brain.
 // say you had the flash fixed there, but lost it
+
+the weirdb ehavior is cuz activation won't happen on its own, you gotta trigger it too
+on regular starts, it always happens, on restarts where process auto starts, it might not!!
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
