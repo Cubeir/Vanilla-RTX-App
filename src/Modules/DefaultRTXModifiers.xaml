@@ -230,7 +230,6 @@
 
                     <!-- Bottom vessel — holds the settled (current) image -->
                     <Image x:Name="PresetImageBottom"
-                           CacheMode="BitmapCache"
                            Stretch="UniformToFill"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
@@ -238,7 +237,6 @@
 
                     <!-- Top vessel — fades in the incoming image over the bottom -->
                     <Image x:Name="PresetImageTop"
-                           CacheMode="BitmapCache"
                            Stretch="UniformToFill"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"

@@ -121,7 +121,6 @@
                         Width="20"
                         VerticalAlignment="Center"
                         Margin="0,0,8,0"
-                        CacheMode="BitmapCache"
                         Canvas.ZIndex="1">
 
                     <!-- Halo (bottom layer) -->
@@ -133,8 +132,7 @@
                            Canvas.Top="-54"
                            Opacity="0.25"
                            Canvas.ZIndex="2"
-                           IsHitTestVisible="False"
-                           CacheMode="BitmapCache" />
+                           IsHitTestVisible="False"/>
 
                     <!-- Base "On" image -->
                     <Image x:Name="AlchitexIconOn"
@@ -144,8 +142,7 @@
                            Canvas.Top="1"
                            Opacity="1.0"
                            Canvas.ZIndex="3"
-                           IsHitTestVisible="False"
-                           CacheMode="BitmapCache" />
+                           IsHitTestVisible="False"/>
 
                     <!-- "Off" overlay (fades in/out during animation) -->
                     <Image x:Name="AlchitexIconOff"
@@ -155,8 +152,7 @@
                            Canvas.Top="1"
                            Opacity="0.0"
                            Canvas.ZIndex="4"
-                           IsHitTestVisible="False"
-                           CacheMode="BitmapCache" />
+                           IsHitTestVisible="False"/>
 
                     <!-- "Super" overlay -->
                     <Image x:Name="AlchitexIconSuper"
@@ -166,8 +162,7 @@
                            Canvas.Top="1"
                            Opacity="0.0"
                            Canvas.ZIndex="5"
-                           IsHitTestVisible="False"
-                           CacheMode="BitmapCache" />
+                           IsHitTestVisible="False"/>
 
                     <!-- Button to make lamp interactive -->
                     <Button x:Name="LogoInteractButton"
@@ -351,8 +346,7 @@
                            Margin="-512,-512,-512,-512"
                            Opacity="0.175"
                            Stretch="Uniform"
-                           Canvas.ZIndex="1"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="1"/>
 
                     <!-- Base "On" — middle layer -->
                     <Image x:Name="SplashLogo"
@@ -361,8 +355,7 @@
                            Height="192"
                            Opacity="1.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="2"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="2"/>
 
                     <!-- "Off" overlay — used by animator -->
                     <Image x:Name="SplashLogoOff"
@@ -371,8 +364,7 @@
                            Height="192"
                            Opacity="0.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="3"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="3"/>
 
                     <!-- "Super" overlay — top layer -->
                     <Image x:Name="SplashLogoSuper"
@@ -381,8 +373,7 @@
                            Height="192"
                            Opacity="0.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="4"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="4"/>
                 </Grid>
             </Viewbox>
         </Grid>

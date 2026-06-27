@@ -41,8 +41,7 @@
                            Margin="-512,-512,-512,-512"
                            Opacity="0.175"
                            Stretch="Uniform"
-                           Canvas.ZIndex="1"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="1"/>
                     <!-- Base "On" - Middle layer -->
                     <Image x:Name="SplashLamp"
                            Source="ms-appx:///Assets/icons/SplashScreen.Regular.png"
@@ -50,8 +49,7 @@
                            Height="192"
                            Opacity="1.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="2"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="2"/>
                     <!-- Super/Off overlay - Top layer -->
                     <Image x:Name="SplashLampSuper"
                            Source="ms-appx:///Assets/icons/SplashScreen.Super.png"
@@ -59,8 +57,7 @@
                            Height="192"
                            Opacity="0.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="3"
-                           CacheMode="BitmapCache" />
+                           Canvas.ZIndex="3"/>
                 </Grid>
             </Viewbox>
         </Grid>
@@ -126,7 +123,6 @@
                     Width="20"
                     VerticalAlignment="Center"
                     Margin="0,0,8,0"
-                    CacheMode="BitmapCache"
                     Canvas.ZIndex="1">
 
                 <!-- Halo (Bottom layer) -->
@@ -138,8 +134,7 @@
                        Canvas.Top="-54"
                        Opacity="0.25"
                        Canvas.ZIndex="2"
-                       IsHitTestVisible="False"
-                       CacheMode="BitmapCache" />
+                       IsHitTestVisible="False"/>
 
                 <!-- Base "On" image (always visible) -->
                 <Image x:Name="iconImageBox"
@@ -149,8 +144,7 @@
                        Canvas.Top="1"
                        Opacity="1.0"
                        Canvas.ZIndex="3"
-                       IsHitTestVisible="False"
-                       CacheMode="BitmapCache" />
+                       IsHitTestVisible="False"/>
 
                 <!-- Overlay "Off" image (fades in and out during the animation) -->
                 <Image x:Name="iconOverlayImageBox"
@@ -160,8 +154,7 @@
                        Canvas.Top="1"
                        Opacity="0.0"
                        Canvas.ZIndex="4"
-                       IsHitTestVisible="False"
-                       CacheMode="BitmapCache" />
+                       IsHitTestVisible="False"/>
 
                 <!-- Button to make lamp interactive -->
                 <Button x:Name="LampInteractionButton"
