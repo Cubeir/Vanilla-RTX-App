@@ -1760,7 +1760,7 @@ public sealed partial class MainWindow : Window
         if (hadCustomPacks)
             Log("Cleared all pack selections.", LogLevel.Success);
         else if (hadVanillaRTX)
-            Log("Unselected Vanilla RTX packs.", LogLevel.Success);
+            Log("Deselected Vanilla RTX packs.", LogLevel.Success);
         else
             Log("You haven't selected any packs to clear.", LogLevel.Informational);
     }
