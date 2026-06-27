@@ -559,7 +559,7 @@ public sealed partial class MainWindow : Window
         titleBar.ButtonHoverForegroundColor = isLight ? Colors.Black : Colors.White;
         titleBar.ButtonPressedForegroundColor = isLight ? Colors.Black : Colors.White;
         titleBar.ButtonInactiveForegroundColor = isLight
-            ? Color.FromArgb(255, 100, 100, 100)
+            ? Color.FromArgb(255, 128, 128, 128)
             : Color.FromArgb(255, 160, 160, 160);
 
         titleBar.ButtonBackgroundColor = Colors.Transparent;
@@ -571,7 +571,7 @@ public sealed partial class MainWindow : Window
             ? Color.FromArgb(40, 0, 0, 0)
             : Color.FromArgb(60, 255, 255, 255);
 
-        // 🍝 Color of that little border next to the Preview button 🍝
+        // 🍝 Color of the bevels adjacent to the Target Preview button 🍝
         if (IsTargetingPreview)
         {
             var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
