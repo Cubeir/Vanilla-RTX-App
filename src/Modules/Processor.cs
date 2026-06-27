@@ -807,8 +807,8 @@ public class Processor
         var verb = Random.Shared.NextDouble() < 0.5 ? "Completed" : "Finished";
         var duration = FormatDuration(elapsed);
         return packCount == 1
-            ? $"{verb} tuning. ({duration})"
-            : $"{verb} tuning {packCount} packs. ({duration})";
+            ? $"{verb} tuning in {duration}."
+            : $"{verb} tuning {packCount} packs — took {duration}!)";
 
         static string FormatDuration(TimeSpan elapsed)
         {
