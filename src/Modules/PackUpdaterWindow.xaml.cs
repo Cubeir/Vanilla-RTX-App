@@ -22,8 +22,8 @@ public sealed partial class PackUpdateWindow : Window
     private readonly PackUpdater _updater;
 
     // Pane animation durations
-    private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(200);
-    private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(175);
+    private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
+    private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
 
     private const string CACHE_INVALIDATION_COOLDOWN_KEY = "PackUpdater_CacheInvalidation_LastTimestamp";
     private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 2;

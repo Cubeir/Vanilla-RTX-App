@@ -264,7 +264,6 @@ public sealed partial class Alchitex : Window
             {
                 // Show license first (titlebar always visible above it)
                 await PopulateLicenseTextAsync();
-                InitializeLicenseShadows();
                 LicensePanel.Visibility = Visibility.Visible;
                 SetTitleBar(TitleBarDragAreaFull);
 
@@ -401,20 +400,6 @@ public sealed partial class Alchitex : Window
             LicenseTextBlock.Blocks.Add(err);
         }
     }
-
-    // ── Shadows ───────────────────────────────────────────────────────────────
-    private void InitializeTitleBarShadow()
-    {
-        TitleBarShadow.Receivers.Add(TitleBarShadowReceiver);
-    }
-
-    private void InitializeLicenseShadows()
-    {
-        LicenseTextShadow.Receivers.Add(LicenseShadowReceiver);
-        DisagreeShadow.Receivers.Add(LicenseShadowReceiver);
-        AgreeShadow.Receivers.Add(LicenseShadowReceiver);
-    }
-
     // ── Button handlers ───────────────────────────────────────────────────────
     private void DisagreeButton_Click(object sender, RoutedEventArgs e)
     {
@@ -447,7 +432,6 @@ public sealed partial class Alchitex : Window
         InfoButton.Visibility = Visibility.Visible;
         TitleBarDragAreaNarrow.Visibility = Visibility.Visible;
         SetTitleBar(TitleBarDragAreaNarrow);
-        InitializeTitleBarShadow();
         MainGrid.Visibility = Visibility.Visible;
     }
 

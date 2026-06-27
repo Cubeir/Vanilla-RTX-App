@@ -126,17 +126,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     }
 
     // -------------------------------------------------------------------------
-    // Shadow setup
-    // -------------------------------------------------------------------------
-
-    private void ButtonRowGrid_Loaded(object sender, RoutedEventArgs e)
-    {
-        var shadow = new ThemeShadow();
-        ButtonRowGrid.Shadow = shadow;
-        shadow.Receivers.Add(ButtonShadowReceiver);
-    }
-
-    // -------------------------------------------------------------------------
     // Window lifecycle
     // -------------------------------------------------------------------------
 

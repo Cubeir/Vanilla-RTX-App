@@ -49,8 +49,7 @@ public static class TunerVariables
     public static string VanillaRTXVersion = string.Empty;
     public static string VanillaRTXNormalsVersion = string.Empty;
     public static string VanillaRTXOpusVersion = string.Empty;
-    // We already know names of Vanilla RTX packs so we get version instead, for custom pack, name's enough.
-    // We invalidate the retrieved name whenever we want to disable processing of the custom pack, so it has multiple purposes
+
     public static ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> SelectedPacks = new();
 
     // Tied to checkboxes
@@ -213,7 +212,7 @@ public sealed partial class MainWindow : Window
             baseImage: SplashLamp,
             overlayImage: null,
             haloImage: SplashLampHalo,
-            superImage: SplashLampSuper
+            superImage: SplashLampOverlay
         );
 
         // Initialize both immediately to preload and set special occasion images
@@ -305,9 +304,6 @@ public sealed partial class MainWindow : Window
 
         // Splash Blinking Animation
         _ = AnimateSplash(150);
-
-        // RTX shaders omg
-        InitializeShadows();
 
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
@@ -745,22 +741,6 @@ public sealed partial class MainWindow : Window
         );
 
     }
-
-
-    private void InitializeShadows()
-    {
-        TitleBarShadow.Receivers.Add(TitleBarShadowReceiver);
-        // Top row shadow — spans both columns, add both receivers
-        TopRowContentShadow.Receivers.Add(LeftShadowReceiver);
-        TopRowContentShadow.Receivers.Add(RightShadowReceiver);
-        // Left column shadows
-        SidebarLogShadow.Receivers.Add(LeftShadowReceiver);
-        CommandBarShadow.Receivers.Add(LeftShadowReceiver);
-        // Right column shadows
-        ClearResetShadow.Receivers.Add(RightShadowReceiver);
-        BottomButtonsShadow.Receivers.Add(RightShadowReceiver);
-    }
-
 
     public enum LogLevel
     {
@@ -2297,6 +2277,8 @@ public sealed partial class MainWindow : Window
 
 
 /* ### BACKLOG // TODO ###
+
+- Third party API usage notice, crash, packbrowser' similar content dialogues aren't respecting user theme!!??
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 

@@ -93,18 +93,16 @@
                      ROW 0 — Preset dropdown + Install button pair
                      ═══════════════════════════════════════════════ -->
 
-                <Grid x:Name="ButtonShadowReceiver"
-                      Grid.Row="0"
-                      IsHitTestVisible="False" />
-
                 <Grid x:Name="ButtonRowGrid"
                       Grid.Row="0"
                       Height="50"
                       Margin="20,14,20,6"
                       VerticalAlignment="Top"
                       HorizontalAlignment="Stretch"
-                      Translation="0,0,32"
-                      Loaded="ButtonRowGrid_Loaded">
+                      Translation="0,0,32">
+                    <Grid.Shadow>
+                        <ThemeShadow />
+                    </Grid.Shadow>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2.15*" />
                         <ColumnDefinition Width="6" />

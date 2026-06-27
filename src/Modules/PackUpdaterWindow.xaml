@@ -62,11 +62,6 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Shadow receiver grid -->
-                        <Grid x:Name="ShadowReceiverGrid"
-                              Grid.ColumnSpan="5" />
-
-
                         <!-- Panel 1: Vanilla RTX Normals -->
                         <Border Grid.Column="0"
                                 x:Name="NormalsPanel"

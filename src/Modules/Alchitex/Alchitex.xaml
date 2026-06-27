@@ -49,9 +49,6 @@
               Height="35"
               Canvas.ZIndex="100">
 
-            <!-- Shadow receiver behind the titlebar -->
-            <Grid x:Name="TitleBarShadowReceiver" />
-
             <!-- Styled titlebar strip -->
             <Border x:Name="TitleBarBackground"
                     Height="37"
@@ -219,11 +216,7 @@
                 <RowDefinition Height="Auto" />
                 <!-- buttons       -->
             </Grid.RowDefinitions>
-
-            <!-- Shadow receiver (behind everything in this panel) -->
-            <Grid x:Name="LicenseShadowReceiver"
-                  Grid.RowSpan="2" />
-
+            
             <!-- ── License RichTextBlock ── -->
             <ScrollViewer Grid.Row="0"
                           Background="{ThemeResource OverlayBackgroundColor}"
@@ -294,12 +287,7 @@
               Background="Transparent"
               Margin="0,35,0,0">
 
-            <!-- Shadow receiver (behind everything) -->
-            <Grid x:Name="MainShadowReceiver" />
-
-            <!-- ── Alchitex feature content area ── -->
-
-            
+            <!-- ── Alchitex feature content area ── -->     
             <Button Content="Redstone circuits are still being laid down; Keep an eye out for updates!"
                     x:Name="AnnouncementButton"
                     Click="AnnouncementButton_Click"
@@ -355,7 +343,8 @@
                            Height="192"
                            Opacity="1.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="2"/>
+                           Canvas.ZIndex="2">
+                    </Image>
 
                     <!-- "Off" overlay — used by animator -->
                     <Image x:Name="SplashLogoOff"

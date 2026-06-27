@@ -18,11 +18,11 @@
             <ColumnDefinition Width="3.72*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Splash Blocker -->
+        <!-- Splash Screen -->
         <Grid x:Name="SplashOverlay"
               Visibility="Visible"
               Grid.ColumnSpan="2"
-              Canvas.ZIndex="9999">
+              Canvas.ZIndex="999">
             <Grid.Background>
                 <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" />
             </Grid.Background>
@@ -49,15 +49,21 @@
                            Height="192"
                            Opacity="1.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="2"/>
+                           Translation="0,0,512"
+                           Canvas.ZIndex="2">
+                        <Image.Shadow>
+                            <ThemeShadow />
+                        </Image.Shadow>
+                    </Image>
                     <!-- Super/Off overlay - Top layer -->
-                    <Image x:Name="SplashLampSuper"
+                    <Image x:Name="SplashLampOverlay"
                            Source="ms-appx:///Assets/icons/SplashScreen.Super.png"
                            Width="192"
                            Height="192"
                            Opacity="0.0"
                            Stretch="Uniform"
-                           Canvas.ZIndex="3"/>
+                           Canvas.ZIndex="3">
+                    </Image>
                 </Grid>
             </Viewbox>
         </Grid>
@@ -75,14 +81,13 @@
             </Border.Background>
         </Border>
 
-        <!-- Titlebar background -->
+        <!-- Titlebar -->
         <Grid Grid.ColumnSpan="2"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Top"
               Height="35">
-            <!-- Shadow receiver behind the titlebar) -->
-            <Grid x:Name="TitleBarShadowReceiver" />
-            <!-- Actual titlebar -->
+            
+            <!-- Titlebar Background -->
             <Border x:Name="TitleBarBackground"
                     Height="37"
                     HorizontalAlignment="Stretch"
@@ -94,7 +99,7 @@
                     Translation="0,0,32"
                     IsHitTestVisible="False">
                 <Border.Shadow>
-                    <ThemeShadow x:Name="TitleBarShadow" />
+                    <ThemeShadow />
                 </Border.Shadow>
             </Border>
 
@@ -138,7 +143,6 @@
                        Canvas.ZIndex="2"
                        IsHitTestVisible="False"/>
 
-                <!-- Base "On" image (always visible) -->
                 <Image x:Name="iconImageBox"
                        Source="ms-appx:///Assets/vrtx.lamp.on.small.png"
                        Height="24"
@@ -146,9 +150,13 @@
                        Canvas.Top="1"
                        Opacity="1.0"
                        Canvas.ZIndex="3"
-                       IsHitTestVisible="False"/>
+                       Translation="0,0,16"
+                       IsHitTestVisible="False">
+                    <Image.Shadow>
+                        <ThemeShadow />
+                    </Image.Shadow>
+                </Image>
 
-                <!-- Overlay "Off" image (fades in and out during the animation) -->
                 <Image x:Name="iconOverlayImageBox"
                        Source="ms-appx:///Assets/vrtx.lamp.off.small.png"
                        Height="24"
@@ -156,7 +164,8 @@
                        Canvas.Top="1"
                        Opacity="0.0"
                        Canvas.ZIndex="4"
-                       IsHitTestVisible="False"/>
+                       IsHitTestVisible="False">
+                </Image>
 
                 <!-- Button to make lamp interactive -->
                 <Button x:Name="LampInteractionButton"
@@ -187,16 +196,11 @@
         </Grid>
 
         <!-- Titlebar Buttons -->
-        <Border x:Name="CommandBarButtonsShadowReceiver"
-                Margin="-2,-2,16,0"
+        <Border Margin="-2,-2,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 Height="34"
-                Width="Auto"
-                Translation="0,0,0">
-            <Border.Shadow>
-                <ThemeShadow x:Name="CommandBarShadow" />
-            </Border.Shadow>
+                Width="Auto">
             <Grid Background="Transparent"
                   BorderBrush="Transparent"
                   BorderThickness="1">
@@ -306,8 +310,7 @@
 
 
         <!-- Locate Packs || Preview || Checkboxes -->
-        <Border x:Name="TopRowContentShadowHost"
-                Grid.ColumnSpan="2"
+        <Border Grid.ColumnSpan="2"
                 Margin="16,52,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Stretch"
@@ -315,7 +318,7 @@
                 Translation="0,0,32"
                 CornerRadius="6">
             <Border.Shadow>
-                <ThemeShadow x:Name="TopRowContentShadow" />
+                <ThemeShadow />
             </Border.Shadow>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -416,23 +419,22 @@
 
                 
                 <!-- Pack Selection Options -->
-                <Border x:Name="PackOptionsShadowHost"
-                        Grid.Column="4"
+                <Border Grid.Column="4"
                         Padding="16,4"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderThickness="0"
                         CornerRadius="0,6,6,0"
-                        ToolTipService.ToolTip="Select which Vanilla RTX packs to process.&#x0a;&#x0a;If a checkbox isn't selectable, it means that pack isn't currently installed, install Vanilla RTX resource packs with Get latest RTX packs button.">
+                        ToolTipService.ToolTip="Select which Vanilla RTX packs to process.&#x0a;&#x0a;If a checkbox isn't selectable, it means that pack currently not installed, begin installing Vanilla RTX resource packs by clicking the Get latest RTX packs button.">
                     <Grid HorizontalAlignment="Stretch"
                           BorderThickness="0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="0.9*" />
+                            <ColumnDefinition Width="0.85*" />
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="1.135*" />
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1.035*" />
                         </Grid.ColumnDefinitions>
 
                         <CheckBox x:Name="VanillaRTXCheckBox"
@@ -487,10 +489,6 @@
                     </Grid>
                 </Border>
 
-
-
-
-
             </Grid>
         </Border>
 
@@ -498,25 +496,8 @@
         <!-- LEFT CONTENT AREA -->
         <Grid Grid.Column="0"
               x:Name="LeftContentGrid">
-            <!-- Shadow receiver for left column -->
-            <Grid x:Name="LeftShadowReceiver"
-                  IsHitTestVisible="False"
-                  Background="Transparent" />
-
             <!-- Sidebar Log Box -->
             <Grid>
-                <Border x:Name="SidebarLogShadowHost"
-                        Margin="16,108,8,16"
-                        VerticalAlignment="Stretch"
-                        HorizontalAlignment="Stretch"
-                        Translation="0,0,64"
-                        BorderThickness="0"
-                        CornerRadius="6">
-                    <Border.Shadow>
-                        <ThemeShadow x:Name="SidebarLogShadow" />
-                    </Border.Shadow>
-                </Border>
-
                 <!-- Textbox -->
                 <TextBox x:Name="SidebarLog"
                          Margin="16,108,8,16"
@@ -529,8 +510,13 @@
                          AllowFocusOnInteraction="True"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          Padding="12,12,12,138"
+                         Translation="0,0,64"
                          IsTextScaleFactorEnabled="False"
-                         ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn you as you interact with the app." />
+                         ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn you as you interact with the app.">
+                    <TextBox.Shadow>
+                        <ThemeShadow />
+                    </TextBox.Shadow>
+                </TextBox>
             </Grid>
 
             <!-- Progress Bar -->
@@ -586,11 +572,7 @@
      
         <!-- RIGHT CONTENT AREA -->
         <Grid Grid.Column="1">
-            <!-- Shadow receiver for right column -->
-            <Grid x:Name="RightShadowReceiver"
-                  IsHitTestVisible="False"
-                  Background="Transparent" />
-
+            
             <!-- Main layout grid with defined rows -->
             <Grid>
                 <Grid.RowDefinitions>
@@ -598,7 +580,7 @@
                     <RowDefinition Height="Auto" />
                     <!-- Spacing -->
                     <RowDefinition Height="2" />
-                    <!-- Tune & Export grid -->
+                    <!-- Tune & Export & Delete Grid -->
                     <RowDefinition Height="Auto" />
                     <!-- Spacing -->
                     <RowDefinition Height="*" />
@@ -635,15 +617,14 @@
                     </Grid.RowDefinitions>
 
                     <!-- (Special) Grid 2 Reset Button with shadow -->
-                    <Border x:Name="ClearResetButtonsShadowHost"
-                            Grid.Column="2"
+                    <Border Grid.Column="2"
                             Grid.Row="0"
                             Height="40"
                             VerticalAlignment="Bottom"
                             Translation="0,0,32"
                             CornerRadius="6">
                         <Border.Shadow>
-                            <ThemeShadow x:Name="ClearResetShadow" />
+                            <ThemeShadow />
                         </Border.Shadow>
                     </Border>
 
@@ -706,8 +687,7 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- Overlay borders for the visual split -->
-                        <!-- Dark border on RIGHT edge of left button -->
+                        <!-- Dark bevel on RIGHT edge of left button -->
                         <Grid Grid.Column="0"
                               HorizontalAlignment="Right"
                               Width="3"
@@ -718,7 +698,7 @@
                                     BorderThickness="3,0,0,0" />
                         </Grid>
 
-                        <!-- Bright border on LEFT edge of right button -->
+                        <!-- Bright bevel on LEFT edge of right button -->
                         <Grid Grid.Column="2"
                               HorizontalAlignment="Left"
                               Width="3"
@@ -806,7 +786,7 @@
                             <TextBox x:Name="EmissivityMultiplierBox"
                                      Grid.Column="2"
                                      Width="60"
-                                     Text="1.00"
+                                     Text="1.0"
                                      IsTextScaleFactorEnabled="False"
                                      LostFocus="EmissivityMultiplierBox_LostFocus" />
                         </Grid>
@@ -929,7 +909,6 @@
                         </Grid>
                     </StackPanel>
 
-
                     <!-- Roughen Up -->
                     <StackPanel Grid.Column="2"
                                 Grid.Row="4"
@@ -1016,8 +995,7 @@
                 <!-- =============== End of Sliders Grid =============== -->
 
                 <!-- Tune | Export | Delete button block -->
-                <Border x:Name="TuneAndExportShadowHost"
-                        Grid.Row="2"
+                <Border Grid.Row="2"
                         Margin="16,0,24,0"
                         Height="43"
                         HorizontalAlignment="Stretch"
@@ -1026,7 +1004,7 @@
                         BorderThickness="0"
                         Translation="0,0,32">
                     <Border.Shadow>
-                        <ThemeShadow x:Name="TuneAndExportShadow" />
+                        <ThemeShadow />
                     </Border.Shadow>
                 </Border>
 
@@ -1166,27 +1144,16 @@
                     </Grid>
                 </Grid>
 
-                <!-- Bottom Buttons Grid 3x2 with shadow -->
-                <Border x:Name="BottomButtonsShadowHost"
-                        Grid.Row="4"
-                        Margin="8,0,16,16"
-                        Height="136"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Bottom"
-                        Translation="0,0,34"
-                        CornerRadius="6"
-                        BorderThickness="0">
-                    <Border.Shadow>
-                        <ThemeShadow x:Name="BottomButtonsShadow" />
-                    </Border.Shadow>
-                </Border>
-
                 <Grid Grid.Row="4"
                       Margin="8,0,16,16"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Bottom"
                       Height="136"
-                      BorderThickness="0">
+                      BorderThickness="0"
+                      Translation="0,0,33">
+                    <Grid.Shadow>
+                        <ThemeShadow/>
+                    </Grid.Shadow>
                     <Grid.RowDefinitions>
                         <!-- First is button row, second is the divider space between them, so on so forth -->
                         <RowDefinition Height="*" />
