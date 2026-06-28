@@ -232,15 +232,14 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        // Properties to set before it is rendered
+        // Set Window-level properties before initializing
         SetMainWindowProperties();
         InitializeComponent();
 
         InitializeLampAnimators();
         SetTitleBar(TitleBarDragArea);
-        _progressManager = new ProgressBarManager(ProgressBar);
-
         Instance = this;
+        _progressManager = new ProgressBarManager(ProgressBar);
 
         // Do upon app closure
         this.Closed += (s, e) =>
@@ -283,6 +282,7 @@ public sealed partial class MainWindow : Window
 
         // Load variables back in from previous session
         LoadSettings();
+
         // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
         CycleThemeButton_Click(null, null);
 
@@ -294,16 +294,14 @@ public sealed partial class MainWindow : Window
         {
             root.ActualThemeChanged += (_, __) => ApplyThemeColors(root.ActualTheme);
             ApplyThemeColors(root.ActualTheme);
+            root.FlowDirection = FlowDirection.LeftToRight;
         }
 
         // Check for crash logs, might summon a content dialogue
         await CheckForCrashLog();
 
-        // Launch silent update immediately, hopefully by the time the startup sequence is finished, we have new PSAs to show!
-        _ = OnlineTexts.TriggerUpdateAsync();
-
         // Splash Blinking Animation
-        _ = AnimateSplash(150);
+        _ = AnimateSplash(100);
 
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
@@ -327,7 +325,7 @@ public sealed partial class MainWindow : Window
         // Similar to GDKLocator but for user data:
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         // Updates the button responsible for allowing the user to select another user data path.
-        UpdateBrowsePacksButton(IsTargetingPreview);
+        UpdateUserDataDependentUI(IsTargetingPreview);
 
         // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
         if (!IsTargetingPreview)
@@ -536,10 +534,6 @@ public sealed partial class MainWindow : Window
 
         // Icon
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
-
-        // Force LtR
-        if (Content is FrameworkElement root)
-            root.FlowDirection = FlowDirection.LeftToRight;
     }
     private void ApplyThemeColors(ElementTheme theme)
     {
@@ -849,7 +843,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
             return;
         }
-        await _splashLampAnimator.Animate(false, true, 0.9, splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.01);
+        await _splashLampAnimator.Animate(false, true, 0.9, duration: splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.01);
     }
 
 
@@ -1389,26 +1383,23 @@ public sealed partial class MainWindow : Window
 
         packBrowserWindow.Activate();
     }
-    private void UpdateBrowsePacksButton(bool isTargetingPreview)
+    private void UpdateUserDataDependentUI(bool isTargetingPreview)
     {
         var isValid = MinecraftUserDataLocator.IsDataValid(isTargetingPreview);
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
 
         if (isValid)
         {
-            PackVM.SetLabelOverride(null); // restores count-based label
+            PackVM.SetLabelOverride(null);
             ToolTipService.SetToolTip(BrowsePacksButton,
-                "Select resource packs that you want to process, you can also import more packs from this menu.");
+                "Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.");
+            _ = LocatePacksTask();
         }
         else
         {
-            PackVM.SetLabelOverride("Locate game data");
+            PackVM.SetLabelOverride("Locate your data");
             ToolTipService.SetToolTip(BrowsePacksButton,
-                $"Could not find {versionName} data folder — click to locate it manually.");
-
-            Log($"⚠️ Could not find {versionName} user data folder. " +
-                $"If you're using a third-party launcher, click \"Locate game data\" to point the app to it.",
-                LogLevel.Warning);
+                $"The app couldn't find {versionName} data folder, automatically, click to locate it manually.");
         }
     }
 
@@ -1447,16 +1438,16 @@ public sealed partial class MainWindow : Window
 
         if (acceptedPath == null)
         {
-            Log($"❌ That doesn't look like a valid {versionName} data folder. " +
-                $"Please select the folder named \"{expectedName}\" — it should contain a \"Users\" subfolder.",
-                LogLevel.Warning);
+            Log($"That doesn't look like a valid {versionName} data folder. " +
+                $"Please select the folder named \"{expectedName}\", it should be the one that contains a \"Users\" subfolder.",
+                LogLevel.Error);
             return;
         }
 
-        Log($"✅ {versionName} data folder set: {acceptedPath}", LogLevel.Success);
+        Log($"{versionName} data folder set: {acceptedPath}", LogLevel.Success);
 
         // Update button state and kick off pack detection now that the path is known
-        UpdateBrowsePacksButton(IsTargetingPreview);
+        UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
     }
 
@@ -1480,7 +1471,7 @@ public sealed partial class MainWindow : Window
         BetterRTXPresetManagerButton.IsEnabled = false;
 
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        UpdateBrowsePacksButton(IsTargetingPreview);
+        UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
     }
 
@@ -1506,7 +1497,7 @@ public sealed partial class MainWindow : Window
         BetterRTXPresetManagerButton.IsEnabled = true;
 
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        UpdateBrowsePacksButton(IsTargetingPreview);
+        UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
     }
 
@@ -1750,8 +1741,8 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            Log("Starting hard reset — wiping all app storage...", LogLevel.Warning);
-            await Task.Delay(200);
+            Log("Starting hard reset, this will wipe all of app's storage and temporary files...", LogLevel.Warning);
+            await Task.Delay(250);
 
             // ── 1. Local Settings (recursive containers) ─────────────────────────
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
@@ -2279,13 +2270,15 @@ public sealed partial class MainWindow : Window
 /* ### BACKLOG // TODO ###
 
 - Third party API usage notice, crash, packbrowser' similar content dialogues aren't respecting user theme!!??
+! FIX1
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
 - READ ALL MS Store COMMENTS
 there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
+Like that crash one, you wouldn't have become aware was it not for that comment
 
-- Keep writing/rewriting/adding more tooltips
+- Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
 
 - Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
 // commenting out bits also helps tracking down what causes it
@@ -2298,12 +2291,12 @@ what makese sense to be where. that's the question
 Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
 replace infrastructure of all other windows with WinUIex
 
+>> Update other windows' unfocused titlebar button,actually, unify it, reuse across all windows
+
 - Test unhandled exception log catcher thingy, especially with startup and close crashes
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
-// Seek help from claude... explain what each one does, perfect the sequence, ease your brain.
-// say you had the flash fixed there, but lost it
 
-the weirdb ehavior is cuz activation won't happen on its own, you gotta trigger it too
+the weird splash behavior is cuz activation won't happen on its own, you gotta trigger it too
 on regular starts, it always happens, on restarts where process auto starts, it might not!!
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
@@ -2319,16 +2312,13 @@ think about it
 
 - manifests with comments, do all related features finally play well with them? Test and confirm
 
-- Test memory usage when tuning large packs
+- Test memory usage when tuning multiple LARGE packs
 test for memory leaks
 
 - For any feature that deals with user RP directories:
 Ensure it POOLS dev/regular folders, AND across ALL users!
 For importing and selecting packs upstream it is ESPECIALLY important
 PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
-
-- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
-in the context where u already gave it all 3 classes, remember
 
 - Do a review of all cooldowns and retry times.
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
@@ -2355,6 +2345,8 @@ Test thoroughly, ensure no latent trimming bugs, on a fresh release build
 TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1
+
+- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
 Btw random thought
 indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
