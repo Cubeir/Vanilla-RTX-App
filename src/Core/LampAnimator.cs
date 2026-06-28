@@ -44,10 +44,12 @@ public class LampAnimator
     private bool _isBusy;
 
     // --- Halo spin physics state ---
+
     // Angle in degrees; never reset — the wheel just keeps turning wherever it is.
     private double _haloAngle = 0.0;
     // Degrees per second. Positive = clockwise.
     private double _haloVelocity = 0.0;
+    private double _superHaloOpacity = 0.0;
     // Background spin loop, shared across all callers while the lamp lives.
     private CancellationTokenSource? _spinCts;
     private Task? _spinTask;
@@ -91,7 +93,9 @@ public class LampAnimator
         _haloImage = haloImage;
         _superImage = superImage;
 
-        _defaultHaloOpacity = _context == LampContext.Splash ? 0.175 : 0.25;
+        // Halo Opacity in context of splash vs anything else, off is hardcoded to 0.0
+        _defaultHaloOpacity = _context == LampContext.Splash ? 0.195 : 0.295; 
+        _superHaloOpacity = _context == LampContext.Splash ? 0.65 : 0.7;
 
         // If explicit paths were provided, use them directly.
         // Otherwise fall back to the original context-based resolution.
@@ -577,7 +581,7 @@ public class LampAnimator
                 await SetImageAsync(_superImage, _superPath);
                 var tasks = new[] {
                     AnimateOpacity(_superImage, 1.0, fadeMs),
-                    _haloImage != null ? AnimateOpacity(_haloImage, 0.6, fadeMs) : Task.CompletedTask
+                    _haloImage != null ? AnimateOpacity(_haloImage, _superHaloOpacity, fadeMs) : Task.CompletedTask
                 };
                 await Task.WhenAll(tasks);
                 await Task.Delay(flashDuration);
@@ -596,7 +600,7 @@ public class LampAnimator
 
                 var tasks = new[] {
                     AnimateOpacity(_baseImage, 1.0, fadeMs),
-                    _haloImage != null ? AnimateOpacity(_haloImage, 0.6, fadeMs) : Task.CompletedTask
+                    _haloImage != null ? AnimateOpacity(_haloImage, _superHaloOpacity, fadeMs) : Task.CompletedTask
                 };
                 await Task.WhenAll(tasks);
                 await Task.Delay(flashDuration);
@@ -677,13 +681,13 @@ public class LampAnimator
                 {
                     await SetImageAsync(_baseImage, _superPath);
                     if (_overlayImage != null) _overlayImage.Opacity = 0;
-                    if (_haloImage != null) _haloImage.Opacity = 0.6;
+                    if (_haloImage != null) _haloImage.Opacity = _superHaloOpacity;
                 }
                 else if (_context == LampContext.Splash && _superImage != null)
                 {
                     await SetImageAsync(_superImage, _superPath);
                     _superImage.Opacity = 1.0;
-                    if (_haloImage != null) _haloImage.Opacity = 0.6;
+                    if (_haloImage != null) _haloImage.Opacity = _superHaloOpacity;
                 }
             }
             else
@@ -770,7 +774,7 @@ public class LampAnimator
 
                         await Task.WhenAll(
                             AnimateOpacity(_baseImage, 1.0, fadeMs, token),
-                            _haloImage != null ? AnimateOpacity(_haloImage, 0.6, fadeMs, token) : Task.CompletedTask
+                            _haloImage != null ? AnimateOpacity(_haloImage, _superHaloOpacity, fadeMs, token) : Task.CompletedTask
                         );
 
                         await Task.Delay(superFlashDuration, token);
