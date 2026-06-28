@@ -1194,7 +1194,7 @@ public static class MinecraftUserDataLocator
             ? TunerVariables.Persistent.MinecraftPreviewDataPath
             : TunerVariables.Persistent.MinecraftDataPath;
 
-        return IsValidDataRoot(path) ? path : null;
+        return IsValidDataRoot(path, isPreview) ? path : null;
     }
 
     /// <summary>
@@ -1212,7 +1212,7 @@ public static class MinecraftUserDataLocator
     /// </summary>
     public static bool TrySetCustomDataRoot(bool isPreview, string path)
     {
-        if (!IsValidDataRoot(path))
+        if (!IsValidDataRoot(path, isPreview))
         {
             Trace.WriteLine($"[UserDataLocator] Rejected custom path (no Users subfolder): {path}");
             return false;
@@ -1338,7 +1338,7 @@ public static class MinecraftUserDataLocator
         // 1. Cached path — still there and valid?
         if (!string.IsNullOrEmpty(cachedPath))
         {
-            if (IsValidDataRoot(cachedPath))
+            if (IsValidDataRoot(cachedPath, isPreview))
             {
                 Trace.WriteLine($"[UserDataLocator] {versionName} cache valid: {cachedPath}");
                 return true;
@@ -1354,15 +1354,20 @@ public static class MinecraftUserDataLocator
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             folderName);
 
-        if (IsValidDataRoot(defaultPath))
+        if (IsValidDataRoot(defaultPath, isPreview))
         {
             Trace.WriteLine($"[UserDataLocator] {versionName} found at default location: {defaultPath}");
             SetCachedPath(isPreview, defaultPath);
             return true;
         }
 
-        // 3. Not found anywhere we can check automatically
+        // 3. Not found? tell the user exactly what to look for
         Trace.WriteLine($"[UserDataLocator] {versionName} data root not found");
+        Log($"The app couldn't find {versionName} data folder automatically. " +
+            $"Click \"Locate game data\" and select the folder named \"{folderName}\"." +
+            $"\n\nIt should contain a \"Users\" subfolder inside it.",
+            LogLevel.Warning);
+
         return false;
     }
 
@@ -1372,12 +1377,23 @@ public static class MinecraftUserDataLocator
     /// "Users" folder is created by the game on first launch and is required for
     /// all per-user data to exist under it.
     /// </summary>
-    private static bool IsValidDataRoot(string? path)
+    private static bool IsValidDataRoot(string? path, bool isPreview)
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
         if (!Directory.Exists(path)) return false;
+        if (!Directory.Exists(Path.Combine(path, UsersFolderName))) return false;
 
-        return Directory.Exists(Path.Combine(path, UsersFolderName));
+        // Reject if the folder name is explicitly the wrong edition.
+        // Unknown/custom names (third-party launchers) pass through unchecked.
+        var folderName = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar));
+        var wrongEditionName = isPreview ? StableRootFolderName : PreviewRootFolderName;
+        if (folderName.Equals(wrongEditionName, StringComparison.OrdinalIgnoreCase))
+        {
+            Trace.WriteLine($"[UserDataLocator] Rejected path — folder name indicates wrong edition: {folderName}");
+            return false;
+        }
+
+        return true;
     }
 
     private static void SetCachedPath(bool isPreview, string? path)
