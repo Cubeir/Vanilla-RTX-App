@@ -134,7 +134,7 @@ public sealed partial class PackBrowserWindow : Window
         WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
 
         AddPackDescriptionText.Text =
-            $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip, .mcaddon)";
+            $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip)";
 
         PopulatePackBrowserAnnouncements();
 
