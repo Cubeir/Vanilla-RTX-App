@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Vanilla_RTX_App.Core;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -28,6 +29,8 @@ public partial class App : Application
     {
         InitializeComponent();
         TraceManager.Initialize();
+        _ = OnlineTexts.TriggerUpdateAsync(); // Silent PSA Update, hopefully by the time the startup sequence is finished, we have new PSAs to show!
+
 
         // 1. Catches unhandled exceptions on the UI thread from any window
         this.UnhandledException += (s, e) =>
@@ -59,7 +62,7 @@ public partial class App : Application
     /// Invoked when the application is launched.
     /// </summary>
     /// <param name="args">Details about the launch request and process.</param>
-    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         bool isNewInstance;
         _mutex = new Mutex(true, GetUniqueName(), out isNewInstance);
@@ -91,8 +94,11 @@ public partial class App : Application
             }
         });
 
-        _window = new MainWindow();
-        _window.Activate();
+        // Brief delay before Activate() to allow InitializeComponent() and lamp animators
+        // to finish rendering before the window becomes visible, preventing a black background briefly appearing or splash images not loading in time.
+        _window = new MainWindow(); // -> This kicks off the stuff in MainWindow actually running, which also calls for XAML to be initialized
+        await Task.Delay(150); // A delay ensures the xaml is constructed before window tries to appear.
+        _window.Activate(); // Do what
     }
 
     private static void WriteCrashLog(string source, string message, string detail)
