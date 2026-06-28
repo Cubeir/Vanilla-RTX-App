@@ -164,7 +164,7 @@ public static class Helpers
         }
         catch (Exception ex)
         {
-            // Log($"Error writing direct TGA to {outputPath}: {ex.Message}");
+            Trace.WriteLine($"Error writing direct TGA to {outputPath}: {ex.Message}");
             throw;
         }
     }
