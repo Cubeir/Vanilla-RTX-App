@@ -828,14 +828,14 @@ public sealed partial class MainWindow : Window
 #endif
     }
 
-    public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75)
+    public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.075)
     {
         if (_titlebarLampAnimator == null)
         {
             Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
             return;
         }
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.075);
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: rapidFlashChance);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
@@ -1040,7 +1040,7 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
-                Log("Hold shift and click the lamp again to copy debug logs to your clipboard, attach these if reporting issues to the developer.", LogLevel.Informational);
+                Log("Hold shift and click the lamp again to copy logs for debugging to your clipboard.\nAttach these if you ever want to report an issue to the developer.", LogLevel.Informational);
             }
             else
             {
@@ -1111,7 +1111,7 @@ public sealed partial class MainWindow : Window
                     }
                 }
             }
-            _ = BlinkingLamp(true, true, 1.0);
+            _ = BlinkingLamp(true, true, 1.0, 0.15);
         }
 
         void CollectUIControlsState(StringBuilder sb)
@@ -2346,6 +2346,10 @@ TEST EVERTHING! EVERY. LITTLE. THING.
 ==================== ENOUGH FOR 3.1
 
 - Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
+
+- Idea: when other windows launch, recieve clicks on the main window, and just log something that tells user, finish your work in the current
+open module before returning to main window.
+just.. it'd be nice QoL.
 
 Btw random thought
 indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful

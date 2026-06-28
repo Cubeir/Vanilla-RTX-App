@@ -87,10 +87,11 @@
                               Padding="20,0,20,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
+                              HorizontalScrollBarVisibility="Disabled"
+                              Margin="-20,0,-20,0">
                     <StackPanel x:Name="PackListContainer"
                                 Spacing="6"
-                                Padding="0,0,0,8" />
+                                Padding="20,0,20,8" />
                 </ScrollViewer>
 
                 <!-- Empty state overlays the scroll area -->
