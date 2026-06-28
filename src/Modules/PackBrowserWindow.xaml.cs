@@ -238,7 +238,8 @@ public sealed partial class PackBrowserWindow : Window
                     PrimaryButtonText = "Replace",
                     CloseButtonText = "Skip",
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.Content.XamlRoot
+                    XamlRoot = this.Content.XamlRoot,
+                    RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
                 };
 
                 var result = await dialog.ShowAsync();
@@ -273,7 +274,8 @@ public sealed partial class PackBrowserWindow : Window
                     PrimaryButtonText = "Import anyway",
                     CloseButtonText = "Skip",
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.Content.XamlRoot
+                    XamlRoot = this.Content.XamlRoot,
+                    RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
                 };
 
                 var result = await dialog.ShowAsync();

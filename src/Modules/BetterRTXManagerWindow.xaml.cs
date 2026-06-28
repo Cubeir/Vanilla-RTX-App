@@ -264,7 +264,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             IsTextScaleFactorEnabled = false,
             MinWidth = 0,
             MaxWidth = double.PositiveInfinity,
-            Width = this.Bounds.Width * 0.55
+            Width = this.Bounds.Width * 0.55,
+            RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
         };
 
         // Block all closes until one of our buttons sets the tcs

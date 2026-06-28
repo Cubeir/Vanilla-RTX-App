@@ -38,16 +38,19 @@
                            TextWrapping="Wrap"
                            LineHeight="20"
                            TextAlignment="Center"
+                           FontWeight="Medium"
                            Foreground="{ThemeResource TextFillColorPrimaryBrush}">
-                    <Run Text="A message from the developer:&#x0a;&#x0a;"
-                         FontSize="14"/>
-                    <Run Text="If you've enjoyed the app or have found it helpful so far, &#x0a;you can sponser me through my"/>
+                    <Run Text="A message from the developer:"/>
+                    <Run Text="&#x0a;&#x0a;If you've enjoyed the app or have found it helpful so far, &#x0a;you can sponser me through my"/>
                     <Hyperlink UnderlineStyle="Single"
                                NavigateUri="https://ko-fi.com/cubeir">
                         <Run Text="Ko-Fi page."
                              FontWeight="SemiBold"/>
                     </Hyperlink>
-                    <Run Text="&#x0a;...or simply by leaving an honest review!&#x0a;Anything helps, and encourages me to continue my projects." />
+                    <Run Text="&#x0a;...or simply by leaving an honest review!&#x0a;&#x0a;Anything helps, and encourages me to continue my projects." />
+                    <Run Text="&#x0a;All of which I've released and upkept for years, free of charge, ads or similar nonsense.&#x0a;I just ask anyone who believes this is a good thing to help me continue it. " />
+                    <Run Text="&#x0a;- Cubeir"
+                         FontWeight="Normal" />
                 </TextBlock>
 
                 <!-- Button Row -->
@@ -59,6 +62,7 @@
                     <Button x:Name="ReviewButton"
                             Content="Leave an honest review ⭐"
                             Padding="16,8"
+                            FontWeight="SemiBold"
                             MinWidth="130"
                             Translation="0,0,24">
                         <Button.Shadow>
@@ -69,6 +73,7 @@
                     <Button x:Name="LaterButton"
                             Content="Show later"
                             Padding="16,8"
+                            FontWeight="Medium"
                             MinWidth="100"
                             Translation="0,0,24">
                         <Button.Shadow>
@@ -79,6 +84,7 @@
                     <Button x:Name="NeverButton"
                             Content="Don't show again"
                             Padding="16,8"
+
                             MinWidth="140"
                             Translation="0,0,24">
                         <Button.Shadow>

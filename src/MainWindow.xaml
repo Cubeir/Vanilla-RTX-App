@@ -150,7 +150,7 @@
                        Canvas.Top="1"
                        Opacity="1.0"
                        Canvas.ZIndex="3"
-                       Translation="0,0,16"
+                       Translation="0,0,14"
                        IsHitTestVisible="False">
                     <Image.Shadow>
                         <ThemeShadow />

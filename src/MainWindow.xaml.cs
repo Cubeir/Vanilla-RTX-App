@@ -480,6 +480,7 @@ public sealed partial class MainWindow : Window
                 Title = "Previous Session Crash Report",
                 Content = panel,
                 XamlRoot = this.Content.XamlRoot,
+                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
             };
 
             copyButton.Click += async (s, e) =>
@@ -1059,7 +1060,7 @@ public sealed partial class MainWindow : Window
                             Log("I just love this track! That's it. Hope you like it too.", LogLevel.Success);
                             await Task.Delay(delay: TimeSpan.FromMinutes(10));
                             Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
-                            await Task.Delay(delay: TimeSpan.FromHours(5));
+                            await Task.Delay(delay: TimeSpan.FromHours(7));
                             Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.Lengthy);
                             await Task.Delay(2718);
                             Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
@@ -1996,7 +1997,8 @@ public sealed partial class MainWindow : Window
             PrimaryButtonText = "Delete",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,
-            XamlRoot = this.Content.XamlRoot
+            XamlRoot = this.Content.XamlRoot,
+            RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
         };
 
         var result = await dialog.ShowAsync();
@@ -2268,9 +2270,6 @@ public sealed partial class MainWindow : Window
 
 
 /* ### BACKLOG // TODO ###
-
-- Third party API usage notice, crash, packbrowser' similar content dialogues aren't respecting user theme!!??
-! FIX1
 
 - Fix shadows of selectable panes being cut off in pack browser and similar menus
 
