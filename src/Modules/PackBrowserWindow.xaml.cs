@@ -562,12 +562,12 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        // Selection overlay — 192 alpha, z=128, 72px glyph, r=4
+        // Selection overlay
         var selectionOverlay = new Border
         {
             Width = 75,
             Height = 75,
-            CornerRadius = new CornerRadius(4),
+            CornerRadius = new CornerRadius(3),
             Background = new SolidColorBrush(ColorHelper.FromArgb(192, 0, 0, 0)),
             Translation = new System.Numerics.Vector3(0, 0, 128),
             Visibility = Visibility.Collapsed,
