@@ -79,6 +79,8 @@ public sealed partial class DLSSSwitcherWindow : Window
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
+        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.dlss.ico"));
+
         this.Activated += DLSSSwitcherWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }

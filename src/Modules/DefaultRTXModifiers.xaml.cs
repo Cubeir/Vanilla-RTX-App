@@ -121,6 +121,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
+        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.lut.ico"));
+
         this.Activated += DefaultRTXModifiersWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }

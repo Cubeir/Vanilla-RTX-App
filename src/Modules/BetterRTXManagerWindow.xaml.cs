@@ -193,6 +193,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
+        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.brtx.ico"));
+
         this.Activated += BetterRTXManagerWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }

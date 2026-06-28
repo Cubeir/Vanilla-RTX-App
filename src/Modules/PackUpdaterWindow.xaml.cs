@@ -88,6 +88,8 @@ public sealed partial class PackUpdateWindow : Window
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
+        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.update.ico"));
+
         this.Activated += PackUpdateWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }

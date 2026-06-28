@@ -105,6 +105,8 @@ public sealed partial class PackBrowserWindow : Window
         this.Activated += PackBrowserWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
 
+        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.browse.ico"));
+
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
         ExpImpDel.ConfirmNonResourceImport = ShowNonResourceDialogAsync;
