@@ -477,142 +477,22 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    // Wipess everything aside from Default preset
-    // TODO: Maybe unify cache deletion method, but have it have overloads, so it behaves differently in different contexts
-    // Delegate WipeEntireCache and this to one method, called with diff overloads??
-    // or maybe dont, cuz this thing here does more than that! maybe it shortens the code
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            Trace.WriteLine("[BetterRTX] === RESET BUTTON CLICKED ===");
+            Trace.WriteLine("[BetterRTX] === REFRESH BUTTON CLICKED ===");
 
-            // Set cooldown timestamp
             var settings = ApplicationData.Current.LocalSettings;
             settings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
-
-            // Update button state immediately to show cooldown
             UpdateRefreshButtonState();
 
-            // Show loading panel
             LoadingPanel.Visibility = Visibility.Visible;
             PresetSelectionPanel.Visibility = Visibility.Collapsed;
+            await Task.Delay(100);
 
-            await Task.Delay(100); // Brief delay for UI update
+            await WipeDownloadedPresetsCacheAsync();
 
-            // STEP 1: Read API cache to get list of preset UUIDs to delete
-            List<string> uuidsToDelete = new List<string>();
-
-            if (File.Exists(_apiCachePath))
-            {
-                try
-                {
-                    Trace.WriteLine("[BetterRTX] 📖 Reading API cache to identify presets to delete...");
-                    var jsonData = await File.ReadAllTextAsync(_apiCachePath);
-                    var apiPresets = ParseApiData(jsonData);
-
-                    if (apiPresets != null && apiPresets.Count > 0)
-                    {
-                        uuidsToDelete = apiPresets
-                            .Where(p => p.Uuid != null)
-                            .Select(p => p.Uuid!)
-                            .ToList();
-                        Trace.WriteLine($"[BetterRTX] ✓ Found {uuidsToDelete.Count} presets to delete from API cache");
-                    }
-                    else
-                    {
-                        Trace.WriteLine("[BetterRTX] ⚠ API cache was empty or invalid");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"[BetterRTX] ⚠ Error reading API cache for deletion: {ex.Message}");
-                }
-            }
-            else
-            {
-                Trace.WriteLine("[BetterRTX] ⚠ API cache didn't exist - no presets to delete");
-            }
-
-            // STEP 2: Delete preset folders (but NOT __DEFAULT)
-            if (uuidsToDelete.Count > 0)
-            {
-                Trace.WriteLine("[BetterRTX] 🗑️ Deleting preset folders...");
-                int deletedCount = 0;
-
-                foreach (var uuid in uuidsToDelete)
-                {
-                    try
-                    {
-                        // Find folder matching this UUID
-                        // Presets are stored with sanitized names, so we need to check all folders
-                        var allFolders = Directory.GetDirectories(_cacheFolder)
-                            .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
-                            .ToList();
-
-                        foreach (var folder in allFolders)
-                        {
-                            // Check if this folder contains a manifest with matching UUID
-                            var manifestFiles = Directory.GetFiles(folder, "manifest.json", SearchOption.AllDirectories);
-
-                            if (manifestFiles.Length > 0)
-                            {
-                                try
-                                {
-                                    var manifestJson = await File.ReadAllTextAsync(manifestFiles[0]);
-
-                                    var root = JObject.Parse(manifestJson);
-                                    var header = root["header"];
-
-                                    if (header != null)
-                                    {
-                                        var uuidToken = header["uuid"];
-                                        if (uuidToken != null)
-                                        {
-                                            var folderUuid = uuidToken.Value<string>();
-
-                                            if (string.Equals(folderUuid, uuid, StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                // This is the folder we want to delete
-                                                Directory.Delete(folder, true);
-                                                deletedCount++;
-                                                Trace.WriteLine($"[BetterRTX]   ✓ Deleted: {Path.GetFileName(folder)}");
-                                                break; // Found and deleted, move to next UUID
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    Trace.WriteLine($"[BetterRTX]   ⚠ Error checking folder {Path.GetFileName(folder)}: {ex.Message}");
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[BetterRTX]   ✗ Error deleting preset {uuid}: {ex.Message}");
-                    }
-                }
-
-                Trace.WriteLine($"[BetterRTX] ✓ Deleted {deletedCount}/{uuidsToDelete.Count} preset folders");
-            }
-
-            // STEP 3: Delete API cache
-            if (File.Exists(_apiCachePath))
-            {
-                File.Delete(_apiCachePath);
-                Trace.WriteLine("[BetterRTX] ✓ Deleted API cache - will fetch fresh data");
-            }
-
-            // STEP 4: Clear download statuses and queue
-            lock (_downloadStatusLock)
-            {
-                _downloadStatuses.Clear();
-            }
-            _downloadQueue.Clear();
-
-            // STEP 5: Reload everything (this will fetch fresh API data since cache was deleted)
             _apiPresets = null;
             _localPresets = null;
 
@@ -620,18 +500,14 @@ public sealed partial class BetterRTXManagerWindow : Window
             await LoadLocalPresetsAsync();
             await DisplayPresetsAsync();
 
-            // Hide loading panel
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
 
-            Trace.WriteLine("[BetterRTX] ✓ Reset completed successfully");
-            Trace.WriteLine("[BetterRTX] ✓ __DEFAULT preset preserved (not deleted)");
+            Trace.WriteLine("[BetterRTX] ✓ Refresh complete — __DEFAULT preserved");
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[BetterRTX] ✗ Error during reset: {ex.Message}");
-
-            // Ensure UI is restored even on error
+            Trace.WriteLine($"[BetterRTX] ✗ Error during refresh: {ex.Message}");
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
         }
@@ -698,6 +574,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         else
         {
             Directory.CreateDirectory(_defaultFolder);
+            // Only check API staleness when the game itself hasn't changed, cuz it has already nuked everything including the API cache.
+            await CheckApiStalenessOnStartupAsync();
         }
 
         // Load or fetch API data
@@ -753,6 +631,108 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
+
+    /// <summary>
+    /// Called once per window open. If an hour has elapsed since the last API fetch,
+    /// fetches fresh JSON and compares its hash to what we last cached.
+    ///  Same hash? nothing, LoadApiDataAsync will load the cache normally
+    ///  Different hash? soft wipe so stale downloaded presets are cleared
+    ///  Fetch failed? defer silently to next launch (do not wipe)
+    ///  Undetermined? soft wipe (safe default)
+    /// </summary>
+    private async Task CheckApiStalenessOnStartupAsync()
+    {
+        try
+        {
+            var settings = ApplicationData.Current.LocalSettings;
+
+            // Check if an hour has elapsed since last fetch
+            if (settings.Values.TryGetValue(API_LAST_FETCH_KEY, out var raw) && raw is long ticks)
+            {
+                var lastFetch = new DateTime(ticks, DateTimeKind.Utc);
+                if ((DateTime.UtcNow - lastFetch).TotalHours < API_REFETCH_INTERVAL_HOURS)
+                {
+                    Trace.WriteLine("[BetterRTX] [StalenessCheck] Within hour window — skipping API check");
+                    return;
+                }
+            }
+
+            Trace.WriteLine("[BetterRTX] [StalenessCheck] Hour elapsed — fetching latest API JSON for comparison...");
+
+            var freshJson = await FetchApiDataAsync();
+
+            // Fetch failed entirely — defer, do NOT wipe
+            if (string.IsNullOrWhiteSpace(freshJson))
+            {
+                Trace.WriteLine("[BetterRTX] [StalenessCheck] API unreachable — deferring to next launch");
+                return;
+            }
+
+            // Stamp the successful fetch time now
+            settings.Values[API_LAST_FETCH_KEY] = DateTime.UtcNow.Ticks;
+
+            // Compute hash of fresh response
+            string freshHash;
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(freshJson);
+                freshHash = BitConverter.ToString(sha256.ComputeHash(bytes))
+                                        .Replace("-", "")
+                                        .ToLowerInvariant();
+            }
+
+            Trace.WriteLine($"[BetterRTX] [StalenessCheck] Fresh hash : {freshHash[..16]}...");
+            Trace.WriteLine($"[BetterRTX] [StalenessCheck] Cached hash: {(_cachedApiHash != null ? _cachedApiHash[..16] + "..." : "none yet")}");
+
+            // Load existing cache hash if we don't have it in memory yet
+            // (e.g. first run of this method before LoadApiDataAsync has set _cachedApiHash)
+            if (_cachedApiHash == null && File.Exists(_apiCachePath))
+            {
+                try
+                {
+                    var existingJson = await File.ReadAllTextAsync(_apiCachePath);
+                    using var sha256 = SHA256.Create();
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(existingJson);
+                    _cachedApiHash = BitConverter.ToString(sha256.ComputeHash(bytes))
+                                                 .Replace("-", "")
+                                                 .ToLowerInvariant();
+                    Trace.WriteLine($"[BetterRTX] [StalenessCheck] Loaded cache hash from disk: {_cachedApiHash[..16]}...");
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"[BetterRTX] [StalenessCheck] Couldn't read existing cache for comparison: {ex.Message}");
+                    // _cachedApiHash stays null — falls through to undetermined → wipe
+                }
+            }
+
+            if (_cachedApiHash == null)
+            {
+                // No prior cache to compare against — undetermined, wipe to be safe
+                Trace.WriteLine("[BetterRTX] [StalenessCheck] No prior cache hash — undetermined, soft wipe (safe default)");
+                await WipeDownloadedPresetsCacheAsync();
+                return;
+            }
+
+            if (freshHash == _cachedApiHash)
+            {
+                Trace.WriteLine("[BetterRTX] [StalenessCheck] ✓ API unchanged — no wipe needed");
+                return;
+            }
+
+            // Content changed — wipe downloaded presets so stale files don't linger
+            Trace.WriteLine("[BetterRTX] [StalenessCheck] ⚠ API changed — soft wiping downloaded presets");
+            await WipeDownloadedPresetsCacheAsync();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [StalenessCheck] ✗ Unexpected error: {ex.Message} — soft wipe (safe default)");
+            try { await WipeDownloadedPresetsCacheAsync(); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Hard wipe, like soft wipe, but deletes Default preset too, the nuclear option
+    /// </summary>
     private void WipeEntireCache()
     {
         try
@@ -768,6 +748,93 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             Trace.WriteLine($"[BetterRTX] Error wiping cache: {ex.Message}");
         }
+    }
+    /// <summary>
+    /// Soft wipe: deletes all downloaded preset folders and the API cache JSON.
+    /// __DEFAULT is intentionally preserved — only a game version change warrants clearing that.
+    /// </summary>
+    private async Task WipeDownloadedPresetsCacheAsync()
+    {
+        Trace.WriteLine("[BetterRTX] [SoftWipe] Starting soft cache wipe...");
+
+        // Read UUIDs to delete from existing API cache before we blow it away
+        var uuidsToDelete = new List<string>();
+
+        if (File.Exists(_apiCachePath))
+        {
+            try
+            {
+                var jsonData = await File.ReadAllTextAsync(_apiCachePath);
+                var parsed = ParseApiData(jsonData);
+                if (parsed?.Count > 0)
+                {
+                    uuidsToDelete = parsed.Where(p => p.Uuid != null).Select(p => p.Uuid!).ToList();
+                    Trace.WriteLine($"[BetterRTX] [SoftWipe] {uuidsToDelete.Count} preset(s) to delete");
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[BetterRTX] [SoftWipe] Error reading API cache: {ex.Message}");
+            }
+        }
+
+        // Delete matching preset folders (skip __DEFAULT)
+        int deletedCount = 0;
+        foreach (var uuid in uuidsToDelete)
+        {
+            try
+            {
+                var allFolders = Directory.GetDirectories(_cacheFolder)
+                    .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase));
+
+                foreach (var folder in allFolders)
+                {
+                    var manifests = Directory.GetFiles(folder, "manifest.json", SearchOption.AllDirectories);
+                    if (manifests.Length == 0) continue;
+
+                    try
+                    {
+                        var mJson = await File.ReadAllTextAsync(manifests[0]);
+                        var folderUuid = JObject.Parse(mJson)["header"]?["uuid"]?.Value<string>();
+
+                        if (string.Equals(folderUuid, uuid, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Directory.Delete(folder, true);
+                            deletedCount++;
+                            Trace.WriteLine($"[BetterRTX] [SoftWipe] Deleted: {Path.GetFileName(folder)}");
+                            break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[BetterRTX] [SoftWipe] Error checking folder: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[BetterRTX] [SoftWipe] Error deleting {uuid}: {ex.Message}");
+            }
+        }
+
+        Trace.WriteLine($"[BetterRTX] [SoftWipe] Deleted {deletedCount}/{uuidsToDelete.Count} preset folder(s)");
+
+        // Delete API cache JSON itself
+        if (File.Exists(_apiCachePath))
+        {
+            File.Delete(_apiCachePath);
+            Trace.WriteLine("[BetterRTX] [SoftWipe] API cache deleted");
+        }
+
+        // Clear in-memory tracking
+        lock (_downloadStatusLock)
+        {
+            _downloadStatuses.Clear();
+        }
+        _downloadQueue.Clear();
+        _cachedApiHash = null;
+
+        Trace.WriteLine("[BetterRTX] [SoftWipe] ✓ Done — __DEFAULT preserved");
     }
 
     private async Task LoadApiDataAsync()
