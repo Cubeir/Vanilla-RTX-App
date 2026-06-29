@@ -125,6 +125,9 @@ public sealed partial class BetterRTXManagerWindow : Window
     private const int REFRESH_COOLDOWN_SECONDS = 10;
     private DispatcherTimer? _cooldownTimer;
 
+    private const string API_LAST_FETCH_KEY = "BetterRTXManager_ApiLastFetchTimestamp";
+    private const int API_REFETCH_INTERVAL_HOURS = 1;
+    private string? _cachedApiHash = null;
 
     public const string BETTERRTX_DISCLAIMER_KEY = $"BetterRTXDisclaimerAgreed_Key";
 
@@ -474,7 +477,10 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-
+    // Wipess everything aside from Default preset
+    // TODO: Maybe unify cache deletion method, but have it have overloads, so it behaves differently in different contexts
+    // Delegate WipeEntireCache and this to one method, called with diff overloads??
+    // or maybe dont, cuz this thing here does more than that! maybe it shortens the code
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -753,7 +759,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             if (Directory.Exists(_cacheFolder))
             {
-                Trace.WriteLine($"[BetterRTX] Deleting entire cache folder: {_cacheFolder}");
+                Trace.WriteLine($"[BetterRTX] Deleting entirety of cache folder: {_cacheFolder}");
                 Directory.Delete(_cacheFolder, true);
                 Trace.WriteLine("[BetterRTX] ✓ Cache wiped successfully");
             }
@@ -926,19 +932,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             return new List<ApiPresetData>();
         }
     }
-
-    private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
-    {
-        ContractResolver = new Newtonsoft.Json.Serialization.DefaultContractResolver
-        {
-            NamingStrategy = new Newtonsoft.Json.Serialization.DefaultNamingStrategy()
-        },
-        MissingMemberHandling = MissingMemberHandling.Ignore,
-        NullValueHandling = NullValueHandling.Ignore,
-        MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-        TypeNameHandling = TypeNameHandling.None,
-        ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-    };
 
     private async Task LoadLocalPresetsAsync()
     {
@@ -1298,7 +1291,11 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 isCurrent = true;
             }
-            description = isCurrent ? Helpers.SanitizePathForDisplay(localPreset.PresetPath ?? "") : "Click to install";
+            description = isCurrent
+                ? Helpers.SanitizePathForDisplay(localPreset.PresetPath ?? "")
+                : isDefault
+                    ? "Click to rollback"
+                    : "Click to install";
         }
         else if (presetData is DisplayPresetData displayPreset)
         {
@@ -1408,9 +1405,12 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         else
         {
+            // Not-downloaded presets get a download glyph; everything else (default + downloaded with missing icon) gets the sparkle glyph.
+            bool showDownloadGlyph = !isDefault && !isDownloaded;
+
             iconBorder.Child = new FontIcon
             {
-                Glyph = "\uE794",
+                Glyph = showDownloadGlyph ? "\uE896" : "\uE794",
                 FontSize = 36,
                 FontWeight = FontWeights.ExtraLight,
                 HorizontalAlignment = HorizontalAlignment.Center,
