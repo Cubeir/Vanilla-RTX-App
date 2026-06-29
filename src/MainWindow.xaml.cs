@@ -225,9 +225,10 @@ public sealed partial class MainWindow : Window
     private void InitializePreviewerImages()
     {
         var date = DateTime.Today;
-        int rng = Random.Shared.Next(1, 33);
-
-        Previewer.Instance.InitializeButton(LampInteractionButton, $"ms-appx:///Assets/previews/vrtx.app.{rng}.png");
+        var previews = Enumerable.Range(1, 32)
+            .Select(i => $"ms-appx:///Assets/previews/vrtx.app.{i}.png")
+            .ToArray();
+        Previewer.Instance.InitializeButton(LampInteractionButton, previews);
 
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,
             "ms-appx:///Assets/previews/fog.default.png",
@@ -512,13 +513,24 @@ public sealed partial class MainWindow : Window
         // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
         // we deal with cache, for showing things, the app deals with updating it later
         var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
-        if (psa is { Length: > 0 })
+
+        try
         {
-            for (int i = psa.Length - 1; i >= 0; i--)
+            if (psa is { Length: > 0 })
             {
-                await Task.Delay(333);
-                Log(psa[i].Text);
+                for (int i = psa.Length - 1; i >= 0; i--)
+                {
+                    await Task.Delay(250);
+                    Log(psa[i].Text);
+                }
             }
+        }
+        finally
+        {
+
+            // Once all is printed out, display a random vrtx app image
+            int rng = Random.Shared.Next(1, 33);
+            Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/vrtx.app.{rng}.png");
         }
 
         // ============= End
@@ -2452,9 +2464,6 @@ A variable is getting constantly updated with new logs, a worker in main UI thre
 
 ^ yeah lets dedicate more code clutter to visual things
 
-- Set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
-Or simple pixel arts you'd like to make in the same style
-Have 5-10 made
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
