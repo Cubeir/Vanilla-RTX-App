@@ -29,9 +29,9 @@ public class Previewer
     private bool _forceTransitionForControlChange = false;
 
     // Configurable global transition settings
-    public const double TransitionDurationPublic = 49;
-    public double TransitionDurationMs { get; set; } = 49;
-    public double OffFadeDelayThreshold { get; set; } = 0.9;
+    public const double TransitionDurationPublic = 50;
+    public double TransitionDurationMs { get; set; } = 50;
+    public double OffFadeDelayThreshold { get; set; } = 1.0;
 
     // Freeze system - suspends all preview updates and snapshots current visual state
     public bool FreezeUpdates { get; set; } = false;
