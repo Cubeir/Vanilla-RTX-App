@@ -496,6 +496,10 @@ public sealed partial class MainWindow : Window
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here ======================= 
         await FadeOutSplashScreen();
 
+        // Random previewer image
+        int rng = Random.Shared.Next(1, 33);
+        Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/vrtx.app.{rng}.png");
+
         // Show Leave a Review prompt
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
 
@@ -509,28 +513,17 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
 
-        // By the time we get here, on good internet the OnlineTexts fetch is already done. On bad internet it may be stale cache, it's ok, we show it anyway
+        // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
         // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
         // we deal with cache, for showing things, the app deals with updating it later
         var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
-
-        try
+        if (psa is { Length: > 0 })
         {
-            if (psa is { Length: > 0 })
+            for (int i = psa.Length - 1; i >= 0; i--)
             {
-                for (int i = psa.Length - 1; i >= 0; i--)
-                {
-                    await Task.Delay(250);
-                    Log(psa[i].Text);
-                }
+                await Task.Delay(250);
+                Log(psa[i].Text);
             }
-        }
-        finally
-        {
-
-            // Once all is printed out, display a random vrtx app image
-            int rng = Random.Shared.Next(1, 33);
-            Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/vrtx.app.{rng}.png");
         }
 
         // ============= End
@@ -2463,7 +2456,6 @@ This idea can be a public static method and it won't ever ever block Ui thread
 A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
 
 ^ yeah lets dedicate more code clutter to visual things
-
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
