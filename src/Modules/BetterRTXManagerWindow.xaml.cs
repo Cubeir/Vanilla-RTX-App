@@ -47,10 +47,6 @@ if it FAILS to make the call
 Just continue to load without refreshing api list...
 
 if unknown/edge cases, do trigger a refresh (still got the api, but couldn't decide if its different or not) only if not different, dont refresh api list.
-
-TODO: For bettertrx manager, do something, icon sources are now listed in the api.
-Try to access and load them, in ASYNC~, would be good, icons slowly loading in, instead of that default sparkle icon
-
 */
 
 internal enum DownloadStatus
@@ -136,13 +132,13 @@ public sealed partial class BetterRTXManagerWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
-    private static readonly string[] CoreRTXFiles = new[]
-    {
+    private static readonly string[] CoreRTXFiles =
+    [
        "RTXPostFX.Bloom.material.bin",
        "RTXPostFX.material.bin",
        "RTXPostFX.Tonemapping.material.bin",
        "RTXStub.material.bin"
-    };
+    ];
 
     public BetterRTXManagerWindow(MainWindow mainWindow)
     {
@@ -1345,7 +1341,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         if (isCurrent)
         {
-            name += " (Current)";
+            name += " (Currently Installed)";
         }
 
         var button = new Button
@@ -1482,48 +1478,12 @@ public sealed partial class BetterRTXManagerWindow : Window
                 Grid.SetColumn(progressRing, 4);
                 grid.Children.Add(progressRing);
             }
-            else
-            {
-                // Show download button
-                var downloadButton = new Button
-                {
-                    Width = 36,
-                    Height = 36,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Padding = new Thickness(0),
-                    Margin = new Thickness(16, 0, 0, 0),
-                    IsTextScaleFactorEnabled = false,
-                    Tag = presetData
-                };
-
-                var downloadIcon = new FontIcon
-                {
-                    Glyph = "\uE896",
-                    FontSize = 16,
-                    IsTextScaleFactorEnabled = false
-                };
-
-                downloadButton.Content = downloadIcon;
-                downloadButton.Click += DownloadButton_Click;
-
-                Grid.SetColumn(downloadButton, 4);
-                grid.Children.Add(downloadButton);
-            }
         }
 
         button.Content = grid;
         button.Click += PresetButton_Click;
 
         return button;
-    }
-
-    private async void DownloadButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.Tag is DisplayPresetData preset)
-        {
-            // Add to queue
-            EnqueueDownload(preset.Uuid ?? "", preset.Name ?? "");
-        }
     }
 
     private void EnqueueDownload(string uuid, string name)
