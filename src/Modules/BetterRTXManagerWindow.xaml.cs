@@ -47,6 +47,10 @@ if it FAILS to make the call
 Just continue to load without refreshing api list...
 
 if unknown/edge cases, do trigger a refresh (still got the api, but couldn't decide if its different or not) only if not different, dont refresh api list.
+
+TODO: For bettertrx manager, do something, icon sources are now listed in the api.
+Try to access and load them, in ASYNC~, would be good, icons slowly loading in, instead of that default sparkle icon
+
 */
 
 internal enum DownloadStatus

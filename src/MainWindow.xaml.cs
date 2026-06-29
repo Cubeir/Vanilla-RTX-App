@@ -754,18 +754,18 @@ public sealed partial class MainWindow : Window
             var textBox = Instance.SidebarLog;
             string prefix = level switch
             {
-                LogLevel.Success => "✅ ",
-                LogLevel.Informational => "ℹ️ ",
-                LogLevel.Warning => "⚠️ ",
-                LogLevel.Error => "❌ ",
-                LogLevel.Network => "🛜 ",
-                LogLevel.Lengthy => "⏳ ",
-                LogLevel.Debug => "🔍 ",
-                LogLevel.PSA => "📢 ",
+                LogLevel.Success => "✅",
+                LogLevel.Informational => "ℹ️",
+                LogLevel.Warning => "⚠️",
+                LogLevel.Error => "❌",
+                LogLevel.Network => "🛜",
+                LogLevel.Lengthy => "⏳",
+                LogLevel.Debug => "🔍",
+                LogLevel.PSA => "📢",
                 _ => ""
             };
 
-            string prefixedMessage = $"{prefix}{message}";
+            string prefixedMessage = $"{prefix} {message}";
             string separator = "";
 
             if (string.IsNullOrWhiteSpace(textBox.Text))
@@ -2438,6 +2438,8 @@ Especially release builds, There COULD BE LATENT TRIMMING BUGS!
 Game detection and cache invalidation could be improved for both
 PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
 
+Potentially add a way to deploy from a different branch on github for preview version of the game
+that is, assuming you really do plan on separating the development branches upstream
 
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging
