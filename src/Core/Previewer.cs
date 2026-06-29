@@ -98,6 +98,22 @@ public class Previewer
         SetVesselState(imageOffPath ?? "", imageOnPath ?? "", bottomOpacity, topOpacity, useSmoothTransition);
     }
 
+    /// <summary>
+    /// Directly sets the bottom and/or top vessel images with a smooth transition.
+    /// Call this after Unfreeze() at startup to display a chosen initial state.
+    /// Pass null for either vessel to leave it unchanged.
+    /// </summary>
+    public void SetStartupImages(string? bottomImagePath = null, string? topImagePath = null)
+    {
+        string resolvedBottom = bottomImagePath ?? _currentBottomImage;
+        string resolvedTop = topImagePath ?? _currentTopImage;
+
+        double bottomOpacity = !string.IsNullOrEmpty(resolvedBottom) ? 1.0 : 0.0;
+        double topOpacity = !string.IsNullOrEmpty(resolvedTop) ? 1.0 : 0.0;
+
+        SetVesselState(resolvedBottom, resolvedTop, bottomOpacity, topOpacity, allowTransition: true);
+    }
+
     public void ClearPreviews()
     {
         _currentBottomImage = "";
@@ -268,19 +284,26 @@ public class Previewer
         };
     }
 
-    public void InitializeButton(Button button, string? imageOffPath = null, string? imageOnPath = null)
+    /// <summary>
+    /// Initializes a button with arrays of hover images and optional arrays of click images.
+    /// On each hover from a different control, a new image is randomly selected from the array.
+    /// Hovering the same button repeatedly keeps the same image.
+    /// If clickedImagePaths is provided, a brief flash to a random clicked image plays on press.
+    /// </summary>
+    public void InitializeButton(Button button, string[]? hoverImagePaths = null, string[]? clickedImagePaths = null)
     {
         button.SetValue(FrameworkElement.TagProperty, new ButtonPreviewData
         {
-            ImageOnPath = imageOnPath,
-            ImageOffPath = imageOffPath
+            ImageOffPaths = hoverImagePaths ?? [],
+            ImageOnPaths = clickedImagePaths ?? [],
+            CurrentRandomIndex = 0
         });
 
         button.PointerEntered += (s, e) =>
         {
             if (!_mouseDown || _activeControl == button)
             {
-                HandleControlChange(button);
+                HandleControlChange(button);         // re-rolls index only if coming from another control
                 SetButtonPreview(button, false);
             }
         };
@@ -291,13 +314,26 @@ public class Previewer
             _activeControl = button;
             button.CapturePointer(e.Pointer);
             SetButtonPreview(button, true);
+
+            // If there are clicked images, flash them then restore hover image after 50ms
+            var data = button.GetValue(FrameworkElement.TagProperty) as ButtonPreviewData;
+            if (data != null && data.ImageOnPaths.Length > 0)
+            {
+                _bottomVessel.DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await System.Threading.Tasks.Task.Delay(50);
+                    if (_activeControl == button && !FreezeUpdates)
+                    {
+                        SetButtonPreview(button, false);
+                    }
+                });
+            }
         };
 
         button.PointerReleased += (s, e) =>
         {
             _mouseDown = false;
             button.ReleasePointerCapture(e.Pointer);
-            SetButtonPreview(button, false);
         };
 
         button.PointerExited += (s, e) => { };
@@ -310,6 +346,19 @@ public class Previewer
                 _activeControl = null;
             }
         };
+    }
+
+    /// <summary>
+    /// Convenience overload: single hover image, optional single clicked image.
+    /// Wraps strings into single-element arrays so everything routes through the same path.
+    /// </summary>
+    public void InitializeButton(Button button, string? hoverImagePath, string? clickedImagePath = null)
+    {
+        InitializeButton(
+            button,
+            hoverImagePath != null ? [hoverImagePath] : null,
+            clickedImagePath != null ? [clickedImagePath] : null
+        );
     }
 
     public void InitializeToggleButton(ToggleButton toggleButton, string imageOnPath, string imageOffPath)
@@ -493,6 +542,12 @@ public class Previewer
         if (isControlChange)
         {
             _forceTransitionForControlChange = true;
+
+            // Re-roll random index only when genuinely arriving from a different control
+            if (newControl.GetValue(FrameworkElement.TagProperty) is ButtonPreviewData data && data.ImageOffPaths.Length > 1)
+            {
+                data.CurrentRandomIndex = Random.Shared.Next(0, data.ImageOffPaths.Length);
+            }
         }
 
         if (FreezeUpdates)
@@ -600,10 +655,19 @@ public class Previewer
         var data = button.GetValue(FrameworkElement.TagProperty) as ButtonPreviewData;
         if (data == null) return;
 
-        string? imagePath = isPressed ? data.ImageOnPath : data.ImageOffPath;
-        double bottomOpacity = !string.IsNullOrEmpty(imagePath) ? 1.0 : 0.0;
+        string[] pool = isPressed && data.ImageOnPaths.Length > 0
+            ? data.ImageOnPaths
+            : data.ImageOffPaths;
 
-        SetVesselState(imagePath ?? "", "", bottomOpacity, 0.0, true);
+        if (pool.Length == 0) return;
+
+        // Clicked state picks randomly from clicked pool; hover state uses the stable CurrentRandomIndex
+        string imagePath = isPressed
+            ? pool[Random.Shared.Next(0, pool.Length)]
+            : pool[Math.Clamp(data.CurrentRandomIndex, 0, pool.Length - 1)];
+
+        double bottomOpacity = !string.IsNullOrEmpty(imagePath) ? 1.0 : 0.0;
+        SetVesselState(imagePath, "", bottomOpacity, 0.0, true);
     }
 
     private void SetTogglePreview(FrameworkElement element, bool isOn)
@@ -882,45 +946,22 @@ public class Previewer
 
     private class SliderPreviewData
     {
-        public string? DefaultImagePath
-        {
-            get; set;
-        }
-        public string? MinImagePath
-        {
-            get; set;
-        }
-        public string? MaxImagePath
-        {
-            get; set;
-        }
-        public double DefaultValue
-        {
-            get; set;
-        }
+        public string? DefaultImagePath { get; set; }
+        public string? MinImagePath { get; set; }
+        public string? MaxImagePath { get; set; }
+        public double DefaultValue { get; set; }
     }
 
     private class ButtonPreviewData
     {
-        public string? ImageOnPath
-        {
-            get; set;
-        }
-        public string? ImageOffPath
-        {
-            get; set;
-        }
+        public string[] ImageOffPaths { get; set; } = [];
+        public string[] ImageOnPaths { get; set; } = [];
+        public int CurrentRandomIndex { get; set; } = 0;
     }
 
     private class TogglePreviewData
     {
-        public string? ImageOnPath
-        {
-            get; set;
-        }
-        public string? ImageOffPath
-        {
-            get; set;
-        }
+        public string? ImageOnPath { get; set; }
+        public string? ImageOffPath { get; set; }
     }
 }
