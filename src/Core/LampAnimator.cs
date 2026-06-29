@@ -156,7 +156,7 @@ public class LampAnimator
         }
         try
         {
-            var random = new Random();
+            var random = Random.Shared;
             await EnsureInitialized();
 
             // Single flashes are IGNORED if lamp is busy

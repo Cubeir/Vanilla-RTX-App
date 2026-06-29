@@ -97,8 +97,8 @@ public partial class App : Application
         // Brief delay before Activate() to allow InitializeComponent() and lamp animators
         // to finish rendering before the window becomes visible, preventing a black background briefly appearing or splash images not loading in time.
         _window = new MainWindow(); // -> This kicks off the stuff in MainWindow actually running, which also calls for XAML to be initialized
-        await Task.Delay(150); // A delay ensures the xaml is constructed before window tries to appear.
-        _window.Activate(); // Do what
+        await Task.Delay(100); // A delay ensures the xaml is constructed before window tries to appear.
+        _window.Activate();
     }
 
     private static void WriteCrashLog(string source, string message, string detail)

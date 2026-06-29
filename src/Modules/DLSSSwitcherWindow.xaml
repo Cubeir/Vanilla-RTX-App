@@ -3,9 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Vanilla_RTX_App.DLSSBrowser"
         Title="DLSS Swapper">
+    
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
+    
     <Grid>
         <Border x:Name="LightThemeOverlay"
                 Grid.ColumnSpan="2"

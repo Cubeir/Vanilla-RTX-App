@@ -1650,7 +1650,7 @@ public class Processor
         }
         else
         {
-            var rng = new Random();
+            var rng = Random.Shared;
             redOffsets = new int[width, frameHeight];
             greenOffsets = new int[width, frameHeight];
             blueOffsets = new int[width, frameHeight];

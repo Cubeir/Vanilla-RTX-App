@@ -186,6 +186,7 @@ public class PackSelectionViewModel : INotifyPropertyChanged
 
 public sealed partial class MainWindow : Window
 {
+    #region MainWindow Boilerplate
     public static MainWindow? Instance { get; private set; }
 
     private readonly ProgressBarManager _progressManager;
@@ -221,14 +222,165 @@ public sealed partial class MainWindow : Window
             _splashLampAnimator.InitializeAsync()
         );
     }
+    private void InitializePreviewerImages()
+    {
+        var date = DateTime.Today;
+        int rng = Random.Shared.Next(1, 33);
 
+        Previewer.Instance.InitializeButton(LampInteractionButton, $"ms-appx:///Assets/previews/vrtx.app.{rng}.png");
+
+        Previewer.Instance.InitializeSlider(FogMultiplierSlider,
+            "ms-appx:///Assets/previews/fog.default.png",
+            "ms-appx:///Assets/previews/fog.min.png",
+            "ms-appx:///Assets/previews/fog.max.png",
+            Defaults.FogMultiplier
+        );
+
+        Previewer.Instance.InitializeSlider(EmissivityMultiplierSlider,
+            "ms-appx:///Assets/previews/emissivity.default.png",
+            "ms-appx:///Assets/previews/emissivity.min.png",
+            "ms-appx:///Assets/previews/emissivity.max.png",
+            Defaults.EmissivityMultiplier
+        );
+
+        Previewer.Instance.InitializeSlider(NormalIntensitySlider,
+            "ms-appx:///Assets/previews/normals.default.png",
+            "ms-appx:///Assets/previews/normals.flat.png",
+            "ms-appx:///Assets/previews/normals.intense.png",
+            Defaults.NormalIntensity
+        );
+
+        Previewer.Instance.InitializeSlider(RoughenUpSlider,
+            "ms-appx:///Assets/previews/roughenup.default.png",
+            "ms-appx:///Assets/previews/roughenup.unrough.png",
+            "ms-appx:///Assets/previews/roughenup.rough.png",
+            Defaults.RoughnessControlValue
+        );
+
+        Previewer.Instance.InitializeSlider(MaterialNoiseSlider,
+             "ms-appx:///Assets/previews/roughenup.default.png",
+             "ms-appx:///Assets/previews/roughenup.default.png",
+             "ms-appx:///Assets/previews/materials.grainy.png",
+             Defaults.MaterialNoiseOffset
+        );
+
+        Previewer.Instance.InitializeSlider(LazifyNormalsSlider,
+            "ms-appx:///Assets/previews/heightmaps.default.png",
+            "ms-appx:///Assets/previews/heightmaps.default.png",
+            "ms-appx:///Assets/previews/heightmaps.butchered.png",
+            Defaults.LazifyNormalAlpha
+        );
+
+        Previewer.Instance.InitializeToggleSwitch(EmissivityAmbientLightToggle,
+            "ms-appx:///Assets/previews/emissivity.ambient.on.png",
+            "ms-appx:///Assets/previews/emissivity.ambient.off.png"
+        );
+
+        Previewer.Instance.InitializeToggleButton(TargetPreviewToggle,
+            "ms-appx:///Assets/previews/preview.overlay.png",
+            "ms-appx:///Assets/previews/preview.png"
+        );
+
+        Previewer.Instance.InitializeCheckBox(VanillaRTXCheckBox,
+            "ms-appx:///Assets/previews/checkbox.regular.ticked.png",
+            "ms-appx:///Assets/previews/checkbox.regular.unticked.png"
+        );
+        if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
+        {
+            Previewer.Instance.InitializeCheckBox(NormalsCheckBox, "ms-appx:///Assets/previews/checkbox.normals.ticked.birthday.png", "ms-appx:///Assets/previews/checkbox.normals.unticked.birthday.png");
+        }
+        else
+        {
+            Previewer.Instance.InitializeCheckBox(NormalsCheckBox,
+               "ms-appx:///Assets/previews/checkbox.normals.ticked.png",
+               "ms-appx:///Assets/previews/checkbox.normals.unticked.png"
+            );
+        }
+        Previewer.Instance.InitializeCheckBox(OpusCheckBox,
+            "ms-appx:///Assets/previews/checkbox.opus.ticked.png",
+            "ms-appx:///Assets/previews/checkbox.opus.unticked.png"
+        );
+
+        Previewer.Instance.InitializeButton(BrowsePacksButton,
+            "ms-appx:///Assets/previews/locate.png"
+        );
+
+        Previewer.Instance.InitializeButton(ExportButton,
+            "ms-appx:///Assets/previews/chest.export.png"
+        );
+        Previewer.Instance.InitializeButton(DeleteButton,
+            "ms-appx:///Assets/previews/chest.delete.png"
+        );
+
+        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
+        {
+            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
+                "ms-appx:///Assets/previews/version.checker.christmas.png"
+            );
+        }
+        else
+        {
+            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
+                "ms-appx:///Assets/previews/version.checker.png"
+            );
+        }
+
+        Previewer.Instance.InitializeButton(TuneSelectionButton,
+            "ms-appx:///Assets/previews/table.tune.png"
+        );
+
+        Previewer.Instance.InitializeButton(LaunchButton,
+            "ms-appx:///Assets/previews/minecart.launch.png"
+        );
+
+        Previewer.Instance.InitializeButton(CycleThemeButton,
+            "ms-appx:///Assets/previews/theme.png"
+        );
+
+        Previewer.Instance.InitializeButton(DonateButton,
+            "ms-appx:///Assets/previews/cubeir.thankyou.png"
+        );
+
+        Previewer.Instance.InitializeButton(HelpButton,
+            "ms-appx:///Assets/previews/cubeir.help.png"
+        );
+
+        Previewer.Instance.InitializeButton(ChatButton,
+            "ms-appx:///Assets/previews/bonfire.png"
+        );
+
+        Previewer.Instance.InitializeButton(ResetButton,
+            "ms-appx:///Assets/previews/table.reset.variables.png"
+        );
+
+        Previewer.Instance.InitializeButton(ClearButton,
+            "ms-appx:///Assets/previews/table.reset.png"
+        );
+
+        Previewer.Instance.InitializeButton(BetterRTXPresetManagerButton,
+            "ms-appx:///Assets/previews/brtx.png"
+        );
+
+        Previewer.Instance.InitializeButton(DLSSVersionSwitcherButton,
+            "ms-appx:///Assets/previews/dlss.png"
+        );
+
+        Previewer.Instance.InitializeButton(DefaultRTXModifiersButton,
+            "ms-appx:///Assets/previews/lut.png"
+        );
+
+        Previewer.Instance.InitializeButton(AlchitexButton,
+            "ms-appx:///Assets/previews/reactor.promo.tile.png"
+        );
+
+    }
 
     /// For buttons hidden under shiftkey
     private readonly Dictionary<FrameworkElement, string> _originalTexts = new();
     private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
     private bool _shiftPressed = false;
 
-    // --------------------------------------------| | | | | | | | | | |-------------------------------------------- \\
+#endregion MainWindow Boilerplate
 
     public MainWindow()
     {
@@ -318,7 +470,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Update UI to reflect loaded settings
-        UpdateUI(0.01);
+        UpdateUI(0.1);
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -335,6 +487,8 @@ public sealed partial class MainWindow : Window
             BetterRTXPresetManagerButton.IsEnabled = false;
         }
 
+        // Previewer
+        InitializePreviewerImages();
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
         await Task.Delay(700);
@@ -366,6 +520,7 @@ public sealed partial class MainWindow : Window
                 Log(psa[i].Text);
             }
         }
+
         // ============= End
         async Task FadeOutSplashScreen()
         {
@@ -533,7 +688,6 @@ public sealed partial class MainWindow : Window
         if (!settings.Containers.ContainsKey("WinUIEx"))
             this.CenterOnScreen();
 
-        // Icon
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
     }
     private void ApplyThemeColors(ElementTheme theme)
@@ -585,157 +739,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-
-
-    private void SetPreviews()
-    {
-        var date = DateTime.Today;
-
-        Previewer.Instance.InitializeSlider(FogMultiplierSlider,
-            "ms-appx:///Assets/previews/fog.default.png",
-            "ms-appx:///Assets/previews/fog.min.png",
-            "ms-appx:///Assets/previews/fog.max.png",
-            Defaults.FogMultiplier
-        );
-
-        Previewer.Instance.InitializeSlider(EmissivityMultiplierSlider,
-            "ms-appx:///Assets/previews/emissivity.default.png",
-            "ms-appx:///Assets/previews/emissivity.min.png",
-            "ms-appx:///Assets/previews/emissivity.max.png",
-            Defaults.EmissivityMultiplier
-        );
-
-        Previewer.Instance.InitializeSlider(NormalIntensitySlider,
-            "ms-appx:///Assets/previews/normals.default.png",
-            "ms-appx:///Assets/previews/normals.flat.png",
-            "ms-appx:///Assets/previews/normals.intense.png",
-            Defaults.NormalIntensity
-        );
-
-        Previewer.Instance.InitializeSlider(RoughenUpSlider,
-            "ms-appx:///Assets/previews/roughenup.default.png",
-            "ms-appx:///Assets/previews/roughenup.unrough.png",
-            "ms-appx:///Assets/previews/roughenup.rough.png",
-            Defaults.RoughnessControlValue
-        );
-
-        Previewer.Instance.InitializeSlider(MaterialNoiseSlider,
-             "ms-appx:///Assets/previews/roughenup.default.png",
-             "ms-appx:///Assets/previews/roughenup.default.png",
-             "ms-appx:///Assets/previews/materials.grainy.png",
-             Defaults.MaterialNoiseOffset
-        );
-
-        Previewer.Instance.InitializeSlider(LazifyNormalsSlider,
-            "ms-appx:///Assets/previews/heightmaps.default.png",
-            "ms-appx:///Assets/previews/heightmaps.default.png",
-            "ms-appx:///Assets/previews/heightmaps.butchered.png",
-            Defaults.LazifyNormalAlpha
-        );
-
-        Previewer.Instance.InitializeToggleSwitch(EmissivityAmbientLightToggle,
-            "ms-appx:///Assets/previews/emissivity.ambient.on.png",
-            "ms-appx:///Assets/previews/emissivity.ambient.off.png"
-        );
-
-        Previewer.Instance.InitializeToggleButton(TargetPreviewToggle,
-            "ms-appx:///Assets/previews/preview.overlay.png",
-            "ms-appx:///Assets/previews/preview.png"
-        );
-
-        Previewer.Instance.InitializeCheckBox(VanillaRTXCheckBox,
-            "ms-appx:///Assets/previews/checkbox.regular.ticked.png",
-            "ms-appx:///Assets/previews/checkbox.regular.unticked.png"
-        );
-        if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
-        {
-            Previewer.Instance.InitializeCheckBox(NormalsCheckBox, "ms-appx:///Assets/previews/checkbox.normals.ticked.birthday.png", "ms-appx:///Assets/previews/checkbox.normals.unticked.birthday.png");
-        }
-        else
-        {
-            Previewer.Instance.InitializeCheckBox(NormalsCheckBox,
-               "ms-appx:///Assets/previews/checkbox.normals.ticked.png",
-               "ms-appx:///Assets/previews/checkbox.normals.unticked.png"
-            );
-        }
-        Previewer.Instance.InitializeCheckBox(OpusCheckBox,
-            "ms-appx:///Assets/previews/checkbox.opus.ticked.png",
-            "ms-appx:///Assets/previews/checkbox.opus.unticked.png"
-        );
-
-        Previewer.Instance.InitializeButton(BrowsePacksButton,
-            "ms-appx:///Assets/previews/locate.png"
-        );
-
-        Previewer.Instance.InitializeButton(ExportButton,
-            "ms-appx:///Assets/previews/chest.export.png"
-        );
-        Previewer.Instance.InitializeButton(DeleteButton,
-            "ms-appx:///Assets/previews/chest.delete.png"
-        );
-
-        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
-        {
-            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
-                "ms-appx:///Assets/previews/version.checker.christmas.png"
-            );
-        }
-        else
-        {
-            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
-                "ms-appx:///Assets/previews/version.checker.png"
-            );
-        }
-
-        Previewer.Instance.InitializeButton(TuneSelectionButton,
-            "ms-appx:///Assets/previews/table.tune.png"
-        );
-
-        Previewer.Instance.InitializeButton(LaunchButton,
-            "ms-appx:///Assets/previews/minecart.launch.png"
-        );
-
-        Previewer.Instance.InitializeButton(CycleThemeButton,
-            "ms-appx:///Assets/previews/theme.png"
-        );
-
-        Previewer.Instance.InitializeButton(DonateButton,
-            "ms-appx:///Assets/previews/cubeir.thankyou.png"
-        );
-
-        Previewer.Instance.InitializeButton(HelpButton,
-            "ms-appx:///Assets/previews/cubeir.help.png"
-        );
-
-        Previewer.Instance.InitializeButton(ChatButton,
-            "ms-appx:///Assets/previews/bonfire.png"
-        );
-
-        Previewer.Instance.InitializeButton(ResetButton,
-            "ms-appx:///Assets/previews/table.reset.variables.png"
-        );
-
-        Previewer.Instance.InitializeButton(ClearButton,
-            "ms-appx:///Assets/previews/table.reset.png"
-        );
-
-        Previewer.Instance.InitializeButton(BetterRTXPresetManagerButton,
-            "ms-appx:///Assets/previews/brtx.png"
-        );
-
-        Previewer.Instance.InitializeButton(DLSSVersionSwitcherButton,
-            "ms-appx:///Assets/previews/dlss.png"
-        );
-
-        Previewer.Instance.InitializeButton(DefaultRTXModifiersButton,
-            "ms-appx:///Assets/previews/lut.png"
-        );
-
-        Previewer.Instance.InitializeButton(AlchitexButton,
-            "ms-appx:///Assets/previews/reactor.promo.tile.png"
-        );
-
-    }
 
     public enum LogLevel
     {
@@ -878,7 +881,6 @@ public sealed partial class MainWindow : Window
         {
             // UpdateUI is called once at the start. we want previews to initialize only once. Thus this flag, which allows this code block
             // To run once and then never again.
-            SetPreviews();
         }
 
 
@@ -887,9 +889,7 @@ public sealed partial class MainWindow : Window
 
 
 
-        async Task AnimateSliders(
-            (Slider slider, TextBox textBox, double targetValue, bool isInteger)[] configs,
-            double durationSeconds)
+        async Task AnimateSliders((Slider slider, TextBox textBox, double targetValue, bool isInteger)[] configs, double durationSeconds)
         {
             var startValues = configs.Select(c => c.slider.Value).ToArray();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -1028,7 +1028,7 @@ public sealed partial class MainWindow : Window
                     dataPackage.SetText(sb.ToString());
                     Clipboard.SetContent(dataPackage);
                     Log("Copied debug logs to clipboard.", LogLevel.Success);
-                    _ = BlinkingLamp(true, true, 0.0);
+                    _ = BlinkingLamp(true, true, 0.0, 1.0);
                 }
             }
             catch (Exception ex)
@@ -1068,7 +1068,7 @@ public sealed partial class MainWindow : Window
                             Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
 
                             int iteration = 0;
-                            var rng = new Random();
+                            var rng = Random.Shared;
                             string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
                                                  "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
                             LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
@@ -2271,13 +2271,11 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG // TODO ###
 
-- Fix shadows of selectable panes being cut off in pack browser and similar menus
+- Use winuiex to replace more of your own half baked code / other windows' infrastructure
+Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
+replace infrastructure of all other windows with WinUIex
 
-- READ ALL MS Store COMMENTS
-there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
-Like that crash one, you wouldn't have become aware was it not for that comment
-
-- Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
+>> Update other windows' unfocused titlebar button,actually, unify it, reuse across all windows
 
 - Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
 // commenting out bits also helps tracking down what causes it
@@ -2285,18 +2283,24 @@ improvements were made last night
 but its not enough
 Keep Perfecting it
 what makese sense to be where. that's the question
+its prolly that the window gets activated while mainwidnow() stuffare already running
+also, that themewatcher is a wretch! could be that too
 
-- Use winuiex to replace more of your own half baked code / other windows' infrastructure
-Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
-replace infrastructure of all other windows with WinUIex
+- READ ALL MS Store COMMENTS
+there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
+Like that crash one, you wouldn't have become aware was it not for that comment
 
->> Update other windows' unfocused titlebar button,actually, unify it, reuse across all windows
+- Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
+
 
 - Test unhandled exception log catcher thingy, especially with startup and close crashes
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
+Do artifical throws in random placess
 
 the weird splash behavior is cuz activation won't happen on its own, you gotta trigger it too
 on regular starts, it always happens, on restarts where process auto starts, it might not!!
+
+
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
@@ -2329,9 +2333,6 @@ Update them to reflect the latest features/changes
 >> Be more explicit about the right channels to give feedback, report issues, etc...
 like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
 maybe you should do it more often, in more places
-
-- Make and set unique icons for each feature
-maybe just the lamp icon, with mini-icons appended, looks nice in the taskbar
 
 - Reduce cache retry timers for PACK UPDATER version retrieval
 it hangs too long trying to get from remote
@@ -2418,36 +2419,6 @@ or WIDE at the very bottom or top of the app! OR VERTICAL ON THE SIDEBAR LOG! le
 - Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
 Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
 Some overrides now disable it while they should not.
-
-- When targeting preview, a new Dev branch on github
-must be used to receieve updates, compare packages, etc...
-easier said than done, the code is a clusterfuck
-and it all depends on whether you actually need this or not, the decision upstream must help Vanilla RTX's development.
-if it doesn't, this is too, is a Useless idea.
-
-- With splash screen here, UpdateUI is useless, getting rid of it is too much work though, just too much...
-It is too integerated, previewer class has some funky behavior tied to it, circumvented by it
-It's a mess but it works perfectly, so, only fix it once you have an abundance of time...!
-
-In fact, manually calling UpdateUI is NECESSERY, thank GOD you're not using bindings
-UpdateUI is VERY NEEDED for Previewer class, it is already implemented everywhere and freezes vessel updates as necessery
-You would've had to manually done this anyway
-
-And the smooth transitions are worth it.
-
-- Smoothen the startup sequence, it flashes right now. 🌟 
-Use more correct ways to implement splash screen
-Scrap the animation
-Scrap the animation on alchitex startup sequence (it is annoying have to see it every time, hinders user)
-Scrap the code for it in Lamp.cs
-Allow rapid flash in Lamp.cs to happen to OFF in addition to SUPERON, decided randomly, no changes downstream
-
-- Is the lamp halo too weak at rest? it seems inconsistent, during runtime reglar flash halos are very bright
-watchya doing?
-
-
-
-
 
 
 - TTService.GetToolTip could be very useful,
