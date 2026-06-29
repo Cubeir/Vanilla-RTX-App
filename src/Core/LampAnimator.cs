@@ -662,8 +662,8 @@ public class LampAnimator
     {
         if (_overlayImage == null && _context == LampContext.Titlebar) return;
 
-        var flashCount = random.Next(1, 15);
-        var flashSpeed = random.Next(33, 96);
+        var flashCount = random.Next(1, 10);
+        var flashSpeed = random.Next(25, 75);
 
         for (int i = 0; i < flashCount; i++)
         {
