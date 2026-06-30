@@ -21,6 +21,9 @@ using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.DLSSBrowser;
 
+// TODO: Upgrade DLSS Swapper to pull dlls from a third party API like BetterRTX Manager.
+// Keep the current manual import pipeline, just add a new potential Source, list dlls, etc...
+
 public sealed partial class DLSSSwitcherWindow : Window
 {
     private readonly AppWindow _appWindow;
