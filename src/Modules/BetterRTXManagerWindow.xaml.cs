@@ -1412,14 +1412,14 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 38, 20),
+            Padding = new Thickness(0, 0, 40, 0),
             Margin = new Thickness(0, 5, 0, 5),
+            MinHeight = 90,
             CornerRadius = new CornerRadius(5),
             Tag = presetData,
             IsTextScaleFactorEnabled = false,
             Translation = new System.Numerics.Vector3(0, 0, 32)
         };
-
         if (isCurrent)
         {
             button.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
@@ -1436,8 +1436,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         };
 
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1445,21 +1445,10 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Icon
         var iconBorder = new Border
         {
-            Width = 75,
-            Height = 75,
-            CornerRadius = new CornerRadius(5),
+            Width = 92,
+            Height = 92,
+            CornerRadius = new CornerRadius(5, 0, 0, 5),
             Background = new SolidColorBrush(Colors.Transparent),
-            Translation = new System.Numerics.Vector3(0, 0, 32)
-        };
-
-        var iconShadow = new ThemeShadow();
-        iconBorder.Shadow = iconShadow;
-        iconBorder.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-            {
-                iconShadow.Receivers.Add(ShadowReceiverGrid);
-            }
         };
 
         if (icon != null)
@@ -1472,13 +1461,11 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         else
         {
-            // Not-downloaded presets get a download glyph; everything else (default + downloaded with missing icon) gets the sparkle glyph.
             bool showDownloadGlyph = !isDefault && !isDownloaded;
-
             iconBorder.Child = new FontIcon
             {
                 Glyph = showDownloadGlyph ? "\uE896" : "\uE794",
-                FontSize = 36,
+                FontSize = 44, // scaled up to match larger icon container
                 FontWeight = FontWeights.ExtraLight,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -1523,7 +1510,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Download button or progress indicator
         if (!isDefault && !isDownloaded)
         {
-            // Check download status with lock
             DownloadStatus status;
             lock (_downloadStatusLock)
             {
@@ -1532,11 +1518,10 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             if (status == DownloadStatus.Downloading || status == DownloadStatus.Queued)
             {
-                // Show progress ring
                 var progressRing = new ProgressRing
                 {
-                    Width = 40,
-                    Height = 40,
+                    Width = 50,
+                    Height = 50,
                     IsActive = true,
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(14, 0, 0, 0)
