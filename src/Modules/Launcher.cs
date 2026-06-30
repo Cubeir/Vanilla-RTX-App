@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Vanilla_RTX_App.Modules;
 
-public class Launcher
+public class MinecraftLauncher
 {
     // -------------------------------------------------------------------------
     // PUBLIC API — semantic wrappers around the general options.txt updater

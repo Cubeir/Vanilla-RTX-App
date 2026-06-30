@@ -28,8 +28,8 @@ using Windows.System;
 using Windows.UI;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
+using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
 
@@ -382,7 +382,7 @@ public sealed partial class MainWindow : Window
     private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
     private bool _shiftPressed = false;
 
-#endregion MainWindow Boilerplate
+    #endregion MainWindow Boilerplate
 
     public MainWindow()
     {
@@ -2268,8 +2268,8 @@ public sealed partial class MainWindow : Window
         try
         {
             var logs = isShiftHeld
-                ? await Modules.Launcher.LaunchMinecraftStandardAsync(IsTargetingPreview)
-                : await Modules.Launcher.LaunchMinecraftRTXAsync(IsTargetingPreview);
+                ? await MinecraftLauncher.LaunchMinecraftStandardAsync(IsTargetingPreview)
+                : await MinecraftLauncher.LaunchMinecraftRTXAsync(IsTargetingPreview);
 
             Log(logs, LogLevel.Informational);
         }
