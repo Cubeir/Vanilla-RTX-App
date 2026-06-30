@@ -43,8 +43,7 @@ Tip: You can come back here to quickly reinstall packs to restore them to their 
 ## Warning 1 [glyph:"E730"] [cd:"7200"]
 If your preset list has been auto-reset since your last visit:
 It is a good idea to wait and check from the BetterRTX Discord whether it has been updated for the latest game version before installing a preset. Installing presets while it serves outdated files could result in crashes and visual glitches. In this scenario, revert to Default RTX, and once BetterRTX is updated, use the refresh button in the top left corner 
-
-Some Minecraft updates break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly. If installing BetterRTX has caused issues for you, follow these steps:
+In other words: Minecraft updates can break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly. If installing BetterRTX causes issues for you, follow these steps:
 1. Revert to Default RTX for now
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to re-fetch the latest files.
