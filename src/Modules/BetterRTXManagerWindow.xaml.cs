@@ -1832,70 +1832,12 @@ public sealed partial class BetterRTXManagerWindow : Window
                 }
             }
 
-            var success = await ReplaceFilesWithElevation(filesToApply);
+            var success = await Helpers.ReplaceFilesWithElevation(filesToApply, "[BetterRTX]", "betterrtx_install");
             return success;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[BetterRTX] Error in ApplyPresetAsync: {ex.Message}");
-            return false;
-        }
-    }
-
-    private async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace)
-    {
-        try
-        {
-            return await Task.Run(() =>
-            {
-                var scriptLines = new List<string>();
-                scriptLines.Add("@echo off");
-
-                foreach (var (sourcePath, destPath) in filesToReplace)
-                {
-                    scriptLines.Add($"copy /Y \"{sourcePath}\" \"{destPath}\" >nul 2>&1");
-                }
-
-                scriptLines.Add("exit %ERRORLEVEL%");
-
-                var batchScript = string.Join("\r\n", scriptLines);
-                var tempBatchPath = Path.Combine(Path.GetTempPath(), $"betterrtx_install_{Guid.NewGuid():N}.bat");
-                File.WriteAllText(tempBatchPath, batchScript);
-
-                try
-                {
-                    var startInfo = new ProcessStartInfo
-                    {
-                        FileName = tempBatchPath,
-                        Verb = "runas",
-                        UseShellExecute = true,
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden
-                    };
-
-                    var process = Process.Start(startInfo);
-                    if (process != null)
-                    {
-                        process.WaitForExit();
-                        return process.ExitCode == 0;
-                    }
-
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        if (File.Exists(tempBatchPath))
-                            File.Delete(tempBatchPath);
-                    }
-                    catch { }
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[BetterRTX] Error in ReplaceFilesWithElevation: {ex.Message}");
             return false;
         }
     }

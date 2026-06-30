@@ -17,6 +17,9 @@ namespace Vanilla_RTX_App.Modules;
 
 public static class Helpers
 {
+    /// <summary>
+    /// Reads images of any given format, with an option to return opacity at maximum (retaining rgb data under 0 opacity pixels)
+    /// </summary>
     public static Bitmap ReadImage(string imagePath, bool maxOpacity = false)
     {
         try
@@ -126,6 +129,9 @@ public static class Helpers
             return errorBitmap;
         }
     }
+    /// <summary>
+    /// Write a bitmap to a path as raw, pure targa with 4 channels, 8 bit per channel
+    /// </summary>
     public static void WriteImageAsTGA(Bitmap bitmap, string outputPath)
     {
         try
@@ -328,6 +334,85 @@ public static class Helpers
         Log("Download failed after multiple attempts.", LogLevel.Error);
         return (false, null);
     }
+
+
+    /// <summary>
+    /// Copies a set of files using a single elevated batch script (one UAC prompt for all files).
+    /// Returns true only if the elevated process exits with code 0.
+    /// </summary>
+    /// <param name="filesToReplace">List of (sourcePath, destPath) pairs to copy.</param>
+    /// <param name="logPrefix">Tag used in Trace output, e.g. "[BetterRTX]", "[DLSS]", "[LUTManager]".</param>
+    /// <param name="tempFilePrefix">Prefix for the temp batch file name, to keep temp files identifiable per-feature.</param>
+    public static async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace,
+        string logPrefix = "[Helpers]", string tempFilePrefix = "file_replace")
+    {
+        try
+        {
+            if (filesToReplace == null || filesToReplace.Count == 0)
+            {
+                Trace.WriteLine($"{logPrefix} ReplaceFilesWithElevation called with no files — nothing to do");
+                return false;
+            }
+
+            return await Task.Run(() =>
+            {
+                var scriptLines = new List<string> { "@echo off" };
+                foreach (var (sourcePath, destPath) in filesToReplace)
+                    scriptLines.Add($"copy /Y \"{sourcePath}\" \"{destPath}\" >nul 2>&1");
+                scriptLines.Add("exit %ERRORLEVEL%");
+
+                var batchScript = string.Join("\r\n", scriptLines);
+                var tempBatchPath = Path.Combine(
+                    Path.GetTempPath(),
+                    $"{tempFilePrefix}_{Guid.NewGuid():N}.bat");
+
+                File.WriteAllText(tempBatchPath, batchScript);
+
+                Trace.WriteLine($"{logPrefix} Batch script: {tempBatchPath}");
+                Trace.WriteLine($"{logPrefix} Contents:\n{batchScript}");
+
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/c \"{tempBatchPath}\"",
+                        Verb = "runas",
+                        UseShellExecute = true,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    };
+
+                    var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        process.WaitForExit();
+                        Trace.WriteLine($"{logPrefix} Exit code: {process.ExitCode}");
+                        return process.ExitCode == 0;
+                    }
+
+                    Trace.WriteLine($"{logPrefix} Process.Start returned null");
+                    return false;
+                }
+                finally
+                {
+                    try
+                    {
+                        Thread.Sleep(300);
+                        if (File.Exists(tempBatchPath))
+                            File.Delete(tempBatchPath);
+                    }
+                    catch { }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"{logPrefix} Error in ReplaceFilesWithElevation: {ex.Message}");
+            return false;
+        }
+    }
+
 
 
     // Shortens it too

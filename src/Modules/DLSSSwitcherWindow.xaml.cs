@@ -834,54 +834,12 @@ public sealed partial class DLSSSwitcherWindow : Window
             }
         }
     }
-
-    private async Task<bool> ReplaceDllWithElevation(string sourceDllPath)
+    private Task<bool> ReplaceDllWithElevation(string sourceDllPath)
     {
-        try
-        {
-            return await Task.Run(() =>
-            {
-                var batchScript = $"@echo off\r\ncopy /Y \"{sourceDllPath}\" \"{_gameDllPath}\" >nul 2>&1\r\nexit %ERRORLEVEL%";
-                var tempBatchPath = Path.Combine(Path.GetTempPath(), $"dlss_dll_{Guid.NewGuid():N}.bat");
-
-                File.WriteAllText(tempBatchPath, batchScript);
-
-                try
-                {
-                    var startInfo = new ProcessStartInfo
-                    {
-                        FileName = tempBatchPath,
-                        Verb = "runas",
-                        UseShellExecute = true,
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden
-                    };
-
-                    var process = Process.Start(startInfo);
-                    if (process != null)
-                    {
-                        process.WaitForExit();
-                        Trace.WriteLine($"[DLSS] DLL replacement completed with exit code: {process.ExitCode}");
-                        return process.ExitCode == 0;
-                    }
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        if (File.Exists(tempBatchPath))
-                            File.Delete(tempBatchPath);
-                    }
-                    catch { }
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[DLSS] Error in ReplaceDllWithElevation: {ex.Message}");
-            return false;
-        }
+        return Helpers.ReplaceFilesWithElevation(
+            new List<(string, string)> { (sourceDllPath, _gameDllPath) },
+            "[DLSS]",
+            "dlss_dll");
     }
 
     private static Task<DllData?> ParseDllAsync(string dllPath)

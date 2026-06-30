@@ -765,68 +765,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             (srcSky,   DstSky),
             (srcWater, DstWater)
         };
-        return ReplaceFilesWithElevation(files);
-    }
-
-    private async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace)
-    {
-        try
-        {
-            return await Task.Run(() =>
-            {
-                var scriptLines = new List<string> { "@echo off" };
-                foreach (var (sourcePath, destPath) in filesToReplace)
-                    scriptLines.Add("copy /Y \"" + sourcePath + "\" \"" + destPath + "\" >nul 2>&1");
-                scriptLines.Add("exit %ERRORLEVEL%");
-
-                var batchScript = string.Join("\r\n", scriptLines);
-                var tempBatchPath = Path.Combine(
-                    Path.GetTempPath(),
-                    "rtx_defaults_" + Guid.NewGuid().ToString("N") + ".bat");
-                File.WriteAllText(tempBatchPath, batchScript);
-
-                Trace.WriteLine("[LUTManager] Batch: " + tempBatchPath);
-                Trace.WriteLine("[LUTManager] Contents:\n" + batchScript);
-
-                try
-                {
-                    var startInfo = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        Arguments = "/c \"" + tempBatchPath + "\"",
-                        Verb = "runas",
-                        UseShellExecute = true,
-                        CreateNoWindow = true,
-                        WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
-                    };
-
-                    var process = System.Diagnostics.Process.Start(startInfo);
-                    if (process != null)
-                    {
-                        process.WaitForExit();
-                        Trace.WriteLine("[LUTManager] Exit code: " + process.ExitCode);
-                        return process.ExitCode == 0;
-                    }
-
-                    Trace.WriteLine("[LUTManager] Process.Start returned null");
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        Thread.Sleep(300);
-                        if (File.Exists(tempBatchPath)) File.Delete(tempBatchPath);
-                    }
-                    catch { }
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine("[LUTManager] Error in ReplaceFilesWithElevation: " + ex.Message);
-            return false;
-        }
+        return Helpers.ReplaceFilesWithElevation(files, "[LUTManager]", "rtx_defaults");
     }
 
     // -------------------------------------------------------------------------
