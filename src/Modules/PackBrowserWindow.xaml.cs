@@ -38,7 +38,7 @@ public sealed partial class PackBrowserWindow : Window
     public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview
         ? "Minecraft Preview" : "Minecraft";
 
-    private const string AlchitexCandidateTag = "Potential Alchitex Candidate";
+    private const string AlchitexCandidateTag = "Potential Reactor Candidate";
 
     // TODO: re-enable Alchitex candidate eligibility for legacy packs if automatic
     //       manifest format upgrade is implemented downstream in Alchitex.

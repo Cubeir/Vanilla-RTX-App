@@ -428,7 +428,7 @@ public sealed partial class Alchitex : Window
     private async void ShowMainContent()
     {
         this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
-        TitleBarText.Text = "Alchitex";
+        TitleBarText.Text = "RTX Reactor";
         InfoButton.Visibility = Visibility.Visible;
         TitleBarDragAreaNarrow.Visibility = Visibility.Visible;
         SetTitleBar(TitleBarDragAreaNarrow);
