@@ -550,6 +550,21 @@ public static class Helpers
         return mcProcesses.Length > 0;
     }
 
+    /// <summary>
+    /// Returns one of 3 special occasion names (me and my loved one's "birthday"s, "christmas", or "pumpkin" during weekends of October)
+    /// </summary>
+    public static string? GetSpecialOccasionName()
+    {
+        var date = DateTime.Today;
+        if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
+            return "birthday";
+        if (date.Month == 10 && (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday))
+            return "pumpkin";
+        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
+            return "christmas";
+        return null;
+    }
+
 
     /// <summary>
     /// Additional helper to do a thing only once per runtime, use RanOnceFlag.Set("key") to set a flag with a unique key.

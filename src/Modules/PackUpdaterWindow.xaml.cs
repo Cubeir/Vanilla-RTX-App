@@ -41,11 +41,9 @@ public sealed partial class PackUpdateWindow : Window
         InitializeHoverEffects();
 
         // SPECIAL PANEL VISIBILITY - Christmas/New Year
-        var date = DateTime.Now;
-        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
-            SpecialOccasionPanel.Visibility = Visibility.Visible;
-        else
-            SpecialOccasionPanel.Visibility = Visibility.Collapsed;
+        SpecialOccasionPanel.Visibility = Helpers.GetSpecialOccasionName() == "christmas"
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         _mainWindow = mainWindow;
         _updater = mainWindow._updater ?? new PackUpdater(); // Make it same as main window's updater, avoid making new instances

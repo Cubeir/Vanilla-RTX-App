@@ -1,7 +1,7 @@
 <Window x:Class="Vanilla_RTX_App.PackUpdate.PackUpdateWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Vanilla RTX">
+        Title="Get Vanilla RTX">
 
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
@@ -471,13 +471,6 @@
                         </Border>
                     </Grid>
 
-                    <!-- ═══════════════════════════════════════════════
-                         Online announcements (PackUpdateAnnouncements)
-                          ═══════════════════════════════════════════════ -->
-                    <StackPanel x:Name="PackUpdateAnnouncementsPanel"
-                                Spacing="12"
-                                Margin="22,4,22,4" />
-
                     <!-- SPECIAL PANEL -->
                     <Border x:Name="SpecialOccasionPanel"
                             CornerRadius="8"
@@ -565,6 +558,13 @@
                             </Grid>
                         </Grid>
                     </Border>
+
+                    <!-- ═══════════════════════════════════════════════
+                         Online announcements (PackUpdateAnnouncements)
+                          ═══════════════════════════════════════════════ -->
+                    <StackPanel x:Name="PackUpdateAnnouncementsPanel"
+                                Spacing="12"
+                                Margin="22,4,22,4" />
 
                     <!-- Secondary Packs Section -->
                     <Grid MaxHeight="325">
@@ -773,7 +773,7 @@
                                        TextAlignment="Left"
                                        VerticalAlignment="Center"
                                        IsTextScaleFactorEnabled="False"
-                                       Text="Other optional Vanilla RTX Add-Ons and Extensions can be downloaded and imported manually, they must be activated above one of the three primary Vanilla RTX resource packs in-game, they are not automatically updated via the app since they rarely receive updated due to being prepetually forward-compatible." />
+                                       Text="Other optional Vanilla RTX Add-Ons and Extensions can be downloaded and imported manually, they must be activated above one of the three primary Vanilla RTX resource packs in-game, they are not automatically updated via the app since they rarely receive updated due their limited scope, making them perpetually forward-compatible." />
                         </Grid>
                     </Border>
 

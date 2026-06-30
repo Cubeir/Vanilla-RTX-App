@@ -8,7 +8,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Storage.Streams;
 
 namespace Vanilla_RTX_App.Core;
 
@@ -94,7 +93,7 @@ public class LampAnimator
         _superImage = superImage;
 
         // Halo Opacity in context of splash vs anything else, off is hardcoded to 0.0
-        _defaultHaloOpacity = _context == LampContext.Splash ? 0.195 : 0.295; 
+        _defaultHaloOpacity = _context == LampContext.Splash ? 0.195 : 0.295;
         _superHaloOpacity = _context == LampContext.Splash ? 0.65 : 0.7;
 
         // If explicit paths were provided, use them directly.
@@ -348,7 +347,7 @@ public class LampAnimator
 
     private (string? on, string? off, string? super, string? halo) ResolveImagePaths()
     {
-        string? specialName = GetSpecialOccasionName(DateTime.Today);
+        string? specialName = Modules.Helpers.GetSpecialOccasionName();
 
         if (!string.IsNullOrEmpty(specialName))
         {
@@ -379,20 +378,6 @@ public class LampAnimator
         );
     }
 
-    public string? GetSpecialOccasionName(DateTime date)
-    {
-        if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
-            return "birthday";
-
-        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
-            return "christmas";
-
-        if (date.Month == 10 && (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday))
-            return "pumpkin";
-
-        return null;
-    }
-
     /// <summary>
     /// Ensures all images are preloaded and ready for instant swapping.
     /// XAML defaults are preserved - only overridden for special occasions.
@@ -402,7 +387,7 @@ public class LampAnimator
         if (_isInitialized)
             return;
 
-        string? specialName = GetSpecialOccasionName(DateTime.Today);
+        string? specialName = Modules.Helpers.GetSpecialOccasionName();
 
         // Always preload images for instant access during animations
         var loadTasks = new List<Task>();

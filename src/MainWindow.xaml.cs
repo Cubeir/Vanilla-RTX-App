@@ -225,11 +225,17 @@ public sealed partial class MainWindow : Window
     }
     private void InitializePreviewerImages()
     {
-        var date = DateTime.Today;
-        var previews = Enumerable.Range(1, 32)
-            .Select(i => $"ms-appx:///Assets/previews/vrtx.app.{i}.png")
-            .ToArray();
-        Previewer.Instance.InitializeButton(LampInteractionButton, previews);
+        var occasion = GetSpecialOccasionName();
+        var (prefix, count) = occasion switch
+        {
+            "birthday" => ("vrtx.birthday", 3),
+            "pumpkin" => ("vrtx.pumpkin", 3),
+            "christmas" => ("vrtx.christmas", 5),
+            _ => ("vrtx.app", 32)
+        };
+        var PreviewArt = Enumerable.Range(1, count)
+            .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
+        Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt);
 
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,
             "ms-appx:///Assets/previews/fog.default.png",
@@ -287,9 +293,11 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/checkbox.regular.ticked.png",
             "ms-appx:///Assets/previews/checkbox.regular.unticked.png"
         );
-        if (date.Month == 4 && date.Day >= 21 && date.Day <= 23)
+        if (GetSpecialOccasionName() == "birthday")
         {
-            Previewer.Instance.InitializeCheckBox(NormalsCheckBox, "ms-appx:///Assets/previews/checkbox.normals.ticked.birthday.png", "ms-appx:///Assets/previews/checkbox.normals.unticked.birthday.png");
+            Previewer.Instance.InitializeCheckBox(NormalsCheckBox,
+                "ms-appx:///Assets/previews/checkbox.normals.ticked.birthday.png",
+                "ms-appx:///Assets/previews/checkbox.normals.unticked.birthday.png");
         }
         else
         {
@@ -314,18 +322,11 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/chest.delete.png"
         );
 
-        if ((date.Month == 12 && date.Day >= 23) || (date.Month == 1 && date.Day <= 7))
-        {
-            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
-                "ms-appx:///Assets/previews/version.checker.christmas.png"
-            );
-        }
-        else
-        {
-            Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
-                "ms-appx:///Assets/previews/version.checker.png"
-            );
-        }
+        Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
+            GetSpecialOccasionName() == "christmas"
+                ? "ms-appx:///Assets/previews/version.checker.christmas.png"
+                : "ms-appx:///Assets/previews/version.checker.png"
+        );
 
         Previewer.Instance.InitializeButton(TuneSelectionButton,
             "ms-appx:///Assets/previews/table.tune.png"
@@ -498,8 +499,16 @@ public sealed partial class MainWindow : Window
         await FadeOutSplashScreen();
 
         // Random previewer image
-        int rng = Random.Shared.Next(1, 33);
-        Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/vrtx.app.{rng}.png");
+        var occasion = GetSpecialOccasionName();
+        var (prefix, count) = occasion switch
+        {
+            "birthday" => ("vrtx.birthday", 3),
+            "pumpkin" => ("vrtx.pumpkin", 3),
+            "christmas" => ("vrtx.christmas", 5),
+            _ => ("vrtx.app", 32)
+        };
+        int rng = Random.Shared.Next(1, count + 1);
+        Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
 
         // Show Leave a Review prompt
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
@@ -844,7 +853,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
             return;
         }
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: _titlebarLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: rapidFlashChance);
+        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: GetSpecialOccasionName() != null, rapidFlashChance: rapidFlashChance);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
@@ -853,7 +862,7 @@ public sealed partial class MainWindow : Window
             Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
             return;
         }
-        await _splashLampAnimator.Animate(false, true, 0.9, duration: splashDurationMs, rotate: _splashLampAnimator.GetSpecialOccasionName(DateTime.Today) != "", rapidFlashChance: 0.01);
+        await _splashLampAnimator.Animate(false, true, 0.9, duration: splashDurationMs, rotate: GetSpecialOccasionName() != null, rapidFlashChance: 0.01);
     }
 
 
@@ -1046,12 +1055,12 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
-                Log("Hold shift and click the lamp again to copy logs for debugging to your clipboard.\nAttach these if you ever want to report an issue to the developer.", LogLevel.Informational);
+                Log("Hold shift and click the lamp again to copy debug logs.\nAttach these if making an issue report.", LogLevel.Informational);
             }
             else
             {
                 lampSecretMessageCounter++;
-                if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, 21 today
+                if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, starting in 2026, 21 times
                 {
                     if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
                     {
