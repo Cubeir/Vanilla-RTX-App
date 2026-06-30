@@ -495,8 +495,7 @@ public sealed partial class MainWindow : Window
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
         await Task.Delay(700);
-        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here ======================= 
-        await FadeOutSplashScreen();
+        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
         // Random previewer image
         var occasion = GetSpecialOccasionName();
@@ -509,6 +508,9 @@ public sealed partial class MainWindow : Window
         };
         int rng = Random.Shared.Next(1, count + 1);
         Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
+
+        // ============================================================= 
+        await FadeOutSplashScreen();
 
         // Show Leave a Review prompt
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
@@ -2377,6 +2379,10 @@ just.. it'd be nice QoL.
 
 Btw random thought
 indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
+
+- Either set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
+Or simple pixel arts you'd like to make in the same style
+OR, simply add more renders, more special ones
 
 - Do the redesign.
 Offload export and delete to PackBrowser menu, allow deletion and export on the spot
