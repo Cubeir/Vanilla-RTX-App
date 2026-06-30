@@ -197,7 +197,7 @@
 
 
 
-                    <Button Content="Learn to create and submit your own lut presets for everyone to see them here!"
+                    <Button Content="Learn to customize your own lut preset and share them with the developer for everyone else to see it here!"
                             x:Name="LearnTo_Button"
                             Opacity="0.84"
                             Padding="6"

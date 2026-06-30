@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -433,11 +434,22 @@ public sealed partial class PackBrowserWindow : Window
     {
         var flyout = new MenuFlyout();
 
-        var selectAll = new MenuFlyoutItem { Text = "Select all" };
+        var selectAll = new MenuFlyoutItem
+        {
+            Text = "Select all",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            FontWeight = FontWeights.SemiBold
+        };
         selectAll.Click += (_, _) => SetAllPacksSelected(true);
         flyout.Items.Add(selectAll);
 
-        var deselectAll = new MenuFlyoutItem { Text = "Deselect all" };
+        var deselectAll = new MenuFlyoutItem
+        {
+            Text = "Deselect all",
+            HorizontalAlignment =
+            HorizontalAlignment.Stretch,
+            FontWeight = FontWeights.SemiBold
+        };
         deselectAll.Click += (_, _) => SetAllPacksSelected(false);
         flyout.Items.Add(deselectAll);
 
@@ -448,7 +460,7 @@ public sealed partial class PackBrowserWindow : Window
             foreach (var tag in _knownTags)
             {
                 var capturedTag = tag;
-                var item = new MenuFlyoutItem { Text = $"Select \"{capturedTag}\"" };
+                var item = new MenuFlyoutItem { Text = $"Add all \"{capturedTag}\" to selections", HorizontalAlignment = HorizontalAlignment.Stretch };
                 item.Click += (_, _) => SelectPacksByTag(capturedTag);
                 flyout.Items.Add(item);
             }
