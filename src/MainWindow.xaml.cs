@@ -759,18 +759,18 @@ public sealed partial class MainWindow : Window
             var textBox = Instance.SidebarLog;
             string prefix = level switch
             {
-                LogLevel.Success => "✅",
-                LogLevel.Informational => "ℹ️",
-                LogLevel.Warning => "⚠️",
-                LogLevel.Error => "❌",
-                LogLevel.Network => "🛜",
-                LogLevel.Lengthy => "⏳",
-                LogLevel.Debug => "🔍",
-                LogLevel.PSA => "📢",
+                LogLevel.Success => "✅ ",
+                LogLevel.Informational => "ℹ️ ",
+                LogLevel.Warning => "⚠️ ",
+                LogLevel.Error => "❌ ",
+                LogLevel.Network => "🛜 ",
+                LogLevel.Lengthy => "⏳ ",
+                LogLevel.Debug => "🔍 ",
+                LogLevel.PSA => "📢 ",
                 _ => ""
             };
 
-            string prefixedMessage = $"{prefix} {message}";
+            string prefixedMessage = $"{prefix}{message}";
             string separator = "";
 
             if (string.IsNullOrWhiteSpace(textBox.Text))
@@ -1361,7 +1361,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Normal pack browser flow
-        ToggleControls(this, false, true, []);
+        ToggleControls(this, false);
 
         var packBrowserWindow = new Vanilla_RTX_App.PackBrowser.PackBrowserWindow(this);
         var mainAppWindow = this.AppWindow;
@@ -1373,7 +1373,7 @@ public sealed partial class MainWindow : Window
 
         packBrowserWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true, true, []);
+            ToggleControls(this, true);
 
             if (TunerVariables.SelectedPacks.Count > 0)
             {
@@ -1678,14 +1678,21 @@ public sealed partial class MainWindow : Window
     {
         // ----- HARD RESET 
         var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+        try
         {
-            ToggleControls(this, false, true, ["LogCopyButton"]);
-            _progressManager.ShowProgress();
-            _ = BlinkingLamp(true);
+            if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+            {
+                ToggleControls(this, false);
+                _progressManager.ShowProgress();
+                _ = BlinkingLamp(true);
 
-            _ = WipeAllStorageData();
-            return;
+                _ = WipeAllStorageData();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToggleControls(this, true);
         }
         // ----- HARD RESET 
 
@@ -1847,7 +1854,7 @@ public sealed partial class MainWindow : Window
 
     private void BetterRTXPresetManagerButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false, true, []);
+        ToggleControls(this, false);
 
         var betterRTXWindow = new Vanilla_RTX_App.BetterRTXBrowser.BetterRTXManagerWindow(this);
 
@@ -1859,7 +1866,7 @@ public sealed partial class MainWindow : Window
 
         betterRTXWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true, true, []);
+            ToggleControls(this, true);
 
             // Log status after window closes
             if (betterRTXWindow.OperationSuccessful)
@@ -1883,7 +1890,7 @@ public sealed partial class MainWindow : Window
 
     private void DLSSVersionSwitcherButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false, true, []);
+        ToggleControls(this, false);
 
         var dlssSwitcherWindow = new Vanilla_RTX_App.DLSSBrowser.DLSSSwitcherWindow(this);
         var mainAppWindow = this.AppWindow;
@@ -1895,7 +1902,7 @@ public sealed partial class MainWindow : Window
 
         dlssSwitcherWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true, true, []);
+            ToggleControls(this, true);
 
             // Log status after window closes
             if (dlssSwitcherWindow.OperationSuccessful)
@@ -1919,7 +1926,7 @@ public sealed partial class MainWindow : Window
 
     private void DefaultRTXModifiersButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false, true, []);
+        ToggleControls(this, false);
 
         var rtxWindow = new Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow(this);
         var mainAppWindow = this.AppWindow;
@@ -1931,7 +1938,7 @@ public sealed partial class MainWindow : Window
 
         rtxWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true, true, []);
+            ToggleControls(this, true);
 
             if (rtxWindow.OperationSuccessful)
             {
@@ -1954,7 +1961,7 @@ public sealed partial class MainWindow : Window
 
     private void AlchitexButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false, true, []);
+        ToggleControls(this, false);
         var alchitexWindow = new Vanilla_RTX_App.Modules.Alchitex.Alchitex(this);
         var mainAppWindow = this.AppWindow;
         alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -1963,7 +1970,7 @@ public sealed partial class MainWindow : Window
         alchitexWindow.AppWindow.Move(mainAppWindow.Position);
         alchitexWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true, true, []);
+            ToggleControls(this, true);
         };
         alchitexWindow.Activate();
     }
@@ -2214,7 +2221,7 @@ public sealed partial class MainWindow : Window
                 Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
             }
 
-            ToggleControls(this, false, true, []);
+            ToggleControls(this, false);
 
             var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
             var mainAppWindow = this.AppWindow;
@@ -2228,7 +2235,7 @@ public sealed partial class MainWindow : Window
             packUpdaterWindow.Closed += (s, args) =>
             {
                 // Enable main UI buttons again
-                ToggleControls(this, true, true, []);
+                ToggleControls(this, true);
 
                 // Set reinstall latest packs button visuals based on cache status
                 if (_updater.HasDeployableCache())
@@ -2282,6 +2289,9 @@ replace infrastructure of all other windows with WinUIex
 
 >> Update other windows' unfocused titlebar button,actually, unify it, reuse across all windows
 
+- Issue: theme changes from main window don't propagate to other already-open windows, take care of it while upgrading their infrastructure
+
+
 - Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
 // commenting out bits also helps tracking down what causes it
 improvements were made last night
@@ -2304,8 +2314,6 @@ Do artifical throws in random placess
 
 the weird splash behavior is cuz activation won't happen on its own, you gotta trigger it too
 on regular starts, it always happens, on restarts where process auto starts, it might not!!
-
-
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
@@ -2434,9 +2442,19 @@ just an idea
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
 they appear at the bottom
-expects zips or rtpacks to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
+expects zips, rtpacks, or .tar.gz, in any of the 3
+look for the .bin files, call the presets custom1, 2, etc.. don't convolute it
+since their structure can vary, have something robust for all kinds of custom presets.
+to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
 basically, instead of changing the current pipeline, integerate this/build it on top of it
 that way it'll surely work without fucking things up
+> This is probably not so useful
+And it goes against your design philosphies
+The flow of going to a site, twiddling ALL those knobs, coming back, and having to do it again with mc updates
+is just... NOPE!
+That said, it's a cool feature for those who might want it.
+>> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
+
 
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
 Especially release builds, There COULD BE LATENT TRIMMING BUGS!
