@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage;
+using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Core;
 
@@ -58,7 +59,7 @@ public sealed partial class ReviewPromptControl : UserControl
     public void Show()
     {
         RootGrid.Visibility = Visibility.Visible;
-        System.Diagnostics.Trace.WriteLine("RootGrid visibility set to Visible");
+        Trace.WriteLine("RootGrid visibility set to Visible");
     }
 
     public void Hide()
@@ -89,7 +90,7 @@ public static class ReviewPromptManager
         }
         catch
         {
-            System.Diagnostics.Trace.WriteLine("[ReviewPrompt] Failed to clear orhphaned ReviewPromptDontShow_ keys");
+            Trace.WriteLine("[ReviewPrompt] Failed to clear orhphaned ReviewPromptDontShow_ keys");
         }
     }
 
@@ -103,16 +104,16 @@ public static class ReviewPromptManager
     /// <param name="rootPanel">The root panel of your MainWindow (e.g., the main Grid)</param>
     public static async Task InitializeAsync(Panel rootPanel)
     {
-        System.Diagnostics.Trace.WriteLine("=== ReviewPrompt: InitializeAsync called ===");
+        Trace.WriteLine("=== ReviewPrompt: InitializeAsync called ===");
         _rootPanel = rootPanel;
 
         if (_rootPanel == null)
         {
-            System.Diagnostics.Trace.WriteLine("ERROR: rootPanel is NULL!");
+            Trace.WriteLine("ERROR: rootPanel is NULL!");
             return;
         }
 
-        System.Diagnostics.Trace.WriteLine($"Root panel type: {_rootPanel.GetType().Name}");
+        Trace.WriteLine($"Root panel type: {_rootPanel.GetType().Name}");
 
         CleanupOldVersionKeys();
         // Record first launch if not already recorded
@@ -120,13 +121,13 @@ public static class ReviewPromptManager
 
         // Check if we should show the prompt
         bool shouldShow = await ShouldShowPromptAsync();
-        System.Diagnostics.Trace.WriteLine($"Should show prompt: {shouldShow}");
+        Trace.WriteLine($"Should show prompt: {shouldShow}");
 
         if (shouldShow)
         {
-            System.Diagnostics.Trace.WriteLine($"Waiting {SHOW_DELAY_Milisecs} seconds before showing...");
+            Trace.WriteLine($"Waiting {SHOW_DELAY_Milisecs} seconds before showing...");
             await Task.Delay(TimeSpan.FromMilliseconds(SHOW_DELAY_Milisecs));
-            System.Diagnostics.Trace.WriteLine("Calling ShowPrompt()...");
+            Trace.WriteLine("Calling ShowPrompt()...");
             ShowPrompt();
         }
     }
@@ -139,11 +140,11 @@ public static class ReviewPromptManager
         {
             var now = DateTime.UtcNow.Ticks;
             localSettings.Values[FIRST_LAUNCH_KEY] = now;
-            System.Diagnostics.Trace.WriteLine($"First launch recorded: {now} ticks ({DateTime.UtcNow})");
+            Trace.WriteLine($"First launch recorded: {now} ticks ({DateTime.UtcNow})");
         }
         else
         {
-            System.Diagnostics.Trace.WriteLine($"First launch already recorded: {localSettings.Values[FIRST_LAUNCH_KEY]} ticks");
+            Trace.WriteLine($"First launch already recorded: {localSettings.Values[FIRST_LAUNCH_KEY]} ticks");
         }
     }
 
@@ -154,26 +155,26 @@ public static class ReviewPromptManager
         // Check if user said "Don't show again"
         if (localSettings.Values.ContainsKey(DONT_SHOW_KEY))
         {
-            System.Diagnostics.Trace.WriteLine("Don't show key exists - returning false");
+            Trace.WriteLine("Don't show key exists - returning false");
             return false;
         }
 
         // Get first launch time
         if (!localSettings.Values.ContainsKey(FIRST_LAUNCH_KEY))
         {
-            System.Diagnostics.Trace.WriteLine("No first launch key - returning false");
+            Trace.WriteLine("No first launch key - returning false");
             return false;
         }
 
         var firstLaunchTicks = localSettings.Values[FIRST_LAUNCH_KEY];
         if (firstLaunchTicks == null || !(firstLaunchTicks is long))
         {
-            System.Diagnostics.Trace.WriteLine($"Invalid first launch ticks: {firstLaunchTicks}");
+            Trace.WriteLine($"Invalid first launch ticks: {firstLaunchTicks}");
             return false;
         }
 
         var firstLaunch = new DateTime((long)firstLaunchTicks, DateTimeKind.Utc);
-        System.Diagnostics.Trace.WriteLine($"First launch: {firstLaunch} UTC");
+        Trace.WriteLine($"First launch: {firstLaunch} UTC");
 
         // Check if time has passed since first launch (or last "Show later")
         DateTime checkTime = firstLaunch;
@@ -185,34 +186,34 @@ public static class ReviewPromptManager
             {
                 var lastPrompt = new DateTime((long)lastPromptTicks, DateTimeKind.Utc);
                 checkTime = lastPrompt;
-                System.Diagnostics.Trace.WriteLine($"Using last prompt time: {lastPrompt} UTC");
+                Trace.WriteLine($"Using last prompt time: {lastPrompt} UTC");
             }
         }
 
         var minutesSince = (DateTime.UtcNow - checkTime).TotalMinutes;
-        System.Diagnostics.Trace.WriteLine($"Minutes since check time: {minutesSince} (need {MINUTES_BEFORE_PROMPT})");
-        System.Diagnostics.Trace.WriteLine($"Current UTC: {DateTime.UtcNow}");
+        Trace.WriteLine($"Minutes since check time: {minutesSince} (need {MINUTES_BEFORE_PROMPT})");
+        Trace.WriteLine($"Current UTC: {DateTime.UtcNow}");
 
         return minutesSince >= MINUTES_BEFORE_PROMPT;
     }
 
     private static void ShowPrompt()
     {
-        System.Diagnostics.Trace.WriteLine("=== ShowPrompt() called ===");
+        Trace.WriteLine("=== ShowPrompt() called ===");
 
         if (_rootPanel == null)
         {
-            System.Diagnostics.Trace.WriteLine("ERROR: _rootPanel is NULL in ShowPrompt!");
+            Trace.WriteLine("ERROR: _rootPanel is NULL in ShowPrompt!");
             return;
         }
 
         if (_currentPrompt != null)
         {
-            System.Diagnostics.Trace.WriteLine("Prompt already showing!");
+            Trace.WriteLine("Prompt already showing!");
             return;
         }
 
-        System.Diagnostics.Trace.WriteLine("Creating new ReviewPromptControl...");
+        Trace.WriteLine("Creating new ReviewPromptControl...");
         _currentPrompt = new ReviewPromptControl();
 
         // ensure it appears on top
@@ -223,12 +224,12 @@ public static class ReviewPromptManager
         {
             Grid.SetColumnSpan(_currentPrompt, int.MaxValue);
             Grid.SetRowSpan(_currentPrompt, int.MaxValue);
-            System.Diagnostics.Trace.WriteLine("Set ColumnSpan and RowSpan to cover entire Grid");
+            Trace.WriteLine("Set ColumnSpan and RowSpan to cover entire Grid");
         }
 
         _currentPrompt.Closed += (s, e) =>
         {
-            System.Diagnostics.Trace.WriteLine("Prompt closed event fired");
+            Trace.WriteLine("Prompt closed event fired");
             if (_rootPanel.Children.Contains(_currentPrompt))
             {
                 _rootPanel.Children.Remove(_currentPrompt);
@@ -236,36 +237,36 @@ public static class ReviewPromptManager
             _currentPrompt = null;
         };
 
-        System.Diagnostics.Trace.WriteLine("Adding prompt to root panel...");
+        Trace.WriteLine("Adding prompt to root panel...");
         _rootPanel.Children.Add(_currentPrompt);
 
-        System.Diagnostics.Trace.WriteLine($"Current children count: {_rootPanel.Children.Count}");
+        Trace.WriteLine($"Current children count: {_rootPanel.Children.Count}");
 
-        System.Diagnostics.Trace.WriteLine("Calling Show() on prompt...");
+        Trace.WriteLine("Calling Show() on prompt...");
         _currentPrompt.Show();
 
-        System.Diagnostics.Trace.WriteLine("=== ShowPrompt() complete ===");
+        Trace.WriteLine("=== ShowPrompt() complete ===");
     }
 
     internal static void ResetTimer()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[LAST_PROMPT_KEY] = DateTime.UtcNow.Ticks;
-        System.Diagnostics.Trace.WriteLine("Timer reset - will show again after delay");
+        Trace.WriteLine("Timer reset - will show again after delay");
     }
 
     internal static void NeverShowAgain()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[DONT_SHOW_KEY] = true;
-        System.Diagnostics.Trace.WriteLine("Never show again flag set");
+        Trace.WriteLine("Never show again flag set");
     }
 
     internal static void MarkAsCompleted()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[DONT_SHOW_KEY] = true;
-        System.Diagnostics.Trace.WriteLine("Review completed - will not show again");
+        Trace.WriteLine("Review completed - will not show again");
     }
 
     /// <summary>
@@ -277,6 +278,6 @@ public static class ReviewPromptManager
         localSettings.Values.Remove(FIRST_LAUNCH_KEY);
         localSettings.Values.Remove(DONT_SHOW_KEY);
         localSettings.Values.Remove(LAST_PROMPT_KEY);
-        System.Diagnostics.Trace.WriteLine("All review prompt settings cleared for testing");
+        Trace.WriteLine("All review prompt settings cleared for testing");
     }
 }
