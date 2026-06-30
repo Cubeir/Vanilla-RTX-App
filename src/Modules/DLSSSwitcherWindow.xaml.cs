@@ -489,20 +489,20 @@ public sealed partial class DLSSSwitcherWindow : Window
         {
             var deleteButton = new Button
             {
-                Width = 36,
-                Height = 36,
+                Width = 40,
+                Height = 40,
                 VerticalAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(0),
                 Margin = new Thickness(16, 0, 0, 0),
                 IsTextScaleFactorEnabled = false,
-                Tag = dll
+                Tag = dll,
             };
 
             var deleteIcon = new FontIcon
             {
                 Glyph = "\uE74D",
-                FontSize = 16,
-                IsTextScaleFactorEnabled = false
+                FontSize = 18,
+                IsTextScaleFactorEnabled = false,
             };
 
             deleteButton.Content = deleteIcon;
