@@ -28,6 +28,7 @@ using Windows.System;
 using Windows.UI;
 using WinRT.Interop;
 using WinUIEx;
+using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -2258,7 +2259,7 @@ public sealed partial class MainWindow : Window
     {
         if (Helpers.IsMinecraftRunning())
         {
-            Log("The game was already open, please restart the game for options.txt changes to take effect.", LogLevel.Warning);
+            Log("Minecraft already seems to be open. Please restart the game for options.txt changes to take effect.", LogLevel.Warning);
         }
 
         var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);

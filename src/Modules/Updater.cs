@@ -636,7 +636,7 @@ public class PackUpdater
 
     private async Task<bool> DeployPackage(string packagePath, PackType? targetPack = null, bool enableEnhancements = true)
     {
-        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+        if (Helpers.IsMinecraftRunning() && Helpers.RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
             Trace.WriteLine("⚠️ Minecraft is running. Please close the game while using the app.");
         }

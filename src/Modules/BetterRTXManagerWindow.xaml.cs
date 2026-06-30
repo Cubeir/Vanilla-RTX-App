@@ -1361,7 +1361,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             description = isCurrent
                 ? Helpers.SanitizePathForDisplay(localPreset.PresetPath ?? "")
                 : isDefault
-                    ? "Click to rollback" + (RuntimeFlags.Set("SaidTheThingAboutHowDefaultPresetIsMade?") ? " — This preset was made using your latest game files upon your first attempt at installing a preset" : "")
+                    ? "Click to rollback" + (Helpers.RuntimeFlags.Set("SaidTheThingAboutHowDefaultPresetIsMade?") ? " — This preset was automatically backed up from your latest game files upon your first attempt at installing a preset" : "")
                     : "Click to install";
         }
         else if (presetData is DisplayPresetData displayPreset)

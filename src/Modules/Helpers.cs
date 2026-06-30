@@ -415,7 +415,9 @@ public static class Helpers
 
 
 
-    // Shortens it too
+    /// <summary>
+    /// Shortns it too
+    /// </summary>
     public static string SanitizePathForDisplay(string fullPath)
     {
         if (string.IsNullOrEmpty(fullPath))
@@ -455,6 +457,9 @@ public static class Helpers
     }
 
 
+    /// <summary>
+    /// A custom implementation of generating a proper texture set, utilizes the custom implementation of TextureSetHelpers class in Processor.cs
+    /// </summary>
     public static void GenerateTexturesLists(string rootDirectory)
     {
         static string FormatMinecraftJson(List<string> paths)
@@ -536,39 +541,39 @@ public static class Helpers
     }
 
 
+    /// <summary>
+    /// Checks if Minecraft.Windows process is running, returns true if so
+    /// </summary>
     public static bool IsMinecraftRunning()
     {
         var mcProcesses = Process.GetProcessesByName("Minecraft.Windows");
         return mcProcesses.Length > 0;
     }
-}
 
 
-/// <summary>
-/// Additional helper to do a thing only once per runtime, use RanOnceFlag.Set("key") to set a flag with a unique key.
-/// </summary>
-public static class RuntimeFlags
-{
-    private static readonly HashSet<string> _flags = new();
-
-    public static bool Has(string key) => _flags.Contains(key); // Below does the same as this one if already set
-
-    public static bool Set(string key)
+    /// <summary>
+    /// Additional helper to do a thing only once per runtime, use RanOnceFlag.Set("key") to set a flag with a unique key.
+    /// </summary>
+    public static class RuntimeFlags
     {
-        if (_flags.Contains(key))
-            return false;
+        private static readonly HashSet<string> _flags = new();
 
-        _flags.Add(key);
-        return true;
+        public static bool Has(string key) => _flags.Contains(key); // Below does the same as this one if already set
+
+        public static bool Set(string key)
+        {
+            if (_flags.Contains(key))
+                return false;
+
+            _flags.Add(key);
+            return true;
+        }
+
+        public static bool Unset(string key) => _flags.Remove(key);
     }
-
-    public static bool Unset(string key) => _flags.Remove(key);
 }
 
-
-
-
-
+# region MC GDK LOCATOR TOOLS
 
 /// <summary>
 /// Provides tools for locating Minecraft (Bedrock) and Minecraft Preview installations.
@@ -1197,17 +1202,10 @@ public static class MinecraftGDKLocator
         }
     }
 }
+#endregion
 
 
-
-
-
-
-
-
-
-
-
+# region MC USER DATA LOCATOR TOOLS
 
 /// <summary>
 /// Centralizes discovery and validation of Minecraft's GDK user data root —
@@ -1487,3 +1485,5 @@ public static class MinecraftUserDataLocator
         else TunerVariables.Persistent.MinecraftDataPath = path;
     }
 }
+
+#endregion
