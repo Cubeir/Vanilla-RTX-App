@@ -135,7 +135,9 @@
                 Click="RefreshButton_Click"
                 Translation="0,0,16"
                 IsTextScaleFactorEnabled="False"
-                ToolTipService.ToolTip="Manually resets the list and reretrieves the latest preset list from the API. Usage: This usually happens automatically whenever Minecraft is updated, however, in case BetterRTX delievers its updates with a delay, it is a good idea to manually refresh to ensure you're getting the latest files.">
+                ToolTipService.ToolTip="Resets cache, clearing all downloaded files from BetterRTX API and forcing a new re-fetch.
+                &#x0a;&#x0a;Note: This always happens automatically whenever Minecraft is updated, or periodically whenever changes in the API is detected (likely but not guranteed), hence this button exists for you to trigger a manual refresh in case BetterRTX delievers its updates with a delay or the API pretends to remain the same after rolling out updates.
+                &#x0a;&#x0a;Note 2: This button won't clear your Default RTX preset, which is backed up upon your first attempt at installing a preset. Only game updates can trigger a reset of Default preset, so that the app can ultimately pick up the new defaults fresh from the new version of your game.">
             <Button.Shadow>
                 <ThemeShadow />
             </Button.Shadow>

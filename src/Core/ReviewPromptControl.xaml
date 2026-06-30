@@ -48,7 +48,7 @@
                              FontWeight="SemiBold"/>
                     </Hyperlink>
                     <Run Text="&#x0a;...or simply by leaving an honest review!&#x0a;&#x0a;Anything helps, and encourages me to continue my projects." />
-                    <Run Text="&#x0a;All of which I've released and upkept for years, free of charge, ads or similar nonsense.&#x0a;I just ask anyone who believes this is a good thing to help me continue it. " />
+                    <Run Text="&#x0a;All of which I've released and upkept for years, free of charge, ads or similar nonsense.&#x0a;I just ask anyone who believes this is a good thing to help me continue it." />
                     <Run Text="&#x0a;- Cubeir"
                          FontWeight="Normal" />
                 </TextBlock>
