@@ -34,7 +34,8 @@ Hint: It is always preferred to activate RTX resource packs in your Global Resou
 ### Tip
 Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen faster from a cached version unless a new version happens to be available.
 
-
+## test timed section
+the quick brown fox jumps over the lazy dog or something
 
 
 
@@ -49,7 +50,8 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to re-fetch the latest files.
 
-
+## test timed section
+the quick brown fox jumps over the lazy dog or something
 
 
 
@@ -61,7 +63,8 @@ Look up tables provide a simple way to improve or further customize Minecraft RT
 ### [glyph:"E7BA"]
 This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
 
-
+## test timed section
+the quick brown fox jumps over the lazy dog or something
 
 
 
@@ -73,7 +76,8 @@ This feature will not work if you're using a BetterRTX Preset (Default RTX must 
 ### A friendly note
 Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most other versions in-between tend to be a bit blurry!
 
-
+## test timed section
+the quick brown fox jumps over the lazy dog or something
 
 
 
@@ -84,3 +88,6 @@ Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3
 ### Text below is a one time thingy, tutorial type of thing! [glyph:"E95B"]
 Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
 Use the clear selection button in the main window to clear your selections.
+
+## test timed section
+the quick brown fox jumps over the lazy dog or something
