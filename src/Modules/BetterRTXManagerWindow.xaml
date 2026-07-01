@@ -88,7 +88,7 @@
                 <StackPanel x:Name="BetterRTXAnnouncementsPanel"
                             Grid.Row="0"
                             Spacing="10"
-                            Margin="20,10,24,10" />
+                            Margin="20,12,24,14" />
 
                 <!-- Shadow receiver sits behind the scroll content -->
                 <Grid x:Name="ShadowReceiverGrid"

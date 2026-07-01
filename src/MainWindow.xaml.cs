@@ -35,6 +35,19 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
+// short term todo:
+
+// Keep reactor window from opening unless at lesat one incompatible pack is selected
+// Or one at least potentially compatible pack
+// But accept both tbh, and later in the window itself warn the user with a dialogue, it is not recommended to process packs that aren't potential candidates
+
+// and do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
+// make it secondary to the primary manner of its workings, y'know? be clever with the design
+
+// block betterrtx install event IF IS CURRENT?
+
+// then do window infrastructure upgrades
+
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -894,17 +907,8 @@ public sealed partial class MainWindow : Window
         // Animate sliders (intentionally put here, don't move up or down)
         await AnimateSliders(sliderConfigs, animationDurationSeconds);
 
-        if (RuntimeFlags.Set("Initialize_UI_Previews_Only_With_The_First_Call"))
-        {
-            // UpdateUI is called once at the start. we want previews to initialize only once. Thus this flag, which allows this code block
-            // To run once and then never again.
-        }
-
-
         // Resume Previewer Updates
         Previewer.Instance.Unfreeze();
-
-
 
         async Task AnimateSliders((Slider slider, TextBox textBox, double targetValue, bool isInteger)[] configs, double durationSeconds)
         {
@@ -2479,6 +2483,13 @@ PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and
 
 Potentially add a way to deploy from a different branch on github for preview version of the game
 that is, assuming you really do plan on separating the development branches upstream
+
+>>
+Go after these classes, all modules
+Further SEPARATE Servicing from Presentation
+Break down these fat monolithic classes, then you may be able to do more with them, defragment code, and reuse a bunch of it...
+already did a bit of that with file replacement, etc..
+but more could be done for sure.
 
 - A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
 Besides that you're gonna need something to unify the logging

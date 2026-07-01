@@ -577,11 +577,19 @@ public static class Helpers
 
         public static bool Set(string key)
         {
-            if (_flags.Contains(key))
-                return false;
+            try
+            {
+                if (_flags.Contains(key))
+                    return false;
 
-            _flags.Add(key);
-            return true;
+                _flags.Add(key);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[RUNETIMEFLAGS] Something went wrong: {ex.ToString}");
+                return false;
+            }
         }
 
         public static bool Unset(string key) => _flags.Remove(key);

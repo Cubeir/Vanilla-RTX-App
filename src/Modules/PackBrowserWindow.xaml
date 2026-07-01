@@ -76,7 +76,7 @@
                 <StackPanel x:Name="PackBrowserAnnouncementsPanel"
                             Grid.Row="0"
                             Spacing="12"
-                            Margin="22,8,22,8" />
+                            Margin="20,8,24,8" />
 
                 <!-- Shadow receiver sits behind everything -->
                 <Grid x:Name="ShadowReceiverGrid"
@@ -84,13 +84,13 @@
 
                 <!-- PACK LIST (scrollable) -->
                 <ScrollViewer Grid.Row="1"
-                              Padding="20,0,20,0"
+                              Padding="20,0,25,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Margin="-20,0,-20,0">
                     <StackPanel x:Name="PackListContainer"
-                                Spacing="6"
+                                Spacing="4"
                                 Padding="20,0,20,8" />
                 </ScrollViewer>
 

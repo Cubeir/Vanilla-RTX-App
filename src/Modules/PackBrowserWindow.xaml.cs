@@ -523,24 +523,24 @@ public sealed partial class PackBrowserWindow : Window
                 buttonShadow.Receivers.Add(ShadowReceiverGrid);
         };
 
-        // Columns: [icon 75] [gap 15] [info *] [gap 15] [right panel Auto]
+        // Columns: [icon 96] [gap 15] [info *] [gap 15] [right panel Auto]
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         // ── Icon + selection overlay ─────────────────────────────────────────
-        var iconContainer = new Grid { Width = 75, Height = 75 };
+        var iconContainer = new Grid { Width = 96, Height = 96 };
 
         var iconBorder = new Border
         {
-            Width = 75,
-            Height = 75,
+            Width = 96,
+            Height = 96,
             CornerRadius = new CornerRadius(5),
             Background = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            Translation = new System.Numerics.Vector3(0, 0, 48)
+            Translation = new System.Numerics.Vector3(0, 0, 32)
         };
 
         var iconShadow = new ThemeShadow();
@@ -581,8 +581,8 @@ public sealed partial class PackBrowserWindow : Window
         // Selection overlay
         var selectionOverlay = new Border
         {
-            Width = 75,
-            Height = 75,
+            Width = 96,
+            Height = 96,
             CornerRadius = new CornerRadius(3),
             Background = new SolidColorBrush(ColorHelper.FromArgb(192, 0, 0, 0)),
             Translation = new System.Numerics.Vector3(0, 0, 128),

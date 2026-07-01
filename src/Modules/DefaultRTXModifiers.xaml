@@ -167,7 +167,7 @@
                 <StackPanel x:Name="LutAnnouncementsPanel"
                             Grid.Row="1"
                             Spacing="12"
-                            Margin="22,12,22,10" />
+                            Margin="20,12,20,8" />
 
                 <!-- ═══════════════════════════════════════════════
                      ROW 2 — Preset preview image (crossfade vessels)
@@ -182,7 +182,6 @@
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Top"
                                Canvas.ZIndex="996"
-                               CacheMode="BitmapCache"
                                Opacity="1.0">
                         
                     </Rectangle>
@@ -191,7 +190,6 @@
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Top"
                                Canvas.ZIndex="997"
-                               CacheMode="BitmapCache"
                                Opacity="1.0">
                     </Rectangle>
 
