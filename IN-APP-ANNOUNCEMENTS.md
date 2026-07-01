@@ -12,9 +12,6 @@ Alongside numerous QoL features and improvements under the hood.
 🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
 
 
-
-
-
 # PackUpdateAnnouncements
 ### Update [glyph:"E789"]
 1.26.15 Update Summary:
@@ -50,9 +47,7 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
 
 ### [glyph:"E7BA"]
-This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
-
-
+This feature will not work if you're using a BetterRTX Preset. Use Default RTX if you want to use this feature.
 
 
 
