@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Vanilla_RTX_App.RTXDefaults"
         xmlns:core="using:Vanilla_RTX_App.Core"
-        Title="RTX Lut Manager">
+        Title="RTX LUT Manager">
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>

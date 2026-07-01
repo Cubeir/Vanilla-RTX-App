@@ -100,22 +100,19 @@ public sealed partial class Alchitex : Window
     // ── Version-keyed keys ───────────────────────────────────────────────────
     // In DEBUG builds a fresh GUID is appended so the license + splash sequence
     // always re-runs, letting you test the full flow without clearing app data.
-    private static string LicenseAcceptedKey => $"Alchitex_LicenseAccepted_{GetAppVersion()}";
-
-    private static string GetAppVersion()
-    {
-        var v = Windows.ApplicationModel.Package.Current.Id.Version;
-        return $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
-    }
+    private static string LicenseAcceptedKey => $"Alchitex_LicenseAccepted_{App.GetAppVersion()}";
 
     // ── Constructor ──────────────────────────────────────────────────────────
     public Alchitex(MainWindow mainWindow)
     {
         this.InitializeComponent();
+
+        SetTitleBar(TitleBarDragAreaFull);
+        InitializeLogoAnimators();
         _mainWindow = mainWindow;
 
-        // Theme — identical pattern to DLSSSwitcherWindow
-        var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
+        // Theme
+        var mode = Persistent.AppThemeMode ?? "System";
         if (this.Content is FrameworkElement root)
         {
             root.RequestedTheme = mode switch
@@ -155,15 +152,12 @@ public sealed partial class Alchitex : Window
 
         this.SetIcon(System.IO.Path.Combine("Modules", "Alchitex", "Assets", "icon.ico"));
 
-        // Initialise lamp animators (images are already in the visual tree)
-        InitializeLampAnimators();
-
         this.Activated += Alchitex_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }
 
     // ── Lamp animator setup ──────────────────────────────────────────────────
-    private void InitializeLampAnimators()
+    private void InitializeLogoAnimators()
     {
         const string assetBase = "ms-appx:///Modules/Alchitex/Assets/";
 
@@ -191,8 +185,6 @@ public sealed partial class Alchitex : Window
             superImage: SplashLogoSuper
         );
     }
-
-    // ── Public helper — lets callers blink the titlebar lamp ─────────────────
     public async Task BlinkingLogo(bool enable, bool singleFlash = false,
                                    double singleFlashOnChance = 0.75)
     {
@@ -214,18 +206,7 @@ public sealed partial class Alchitex : Window
         {
             this.Activated -= Alchitex_Activated;
 
-            _ = this.DispatcherQueue.TryEnqueue(
-                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-                SetTitleBarDragRegion);
-
-            // Initialise both lamp animators before showing any UI
-            if (_titlebarLogoAnimator is not null && _splashLogoAnimator is not null)
-            {
-                await Task.WhenAll(
-                    _titlebarLogoAnimator.InitializeAsync(),
-                    _splashLogoAnimator.InitializeAsync()
-                );
-            }
+            PopulateAlchitexAnnouncements();
 
             await InitializeAsync();
 
@@ -237,18 +218,12 @@ public sealed partial class Alchitex : Window
         }
     }
 
-    private void SetTitleBarDragRegion()
+    private void PopulateAlchitexAnnouncements()
     {
-        try
-        {
-            if (_appWindow.TitleBar == null) return;
-            // Drag target is swapped between TitleBarDragAreaFull and
-            // TitleBarDragAreaNarrow in code. The active one is set via SetTitleBar().
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Error setting drag region: {ex.Message}");
-        }
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.AlchitexDevProgressUpdates);
+        if (items is null) return;
+        foreach (var item in items)
+            AlchitexAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────

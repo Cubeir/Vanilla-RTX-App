@@ -506,13 +506,13 @@ public sealed partial class PackBrowserWindow : Window
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 16, 20),
+            Padding = new Thickness(12, 12, 12, 12),
             Margin = new Thickness(0, 5, 0, 5),
             CornerRadius = new CornerRadius(5),
             Tag = pack,
             IsTextScaleFactorEnabled = false,
             Translation = new System.Numerics.Vector3(0, 0, 32),
-            MinHeight = 115
+            MinHeight = 96
         };
 
         var buttonShadow = new ThemeShadow();
@@ -608,6 +608,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             Text = pack.PackName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(6,0,0,0),
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
@@ -616,7 +617,7 @@ public sealed partial class PackBrowserWindow : Window
             Text = pack.PackDescription,
             FontSize = 12,
             Opacity = 0.75,
-            Margin = new Thickness(0, 2, 0, 0),
+            Margin = new Thickness(6,4,0,0),
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
         };

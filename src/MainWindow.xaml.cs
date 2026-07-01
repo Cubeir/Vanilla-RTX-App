@@ -44,8 +44,6 @@ namespace Vanilla_RTX_App;
 // and do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 // make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-// block betterrtx install event IF IS CURRENT?
-
 // then do window infrastructure upgrades
 
 /// <summary>

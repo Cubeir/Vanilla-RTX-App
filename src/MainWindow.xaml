@@ -1217,7 +1217,7 @@
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="RTX lut manager"
+                            <TextBlock Text="RTX LUT manager"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

@@ -91,3 +91,8 @@ Use the clear selection button in the main window to clear your selections.
 
 ## test timed section
 the quick brown fox jumps over the lazy dog or something
+
+
+# AlchitexDevProgressUpdates
+Hi there!
+Redstone circuits for this feature are still being laid down, that said, you can come back here anytime to check on development progress.

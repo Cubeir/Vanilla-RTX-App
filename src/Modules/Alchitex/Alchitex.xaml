@@ -84,7 +84,7 @@
                     IsHitTestVisible="False"
                     Visibility="Collapsed" />
 
-            <!-- Info button — only visible in main content state -->
+            <!-- Info button -->
             <Button x:Name="InfoButton"
                     Width="40"
                     Height="31"
@@ -175,7 +175,7 @@
                             Click="LogoInteractButton_Click" />
                 </Canvas>
 
-                <!-- Window title text — updated in code-behind later! -->
+                <!-- Window title text -->
                 <TextBlock x:Name="TitleBarText"
                            Text="License Agreement"
                            Grid.Column="1"
@@ -288,19 +288,22 @@
               Margin="0,35,0,0">
 
             <!-- ── Alchitex feature content area ── -->     
-            <Button Content="Redstone circuits are still being laid down; Keep an eye out for updates!"
-                    x:Name="AnnouncementButton"
+            <Button x:Name="AnnouncementButton"
                     Click="AnnouncementButton_Click"
                     Opacity="0.85"
                     Padding="6"
                     CornerRadius="0"
                     FontSize="14"
                     VerticalAlignment="Center"
-                    MinHeight="64"
                     Foreground="White"
                     Margin="-0.5"
                     HorizontalAlignment="Stretch"
                     Canvas.ZIndex="998">
+                <!-- PSA / announcement cards -->
+                <StackPanel x:Name="AlchitexAnnouncementsPanel"
+                            Grid.Row="0"
+                            Spacing="12"
+                            Margin="20,8,24,8" />
                 <Button.Background>
                     <AcrylicBrush TintColor="{ThemeResource SystemAltHighColor}"
                                   TintOpacity="0.0"

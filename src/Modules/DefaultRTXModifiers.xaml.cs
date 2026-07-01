@@ -153,7 +153,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             var target = TunerVariables.Persistent.IsTargetingPreview
                 ? "Minecraft Preview"
                 : "Minecraft Release";
-            WindowTitle.Text = $"RTX lut manager - {target}";
+            WindowTitle.Text = $"RTX LUT manager - {target}";
 
             ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
                 "Once you're inside the folder called: " +
