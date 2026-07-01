@@ -106,7 +106,7 @@ public sealed partial class PackBrowserWindow : Window
         this.Activated += PackBrowserWindow_Activated;
         _mainWindow.Closed += MainWindow_Closed;
 
-        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.browse.ico"));
+        this.SetIcon(Path.Combine("Assets", "icons", "vrtx.browse.ico"));
 
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
@@ -125,8 +125,8 @@ public sealed partial class PackBrowserWindow : Window
 
     private async void PackBrowserWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        await Task.Delay(25);
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
         this.Activated -= PackBrowserWindow_Activated;
 

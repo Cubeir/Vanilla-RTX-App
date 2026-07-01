@@ -140,8 +140,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
     private async void DefaultRTXModifiersWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        await Task.Delay(25);
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
         this.Activated -= DefaultRTXModifiersWindow_Activated;
 

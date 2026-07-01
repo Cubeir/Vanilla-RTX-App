@@ -168,9 +168,8 @@ public sealed partial class PackUpdateWindow : Window
 
     private async void PackUpdateWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        await Task.Delay(25);
-
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
         this.Activated -= PackUpdateWindow_Activated;
 

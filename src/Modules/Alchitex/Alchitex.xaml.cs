@@ -7,13 +7,13 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
+
 
 public static class AlchitexVariables
 {
@@ -125,8 +125,10 @@ public sealed partial class Alchitex : Window
         this.Close();
     }
 
+
     private async void Alchitex_Activated(object sender, WindowActivatedEventArgs args)
     {
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
         await Task.Delay(25);
 
         this.Activated -= Alchitex_Activated;
@@ -241,7 +243,8 @@ public sealed partial class Alchitex : Window
     }
     private async void AgreeButton_Click(object sender, RoutedEventArgs e)
     {
-        await Task.Run(() => {
+        await Task.Run(() =>
+        {
             try
             {
                 ApplicationData.Current.LocalSettings.Values[LicenseAcceptedKey] = true;
@@ -251,7 +254,7 @@ public sealed partial class Alchitex : Window
                 Trace.WriteLine($"[ALCHITEX] Error writing license key: {ex.Message}");
             }
             return Task.CompletedTask;
-        } ); 
+        });
         LicensePanel.Visibility = Visibility.Collapsed;
         ShowMainContent();
     }
@@ -277,6 +280,14 @@ public sealed partial class Alchitex : Window
 
 
 /* ── The Backlogs and Scattered Ideas ─────────────────────────────────────────────────────
+ * 
+ * Idea: don't even bother putting Alchitex on a new window, its special, and probably will end up with a codebase the same size as the rest of features combined
+ * So, here's what, Hide the MainWindow MainGrid, then display alchitex content...
+ * simple! Don't launch it in a separate window
+ * You could strip out parts of titlebar content so it remains intact upon clicking Reactor button
+ * "Take to RTX Reactor"
+ * Could animate the background coming up, cool ideas could be executed here. 
+ * 
 // Potentially rename to Alchemist, PBR Alchemist or RTX Reactor or ARCHITEX or ALCHETEX before release.
 
 // Perfect the licensing windows' appearance

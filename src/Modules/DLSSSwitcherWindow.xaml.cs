@@ -107,8 +107,8 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private async void DLSSSwitcherWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        await Task.Delay(25);
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
         this.Activated -= DLSSSwitcherWindow_Activated;
 
@@ -158,10 +158,10 @@ public sealed partial class DLSSSwitcherWindow : Window
     {
         try
         {
-            var isPreview = TunerVariables.Persistent.IsTargetingPreview;
+            var isPreview = Persistent.IsTargetingPreview;
             var cachedPath = isPreview
-                ? TunerVariables.Persistent.MinecraftPreviewInstallPath
-                : TunerVariables.Persistent.MinecraftInstallPath;
+                ? Persistent.MinecraftPreviewInstallPath
+                : Persistent.MinecraftInstallPath;
 
             string? minecraftPath = null;
 
