@@ -1413,7 +1413,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(0, 0, 40, 0),
             Margin = new Thickness(0, 0, 0, 4),
-            MinHeight = 92,
+            MinHeight = 96,
             CornerRadius = new CornerRadius(5),
             Tag = presetData,
             IsTextScaleFactorEnabled = false,
@@ -1435,7 +1435,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         };
 
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
@@ -1444,8 +1444,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Icon
         var iconBorder = new Border
         {
-            Width = 92,
-            Height = 92,
+            Width = 96,
+            Height = 96,
             CornerRadius = new CornerRadius(5, 0, 0, 5),
             Background = new SolidColorBrush(Colors.Transparent),
         };
