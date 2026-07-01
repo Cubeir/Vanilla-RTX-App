@@ -1,53 +1,27 @@
 using System;
-using System;
-using System.Diagnostics;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.Modules;
-using Windows.Storage;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
-// Potentially rename to Alchemist, PBR Alchemist or RTX Reactor or ARCHITEX or ALCHETEX before release.
-
-// Perfect the licensing windows' appearance
-
-// Review: is it a good idea to limit features lifecycle to their windows? In general... should it all ahve been on the main window?
-// well, you see, in your case, navigation view would've been very generic
-// and some modules like alchitex might become too heavy, so yes, making the main window act like a nexus hub that spawns child apps is better...
-// they have minimal communication/interactions, its like main window is a father responsible for them with all of the logs n things
-// navigation view is also nice... think about it, just think, u love the way your buttons look, don't want them to go!
-
-// REDSTONE ELEMENT IMPLEMENTAITON IDEA:
-// We got the tile backgrounds
-// Beneath there, have PROCEDURALLY GENERATED redstone going Upward from below, that makes 2 layers of bitmaps!
-// still do it like u had in mind, tiles exist, images are dynamically selected based on neighbors
-// Then, have a toggle, like the lamp, to either trigger random flashes, or continous random power flashes in the redstone
-// A nice way to convey something being done in the background!
-// This is the way, and is actually imeplementable, unlike earlier versions of the idea. (how were to understand which areas are... to trigger)
-// it isn't too convoluted, and is gonna look AMAZING.
-
-
 public static class AlchitexVariables
 {
-
     public static class Persistent
+    {
+
+    }
+    public static class Defaults
     {
 
     }
@@ -62,6 +36,7 @@ public static class AlchitexVariables
             localSettings.Values[field.Name] = value;
         }
     }
+
     public static void LoadSettings()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -79,12 +54,11 @@ public static class AlchitexVariables
             }
             catch
             {
-                Trace.WriteLine($"An issue occured loading settings");
+                Trace.WriteLine($"[AlchitexVariables] An issue occured loading settings");
             }
         }
     }
 }
-
 
 
 public sealed partial class Alchitex : Window
@@ -92,27 +66,16 @@ public sealed partial class Alchitex : Window
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
 
-    // ── Lamp animators ───────────────────────────────────────────────────────
-    // One instance drives the shared titlebar lamp; a second drives the splash.
-    private LampAnimator? _titlebarLogoAnimator;
-    private LampAnimator? _splashLogoAnimator;
-
-    // ── Version-keyed keys ───────────────────────────────────────────────────
-    // In DEBUG builds a fresh GUID is appended so the license + splash sequence
-    // always re-runs, letting you test the full flow without clearing app data.
-    private static string LicenseAcceptedKey => $"Alchitex_LicenseAccepted_{App.GetAppVersion()}";
+    private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
 
     // ── Constructor ──────────────────────────────────────────────────────────
     public Alchitex(MainWindow mainWindow)
     {
         this.InitializeComponent();
-
-        SetTitleBar(TitleBarDragAreaFull);
-        InitializeLogoAnimators();
         _mainWindow = mainWindow;
 
         // Theme
-        var mode = Persistent.AppThemeMode ?? "System";
+        var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
         if (this.Content is FrameworkElement root)
         {
             root.RequestedTheme = mode switch
@@ -135,8 +98,8 @@ public sealed partial class Alchitex : Window
             presenter.IsMaximizable = true;
             var dpi = this.GetDpiForWindow();
             var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
+            presenter.PreferredMinimumWidth = (int)(TunerVariables.WindowMinSizeX * scaleFactor);
+            presenter.PreferredMinimumHeight = (int)(TunerVariables.WindowMinSizeY * scaleFactor);
         }
 
         // Title bar
@@ -150,48 +113,11 @@ public sealed partial class Alchitex : Window
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
-        this.SetIcon(System.IO.Path.Combine("Modules", "Alchitex", "Assets", "icon.ico"));
+        this.SetIcon(System.IO.Path.Combine("Modules", "Alchitex", "Assets", "logo.large.ico"));
 
         this.Activated += Alchitex_Activated;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    // ── Lamp animator setup ──────────────────────────────────────────────────
-    private void InitializeLogoAnimators()
-    {
-        const string assetBase = "ms-appx:///Modules/Alchitex/Assets/";
-
-        _titlebarLogoAnimator = new LampAnimator(
-            context: LampAnimator.LampContext.Titlebar,
-            baseImage: AlchitexIconOn,
-            onPath: assetBase + "splash.on.png",
-            offPath: assetBase + "splash.off.png",
-            superPath: assetBase + "splash.super.png",
-            haloPath: assetBase + "splash.halo.png",
-            overlayImage: AlchitexIconOff,
-            haloImage: AlchitexIconHalo,
-            superImage: AlchitexIconSuper
-        );
-
-        _splashLogoAnimator = new LampAnimator(
-            context: LampAnimator.LampContext.Splash,
-            baseImage: SplashLogo,
-            onPath: assetBase + "logo.on.png",
-            offPath: assetBase + "logo.off.png",
-            superPath: assetBase + "logo.super.png",
-            haloPath: assetBase + "logo.halo.png",
-            overlayImage: SplashLogoOff,
-            haloImage: SplashLogoHalo,
-            superImage: SplashLogoSuper
-        );
-    }
-    public async Task BlinkingLogo(bool enable, bool singleFlash = false,
-                                   double singleFlashOnChance = 0.75)
-    {
-        if (_titlebarLogoAnimator is null) return;
-        await _titlebarLogoAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate:true);
-    }
-
     // ── Lifetime ─────────────────────────────────────────────────────────────
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
@@ -202,20 +128,20 @@ public sealed partial class Alchitex : Window
     private async void Alchitex_Activated(object sender, WindowActivatedEventArgs args)
     {
         await Task.Delay(25);
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
+
+        this.Activated -= Alchitex_Activated;
+
+        SetTitleBar(TitleBarDragArea);
+
+        PopulateAlchitexAnnouncements();
+
+        await InitializeAsync();
+
+        _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
-            this.Activated -= Alchitex_Activated;
-
-            PopulateAlchitexAnnouncements();
-
-            await InitializeAsync();
-
-            _ = this.DispatcherQueue.TryEnqueue(async () =>
-            {
-                await Task.Delay(75);
-                try { this.Activate(); } catch { }
-            });
-        }
+            await Task.Delay(75);
+            try { this.Activate(); } catch { }
+        });
     }
 
     private void PopulateAlchitexAnnouncements()
@@ -232,76 +158,25 @@ public sealed partial class Alchitex : Window
         try
         {
             bool accepted = await CheckLicenseAcceptedAsync();
-
             LoadingPanel.Visibility = Visibility.Collapsed;
 
             if (!accepted)
             {
-                // Show license first (titlebar always visible above it)
                 await PopulateLicenseTextAsync();
                 LicensePanel.Visibility = Visibility.Visible;
-                SetTitleBar(TitleBarDragAreaFull);
-
-                // Splash plays on top while the license content loads in behind it —
-                // good cover for the 8K background image on slower systems.
-                await ShowSplashAsync();
             }
             else
             {
-                // License already accepted — splash still plays (always), then main.
-                await ShowSplashAsync();
                 ShowMainContent();
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"EXCEPTION in Alchitex.InitializeAsync: {ex}");
+            Trace.WriteLine($"[ALCHITEX] EXCEPTION in Alchitex.InitializeAsync: {ex}");
             this.Close();
         }
     }
-
-    // ── Splash sequence ───────────────────────────────────────────────────────
-    private async Task ShowSplashAsync()
-    {
-        SplashOverlay.Visibility = Visibility.Visible;
-
-        // Run the lamp blink animation — singleFlash, 1.0 chance (always flashes On)
-        if (_splashLogoAnimator is not null)
-        {
-            await _splashLogoAnimator.Animate(
-                enable: false,
-                singleFlash: true,
-                singleFlashOnChance: 1.0,
-                duration: 375,
-                rotate:true
-            );
-        }
-
-        // Fade out the splash overlay
-        await FadeOutElementAsync(SplashOverlay, durationMs: 250);
-        SplashOverlay.Visibility = Visibility.Collapsed;
-    }
-
-    private Task FadeOutElementAsync(UIElement element, double durationMs)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-        var fadeOut = new DoubleAnimation
-        {
-            From = 1.0,
-            To = 0.0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(durationMs)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
-        };
-        var storyboard = new Storyboard();
-        Storyboard.SetTarget(fadeOut, element);
-        Storyboard.SetTargetProperty(fadeOut, "Opacity");
-        storyboard.Children.Add(fadeOut);
-        storyboard.Completed += (_, _) => tcs.SetResult(true);
-        storyboard.Begin();
-        return tcs.Task;
-    }
-
-    // ── License + splash persistence ─────────────────────────────────────────
+    // ── License ─────────────────────────────────────────
     private static Task<bool> CheckLicenseAcceptedAsync()
     {
         try
@@ -312,25 +187,10 @@ public sealed partial class Alchitex : Window
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Error reading license key: {ex.Message}");
+            Trace.WriteLine($"[ALCHITEX] Error reading license key: {ex.Message}");
             return Task.FromResult(false);
         }
     }
-
-    private static Task SetLicenseAcceptedAsync()
-    {
-        try
-        {
-            ApplicationData.Current.LocalSettings.Values[LicenseAcceptedKey] = true;
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Error writing license key: {ex.Message}");
-        }
-        return Task.CompletedTask;
-    }
-
-    // ── Populate license RichTextBlock ────────────────────────────────────────
     private async Task PopulateLicenseTextAsync()
     {
         try
@@ -368,29 +228,36 @@ public sealed partial class Alchitex : Window
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"Error loading license text: {ex.Message}");
+            Trace.WriteLine($"[ALCHITEX] Error loading license text: {ex.Message}");
             LicenseTextBlock.Blocks.Clear();
             var err = new Paragraph();
             err.Inlines.Add(new Run { Text = $"Could not load license file: {ex.Message}" });
             LicenseTextBlock.Blocks.Add(err);
         }
     }
-    // ── Button handlers ───────────────────────────────────────────────────────
     private void DisagreeButton_Click(object sender, RoutedEventArgs e)
     {
-        // No key written — gate will reappear on next launch
         this.Close();
     }
-
     private async void AgreeButton_Click(object sender, RoutedEventArgs e)
     {
-        await SetLicenseAcceptedAsync();
+        await Task.Run(() => {
+            try
+            {
+                ApplicationData.Current.LocalSettings.Values[LicenseAcceptedKey] = true;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[ALCHITEX] Error writing license key: {ex.Message}");
+            }
+            return Task.CompletedTask;
+        } ); 
         LicensePanel.Visibility = Visibility.Collapsed;
         ShowMainContent();
-
-        // Celebrate with a single titlebar lamp flash (always On)
-        await BlinkingLogo(enable: false, singleFlash: true, singleFlashOnChance: 1.0);
     }
+
+
+    // ── Main Content ───────────────────────────────────────────────────────
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
@@ -402,25 +269,31 @@ public sealed partial class Alchitex : Window
     // Main content are hidden before license is accepted, i.e. redstone circuits and others
     private async void ShowMainContent()
     {
-        this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
         TitleBarText.Text = "RTX Reactor";
         InfoButton.Visibility = Visibility.Visible;
-        TitleBarDragAreaNarrow.Visibility = Visibility.Visible;
-        SetTitleBar(TitleBarDragAreaNarrow);
         MainGrid.Visibility = Visibility.Visible;
     }
-
-    private async void LogoInteractButton_Click(object sender, RoutedEventArgs e)
-    {
-        _ = BlinkingLogo(true, true, 1.0);
-    }
-
-    private async void Window_SizeChanged(object sender, WindowSizeChangedEventArgs args)
-    {
-    }
-
-    private void AnnouncementButton_Click(object sender, RoutedEventArgs e)
-    {
-        _ = BlinkingLogo(true, true, 1.0);
-    }
 }
+
+
+/* ── The Backlogs and Scattered Ideas ─────────────────────────────────────────────────────
+// Potentially rename to Alchemist, PBR Alchemist or RTX Reactor or ARCHITEX or ALCHETEX before release.
+
+// Perfect the licensing windows' appearance
+
+// Review: is it a good idea to limit features lifecycle to their windows? In general... should it all ahve been on the main window?
+// well, you see, in your case, navigation view would've been very generic
+// and some modules like alchitex might become too heavy, so yes, making the main window act like a nexus hub that spawns child apps is better...
+// they have minimal communication/interactions, its like main window is a father responsible for them with all of the logs n things
+// navigation view is also nice... think about it, just think, u love the way your buttons look, don't want them to go!
+
+// REDSTONE ELEMENT IMPLEMENTAITON IDEA:
+// We got the tile backgrounds
+// Beneath there, have PROCEDURALLY GENERATED redstone going Upward from below, that makes 2 layers of bitmaps!
+// still do it like u had in mind, tiles exist, images are dynamically selected based on neighbors
+// Then, have a toggle, like the lamp, to either trigger random flashes, or continous random power flashes in the redstone
+// A nice way to convey something being done in the background!
+// This is the way, and is actually imeplementable, unlike earlier versions of the idea. (how were to understand which areas are... to trigger)
+// it isn't too convoluted, and is gonna look AMAZING.
+/// 
+*/
