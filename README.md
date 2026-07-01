@@ -34,7 +34,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 ## Ray Tracing Quick Setup Guide (For Beginners)
 
-1. Install and launch the Vanilla RTX App through [Microsoft Store](https://apps.microsoft.com/detail/9N6PCRZ5V9DJ) or with a winget command
+1. Install and launch the Vanilla RTX App through [Microsoft Store](https://apps.microsoft.com/detail/9N6PCRZ5V9DJ) (or alternatively via a [winget](https://github.com/microsoft/winget-cli) command):
    ```powershell
    winget install "Vanilla RTX App"
    ```
