@@ -59,7 +59,7 @@ public sealed partial class PackUpdateWindow : Window
         }
 
         ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ResolveInitialTheme());
+        ApplyTheme(ThemeService.ResolveInitialTheme());
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.update.ico"));
 
@@ -67,13 +67,6 @@ public sealed partial class PackUpdateWindow : Window
         this.Closed += PackUpdateWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
-    {
-        "Light" => ElementTheme.Light,
-        "Dark" => ElementTheme.Dark,
-        _ => ElementTheme.Default
-    };
 
     private void ApplyTheme(ElementTheme theme)
     {

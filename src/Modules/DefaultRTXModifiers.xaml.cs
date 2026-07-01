@@ -6,7 +6,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -18,7 +17,6 @@ using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.Core.ThemeService;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.RTXDefaults;
@@ -80,7 +78,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         }
 
         ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ResolveInitialTheme());
+        ApplyTheme(ThemeService.ResolveInitialTheme());
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.lut.ico"));
 
@@ -90,13 +88,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         this.Closed += DefaultRTXModifiersWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
-    {
-        "Light" => ElementTheme.Light,
-        "Dark" => ElementTheme.Dark,
-        _ => ElementTheme.Default
-    };
 
     private void ApplyTheme(ElementTheme theme)
     {
@@ -129,8 +120,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
     private async void DefaultRTXModifiersWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        await Task.Delay(25);
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
         this.Activated -= DefaultRTXModifiersWindow_Activated;
 
@@ -532,7 +523,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         _isPresetInstalled = isInstalled;
 
         LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(
-            ThemeService.GetBevelColor(LeftEdgeOfInstallButton.ActualTheme, BevelEdge.Left,
+            ThemeService.GetBevelColor(LeftEdgeOfInstallButton.ActualTheme, ThemeService.BevelEdge.Left,
                 accented: !isInstalled, isEnabled: InstallButton.IsEnabled));
     }
 

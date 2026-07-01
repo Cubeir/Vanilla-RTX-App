@@ -86,7 +86,7 @@ public sealed partial class Alchitex : Window
         }
 
         ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ResolveInitialTheme());
+        ApplyTheme(ThemeService.ResolveInitialTheme());
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
 
@@ -94,14 +94,6 @@ public sealed partial class Alchitex : Window
         this.Closed += Alchitex_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
-    {
-        "Light" => ElementTheme.Light,
-        "Dark" => ElementTheme.Dark,
-        _ => ElementTheme.Default
-    };
-
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)

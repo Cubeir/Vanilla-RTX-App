@@ -61,7 +61,7 @@ public sealed partial class PackBrowserWindow : Window
         }
 
         ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ResolveInitialTheme());
+        ApplyTheme(ThemeService.ResolveInitialTheme());
 
         this.Activated += PackBrowserWindow_Activated;
         this.Closed += PackBrowserWindow_Closed;
@@ -73,13 +73,6 @@ public sealed partial class PackBrowserWindow : Window
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
         ExpImpDel.ConfirmNonResourceImport = ShowNonResourceDialogAsync;
     }
-
-    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
-    {
-        "Light" => ElementTheme.Light,
-        "Dark" => ElementTheme.Dark,
-        _ => ElementTheme.Default
-    };
 
     private void ApplyTheme(ElementTheme theme)
     {
@@ -110,8 +103,8 @@ public sealed partial class PackBrowserWindow : Window
 
     private async void PackBrowserWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        await Task.Delay(25);
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
         this.Activated -= PackBrowserWindow_Activated;
 

@@ -34,7 +34,13 @@ public static class ThemeService
             : Color.FromArgb(60, 255, 255, 255);
     }
 
-
+    public static ElementTheme ResolveInitialTheme() =>
+    (TunerVariables.Persistent.AppThemeMode ?? "System") switch
+    {
+        "Light" => ElementTheme.Light,
+        "Dark" => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
 
     public enum BevelEdge { Left, Right }
 
