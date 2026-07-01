@@ -1532,12 +1532,11 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
 
         button.Content = grid;
-        button.Click += PresetButton_Click;
 
-        // Detach the event if already installed, to prevent reinstall?
-        if (isCurrent)
+        // Only attach if it isn't current
+        if (!isCurrent)
         {
-           button.Click -= PresetButton_Click;
+            button.Click += PresetButton_Click;
         }
 
         return button;
