@@ -1376,26 +1376,6 @@ public sealed partial class MainWindow : Window
 
         packBrowserWindow.Activate();
     }
-    private void UpdateUserDataDependentUI(bool isTargetingPreview)
-    {
-        var isValid = MinecraftUserDataLocator.IsDataValid(isTargetingPreview);
-        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
-
-        if (isValid)
-        {
-            PackVM.SetLabelOverride(null);
-            ToolTipService.SetToolTip(BrowsePacksButton,
-                "Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.");
-            _ = LocatePacksTask();
-        }
-        else
-        {
-            PackVM.SetLabelOverride("Locate your data");
-            ToolTipService.SetToolTip(BrowsePacksButton,
-                $"The app couldn't find {versionName} data folder, automatically, click to locate it manually.");
-        }
-    }
-
     public async Task HandleManualDataLocationAsync()
     {
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(IsTargetingPreview);
@@ -1442,6 +1422,25 @@ public sealed partial class MainWindow : Window
         // Update button state and kick off pack detection now that the path is known
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
+    }
+    private void UpdateUserDataDependentUI(bool isTargetingPreview)
+    {
+        var isValid = MinecraftUserDataLocator.IsDataValid(isTargetingPreview);
+        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
+
+        if (isValid)
+        {
+            PackVM.SetLabelOverride(null);
+            ToolTipService.SetToolTip(BrowsePacksButton,
+                "Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.");
+            _ = LocatePacksTask();
+        }
+        else
+        {
+            PackVM.SetLabelOverride("Locate your data");
+            ToolTipService.SetToolTip(BrowsePacksButton,
+                $"The app couldn't find {versionName} data folder, automatically, click to locate it manually.");
+        }
     }
 
 
