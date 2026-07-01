@@ -28,6 +28,7 @@ using Windows.System;
 using Windows.UI;
 using WinRT.Interop;
 using WinUIEx;
+using static Vanilla_RTX_App.Core.ThemeService;
 using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.TunerVariables;
@@ -51,6 +52,14 @@ namespace Vanilla_RTX_App;
 // ensure it doesn't disable other modules unnecessarily WHERE IT DOESN'T INTEREFERE
 // Allow users to multitask if they really wanna.
 
+// would've been better to design this app in a whole other way..?
+// mayhaps as parts of mainwindow, and hid and shown different MainGrid containers depending on the module
+// but its also nice being able to give user an elaborate way to kill window processes...
+
+// rename classes... the module class' namings are shite
+
+// test all infrastructure updates extensively, especially UpdaterWindow because it doesn't define new updater instances and runs
+// of the MainWindow one
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
@@ -464,9 +473,13 @@ public sealed partial class MainWindow : Window
         // Watches theme changes and adjusts based on theme
         if (Content is FrameworkElement root)
         {
-            root.ActualThemeChanged += (_, __) => ApplyThemeColors(root.ActualTheme);
-            ApplyThemeColors(root.ActualTheme);
-            ThemeService.Broadcast(root.ActualTheme);
+            root.ActualThemeChanged += (_, __) =>
+            {
+                ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
+                ApplyTargetPreviewBevelColors(root.ActualTheme);
+                ThemeService.Broadcast(root.ActualTheme);
+            };
+            TargetPreviewToggle.IsEnabledChanged += (s, e) =>ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
             root.FlowDirection = FlowDirection.LeftToRight;
         }
 
@@ -586,6 +599,39 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    #region Main Window properties and essential components used throughout the app
+    private void SetMainWindowProperties()
+    {
+        ExtendsContentIntoTitleBar = true;
+        this.AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
+
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.PersistenceId = "MainWindow";
+        manager.Width = WindowSizeX; // WinUIEx scales internally
+        manager.Height = WindowSizeY;
+        manager.MinWidth = WindowMinSizeX;
+        manager.MinHeight = WindowMinSizeY;
+        manager.IsResizable = true;
+        manager.IsMaximizable = true;
+
+        // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
+        var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
+        if (!settings.Containers.ContainsKey("WinUIEx"))
+            this.CenterOnScreen();
+
+        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
+    }
+
+    private void MainWindow_FocusOpacity(object sender, WindowActivatedEventArgs e)
+    {
+        var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
+        var opacity = isFocused ? 1.0 : 0.5;
+
+        ChatButton.Opacity = opacity;
+        HelpButton.Opacity = opacity;
+        DonateButton.Opacity = opacity;
+        CycleThemeButton.Opacity = opacity;
+    }
 
     private async Task CheckForCrashLog()
     {
@@ -689,89 +735,6 @@ public sealed partial class MainWindow : Window
             await dialog.ShowAsync();
         }
         catch { }
-    }
-
-
-    private void MainWindow_FocusOpacity(object sender, WindowActivatedEventArgs e)
-    {
-        var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
-        var opacity = isFocused ? 1.0 : 0.5;
-
-        ChatButton.Opacity = opacity;
-        HelpButton.Opacity = opacity;
-        DonateButton.Opacity = opacity;
-        CycleThemeButton.Opacity = opacity;
-    }
-
-    #region Main Window properties and essential components used throughout the app
-    private void SetMainWindowProperties()
-    {
-        ExtendsContentIntoTitleBar = true;
-        this.AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.PersistenceId = "MainWindow";
-        manager.Width = WindowSizeX; // WinUIEx scales internally
-        manager.Height = WindowSizeY;
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
-
-        // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
-        var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
-        if (!settings.Containers.ContainsKey("WinUIEx"))
-            this.CenterOnScreen();
-
-        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
-    }
-    private void ApplyThemeColors(ElementTheme theme)
-    {
-        var titleBar = this.AppWindow.TitleBar;
-        if (titleBar == null) return;
-
-        bool isLight = theme == ElementTheme.Light;
-
-        titleBar.ButtonForegroundColor = isLight ? Colors.Black : Colors.White;
-        titleBar.ButtonHoverForegroundColor = isLight ? Colors.Black : Colors.White;
-        titleBar.ButtonPressedForegroundColor = isLight ? Colors.Black : Colors.White;
-        titleBar.ButtonInactiveForegroundColor = isLight
-            ? Color.FromArgb(255, 128, 128, 128)
-            : Color.FromArgb(255, 160, 160, 160);
-
-        titleBar.ButtonBackgroundColor = Colors.Transparent;
-        titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-        titleBar.ButtonHoverBackgroundColor = isLight
-            ? Color.FromArgb(20, 0, 0, 0)
-            : Color.FromArgb(40, 255, 255, 255);
-        titleBar.ButtonPressedBackgroundColor = isLight
-            ? Color.FromArgb(40, 0, 0, 0)
-            : Color.FromArgb(60, 255, 255, 255);
-
-        // 🍝 Color of the bevels adjacent to the Target Preview button 🍝
-        if (IsTargetingPreview)
-        {
-            var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
-            LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
-            var accentColorKeyDark = theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorDark1";
-            RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
-        }
-        else
-        {
-            var themeKey = theme == ElementTheme.Light ? "Light" : "Dark";
-            var themeDictionaries = Application.Current.Resources.ThemeDictionaries;
-            if (themeDictionaries.TryGetValue(themeKey, out var themeDict) && themeDict is ResourceDictionary dict)
-            {
-                if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
-                {
-                    LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
-                }
-                if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
-                {
-                    RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
-                }
-            }
-        }
     }
 
 
@@ -1489,47 +1452,37 @@ public sealed partial class MainWindow : Window
     {
         IsTargetingPreview = true;
         SelectedPacks.Clear();
-
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
 
-        var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
-        var accentColorKey = theme == ElementTheme.Light ? "SystemAccentColorLight1" : "SystemAccentColorLight3";
-        LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKey]);
-        var accentColorKeyDark = theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorDark1";
-        RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush((Color)Application.Current.Resources[accentColorKeyDark]);
+        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
 
         BetterRTXPresetManagerButton.IsEnabled = false;
-
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
     }
-
     private void TargetPreviewToggle_Unchecked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
         SelectedPacks.Clear();
-
         Log("Targeting Release Minecraft.", LogLevel.Informational);
 
-        var theme = LeftEdgeOfTargetPreviewButton.ActualTheme;
-        var themeKey = theme == ElementTheme.Light ? "Light" : "Dark";
-        var themeDictionaries = Application.Current.Resources.ThemeDictionaries;
-        if (themeDictionaries.TryGetValue(themeKey, out var themeDict) && themeDict is ResourceDictionary dict)
-        {
-            if (dict.TryGetValue("FakeSplitButtonBrightBorderColor", out var colorObj) && colorObj is Color color)
-                LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(color);
-            if (dict.TryGetValue("FakeSplitButtonDarkBorderColor", out var darkColorObj) && darkColorObj is Color darkColor)
-                RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(darkColor);
-        }
+        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
 
         BetterRTXPresetManagerButton.IsEnabled = true;
-
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
     }
+    private void ApplyTargetPreviewBevelColors(ElementTheme theme)
+    {
+        LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(
+            ThemeService.GetBevelColor(theme, BevelEdge.Left, accented: IsTargetingPreview, isEnabled: TargetPreviewToggle.IsEnabled));
+        RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(
+            ThemeService.GetBevelColor(theme, BevelEdge.Right, accented: IsTargetingPreview, isEnabled: TargetPreviewToggle.IsEnabled));
+    }
+
 
     // Vanilla RTX Checkboxes
     private void Option_Checked(object sender, RoutedEventArgs e)
