@@ -108,35 +108,34 @@ public sealed partial class DLSSSwitcherWindow : Window
     private async void DLSSSwitcherWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         await Task.Delay(25);
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+
+        this.Activated -= DLSSSwitcherWindow_Activated;
+
+        _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            this.Activated -= DLSSSwitcherWindow_Activated;
+            SetTitleBarDragRegion();
+        });
 
-            _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-            {
-                SetTitleBarDragRegion();
-            });
+        var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
+        WindowTitle.Text = $"Swap DLSS version for {text}";
 
-            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
-            WindowTitle.Text = $"Swap DLSS version for {text}";
+        ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
+            "Once you're inside the folder called: " +
+            (Persistent.IsTargetingPreview
+                ? MinecraftGDKLocator.MinecraftPreviewFolderName
+                : MinecraftGDKLocator.MinecraftFolderName) +
+                $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
 
-            ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
-                "Once you're inside the folder called: " +
-                (Persistent.IsTargetingPreview
-                    ? MinecraftGDKLocator.MinecraftPreviewFolderName
-                    : MinecraftGDKLocator.MinecraftFolderName) +
-                    $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
+        await InitializeAsync();
 
-            await InitializeAsync();
-
-            // Bring to top again
-            _ = this.DispatcherQueue.TryEnqueue(async () =>
-            {
-                await Task.Delay(75);
-                try { this.Activate(); }
-                catch { }
-            });
-        }
+        // Bring to top again
+        _ = this.DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Delay(75);
+            try { this.Activate(); }
+            catch { }
+        });
     }
 
     private void SetTitleBarDragRegion()

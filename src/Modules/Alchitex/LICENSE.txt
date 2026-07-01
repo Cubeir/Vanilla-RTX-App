@@ -1,11 +1,13 @@
 LICENSE VERSION: 0.0
 
-Check back later, RTX Reactor is merging with the Vanilla RTX App later down the road!
+Check back later, RTX Reactor is becoming a part of the Vanilla RTX App later down the road!
 
 What is RTX Reactor?
 It is a premium PBR texture generation too that allows anyone to use their favorite Bedrock Edition texture packs with ray tracing.
-Introduced in early 2023 as an exclusive reward for all who decided to support me, with a promise to eventually become free and open-source.
-While there'll be major rewrites, the vision stays the same:
-A software that generate packs that would be usually better or no different than when the average resource pack author tries to add proper ray tracing support to their texture packs (which in reality most never do, there are very few original/up-to-date/non-vanilla texture packs for ray tracing floating around the internet)
-RTX Reactor will eliminate lots of manual human effort, so that players are no longer limited to Vanilla RTX or a few Minecraft RTX capable resource packs, but instead thousands.
-This time with proper Vibrant Visuals support, and possibly under a new name!
+Introduced in early 2023 as an exclusive tool available to all who decided to support Vanilla RTX's developer, with a promise to eventually become free and open-source.
+
+While this version of RTX Reactor is going to be a complete rewrite from the ground up, the vision remains the same:
+A software that generate packs that would be usually better or no different than when the average resource pack author tries to add proper ray tracing support to their texture packs (which in reality most never do, as of writing this, aside from Vanilla RTX there are close to no up-to-date texture packs for ray tracing floating around the internet)
+RTX Reactor will eliminate lots of manual human effort, so that you the player, are no longer limited to Vanilla RTX or a few Minecraft RTX capable resource packs to use on the latest version, but instead thousands.
+
+The rewrite will come with proper Vibrant Visuals support, even more sophesticated generation methods, and possibly under a new name...

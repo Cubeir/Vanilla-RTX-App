@@ -2019,7 +2019,7 @@ public sealed partial class MainWindow : Window
         var dialog = new ContentDialog
         {
             Title = "Delete selected packs?",
-            Content = $"This will delete {toDelete.Count} pack{(toDelete.Count == 1 ? "" : "s")} forever (a very long time).",
+            Content = $"This will delete {toDelete.Count} pack{(toDelete.Count == 1 ? "" : "s")} forever! (A very long time!)",
             PrimaryButtonText = "Delete",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,

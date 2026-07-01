@@ -33,6 +33,7 @@ Tip: You can come back here to quickly reinstall packs to restore them to their 
 
 
 
+
 # BetterRTXAnnouncements
 
 ## Warning 1 [glyph:"E730"] [cd:"10000"]
@@ -63,21 +64,20 @@ Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3
 
 
 # ResourcePackSelectionAnnouncements
-### Text below is a one time thingy, tutorial type of thing! [glyph:"E95B"]
+### Text below is a one time tutorial type of thing! [glyph:"E95B"]
 Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
 Use the clear selection button in the main window to clear your selections.
 
 
 
 
+
 # AlchitexDevProgressUpdates [glyph:"EC24"]
 The redstone circuits for this feature are still being laid down.
-That said, you can come back here anytime to check on development progress news.
+That said, you can come back here anytime to check on the development news.
 
 ## [cd:"10000"] [glyph:"E823"]
 July News:
-Since I announced RTX Reactor's merger with the app earlier this year, I've mostly ended up working on the core app features instead.
-However that still translated into features that will be essential to RTX Reactor or tie into a smoother integeration down the line.
+Since I announced RTX Reactor's merger with the app earlier this year, I've mostly ended up working on app's core features instead, which included foundational changes and features that would've been vital if RTX Reactor is to integerate with the existing features smoothly.
 
-No ETA for when it will be available, given I also maintain Vanilla RTX resource packs for Minecraft, I'm being stretched thin at the moment.
-Hopefully things will be different before 2027.
+No ETA for when it will be available, given I also maintain Vanilla RTX resource packs for Minecraft, I'm being stretched thin at the moment. All I can say is, hopefully things will be different before 2027.

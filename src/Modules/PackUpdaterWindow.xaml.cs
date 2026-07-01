@@ -170,24 +170,23 @@ public sealed partial class PackUpdateWindow : Window
     {
         await Task.Delay(25);
 
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+
+        this.Activated -= PackUpdateWindow_Activated;
+
+        _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            this.Activated -= PackUpdateWindow_Activated;
+            SetTitleBarDragRegion();
+        });
 
-            _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-            {
-                SetTitleBarDragRegion();
-            });
+        var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+        WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
-            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
+        await InitializePackInformation();
+        SetupButtonHandlers();
 
-            await InitializePackInformation();
-            SetupButtonHandlers();
-
-            // Check if installation is in progress and update UI accordingly
-            CheckAndHandleOngoingInstallation();
-        }
+        // Check if installation is in progress and update UI accordingly
+        CheckAndHandleOngoingInstallation();
     }
 
     private void SetTitleBarDragRegion()

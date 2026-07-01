@@ -331,41 +331,40 @@ public sealed partial class BetterRTXManagerWindow : Window
     private async void BetterRTXManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         await Task.Delay(25);
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+
+        this.Activated -= BetterRTXManagerWindow_Activated;
+
+        if (Persistent.IsTargetingPreview)
         {
-            this.Activated -= BetterRTXManagerWindow_Activated;
-
-            if (Persistent.IsTargetingPreview)
-            {
-                StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
-                this.Close();
-                return;
-            }
-
-            WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
-
-            ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
-                "Once you're inside the folder called: " +
-                (Persistent.IsTargetingPreview
-                    ? MinecraftGDKLocator.MinecraftPreviewFolderName
-                    : MinecraftGDKLocator.MinecraftFolderName) +
-                    $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
-
-            await InitializeAsync();
-
-            // Bring to top again
-            _ = this.DispatcherQueue.TryEnqueue(async () =>
-            {
-                await Task.Delay(75);
-                try
-                {
-                    this.Activate();
-                }
-                catch { }
-            });
-
-            InitializeRefreshButton();
+            StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
+            this.Close();
+            return;
         }
+
+        WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
+
+        ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
+            "Once you're inside the folder called: " +
+            (Persistent.IsTargetingPreview
+                ? MinecraftGDKLocator.MinecraftPreviewFolderName
+                : MinecraftGDKLocator.MinecraftFolderName) +
+                $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
+
+        await InitializeAsync();
+
+        // Bring to top again
+        _ = this.DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Delay(75);
+            try
+            {
+                this.Activate();
+            }
+            catch { }
+        });
+
+        InitializeRefreshButton();
     }
 
     private async Task InitializeAsync()
