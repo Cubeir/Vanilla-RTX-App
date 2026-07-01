@@ -23,17 +23,15 @@ namespace Vanilla_RTX_App.DLSSBrowser;
 
 // TODO: Upgrade DLSS Swapper to pull dlls from a third party API like BetterRTX Manager.
 // Keep the current manual import pipeline, just add a new potential Source, list dlls, etc...
-
 public sealed partial class DLSSSwitcherWindow : Window
 {
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
+    private bool _isClosing;
 
     private string _gameDllPath = string.Empty;
     private string _cacheFolder = string.Empty;
-
     private string? _currentInstalledVersion;
-
     private CancellationTokenSource? _scanCancellationTokenSource;
 
     public bool OperationSuccessful { get; private set; } = false;
@@ -44,51 +42,44 @@ public sealed partial class DLSSSwitcherWindow : Window
         this.InitializeComponent();
         _mainWindow = mainWindow;
 
-        // Theme
-        var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
-        if (this.Content is FrameworkElement root)
-        {
-            root.RequestedTheme = mode switch
-            {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
-        }
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.MinWidth = WindowMinSizeX;
+        manager.MinHeight = WindowMinSizeY;
+        manager.IsResizable = true;
+        manager.IsMaximizable = true;
 
-        // Window setup
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-        _appWindow = AppWindow.GetFromWindowId(windowId);
-        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-
-        if (_appWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsResizable = true;
-            presenter.IsMaximizable = true;
-            var dpi = this.GetDpiForWindow();
-            var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
-        }
+        _appWindow = this.AppWindow;
 
         if (_appWindow.TitleBar != null)
         {
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(139, 139, 139, 139);
-            _appWindow.TitleBar.InactiveForegroundColor = ColorHelper.FromArgb(128, 139, 139, 139);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
-        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.dlss.ico"));
+        ThemeService.ThemeChanged += ApplyTheme;
+        ApplyTheme(ResolveInitialTheme());
+
+        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.dlss.ico"));
 
         this.Activated += DLSSSwitcherWindow_Activated;
+        this.Closed += DLSSSwitcherWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
 
-    // PSA thingies
+    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
+    {
+        "Light" => ElementTheme.Light,
+        "Dark" => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
+
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+
     private void PopulateDLSSAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.DLSSAnnouncements);
@@ -99,16 +90,29 @@ public sealed partial class DLSSSwitcherWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
+        Cleanup();
+        this.Close();
+    }
+
+    private void DLSSSwitcherWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
+
+        ThemeService.ThemeChanged -= ApplyTheme;
         _mainWindow.Closed -= MainWindow_Closed;
-        this.Close();
+        this.Closed -= DLSSSwitcherWindow_Closed;
     }
 
     private async void DLSSSwitcherWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
         await Task.Delay(25);
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
 
         this.Activated -= DLSSSwitcherWindow_Activated;
 
@@ -129,12 +133,10 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         await InitializeAsync();
 
-        // Bring to top again
         _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(75);
-            try { this.Activate(); }
-            catch { }
+            try { this.Activate(); } catch { }
         });
     }
 

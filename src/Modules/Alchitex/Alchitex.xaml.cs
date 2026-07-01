@@ -2,14 +2,12 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Core;
 using Windows.Storage;
-using WinRT.Interop;
 using WinUIEx;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
@@ -60,71 +58,74 @@ public static class AlchitexVariables
     }
 }
 
-
 public sealed partial class Alchitex : Window
 {
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
+    private bool _isClosing;
 
     private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
 
-    // ── Constructor ──────────────────────────────────────────────────────────
     public Alchitex(MainWindow mainWindow)
     {
         this.InitializeComponent();
         _mainWindow = mainWindow;
 
-        // Theme
-        var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
-        if (this.Content is FrameworkElement root)
-        {
-            root.RequestedTheme = mode switch
-            {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
-        }
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.MinWidth = TunerVariables.WindowMinSizeX;
+        manager.MinHeight = TunerVariables.WindowMinSizeY;
+        manager.IsResizable = true;
+        manager.IsMaximizable = true;
 
-        // AppWindow / presenter
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-        _appWindow = AppWindow.GetFromWindowId(windowId);
-        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
+        _appWindow = this.AppWindow;
 
-        if (_appWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsResizable = true;
-            presenter.IsMaximizable = true;
-            var dpi = this.GetDpiForWindow();
-            var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(TunerVariables.WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(TunerVariables.WindowMinSizeY * scaleFactor);
-        }
-
-        // Title bar
         if (_appWindow.TitleBar != null)
         {
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(139, 139, 139, 139);
-            _appWindow.TitleBar.InactiveForegroundColor = ColorHelper.FromArgb(128, 139, 139, 139);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
-        this.SetIcon(System.IO.Path.Combine("Modules", "Alchitex", "Assets", "logo.large.ico"));
+        ThemeService.ThemeChanged += ApplyTheme;
+        ApplyTheme(ResolveInitialTheme());
+
+        this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
 
         this.Activated += Alchitex_Activated;
+        this.Closed += Alchitex_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-    // ── Lifetime ─────────────────────────────────────────────────────────────
+
+    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
+    {
+        "Light" => ElementTheme.Light,
+        "Dark" => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
+
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
-        _mainWindow.Closed -= MainWindow_Closed;
+        Cleanup();
         this.Close();
     }
 
+    private void Alchitex_Closed(object sender, WindowEventArgs e) => Cleanup();
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= Alchitex_Closed;
+    }
 
     private async void Alchitex_Activated(object sender, WindowActivatedEventArgs args)
     {
@@ -134,9 +135,7 @@ public sealed partial class Alchitex : Window
         this.Activated -= Alchitex_Activated;
 
         SetTitleBar(TitleBarDragArea);
-
         PopulateAlchitexAnnouncements();
-
         await InitializeAsync();
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>

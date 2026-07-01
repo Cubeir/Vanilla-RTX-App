@@ -20,8 +20,8 @@ public sealed partial class PackUpdateWindow : Window
     private readonly AppWindow _appWindow;
     private readonly MainWindow _mainWindow;
     private readonly PackUpdater _updater;
+    private bool _isClosing;
 
-    // Pane animation durations
     private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
 
@@ -30,7 +30,6 @@ public sealed partial class PackUpdateWindow : Window
 
     private string? _currentInstallActionType;
 
-    // For button text animation
     private DispatcherTimer? _installingAnimationTimer;
     private int _animationDots = 0;
 
@@ -40,58 +39,70 @@ public sealed partial class PackUpdateWindow : Window
 
         InitializeHoverEffects();
 
-        // SPECIAL PANEL VISIBILITY - Christmas/New Year
         SpecialOccasionPanel.Visibility = Helpers.GetSpecialOccasionName() == "christmas"
             ? Visibility.Visible
             : Visibility.Collapsed;
 
         _mainWindow = mainWindow;
-        _updater = mainWindow._updater ?? new PackUpdater(); // Make it same as main window's updater, avoid making new instances
-        // Which is both pointless, and causes issues/conflicts between instances doing the same thing
+        _updater = mainWindow._updater ?? new PackUpdater();
 
-        // Theme
-        var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
-        if (this.Content is FrameworkElement root)
-        {
-            root.RequestedTheme = mode switch
-            {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
-        }
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.MinWidth = WindowMinSizeX;
+        manager.MinHeight = WindowMinSizeY;
+        manager.IsResizable = true;
+        manager.IsMaximizable = true;
 
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-        _appWindow = AppWindow.GetFromWindowId(windowId);
-
-        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-        if (_appWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsResizable = true;
-            presenter.IsMaximizable = true;
-            var dpi = this.GetDpiForWindow();
-            var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
-        }
+        _appWindow = this.AppWindow;
 
         if (_appWindow.TitleBar != null)
         {
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(139, 139, 139, 139);
-            _appWindow.TitleBar.InactiveForegroundColor = ColorHelper.FromArgb(128, 139, 139, 139);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
-        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.update.ico"));
+        ThemeService.ThemeChanged += ApplyTheme;
+        ApplyTheme(ResolveInitialTheme());
+
+        this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.update.ico"));
 
         this.Activated += PackUpdateWindow_Activated;
+        this.Closed += PackUpdateWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
 
+    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
+    {
+        "Light" => ElementTheme.Light,
+        "Dark" => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
+
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+
+    private void MainWindow_Closed(object sender, WindowEventArgs e)
+    {
+        Cleanup();
+        this.Close();
+    }
+
+    private void PackUpdateWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        StopInstallingAnimation();
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= PackUpdateWindow_Closed;
+    }
     // PSA updates
     private void PopulatePackUpdateAnnouncements()
     {
@@ -157,13 +168,6 @@ public sealed partial class PackUpdateWindow : Window
 
         storyboard.Children.Add(opacityAnimation);
         storyboard.Begin();
-    }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        _mainWindow.Closed -= MainWindow_Closed;
-        _installingAnimationTimer?.Stop();
-        this.Close();
     }
 
     private async void PackUpdateWindow_Activated(object sender, WindowActivatedEventArgs args)

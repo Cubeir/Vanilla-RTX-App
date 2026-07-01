@@ -18,31 +18,24 @@ using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
+using static Vanilla_RTX_App.Core.ThemeService;
 using static Vanilla_RTX_App.TunerVariables;
 
 namespace Vanilla_RTX_App.RTXDefaults;
 
-
 public sealed partial class DefaultRTXModifiersWindow : Window
 {
-    // -------------------------------------------------------------------------
-    // File name constants (same across every preset folder)
-    // -------------------------------------------------------------------------
-
     private const string FnLut = "look_up_tables.png";
     private const string FnSky = "sky.png";
     private const string FnWater = "water_n.tga";
-    private const string FnPlaceholder = "placeholder.png"; // For unknown presets
-    private const string FnDefaultImg = "default.png";      // UI image for the Default preset
+    private const string FnPlaceholder = "placeholder.png";
+    private const string FnDefaultImg = "default.png";
 
     private static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
 
-    // -------------------------------------------------------------------------
-    // Fields
-    // -------------------------------------------------------------------------
-
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
+    private bool _isClosing;
 
     private string _minecraftRoot = string.Empty;
     private string _defaultsFolder = string.Empty;
@@ -55,93 +48,89 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private LutPreset? _installedPreset;
 
     private CancellationTokenSource? _scanCancellationTokenSource;
-
-    // Crossfade state
     private bool _crossfadeInProgress = false;
 
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
-    // -------------------------------------------------------------------------
-    // Destination path helpers  (always derived fresh from _minecraftRoot)
-    // -------------------------------------------------------------------------
-
     private string DstLut => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnLut);
     private string DstSky => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnSky);
     private string DstWater => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnWater);
-
-    // Default preset sources live in LocalAppData\Lut_Defaults
     private string DefaultLut => Path.Combine(_defaultsFolder, FnLut);
     private string DefaultSky => Path.Combine(_defaultsFolder, FnSky);
     private string DefaultWater => Path.Combine(_defaultsFolder, FnWater);
-
-    // -------------------------------------------------------------------------
-    // Constructor
-    // -------------------------------------------------------------------------
 
     public DefaultRTXModifiersWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
         _mainWindow = mainWindow;
 
-        var mode = TunerVariables.Persistent.AppThemeMode ?? "System";
-        if (this.Content is FrameworkElement root)
-        {
-            root.RequestedTheme = mode switch
-            {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
-        }
+        var manager = WinUIEx.WindowManager.Get(this);
+        manager.MinWidth = WindowMinSizeX;
+        manager.MinHeight = WindowMinSizeY;
+        manager.IsResizable = true;
+        manager.IsMaximizable = true;
 
-        var hWnd = WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-        _appWindow = AppWindow.GetFromWindowId(windowId);
-        _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-
-        if (_appWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsResizable = true;
-            presenter.IsMaximizable = true;
-            var dpi = this.GetDpiForWindow();
-            var scaleFactor = dpi / 96.0;
-            presenter.PreferredMinimumWidth = (int)(WindowMinSizeX * scaleFactor);
-            presenter.PreferredMinimumHeight = (int)(WindowMinSizeY * scaleFactor);
-        }
+        _appWindow = this.AppWindow;
 
         if (_appWindow.TitleBar != null)
         {
             _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-            _appWindow.TitleBar.ButtonForegroundColor = ColorHelper.FromArgb(139, 139, 139, 139);
-            _appWindow.TitleBar.InactiveForegroundColor = ColorHelper.FromArgb(128, 139, 139, 139);
             _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
         }
 
-        this.SetIcon(System.IO.Path.Combine("Assets", "icons", "vrtx.lut.ico"));
+        ThemeService.ThemeChanged += ApplyTheme;
+        ApplyTheme(ResolveInitialTheme());
+
+        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.lut.ico"));
+
+        InstallButton.IsEnabledChanged += (s, e) => ApplyInstallButtonBevel(_isPresetInstalled);
 
         this.Activated += DefaultRTXModifiersWindow_Activated;
+        this.Closed += DefaultRTXModifiersWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
 
-    // -------------------------------------------------------------------------
-    // Window lifecycle
-    // -------------------------------------------------------------------------
+    private ElementTheme ResolveInitialTheme() => (TunerVariables.Persistent.AppThemeMode ?? "System") switch
+    {
+        "Light" => ElementTheme.Light,
+        "Dark" => ElementTheme.Dark,
+        _ => ElementTheme.Default
+    };
+
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+        ApplyInstallButtonBevel(_isPresetInstalled);
+    }
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
+        Cleanup();
+        this.Close();
+    }
+
+    private void DefaultRTXModifiersWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
+
+        ThemeService.ThemeChanged -= ApplyTheme;
         _mainWindow.Closed -= MainWindow_Closed;
-        this.Close();
+        this.Closed -= DefaultRTXModifiersWindow_Closed;
     }
 
     private async void DefaultRTXModifiersWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
         await Task.Delay(25);
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
 
         this.Activated -= DefaultRTXModifiersWindow_Activated;
 
@@ -542,26 +531,26 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         {
             InstallButton.Content = "Reinstall";
             InstallButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
-
-            var theme = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Dark ? "Dark" : "Light";
-            var themeDict = Application.Current.Resources.ThemeDictionaries[theme] as ResourceDictionary;
-            // themeDict is non-null for "Dark"/"Light" — these are always present in WinUI theme dicts
-            var color = (Windows.UI.Color)themeDict!["FakeSplitButtonBrightBorderColor"];
-            LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(color);
+            ApplyInstallButtonBevel(true);
         }
         else
         {
             InstallButton.Content = "Install";
             InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
-
-            var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light
-                ? "SystemAccentColorLight1"
-                : "SystemAccentColorLight3";
-            LeftEdgeOfInstallButton.BorderBrush =
-                new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
+            ApplyInstallButtonBevel(false);
         }
 
         UpdatePresetImage(preset);
+    }
+
+    private bool _isPresetInstalled; // mirrors whatever local `isInstalled` your install-state method already computes
+    private void ApplyInstallButtonBevel(bool isInstalled)
+    {
+        _isPresetInstalled = isInstalled;
+
+        LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(
+            ThemeService.GetBevelColor(LeftEdgeOfInstallButton.ActualTheme, BevelEdge.Left,
+                accented: !isInstalled, isEnabled: InstallButton.IsEnabled));
     }
 
     // -------------------------------------------------------------------------
@@ -671,7 +660,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         }
 
         var preset = _selectedPreset;
-        InstallButton.IsEnabled = false;
+        InstallButton.IsEnabled = false; // fires IsEnabledChanged -> dims bevel using current _isPresetInstalled, correct mid-install look
 
         try
         {
@@ -711,30 +700,16 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                 bool isInstalled = _installedPreset != null &&
                                    string.Equals(_installedPreset.Name, preset.Name, StringComparison.OrdinalIgnoreCase);
 
+                InstallButton.Content = isInstalled ? "Reinstall" : "Install";
+                InstallButton.Style = (Style)Application.Current.Resources[
+                    isInstalled ? "DefaultButtonStyle" : "AccentButtonStyle"];
+
+                // Order matters: set IsEnabled first (fires IsEnabledChanged with the
+                // still-stale _isPresetInstalled), then ApplyInstallButtonBevel runs
+                // explicitly with the fresh isInstalled value and wins — final bevel
+                // state is always correct regardless of what the auto-handler drew first.
                 InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
-
-                if (isInstalled)
-                {
-                    InstallButton.Content = "Reinstall";
-                    InstallButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
-
-                    var theme = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Dark ? "Dark" : "Light";
-                    var themeDict = Application.Current.Resources.ThemeDictionaries[theme] as ResourceDictionary;
-                    // themeDict is non-null for "Dark"/"Light" keys — always present in WinUI theme dicts
-                    var color = (Windows.UI.Color)themeDict!["FakeSplitButtonBrightBorderColor"];
-                    LeftEdgeOfInstallButton.BorderBrush = new SolidColorBrush(color);
-                }
-                else
-                {
-                    InstallButton.Content = "Install";
-                    InstallButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
-
-                    var accentColorKey = LeftEdgeOfInstallButton.ActualTheme == ElementTheme.Light
-                        ? "SystemAccentColorLight1"
-                        : "SystemAccentColorLight3";
-                    LeftEdgeOfInstallButton.BorderBrush =
-                        new SolidColorBrush((Windows.UI.Color)Application.Current.Resources[accentColorKey]);
-                }
+                ApplyInstallButtonBevel(isInstalled);
             });
         }
     }
