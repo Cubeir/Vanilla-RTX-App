@@ -193,37 +193,6 @@
                                Opacity="1.0">
                     </Rectangle>
 
-
-
-                    <Button Content="Learn to customize your own lut preset and share them with the developer for everyone else to see it here!"
-                            x:Name="LearnTo_Button"
-                            Opacity="0.84"
-                            Padding="6"
-                            CornerRadius="0"
-                            FontSize="14"
-                            VerticalAlignment="Bottom"
-                            MinHeight="34"
-                            Foreground="White"
-                            Margin="-0.5"
-                            HorizontalAlignment="Stretch"
-                            Click="LearnTo_Button_Click"
-                            Canvas.ZIndex="998">
-                        <Button.Background>
-                            <AcrylicBrush TintColor="{ThemeResource SystemAltHighColor}"
-                                          TintOpacity="0.0"
-                                          FallbackColor="{ThemeResource SystemAccentColor}" />
-                        </Button.Background>
-                    </Button>
-                    <Rectangle Fill="#FFFFFFFF"
-                               Height="3"
-                               HorizontalAlignment="Stretch"
-                               VerticalAlignment="Bottom"
-                               Canvas.ZIndex="999"
-                               CacheMode="BitmapCache"
-                               Margin="0, 0, 0, 30"
-                               Opacity="0.1">
-                    </Rectangle>
-
                     <!-- Bottom vessel — holds the settled (current) image -->
                     <Image x:Name="PresetImageBottom"
                            Stretch="UniformToFill"

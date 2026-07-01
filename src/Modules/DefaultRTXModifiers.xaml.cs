@@ -32,7 +32,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private const string FnLut = "look_up_tables.png";
     private const string FnSky = "sky.png";
     private const string FnWater = "water_n.tga";
-    private const string FnPreviewImg = "image.png";
     private const string FnPlaceholder = "placeholder.png"; // For unknown presets
     private const string FnDefaultImg = "default.png";      // UI image for the Default preset
 
@@ -142,34 +141,33 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private async void DefaultRTXModifiersWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         await Task.Delay(25);
-        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+
+        this.Activated -= DefaultRTXModifiersWindow_Activated;
+
+        _ = this.DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => SetTitleBarDragRegion());
+
+        var target = TunerVariables.Persistent.IsTargetingPreview
+            ? "Minecraft Preview"
+            : "Minecraft Release";
+        WindowTitle.Text = $"RTX LUT manager - {target}";
+
+        ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
+            "Once you're inside the folder called: " +
+            (Persistent.IsTargetingPreview
+                ? MinecraftGDKLocator.MinecraftPreviewFolderName
+                : MinecraftGDKLocator.MinecraftFolderName) +
+                $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
+
+        await InitializeAsync();
+
+        _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
-            this.Activated -= DefaultRTXModifiersWindow_Activated;
-
-            _ = this.DispatcherQueue.TryEnqueue(
-                Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-                () => SetTitleBarDragRegion());
-
-            var target = TunerVariables.Persistent.IsTargetingPreview
-                ? "Minecraft Preview"
-                : "Minecraft Release";
-            WindowTitle.Text = $"RTX LUT manager - {target}";
-
-            ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
-                "Once you're inside the folder called: " +
-                (Persistent.IsTargetingPreview
-                    ? MinecraftGDKLocator.MinecraftPreviewFolderName
-                    : MinecraftGDKLocator.MinecraftFolderName) +
-                    $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
-
-            await InitializeAsync();
-
-            _ = this.DispatcherQueue.TryEnqueue(async () =>
-            {
-                await Task.Delay(75);
-                try { this.Activate(); } catch { }
-            });
-        }
+            await Task.Delay(75);
+            try { this.Activate(); } catch { }
+        });
     }
 
     private void SetTitleBarDragRegion()
@@ -195,10 +193,10 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     {
         try
         {
-            var isPreview = TunerVariables.Persistent.IsTargetingPreview;
+            var isPreview = Persistent.IsTargetingPreview;
             var cachedPath = isPreview
-                ? TunerVariables.Persistent.MinecraftPreviewInstallPath
-                : TunerVariables.Persistent.MinecraftInstallPath;
+                ? Persistent.MinecraftPreviewInstallPath
+                : Persistent.MinecraftInstallPath;
 
             string? minecraftPath = null;
 
@@ -213,9 +211,9 @@ public sealed partial class DefaultRTXModifiersWindow : Window
                 {
                     Trace.WriteLine("[LUTManager] Cache became invalid, clearing");
                     if (isPreview)
-                        TunerVariables.Persistent.MinecraftPreviewInstallPath = null;
+                        Persistent.MinecraftPreviewInstallPath = null;
                     else
-                        TunerVariables.Persistent.MinecraftInstallPath = null;
+                        Persistent.MinecraftInstallPath = null;
                 }
 
                 _ = this.DispatcherQueue.TryEnqueue(() =>
@@ -813,11 +811,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             IsDefault = isDefault;
             _imagePathOverride = imagePathOverride;
         }
-    }
-
-    private void LearnTo_Button_Click(object sender, RoutedEventArgs e)
-    {
-        _ = MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md");
     }
 
     // -------------------------------------------------------------------------
