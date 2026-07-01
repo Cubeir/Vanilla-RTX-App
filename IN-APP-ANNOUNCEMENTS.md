@@ -15,9 +15,6 @@ Alongside numerous QoL features and improvements under the hood.
 
 
 
-
-
-
 # PackUpdateAnnouncements
 ### Update [glyph:"E789"]
 1.26.15 Update Summary:
@@ -34,26 +31,17 @@ Hint: It is always preferred to activate RTX resource packs in your Global Resou
 ### Tip
 Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen faster from a cached version unless a new version happens to be available.
 
-## test timed section
-the quick brown fox jumps over the lazy dog or something
-
-
 
 
 # BetterRTXAnnouncements
 
-## Warning 1 [glyph:"E730"] [cd:"7200"]
+## Warning 1 [glyph:"E730"] [cd:"10000"]
 If your preset list has been auto-reset since your last visit:
 It is a good idea to wait and check from the BetterRTX Discord whether it has been updated for the latest game version before installing a preset. Installing presets while it serves outdated files could result in crashes and visual glitches. In this scenario, revert to Default RTX, and once BetterRTX is updated, use the refresh button in the top left corner. 
 In other words: Minecraft updates can break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly. If installing BetterRTX causes issues for you, follow these steps:
 1. Revert to Default RTX for now
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to re-fetch the latest files.
-
-## test timed section
-the quick brown fox jumps over the lazy dog or something
-
-
 
 
 
@@ -63,11 +51,6 @@ Look up tables provide a simple way to improve or further customize Minecraft RT
 ### [glyph:"E7BA"]
 This feature will not work if you're using a BetterRTX Preset (Default RTX must be used), additionally, you can learn to create your own lut and submit it to be bundled with the app's future updates!
 
-## test timed section
-the quick brown fox jumps over the lazy dog or something
-
-
-
 
 
 
@@ -75,11 +58,6 @@ the quick brown fox jumps over the lazy dog or something
 # DLSSAnnouncements
 ### A friendly note
 Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most other versions in-between tend to be a bit blurry!
-
-## test timed section
-the quick brown fox jumps over the lazy dog or something
-
-
 
 
 
@@ -89,10 +67,17 @@ the quick brown fox jumps over the lazy dog or something
 Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
 Use the clear selection button in the main window to clear your selections.
 
-## test timed section
-the quick brown fox jumps over the lazy dog or something
 
 
-# AlchitexDevProgressUpdates
-Hi there!
-Redstone circuits for this feature are still being laid down, that said, you can come back here anytime to check on development progress.
+
+# AlchitexDevProgressUpdates [glyph:"EC24"]
+The redstone circuits for this feature are still being laid down.
+That said, you can come back here anytime to check on development progress news.
+
+## [cd:"10000"] [glyph:"E823"]
+July News:
+Since I announced RTX Reactor's merger with the app earlier this year, I've mostly ended up working on the core app features instead.
+However that still translated into features that will be essential to RTX Reactor or tie into a smoother integeration down the line.
+
+No ETA for when it will be available, given I also maintain Vanilla RTX resource packs for Minecraft, I'm being stretched thin at the moment.
+Hopefully things will be different before 2027.
