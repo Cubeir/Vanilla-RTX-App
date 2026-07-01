@@ -134,11 +134,9 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         this.Activated -= DefaultRTXModifiersWindow_Activated;
 
-        _ = this.DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => SetTitleBarDragRegion());
+        SetTitleBar(TitleBarArea);
 
-        var target = TunerVariables.Persistent.IsTargetingPreview
+        var target = Persistent.IsTargetingPreview
             ? "Minecraft Preview"
             : "Minecraft Release";
         WindowTitle.Text = $"RTX LUT manager - {target}";
@@ -157,21 +155,6 @@ public sealed partial class DefaultRTXModifiersWindow : Window
             await Task.Delay(75);
             try { this.Activate(); } catch { }
         });
-    }
-
-    private void SetTitleBarDragRegion()
-    {
-        if (_appWindow.TitleBar != null && TitleBarArea.XamlRoot != null)
-        {
-            try
-            {
-                var _ = (int)(TitleBarArea.ActualHeight * TitleBarArea.XamlRoot.RasterizationScale);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[LUTManager] Error setting drag region: {ex.Message}");
-            }
-        }
     }
 
     // -------------------------------------------------------------------------

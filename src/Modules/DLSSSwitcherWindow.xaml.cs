@@ -116,12 +116,9 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         this.Activated -= DLSSSwitcherWindow_Activated;
 
-        _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-        {
-            SetTitleBarDragRegion();
-        });
+        SetTitleBar(TitleBarArea);
 
-        var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
+        var text = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
         WindowTitle.Text = $"Swap DLSS version for {text}";
 
         ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
@@ -138,22 +135,6 @@ public sealed partial class DLSSSwitcherWindow : Window
             await Task.Delay(75);
             try { this.Activate(); } catch { }
         });
-    }
-
-    private void SetTitleBarDragRegion()
-    {
-        if (_appWindow.TitleBar != null && TitleBarArea.XamlRoot != null)
-        {
-            try
-            {
-                var scaleAdjustment = TitleBarArea.XamlRoot.RasterizationScale;
-                var dragRectHeight = (int)(TitleBarArea.ActualHeight * scaleAdjustment);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[DLSS] Error setting drag region: {ex.Message}");
-            }
-        }
     }
 
     private async Task InitializeAsync()

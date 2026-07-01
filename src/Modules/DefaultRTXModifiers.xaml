@@ -57,7 +57,7 @@
         <Grid x:Name="MainPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
-                <RowDefinition Height="35" />
+                <RowDefinition Height="32" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -68,8 +68,8 @@
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                     <TextBlock x:Name="WindowTitle"
-                               Text="RTX look up tables manager"
-                               Margin="0,6,0,5"
+                               Text="RTX Look-Up Table manager"
+                               Margin="0,4,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False" />

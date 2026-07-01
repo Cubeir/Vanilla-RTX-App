@@ -310,6 +310,8 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         this.Activated -= BetterRTXManagerWindow_Activated;
 
+        SetTitleBar(TitleBarArea);
+
         if (Persistent.IsTargetingPreview)
         {
             StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";

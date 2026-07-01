@@ -57,6 +57,7 @@ namespace Vanilla_RTX_App;
 // but its also nice being able to give user an elaborate way to kill window processes...
 
 // rename classes... the module class' namings are shite
+// and the button names, shite there too, couldn't you make up ur mind on a name? euh?!
 
 // test all infrastructure updates extensively, especially UpdaterWindow because it doesn't define new updater instances and runs
 // of the MainWindow one

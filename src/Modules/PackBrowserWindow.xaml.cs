@@ -115,9 +115,7 @@ public sealed partial class PackBrowserWindow : Window
 
         this.Activated -= PackBrowserWindow_Activated;
 
-        _ = this.DispatcherQueue.TryEnqueue(
-            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            SetTitleBarDragRegion);
+        SetTitleBar(TitleBarArea);
 
         WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
         AddPackDescriptionText.Text =
@@ -139,20 +137,6 @@ public sealed partial class PackBrowserWindow : Window
             await Task.Delay(75);
             try { this.Activate(); } catch { }
         });
-    }
-
-    private void SetTitleBarDragRegion()
-    {
-        if (_appWindow.TitleBar == null || TitleBarArea.XamlRoot == null) return;
-        try
-        {
-            var scale = TitleBarArea.XamlRoot.RasterizationScale;
-            _ = (int)(TitleBarArea.ActualHeight * scale);
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[PackBrowser] Error setting drag region: {ex.Message}");
-        }
     }
 
     private void PopulatePackBrowserAnnouncements()

@@ -24,7 +24,7 @@
         <!-- Main Layout -->
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="35" />
+                <RowDefinition Height="32" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -35,7 +35,7 @@
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                     <TextBlock Text="Install or update Vanilla RTX resource packs"
-                               Margin="0,6,0,5"
+                               Margin="0,4,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"

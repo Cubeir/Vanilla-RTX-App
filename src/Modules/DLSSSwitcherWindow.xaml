@@ -59,7 +59,7 @@
         <Grid x:Name="DllSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
-                <RowDefinition Height="35" />
+                <RowDefinition Height="32" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -71,7 +71,7 @@
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                     <TextBlock Text=""
-                               Margin="0,6,0,5"
+                               Margin="0,4,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"

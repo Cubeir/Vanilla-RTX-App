@@ -175,10 +175,7 @@ public sealed partial class PackUpdateWindow : Window
 
         this.Activated -= PackUpdateWindow_Activated;
 
-        _ = this.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-        {
-            SetTitleBarDragRegion();
-        });
+        SetTitleBar(TitleBarArea);
 
         var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
         WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
@@ -190,21 +187,6 @@ public sealed partial class PackUpdateWindow : Window
         CheckAndHandleOngoingInstallation();
     }
 
-    private void SetTitleBarDragRegion()
-    {
-        if (_appWindow.TitleBar != null && TitleBarArea.XamlRoot != null)
-        {
-            try
-            {
-                var scaleAdjustment = TitleBarArea.XamlRoot.RasterizationScale;
-                var dragRectHeight = (int)(TitleBarArea.ActualHeight * scaleAdjustment);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"Error setting drag region: {ex.Message}");
-            }
-        }
-    }
     // ======================= Initialization =======================
 
     private async Task InitializePackInformation()
