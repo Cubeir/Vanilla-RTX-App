@@ -46,6 +46,12 @@ namespace Vanilla_RTX_App;
 
 // then do window infrastructure upgrades
 
+// Let's adjust the logic of ToggleControls
+// Use it more conservatively, if not overriding globals makes it additive to globals, which it does
+// ensure it doesn't disable other modules unnecessarily WHERE IT DOESN'T INTEREFERE
+// Allow users to multitask if they really wanna.
+
+
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -460,6 +466,7 @@ public sealed partial class MainWindow : Window
         {
             root.ActualThemeChanged += (_, __) => ApplyThemeColors(root.ActualTheme);
             ApplyThemeColors(root.ActualTheme);
+            ThemeService.Broadcast(root.ActualTheme);
             root.FlowDirection = FlowDirection.LeftToRight;
         }
 
@@ -1277,6 +1284,9 @@ public sealed partial class MainWindow : Window
             "Dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
+
+        // Propagate theme
+        ThemeService.Broadcast(root.ActualTheme);
 
         Button btn = (sender as Button) ?? CycleThemeButton;
 
