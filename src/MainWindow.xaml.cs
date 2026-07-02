@@ -474,14 +474,18 @@ public sealed partial class MainWindow : Window
         // Watches theme changes and adjusts based on theme
         if (Content is FrameworkElement root)
         {
+            ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
+            ApplyTargetPreviewBevelColors(root.ActualTheme);
+
+            TargetPreviewToggle.IsEnabledChanged += (s, e) => ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
+            root.FlowDirection = FlowDirection.LeftToRight;
+
             root.ActualThemeChanged += (_, __) =>
             {
                 ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
                 ApplyTargetPreviewBevelColors(root.ActualTheme);
                 ThemeService.Broadcast(root.ActualTheme);
             };
-            TargetPreviewToggle.IsEnabledChanged += (s, e) =>ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
-            root.FlowDirection = FlowDirection.LeftToRight;
         }
 
         // Check for crash logs, might summon a content dialogue
@@ -1248,9 +1252,6 @@ public sealed partial class MainWindow : Window
             "Dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-
-        // Propagate theme
-        ThemeService.Broadcast(root.ActualTheme);
 
         Button btn = (sender as Button) ?? CycleThemeButton;
 
