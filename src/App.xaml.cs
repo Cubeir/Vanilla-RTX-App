@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Vanilla_RTX_App.Core;
+using WinUIEx;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -87,9 +88,8 @@ public partial class App : Application
             {
                 MainWindow.Instance?.DispatcherQueue.TryEnqueue(() =>
                 {
-                    var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(MainWindow.Instance);
-                    ShowWindow(hwnd, SW_RESTORE);
-                    SetForegroundWindow(hwnd);
+                    MainWindow.Instance.Restore();            // un-minimizes/un-maximizes, WinUIEx
+                    MainWindow.Instance.SetForegroundWindow(); // brings to foreground, WinUIEx
                 });
             }
         });
@@ -157,15 +157,6 @@ public partial class App : Application
         _mutex?.ReleaseMutex();
         _mutex?.Dispose();
     }
-
-    // Windows API
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    private const int SW_RESTORE = 9;
 }
 
 
