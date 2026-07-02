@@ -8,6 +8,9 @@ https://github.com/JamesNK/Newtonsoft.Json/blob/master/LICENSE.md
 Magick.NET
 https://github.com/dlemstra/Magick.NET/blob/main/License.txt
 
+WinUIEx:
+https://github.com/dotMorten/WinUIEx/blob/main/LICENSE
+
                             - - -               
 
 Vanilla RTX App - Copyright (c) June 2025 Cubeir
