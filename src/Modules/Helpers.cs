@@ -1469,11 +1469,11 @@ public static class MinecraftUserDataLocator
 
         // 3. Not found? tell the user exactly what to look for
         Trace.WriteLine($"[UserDataLocator] {versionName} data root not found");
-        Log($"The app couldn't find {versionName} data folder automatically. " +
-            $"Click \"Locate game data\" and select the folder named \"{folderName}\"." +
-            $"\n\nIt should contain a \"Users\" subfolder inside it.",
+        Log($"If you do not have {versionName} version of Minecraft installed at all, ignore the warning above.", LogLevel.Informational);
+        Log($"The app couldn't find {versionName} Minecraft user data folder automatically. Here's what to do:\n" +
+            $"Click \"Locate {versionName} user data\", find and select the folder named \"{folderName}\"." +
+            $"\nℹ️ It's the one with a subfolder called \"Users\".",
             LogLevel.Warning);
-
         return false;
     }
 

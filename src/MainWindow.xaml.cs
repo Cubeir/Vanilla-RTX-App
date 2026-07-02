@@ -33,26 +33,32 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-// short term todo:
-
-// Keep reactor window from opening unless at lesat one incompatible pack is selected
-// Or one at least potentially compatible pack
-// But accept both tbh, and later in the window itself warn the user with a dialogue, it is not recommended to process packs that aren't potential candidates
-// any pack that isn't declared neither RTX or VV already could be pass in. simple as that.
-
 // and do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 // make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-// test all infrastructure updates extensively, especially UpdaterWindow because it doesn't define new updater instances and runs
-// of the MainWindow one
-
-// Fix main window requiring a click outside the window to proceed with Activation method IF using hardwipe, what is going on?!
+// Add a simple service to randomly log useful facts
+// or don't, just do the thing, about reusing manual user data selection on buttons that need it
+// potentially disabling or enabling buttons at startup depending on state of cache and later down the methods
+// and allowing anything to launch that, think around it and about it
+// also ties into the idea of telling user to finish their job and come back to mainwindow/ explain why certain buttons are disabled
+// in case they forget they got windows open elsewhere... good QoL
 
 // Further adjust which controls do and don't getdisabled and audit the usage of both primary WindowControlManager methods throughout
 
 // call the block that follows         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview)) in more places
 // any feature that relies directly on user data locations, it must redirect to that if not valid // should probably update OTHER control names based on validity of
 // this as well
+
+// potentially update other windows to rely on Loaded event instead of activated as well... or don't, there may be more considerations to it
+// e..g WHEN it actually fires and how long it takes, etc..
+
+// as for testing all windows most of them are FINE to be honest, even if killed mid op
+// some are more critical, like updater, you can test extensively and adjust as needed, dw though, the code's robust/overengineered already
+
+// Gotta add more guards // some features must not be launching or at least should be more clear about it
+//when they dont have user data access, for example, the apck updater, which proceeds as usual, then fails half way and returns an error
+// could add checks earlier, disabling related buttons sounds like the best option
+// you could also just return button calls early, and tell user wtf u doing? select user data or something, this is better UX than stonewalling
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
@@ -485,7 +491,7 @@ public sealed partial class MainWindow : Window
         CycleThemeButton_Click(null, null);
 
         // Give the window time to render
-        await Task.Delay(150);
+        await Task.Delay(125);
 
         // Watches theme changes and adjusts based on theme
         if (root != null)
@@ -513,7 +519,7 @@ public sealed partial class MainWindow : Window
         await CheckForCrashLog();
 
         // Splash Blinking Animation
-        _ = AnimateSplash(100);
+        _ = AnimateSplash(125);
 
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
@@ -534,10 +540,6 @@ public sealed partial class MainWindow : Window
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
-        // Similar to GDKLocator but for user data:
-        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        // Updates the button responsible for allowing the user to select another user data path.
-        UpdateUserDataDependentUI(IsTargetingPreview);
 
         // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
         if (!IsTargetingPreview)
@@ -551,7 +553,7 @@ public sealed partial class MainWindow : Window
         InitializePreviewerImages();
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
-        await Task.Delay(700);
+        await Task.Delay(750);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
         // Random previewer image
@@ -594,6 +596,11 @@ public sealed partial class MainWindow : Window
                 Log(psa[i].Text);
             }
         }
+
+        // Similar to GDKLocator but for user data, its fast, so its ok to call it last, and we want its warning messages to be at the top, so...
+        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
+        // Updates the button responsible for allowing the user to select another user data path.
+        UpdateUserDataDependentUI(IsTargetingPreview);
 
         // ============= End
         async Task FadeOutSplashScreen()
@@ -755,7 +762,7 @@ public sealed partial class MainWindow : Window
 
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA
+        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex
     }
     public static void Log(string message, LogLevel? level = null)
     {
@@ -775,6 +782,7 @@ public sealed partial class MainWindow : Window
                 LogLevel.Lengthy => "⏳ ",
                 LogLevel.Debug => "🔍 ",
                 LogLevel.PSA => "📢 ",
+                LogLevel.Alchitex => "🟦 ",
                 _ => ""
             };
 
@@ -1354,21 +1362,21 @@ public sealed partial class MainWindow : Window
         string[] ToDisable =
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
-    "LaunchAlchitexButton", "LaunchPackUpdateButton",
-    "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton"
+             "LaunchAlchitexButton", "LaunchPackUpdateButton",
+              "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton"
         ];
-
         // If user data isn't valid for the current edition, repurpose this click
         // to let the user locate the data folder manually instead.
         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
         {
-            WindowControlsManager.ToggleControls(this, false);
+            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
             await HandleManualDataLocationAsync();
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
             return;
-            WindowControlsManager.ToggleControls(this, true);
         }
 
-        // Normal pack browser flow
+        // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
+
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
         var packBrowserWindow = new PackBrowser.PackBrowserWindow();
@@ -1460,7 +1468,8 @@ public sealed partial class MainWindow : Window
         }
         else
         {
-            PackVM.SetLabelOverride("Locate your data");
+            string PreviewOrStable = isTargetingPreview ? "Preview" : "Stable";
+            PackVM.SetLabelOverride($"Locate {PreviewOrStable} user data");
             ToolTipService.SetToolTip(BrowsePacksButton,
                 $"The app couldn't find {versionName} data folder, automatically, click to locate it manually.");
         }
@@ -2147,11 +2156,22 @@ public sealed partial class MainWindow : Window
     }
     private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
+        {
+            Log("You must select at least one resource pack tagged as a 'Potential Candidate' to be use this feature.", LogLevel.Warning);
+            Log("RTX Reactor will generate PBR textures and proper RTX support only for certain non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
+            return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
+            // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
+            // have a higher chance of breaking, not working, or not seeing any benefit from this feature.
+            // It's true! (legacy packs, few to no block textures are decent starting indicators for now.
+        }
+
+
         string[] ToDisable =
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
-    "LaunchPackUpdateButton", "BrowsePacksButton",
-    "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
+        "LaunchPackUpdateButton", "BrowsePacksButton",
+        "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
         ];
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
@@ -2326,6 +2346,7 @@ public sealed partial class MainWindow : Window
 
 
 /* ### BACKLOG // TODO ###
+ * 
 - Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
 // commenting out bits also helps tracking down what causes it
 improvements were made last night
@@ -2335,20 +2356,15 @@ what makese sense to be where. that's the question
 its prolly that the window gets activated while mainwidnow() stuffare already running
 also, that themewatcher is a wretch! could be that too
 
-the weird splash behavior is cuz activation won't happen on its own, you gotta trigger it too
-on regular starts, it always happens, on restarts where process auto starts, it might not!!
-
 - READ ALL MS Store COMMENTS
 there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
 Like that crash one, you wouldn't have become aware was it not for that comment
 
 - Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
 
-
 - Test unhandled exception log catcher thingy, especially with startup and close crashes
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
 Do artifical throws in random placess
-
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?

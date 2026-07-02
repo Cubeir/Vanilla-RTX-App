@@ -1122,9 +1122,11 @@ public sealed partial class PackBrowserWindow : Window
     //  Alchitex suitability scanner
     // ════════════════════════════════════════════════════════════════════════
 
+    // TODO: The definition of what makes a texture pack truly and concretely suitable for Alchitex can evolve over time
+    // You'll figure it out when you get there, for now, 20 textures in all block dirs gives good confidence, combined with the not-being-legacy checks
     private static class AlchitexSuitabilityScanner
     {
-        private const int MinimumQualifyingImageCount = 16;
+        private const int MinimumQualifyingImageCount = 20;
 
         private static readonly HashSet<string> QualifyingExtensions =
             new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".tga" };
