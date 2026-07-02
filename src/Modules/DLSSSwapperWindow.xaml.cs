@@ -26,7 +26,6 @@ namespace Vanilla_RTX_App.DLSSBrowser;
 public sealed partial class DLSSSwapperWindow : Window
 {
     private readonly AppWindow _appWindow;
-    private readonly Window _mainWindow;
     private bool _isClosing;
 
     private string _gameDllPath = string.Empty;
@@ -37,10 +36,9 @@ public sealed partial class DLSSSwapperWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
-    public DLSSSwapperWindow(MainWindow mainWindow)
+    public DLSSSwapperWindow()
     {
         this.InitializeComponent();
-        _mainWindow = mainWindow;
 
         var manager = WinUIEx.WindowManager.Get(this);
         manager.MinWidth = WindowMinSizeX;
@@ -63,7 +61,6 @@ public sealed partial class DLSSSwapperWindow : Window
 
         this.Activated += DLSSSwapperWindow_Activated;
         this.Closed += DLSSSwapperWindow_Closed;
-        _mainWindow.Closed += MainWindow_Closed;
     }
     private async void DLSSSwapperWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
@@ -92,15 +89,7 @@ public sealed partial class DLSSSwapperWindow : Window
             try { this.Activate(); } catch { }
         });
     }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-    private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-
-    private void Cleanup()
+    private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
@@ -109,9 +98,9 @@ public sealed partial class DLSSSwapperWindow : Window
         _scanCancellationTokenSource?.Dispose();
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= DLSSSwapperWindow_Closed;
     }
+
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)

@@ -171,13 +171,6 @@ public partial class App : Application
 
 
 
-
-
-
-
-
-
-
 /// <summary>
 /// Custom TraceListener that captures all Trace.WriteLine calls
 /// </summary>

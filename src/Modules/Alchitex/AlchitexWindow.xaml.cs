@@ -61,15 +61,13 @@ public static class AlchitexVariables
 public sealed partial class Alchitex : Window
 {
     private readonly AppWindow _appWindow;
-    private readonly Window _mainWindow;
-    private bool _isClosing;
+    private bool _isClosing; // just a secondary guard in case a future code ends up closing a window while already closing
 
     private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
 
-    public Alchitex(MainWindow mainWindow)
+    public Alchitex()
     {
         this.InitializeComponent();
-        _mainWindow = mainWindow;
 
         var manager = WinUIEx.WindowManager.Get(this);
         manager.MinWidth = TunerVariables.WindowMinSizeX;
@@ -92,7 +90,6 @@ public sealed partial class Alchitex : Window
 
         this.Activated += Alchitex_Activated;
         this.Closed += Alchitex_Closed;
-        _mainWindow.Closed += MainWindow_Closed;
     }
     private async void Alchitex_Activated(object sender, WindowActivatedEventArgs args)
     {
@@ -111,23 +108,15 @@ public sealed partial class Alchitex : Window
             try { this.Activate(); } catch { }
         });
     }
-
-    private void Alchitex_Closed(object sender, WindowEventArgs e) => Cleanup();
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void Cleanup()
+    private void Alchitex_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= Alchitex_Closed;
     }
+
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)

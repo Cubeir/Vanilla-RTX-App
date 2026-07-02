@@ -25,7 +25,6 @@ namespace Vanilla_RTX_App.PackBrowser;
 public sealed partial class PackBrowserWindow : Window
 {
     private readonly AppWindow _appWindow;
-    private readonly Window _mainWindow;
     private bool _isClosing;
 
     private readonly Dictionary<string, Button> _packButtonMap = new();
@@ -41,10 +40,9 @@ public sealed partial class PackBrowserWindow : Window
     private static readonly Regex MinecraftFormattingCodeRegex = new(@"§\S", RegexOptions.Compiled);
     private static readonly Regex StrictSemVerRegex = new(@"^\d+\.\d+\.\d+$", RegexOptions.Compiled);
 
-    public PackBrowserWindow(MainWindow mainWindow)
+    public PackBrowserWindow()
     {
         this.InitializeComponent();
-        _mainWindow = mainWindow;
 
         var manager = WinUIEx.WindowManager.Get(this);
         manager.MinWidth = WindowMinSizeX;
@@ -65,7 +63,6 @@ public sealed partial class PackBrowserWindow : Window
 
         this.Activated += PackBrowserWindow_Activated;
         this.Closed += PackBrowserWindow_Closed;
-        _mainWindow.Closed += MainWindow_Closed;
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.browse.ico"));
 
@@ -104,32 +101,23 @@ public sealed partial class PackBrowserWindow : Window
         });
     }
 
-    private void PackBrowserWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void Cleanup()
+    private void PackBrowserWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= PackBrowserWindow_Closed;
 
         ExpImpDel.ImportStatusChanged -= OnImportStatusChanged;
     }
+
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
-
-    // ---
     private void PopulatePackBrowserAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);

@@ -43,15 +43,16 @@ namespace Vanilla_RTX_App;
 // and do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 // make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-// then do window infrastructure upgrades
-
-// Let's adjust the logic of ToggleControls
-// Use it more conservatively, if not overriding globals makes it additive to globals, which it does
-// ensure it doesn't disable other modules unnecessarily WHERE IT DOESN'T INTEREFERE
-// Allow users to multitask if they really wanna.
-
 // test all infrastructure updates extensively, especially UpdaterWindow because it doesn't define new updater instances and runs
 // of the MainWindow one
+
+// Fix main window requiring a click outside the window to proceed with Activation method IF using hardwipe, what is going on?!
+
+// Further adjust which controls do and don't getdisabled and audit the usage of both primary WindowControlManager methods throughout
+
+// call the block that follows         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview)) in more places
+// any feature that relies directly on user data locations, it must redirect to that if not valid // should probably update OTHER control names based on validity of
+// this as well
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
@@ -454,10 +455,19 @@ public sealed partial class MainWindow : Window
                 // Mirror every SetShiftText call above...
             }
         };
+        // Tie in colors of these special fake titlebar buttons
+        this.Activated += (s, e) =>
+        {
+            var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
+            var opacity = isFocused ? 1.0 : 0.5;
 
+            ChatButton.Opacity = opacity;
+            HelpButton.Opacity = opacity;
+            DonateButton.Opacity = opacity;
+            CycleThemeButton.Opacity = opacity;
+        };
         // Things to do after mainwindow is initialized...
         this.Activated += MainWindow_Activated;
-        this.Activated += MainWindow_FocusOpacity;
     }
 
     private async void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
@@ -633,17 +643,6 @@ public sealed partial class MainWindow : Window
             this.CenterOnScreen();
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "vrtx.lamp.on.ico"));
-    }
-
-    private void MainWindow_FocusOpacity(object sender, WindowActivatedEventArgs e)
-    {
-        var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
-        var opacity = isFocused ? 1.0 : 0.5;
-
-        ChatButton.Opacity = opacity;
-        HelpButton.Opacity = opacity;
-        DonateButton.Opacity = opacity;
-        CycleThemeButton.Opacity = opacity;
     }
 
     private async Task CheckForCrashLog()
@@ -1369,7 +1368,7 @@ public sealed partial class MainWindow : Window
         // Normal pack browser flow
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var packBrowserWindow = new PackBrowser.PackBrowserWindow(this);
+        var packBrowserWindow = new PackBrowser.PackBrowserWindow();
         var mainAppWindow = this.AppWindow;
 
         packBrowserWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -1614,7 +1613,7 @@ public sealed partial class MainWindow : Window
         if (hadCustomPacks)
             Log("Cleared all pack selections.", LogLevel.Success);
         else if (hadVanillaRTX)
-            Log("Deselected Vanilla RTX packs.", LogLevel.Success);
+            Log("Deselected all Vanilla RTX packs.", LogLevel.Success);
         else
             Log("You haven't selected any packs to clear.", LogLevel.Informational);
     }
@@ -2021,6 +2020,7 @@ public sealed partial class MainWindow : Window
             _ = LocatePacksTask(true); // Trigger an auto pack location check after, only time we log statuses for user to see what's installed
         };
 
+        _childWindows.Add(packUpdaterWindow);
         packUpdaterWindow.Activate();
     }
     private void LaunchBetterRTXManagerButton_Click(object sender, RoutedEventArgs e)
@@ -2029,7 +2029,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var betterRTXWindow = new BetterRTXManager.BetterRTXManagerWindow(this);
+        var betterRTXWindow = new BetterRTXManager.BetterRTXManagerWindow();
 
         var mainAppWindow = this.AppWindow;
         betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2060,6 +2060,7 @@ public sealed partial class MainWindow : Window
             }
         };
 
+        _childWindows.Add(betterRTXWindow);
         betterRTXWindow.Activate();
     }
     private void LaunchDLSSSwapperButton_Click(object sender, RoutedEventArgs e)
@@ -2068,7 +2069,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var DLSSSwapperWindow = new DLSSBrowser.DLSSSwapperWindow(this);
+        var DLSSSwapperWindow = new DLSSBrowser.DLSSSwapperWindow();
         var mainAppWindow = this.AppWindow;
 
         DLSSSwapperWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2099,6 +2100,7 @@ public sealed partial class MainWindow : Window
             }
         };
 
+        _childWindows.Add(DLSSSwapperWindow);
         DLSSSwapperWindow.Activate();
     }
     private void LaunchLUTManagerButton_Click(object sender, RoutedEventArgs e)
@@ -2107,7 +2109,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var LutManagerWindow = new LUTManager.LUTManagerWindow(this);
+        var LutManagerWindow = new LUTManager.LUTManagerWindow();
         var mainAppWindow = this.AppWindow;
 
         LutManagerWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2137,6 +2139,7 @@ public sealed partial class MainWindow : Window
             }
         };
 
+        _childWindows.Add(LutManagerWindow);
         LutManagerWindow.Activate();
     }
     private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
@@ -2149,7 +2152,7 @@ public sealed partial class MainWindow : Window
         ];
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
-        var alchitexWindow = new Modules.Alchitex.Alchitex(this);
+        var alchitexWindow = new Modules.Alchitex.Alchitex();
         var mainAppWindow = this.AppWindow;
         alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
             mainAppWindow.Size.Width,
@@ -2160,6 +2163,8 @@ public sealed partial class MainWindow : Window
             _childWindows.Remove(alchitexWindow);
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
         };
+
+        _childWindows.Add(alchitexWindow);
         alchitexWindow.Activate();
     }
 
@@ -2318,16 +2323,6 @@ public sealed partial class MainWindow : Window
 
 
 /* ### BACKLOG // TODO ###
-
-- Use winuiex to replace more of your own half baked code / other windows' infrastructure
-Like, utilize its dpi related methods, min sizes don't update right now with dpi changes, etc.. good polish
-replace infrastructure of all other windows with WinUIex
-
->> Update other windows' unfocused titlebar button,actually, unify it, reuse across all windows
-
-- Issue: theme changes from main window don't propagate to other already-open windows, take care of it while upgrading their infrastructure
-
-
 - Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
 // commenting out bits also helps tracking down what causes it
 improvements were made last night
@@ -2336,6 +2331,9 @@ Keep Perfecting it
 what makese sense to be where. that's the question
 its prolly that the window gets activated while mainwidnow() stuffare already running
 also, that themewatcher is a wretch! could be that too
+
+the weird splash behavior is cuz activation won't happen on its own, you gotta trigger it too
+on regular starts, it always happens, on restarts where process auto starts, it might not!!
 
 - READ ALL MS Store COMMENTS
 there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
@@ -2348,8 +2346,6 @@ Like that crash one, you wouldn't have become aware was it not for that comment
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
 Do artifical throws in random placess
 
-the weird splash behavior is cuz activation won't happen on its own, you gotta trigger it too
-on regular starts, it always happens, on restarts where process auto starts, it might not!!
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?

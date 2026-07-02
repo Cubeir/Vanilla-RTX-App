@@ -65,7 +65,6 @@ public sealed partial class PackUpdateWindow : Window
 
         this.Activated += PackUpdateWindow_Activated;
         this.Closed += PackUpdateWindow_Closed;
-        _mainWindow.Closed += MainWindow_Closed;
     }
     private async void PackUpdateWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
@@ -85,15 +84,7 @@ public sealed partial class PackUpdateWindow : Window
         // Check if installation is in progress and update UI accordingly
         CheckAndHandleOngoingInstallation();
     }
-
-    private void PackUpdateWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void Cleanup()
+    private void PackUpdateWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
@@ -101,17 +92,15 @@ public sealed partial class PackUpdateWindow : Window
         StopInstallingAnimation();
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= PackUpdateWindow_Closed;
     }
+
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
-
-    // ---
     private void PopulatePackUpdateAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.PackUpdateAnnouncements);
@@ -120,6 +109,7 @@ public sealed partial class PackUpdateWindow : Window
             PackUpdateAnnouncementsPanel.Children.Add(new PsaCard(item) { CardFontSize = 13 });
     }
 
+    // INITIALIZATION =================================
     private void InitializeHoverEffects()
     {
         // Main Panels

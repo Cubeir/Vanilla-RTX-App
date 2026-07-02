@@ -84,7 +84,6 @@ internal class DisplayPresetData
 public sealed partial class BetterRTXManagerWindow : Window
 {
     private readonly AppWindow _appWindow;
-    private readonly Window _mainWindow;
     private bool _isClosing;
 
     private string _gameMaterialsPath = string.Empty;
@@ -121,10 +120,9 @@ public sealed partial class BetterRTXManagerWindow : Window
        "RTXStub.material.bin"
     ];
 
-    public BetterRTXManagerWindow(MainWindow mainWindow)
+    public BetterRTXManagerWindow()
     {
         this.InitializeComponent();
-        _mainWindow = mainWindow;
         _downloadStatuses = new Dictionary<string, DownloadStatus>();
         _downloadQueue = new Queue<DownloadQueueItem>();
         _isProcessingQueue = false;
@@ -153,7 +151,6 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         this.Activated += BetterRTXManagerWindow_Activated;
         this.Closed += BetterRTXManagerWindow_Closed;
-        _mainWindow.Closed += MainWindow_Closed;
     }
     private async void BetterRTXManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
@@ -190,16 +187,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         InitializeRefreshButton();
     }
-
-    private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-
-    private void Cleanup()
+    private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
@@ -216,9 +204,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         _cooldownTimer = null;
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= BetterRTXManagerWindow_Closed;
     }
+
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)

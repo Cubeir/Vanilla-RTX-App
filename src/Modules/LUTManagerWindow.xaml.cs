@@ -23,16 +23,9 @@ namespace Vanilla_RTX_App.LUTManager;
 
 public sealed partial class LUTManagerWindow : Window
 {
-    private const string FnLut = "look_up_tables.png";
-    private const string FnSky = "sky.png";
-    private const string FnWater = "water_n.tga";
-    private const string FnPlaceholder = "placeholder.png";
-    private const string FnDefaultImg = "default.png";
-
     private static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
 
     private readonly AppWindow _appWindow;
-    private readonly Window _mainWindow;
     private bool _isClosing;
 
     private string _minecraftRoot = string.Empty;
@@ -51,6 +44,11 @@ public sealed partial class LUTManagerWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
+    private const string FnLut = "look_up_tables.png";
+    private const string FnSky = "sky.png";
+    private const string FnWater = "water_n.tga";
+    private const string FnPlaceholder = "placeholder.png";
+    private const string FnDefaultImg = "default.png";
     private string DstLut => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnLut);
     private string DstSky => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnSky);
     private string DstWater => Path.Combine(_minecraftRoot, "data", "ray_tracing", FnWater);
@@ -58,10 +56,9 @@ public sealed partial class LUTManagerWindow : Window
     private string DefaultSky => Path.Combine(_defaultsFolder, FnSky);
     private string DefaultWater => Path.Combine(_defaultsFolder, FnWater);
 
-    public LUTManagerWindow(MainWindow mainWindow)
+    public LUTManagerWindow()
     {
         this.InitializeComponent();
-        _mainWindow = mainWindow;
 
         var manager = WinUIEx.WindowManager.Get(this);
         manager.MinWidth = WindowMinSizeX;
@@ -86,7 +83,6 @@ public sealed partial class LUTManagerWindow : Window
 
         this.Activated += LUTManagerWindow_Activated;
         this.Closed += LUTManagerWindow_Closed;
-        _mainWindow.Closed += MainWindow_Closed;
     }
     private async void LUTManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
@@ -117,15 +113,7 @@ public sealed partial class LUTManagerWindow : Window
             try { this.Activate(); } catch { }
         });
     }
-
-    private void LUTManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void Cleanup()
+    private void LUTManagerWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
@@ -134,9 +122,9 @@ public sealed partial class LUTManagerWindow : Window
         _scanCancellationTokenSource?.Dispose();
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= LUTManagerWindow_Closed;
     }
+
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)
