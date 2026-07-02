@@ -41,6 +41,7 @@ namespace Vanilla_RTX_App;
 // Keep reactor window from opening unless at lesat one incompatible pack is selected
 // Or one at least potentially compatible pack
 // But accept both tbh, and later in the window itself warn the user with a dialogue, it is not recommended to process packs that aren't potential candidates
+// any pack that isn't declared neither RTX or VV already could be pass in. simple as that.
 
 // and do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 // make it secondary to the primary manner of its workings, y'know? be clever with the design
@@ -51,10 +52,6 @@ namespace Vanilla_RTX_App;
 // Use it more conservatively, if not overriding globals makes it additive to globals, which it does
 // ensure it doesn't disable other modules unnecessarily WHERE IT DOESN'T INTEREFERE
 // Allow users to multitask if they really wanna.
-
-// would've been better to design this app in a whole other way..?
-// mayhaps as parts of mainwindow, and hid and shown different MainGrid containers depending on the module
-// but its also nice being able to give user an elaborate way to kill window processes...
 
 // rename classes... the module class' namings are shite
 // and the button names, shite there too, couldn't you make up ur mind on a name? euh?!
@@ -349,7 +346,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/chest.delete.png"
         );
 
-        Previewer.Instance.InitializeButton(UpdateVanillaRTXButton,
+        Previewer.Instance.InitializeButton(LaunchPackUpdateButton,
             GetSpecialOccasionName() == "christmas"
                 ? "ms-appx:///Assets/previews/version.checker.christmas.png"
                 : "ms-appx:///Assets/previews/version.checker.png"
@@ -359,7 +356,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/table.tune.png"
         );
 
-        Previewer.Instance.InitializeButton(LaunchButton,
+        Previewer.Instance.InitializeButton(LaunchMinecraftButton,
             "ms-appx:///Assets/previews/minecart.launch.png"
         );
 
@@ -387,19 +384,19 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/table.reset.png"
         );
 
-        Previewer.Instance.InitializeButton(BetterRTXPresetManagerButton,
+        Previewer.Instance.InitializeButton(LaunchBetterRTXManagerButton,
             "ms-appx:///Assets/previews/brtx.png"
         );
 
-        Previewer.Instance.InitializeButton(DLSSVersionSwitcherButton,
+        Previewer.Instance.InitializeButton(LaunchDLSSSwapperButton,
             "ms-appx:///Assets/previews/dlss.png"
         );
 
-        Previewer.Instance.InitializeButton(DefaultRTXModifiersButton,
+        Previewer.Instance.InitializeButton(LaunchLUTManagerButton,
             "ms-appx:///Assets/previews/lut.png"
         );
 
-        Previewer.Instance.InitializeButton(AlchitexButton,
+        Previewer.Instance.InitializeButton(LaunchAlchitexButton,
             "ms-appx:///Assets/previews/reactor.promo.tile.png"
         );
 
@@ -523,7 +520,7 @@ public sealed partial class MainWindow : Window
             _ = LocatePacksTask();
         else
         {
-            BetterRTXPresetManagerButton.IsEnabled = false;
+            LaunchBetterRTXManagerButton.IsEnabled = false;
         }
 
         // Previewer
@@ -1352,7 +1349,7 @@ public sealed partial class MainWindow : Window
         // Normal pack browser flow
         ToggleControls(this, false);
 
-        var packBrowserWindow = new Vanilla_RTX_App.PackBrowser.PackBrowserWindow(this);
+        var packBrowserWindow = new PackBrowser.PackBrowserWindow(this);
         var mainAppWindow = this.AppWindow;
 
         packBrowserWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -1457,7 +1454,7 @@ public sealed partial class MainWindow : Window
 
         ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
 
-        BetterRTXPresetManagerButton.IsEnabled = false;
+        LaunchBetterRTXManagerButton.IsEnabled = false;
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
@@ -1471,7 +1468,7 @@ public sealed partial class MainWindow : Window
 
         ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
 
-        BetterRTXPresetManagerButton.IsEnabled = true;
+        LaunchBetterRTXManagerButton.IsEnabled = true;
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
@@ -1523,133 +1520,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-
-
-    #region =============== SLIDER HANDLERS ===============
-
-
-    private void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
-    {
-        double roundedValue = Math.Round(slider.Value, decimalPlaces);
-        property = roundedValue;
-        slider.Value = roundedValue;
-
-        string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
-        if (textBox != null && textBox.FocusState == FocusState.Unfocused)
-        {
-            // Use CurrentCulture so weirdos see "1,50" not "1.50"
-            textBox.Text = roundedValue.ToString(format, CultureInfo.CurrentCulture);
-        }
-    }
-
-    private void HandleDoubleTextBoxLostFocus(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
-    {
-        // Try parsing with user's culture first (respects comma vs period)
-        bool parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
-                                       CultureInfo.CurrentCulture, out double val);
-
-        // Fallback to invariant culture if that fails (for copy-paste scenarios)
-        if (!parsed)
-        {
-            parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
-                                    CultureInfo.InvariantCulture, out val);
-        }
-
-        if (parsed)
-        {
-            val = Math.Clamp(val, slider.Minimum, slider.Maximum);
-            double roundedVal = Math.Round(val, decimalPlaces);
-            property = roundedVal;
-            slider.Value = roundedVal;
-
-            string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
-            // Display with user's culture
-            textBox.Text = roundedVal.ToString(format, CultureInfo.CurrentCulture);
-        }
-        else
-        {
-            // Restore the last valid value with user's culture
-            string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
-            textBox.Text = property.ToString(format, CultureInfo.CurrentCulture);
-        }
-    }
-
-
-    private void HandleIntSliderValueChanged(Slider slider, TextBox textBox, ref int property)
-    {
-        property = (int)Math.Round(slider.Value);
-        if (textBox != null && textBox.FocusState == FocusState.Unfocused)
-            textBox.Text = property.ToString(CultureInfo.InvariantCulture);
-    }
-
-    private void HandleIntTextBoxLostFocus(Slider slider, TextBox textBox, ref int property)
-    {
-        if (int.TryParse(textBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int val))
-        {
-            val = Math.Clamp(val, (int)slider.Minimum, (int)slider.Maximum);
-            property = val;
-            slider.Value = val;
-            textBox.Text = val.ToString(CultureInfo.InvariantCulture);
-        }
-        else
-        {
-            textBox.Text = property.ToString(CultureInfo.InvariantCulture);
-        }
-    }
-
-    // =============== SLIDER EVENT HANDLERS ===============
-    private void FogMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        => HandleDoubleSliderValueChanged(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
-
-    private void FogMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
-        => HandleDoubleTextBoxLostFocus(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
-
-
-    private void EmissivityMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        => HandleDoubleSliderValueChanged(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
-
-    private void EmissivityMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
-        => HandleDoubleTextBoxLostFocus(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
-
-
-    private void NormalIntensity_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        => HandleIntSliderValueChanged(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
-
-    private void NormalIntensity_LostFocus(object sender, RoutedEventArgs e)
-        => HandleIntTextBoxLostFocus(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
-
-
-    private void MaterialNoise_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        => HandleIntSliderValueChanged(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
-
-    private void MaterialNoise_LostFocus(object sender, RoutedEventArgs e)
-        => HandleIntTextBoxLostFocus(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
-
-
-    private void RoughenUp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        => HandleIntSliderValueChanged(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
-
-    private void RoughenUp_LostFocus(object sender, RoutedEventArgs e)
-        => HandleIntTextBoxLostFocus(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
-
-
-    private void LazifyNormals_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
-        => HandleIntSliderValueChanged(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
-
-    private void LazifyNormals_LostFocus(object sender, RoutedEventArgs e)
-        => HandleIntTextBoxLostFocus(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
-
-
-    private void EmissivityAmbientLightToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        var toggle = sender as ToggleSwitch;
-        if (toggle == null) { return; }
-        AddEmissivityAmbientLight = toggle.IsOn;
-
-        // Show/hide the warning icon
-        EmissivityWarningIcon.Visibility = toggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
-    }
-    #endregion
 
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)
@@ -1830,132 +1700,6 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void BetterRTXPresetManagerButton_Click(object sender, RoutedEventArgs e)
-    {
-        ToggleControls(this, false);
-
-        var betterRTXWindow = new Vanilla_RTX_App.BetterRTXBrowser.BetterRTXManagerWindow(this);
-
-        var mainAppWindow = this.AppWindow;
-        betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        betterRTXWindow.AppWindow.Move(mainAppWindow.Position);
-
-        betterRTXWindow.Closed += (s, args) =>
-        {
-            ToggleControls(this, true);
-
-            // Log status after window closes
-            if (betterRTXWindow.OperationSuccessful)
-            {
-                Log(betterRTXWindow.StatusMessage, LogLevel.Success);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(betterRTXWindow.StatusMessage))
-            {
-                Log(betterRTXWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        betterRTXWindow.Activate();
-    }
-
-    private void DLSSVersionSwitcherButton_Click(object sender, RoutedEventArgs e)
-    {
-        ToggleControls(this, false);
-
-        var dlssSwitcherWindow = new Vanilla_RTX_App.DLSSBrowser.DLSSSwitcherWindow(this);
-        var mainAppWindow = this.AppWindow;
-
-        dlssSwitcherWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        dlssSwitcherWindow.AppWindow.Move(mainAppWindow.Position);
-
-        dlssSwitcherWindow.Closed += (s, args) =>
-        {
-            ToggleControls(this, true);
-
-            // Log status after window closes
-            if (dlssSwitcherWindow.OperationSuccessful)
-            {
-                Log(dlssSwitcherWindow.StatusMessage, LogLevel.Success);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(dlssSwitcherWindow.StatusMessage))
-            {
-                Log(dlssSwitcherWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        dlssSwitcherWindow.Activate();
-    }
-
-    private void DefaultRTXModifiersButton_Click(object sender, RoutedEventArgs e)
-    {
-        ToggleControls(this, false);
-
-        var rtxWindow = new Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow(this);
-        var mainAppWindow = this.AppWindow;
-
-        rtxWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        rtxWindow.AppWindow.Move(mainAppWindow.Position);
-
-        rtxWindow.Closed += (s, args) =>
-        {
-            ToggleControls(this, true);
-
-            if (rtxWindow.OperationSuccessful)
-            {
-                Log(rtxWindow.StatusMessage, LogLevel.Success);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(rtxWindow.StatusMessage))
-            {
-                Log(rtxWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        rtxWindow.Activate();
-    }
-
-    private void AlchitexButton_Click(object sender, RoutedEventArgs e)
-    {
-        ToggleControls(this, false);
-        var alchitexWindow = new Vanilla_RTX_App.Modules.Alchitex.Alchitex(this);
-        var mainAppWindow = this.AppWindow;
-        alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        alchitexWindow.AppWindow.Move(mainAppWindow.Position);
-        alchitexWindow.Closed += (s, args) =>
-        {
-            ToggleControls(this, true);
-        };
-        alchitexWindow.Activate();
-    }
-
-
-
-
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
         // Build the full list of pack locations to delete:
@@ -2046,8 +1790,6 @@ public sealed partial class MainWindow : Window
             UpdateUI(); // Just in case, truly don't know why, prolly afraid of checkboxes remaining "on" visually while disabled, while the bool being off
         }
     }
-
-
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
         _progressManager.ShowProgress();
@@ -2137,8 +1879,6 @@ public sealed partial class MainWindow : Window
             ToggleControls(this, true);
         }
     }
-
-
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -2168,7 +1908,7 @@ public sealed partial class MainWindow : Window
                 _ = BlinkingLamp(true);
                 ToggleControls(this, false);
 
-                var tuningMessage = await Task.Run(Processor.TuneSelectedPacks);
+                var tuningMessage = await Task.Run(Tuner.TuneSelectedPacks);
                 Log(tuningMessage, LogLevel.Success);
             }
         }
@@ -2185,7 +1925,8 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private async void UpdateVanillaRTXButton_Click(object sender, RoutedEventArgs e)
+
+    private async void LaunchPackUpdateButton_Click(object sender, RoutedEventArgs e)
     {
         // The UI display text relies on this, rerun it just in case, few ms overhead worth it
         try
@@ -2201,7 +1942,7 @@ public sealed partial class MainWindow : Window
 
             ToggleControls(this, false);
 
-            var packUpdaterWindow = new Vanilla_RTX_App.PackUpdate.PackUpdateWindow(this);
+            var packUpdaterWindow = new PackUpdate.PackUpdateWindow(this);
             var mainAppWindow = this.AppWindow;
 
             packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2230,9 +1971,7 @@ public sealed partial class MainWindow : Window
             packUpdaterWindow.Activate();
         }
     }
-
-
-    private async void LaunchButton_Click(object sender, RoutedEventArgs e)
+    private async void LaunchMinecraftButton_Click(object sender, RoutedEventArgs e)
     {
         if (Helpers.IsMinecraftRunning())
         {
@@ -2255,6 +1994,251 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 0.0);
         }
     }
+    private void LaunchBetterRTXManagerButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleControls(this, false);
+
+        var betterRTXWindow = new BetterRTXManager.BetterRTXManagerWindow(this);
+
+        var mainAppWindow = this.AppWindow;
+        betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        betterRTXWindow.AppWindow.Move(mainAppWindow.Position);
+
+        betterRTXWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true);
+
+            // Log status after window closes
+            if (betterRTXWindow.OperationSuccessful)
+            {
+                Log(betterRTXWindow.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(betterRTXWindow.StatusMessage))
+            {
+                Log(betterRTXWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        betterRTXWindow.Activate();
+    }
+    private void LaunchDLSSSwapperButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleControls(this, false);
+
+        var DLSSSwapper = new DLSSBrowser.DLSSSwapperWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        DLSSSwapper.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        DLSSSwapper.AppWindow.Move(mainAppWindow.Position);
+
+        DLSSSwapper.Closed += (s, args) =>
+        {
+            ToggleControls(this, true);
+
+            // Log status after window closes
+            if (DLSSSwapper.OperationSuccessful)
+            {
+                Log(DLSSSwapper.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(DLSSSwapper.StatusMessage))
+            {
+                Log(DLSSSwapper.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        DLSSSwapper.Activate();
+    }
+    private void LaunchLUTManagerButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleControls(this, false);
+
+        var rtxWindow = new LUTManager.LUTManagerWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        rtxWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        rtxWindow.AppWindow.Move(mainAppWindow.Position);
+
+        rtxWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true);
+
+            if (rtxWindow.OperationSuccessful)
+            {
+                Log(rtxWindow.StatusMessage, LogLevel.Success);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(rtxWindow.StatusMessage))
+            {
+                Log(rtxWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+            else
+            {
+                _ = BlinkingLamp(true, true, 0.0);
+            }
+        };
+
+        rtxWindow.Activate();
+    }
+    private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleControls(this, false);
+        var alchitexWindow = new Modules.Alchitex.Alchitex(this);
+        var mainAppWindow = this.AppWindow;
+        alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        alchitexWindow.AppWindow.Move(mainAppWindow.Position);
+        alchitexWindow.Closed += (s, args) =>
+        {
+            ToggleControls(this, true);
+        };
+        alchitexWindow.Activate();
+    }
+
+
+    #region =============== SLIDER HANDLERS ===============
+
+    private void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
+    {
+        double roundedValue = Math.Round(slider.Value, decimalPlaces);
+        property = roundedValue;
+        slider.Value = roundedValue;
+
+        string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
+        if (textBox != null && textBox.FocusState == FocusState.Unfocused)
+        {
+            // Use CurrentCulture so weirdos see "1,50" not "1.50"
+            textBox.Text = roundedValue.ToString(format, CultureInfo.CurrentCulture);
+        }
+    }
+
+    private void HandleDoubleTextBoxLostFocus(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
+    {
+        // Try parsing with user's culture first (respects comma vs period)
+        bool parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
+                                       CultureInfo.CurrentCulture, out double val);
+
+        // Fallback to invariant culture if that fails (for copy-paste scenarios)
+        if (!parsed)
+        {
+            parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
+                                    CultureInfo.InvariantCulture, out val);
+        }
+
+        if (parsed)
+        {
+            val = Math.Clamp(val, slider.Minimum, slider.Maximum);
+            double roundedVal = Math.Round(val, decimalPlaces);
+            property = roundedVal;
+            slider.Value = roundedVal;
+
+            string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
+            // Display with user's culture
+            textBox.Text = roundedVal.ToString(format, CultureInfo.CurrentCulture);
+        }
+        else
+        {
+            // Restore the last valid value with user's culture
+            string format = decimalPlaces == 1 ? "F1" : $"F{decimalPlaces}";
+            textBox.Text = property.ToString(format, CultureInfo.CurrentCulture);
+        }
+    }
+
+
+    private void HandleIntSliderValueChanged(Slider slider, TextBox textBox, ref int property)
+    {
+        property = (int)Math.Round(slider.Value);
+        if (textBox != null && textBox.FocusState == FocusState.Unfocused)
+            textBox.Text = property.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void HandleIntTextBoxLostFocus(Slider slider, TextBox textBox, ref int property)
+    {
+        if (int.TryParse(textBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int val))
+        {
+            val = Math.Clamp(val, (int)slider.Minimum, (int)slider.Maximum);
+            property = val;
+            slider.Value = val;
+            textBox.Text = val.ToString(CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            textBox.Text = property.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    // =============== SLIDER EVENT HANDLERS ===============
+    private void FogMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleDoubleSliderValueChanged(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
+
+    private void FogMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
+        => HandleDoubleTextBoxLostFocus(FogMultiplierSlider, FogMultiplierBox, ref FogMultiplier, 2);
+
+
+    private void EmissivityMultiplierSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleDoubleSliderValueChanged(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
+
+    private void EmissivityMultiplierBox_LostFocus(object sender, RoutedEventArgs e)
+        => HandleDoubleTextBoxLostFocus(EmissivityMultiplierSlider, EmissivityMultiplierBox, ref EmissivityMultiplier, 1);
+
+
+    private void NormalIntensity_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleIntSliderValueChanged(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
+
+    private void NormalIntensity_LostFocus(object sender, RoutedEventArgs e)
+        => HandleIntTextBoxLostFocus(NormalIntensitySlider, NormalIntensityBox, ref NormalIntensity);
+
+
+    private void MaterialNoise_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleIntSliderValueChanged(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
+
+    private void MaterialNoise_LostFocus(object sender, RoutedEventArgs e)
+        => HandleIntTextBoxLostFocus(MaterialNoiseSlider, MaterialNoiseBox, ref MaterialNoiseOffset);
+
+
+    private void RoughenUp_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleIntSliderValueChanged(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
+
+    private void RoughenUp_LostFocus(object sender, RoutedEventArgs e)
+        => HandleIntTextBoxLostFocus(RoughenUpSlider, RoughenUpBox, ref RoughnessControlValue);
+
+
+    private void LazifyNormals_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        => HandleIntSliderValueChanged(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
+
+    private void LazifyNormals_LostFocus(object sender, RoutedEventArgs e)
+        => HandleIntTextBoxLostFocus(LazifyNormalsSlider, LazifyNormalsBox, ref LazifyNormalAlpha);
+
+
+    private void EmissivityAmbientLightToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        var toggle = sender as ToggleSwitch;
+        if (toggle == null) { return; }
+        AddEmissivityAmbientLight = toggle.IsOn;
+
+        // Show/hide the warning icon
+        EmissivityWarningIcon.Visibility = toggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+    }
+    #endregion
 }
 
 

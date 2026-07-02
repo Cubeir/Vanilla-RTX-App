@@ -591,7 +591,7 @@ public static class TextureSetHelper
 //  Processor  ──  orchestrator + all sub-processors
 // ══════════════════════════════════════════════════════════════════════════════
 
-public class Processor
+public class Tuner
 {
     private struct PackInfo
     {

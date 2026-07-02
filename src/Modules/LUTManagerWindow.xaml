@@ -1,7 +1,7 @@
-<Window x:Class="Vanilla_RTX_App.RTXDefaults.DefaultRTXModifiersWindow"
+<Window x:Class="Vanilla_RTX_App.LUTManager.LUTManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.RTXDefaults"
+        xmlns:local="using:Vanilla_RTX_App.LUTManager"
         xmlns:core="using:Vanilla_RTX_App.Core"
         Title="RTX LUT Manager">
     <Window.SystemBackdrop>

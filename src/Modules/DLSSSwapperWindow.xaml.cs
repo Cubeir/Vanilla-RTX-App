@@ -23,7 +23,7 @@ namespace Vanilla_RTX_App.DLSSBrowser;
 
 // TODO: Upgrade DLSS Swapper to pull dlls from a third party API like BetterRTX Manager.
 // Keep the current manual import pipeline, just add a new potential Source, list dlls, etc...
-public sealed partial class DLSSSwitcherWindow : Window
+public sealed partial class DLSSSwapperWindow : Window
 {
     private readonly AppWindow _appWindow;
     private readonly Window _mainWindow;
@@ -37,7 +37,7 @@ public sealed partial class DLSSSwitcherWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
-    public DLSSSwitcherWindow(MainWindow mainWindow)
+    public DLSSSwapperWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
         _mainWindow = mainWindow;
@@ -61,8 +61,8 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.dlss.ico"));
 
-        this.Activated += DLSSSwitcherWindow_Activated;
-        this.Closed += DLSSSwitcherWindow_Closed;
+        this.Activated += DLSSSwapperWindow_Activated;
+        this.Closed += DLSSSwapperWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
 
@@ -87,7 +87,7 @@ public sealed partial class DLSSSwitcherWindow : Window
         this.Close();
     }
 
-    private void DLSSSwitcherWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+    private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
 
     private void Cleanup()
     {
@@ -99,15 +99,15 @@ public sealed partial class DLSSSwitcherWindow : Window
 
         ThemeService.ThemeChanged -= ApplyTheme;
         _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= DLSSSwitcherWindow_Closed;
+        this.Closed -= DLSSSwapperWindow_Closed;
     }
 
-    private async void DLSSSwitcherWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private async void DLSSSwapperWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
         await Task.Delay(25);
 
-        this.Activated -= DLSSSwitcherWindow_Activated;
+        this.Activated -= DLSSSwapperWindow_Activated;
 
         SetTitleBar(TitleBarArea);
 

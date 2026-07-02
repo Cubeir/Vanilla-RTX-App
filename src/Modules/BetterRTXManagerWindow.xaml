@@ -1,7 +1,7 @@
-<Window x:Class="Vanilla_RTX_App.BetterRTXBrowser.BetterRTXManagerWindow"
+<Window x:Class="Vanilla_RTX_App.BetterRTXManager.BetterRTXManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.BetterRTXBrowser"
+        xmlns:local="using:Vanilla_RTX_App.BetterRTXManager"
         Title="BetterRTX Manager">
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />

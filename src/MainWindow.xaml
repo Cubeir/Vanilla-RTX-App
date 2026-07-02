@@ -309,7 +309,7 @@
         </Border>
 
 
-        <!-- Locate Packs || Preview || Checkboxes -->
+        <!-- Browse packs || Preview || Checkboxes -->
         <Border Grid.ColumnSpan="2"
                 Margin="16,52,16,0"
                 VerticalAlignment="Top"
@@ -1169,12 +1169,12 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- ============================================ -->
-                    <!-- ROW 1: Install Latest RTX & BRTX manager -->
+                    <!-- ROW 1 -->
                     <!-- ============================================ -->
 
-                    <!-- Install Latest RTX Button (Middle-Left) -->
-                    <Button x:Name="UpdateVanillaRTXButton"
-                            Click="UpdateVanillaRTXButton_Click"
+                    <!-- Pack Updater -->
+                    <Button x:Name="LaunchPackUpdateButton"
+                            Click="LaunchPackUpdateButton_Click"
                             Grid.Row="0"
                             Grid.Column="0"
                             FontWeight="SemiBold"
@@ -1200,10 +1200,10 @@
                     </Button>
 
                     <!--  Lut Manager Button -->
-                    <Button x:Name="DefaultRTXModifiersButton"
+                    <Button x:Name="LaunchLUTManagerButton"
+                            Click="LaunchLUTManagerButton_Click"
                             Grid.Row="0"
                             Grid.Column="2"
-                            Click="DefaultRTXModifiersButton_Click"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
@@ -1223,12 +1223,12 @@
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 2: Alchitex and BetterRTX Mananger    -->
+                    <!-- ROW 2  -->
                     <!-- ============================================ -->
 
-                    <!-- Alchitex Button -->
-                    <Button x:Name="AlchitexButton"
-                            Click="AlchitexButton_Click"
+                    <!-- Alchitex -->
+                    <Button x:Name="LaunchAlchitexButton"
+                            Click="LaunchAlchitexButton_Click"
                             Grid.Row="2"
                             Grid.Column="0"
                             FontWeight="SemiBold"
@@ -1251,11 +1251,11 @@
                         </StackPanel>
                     </Button>
 
-                    <!--  Better RTX Manager (Middle-Right) -->
-                    <Button x:Name="BetterRTXPresetManagerButton"
+                    <!-- Better RTX -->
+                    <Button x:Name="LaunchBetterRTXManagerButton"
+                            Click="LaunchBetterRTXManagerButton_Click"
                             Grid.Row="2"
                             Grid.Column="2"
-                            Click="BetterRTXPresetManagerButton_Click"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
@@ -1276,13 +1276,12 @@
                     </Button>
 
                     <!-- ============================================ -->
-                    <!-- ROW 3: Launch Minecraft & DLSS -->
+                    <!-- ROW 3 -->
                     <!-- ============================================ -->
 
                     <!-- Launch Button -->
-                    <Button x:Name="LaunchButton"
-                            Click="LaunchButton_Click"
-                            BorderBrush="#40404040"
+                    <Button x:Name="LaunchMinecraftButton"
+                            Click="LaunchMinecraftButton_Click"
                             BorderThickness="0"
                             Grid.Row="6"
                             Grid.Column="0"
@@ -1306,11 +1305,11 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- DLSS Version Switcher (Bottom-Right) -->
-                    <Button x:Name="DLSSVersionSwitcherButton"
+                    <!-- DLSS Swapper -->
+                    <Button x:Name="LaunchDLSSSwapperButton"
+                            Click="LaunchDLSSSwapperButton_Click"
                             Grid.Row="6"
                             Grid.Column="2"
-                            Click="DLSSVersionSwitcherButton_Click"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             CornerRadius="0,0,6,0"

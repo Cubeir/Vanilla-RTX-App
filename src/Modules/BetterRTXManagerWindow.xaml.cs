@@ -24,7 +24,7 @@ using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
-namespace Vanilla_RTX_App.BetterRTXBrowser;
+namespace Vanilla_RTX_App.BetterRTXManager;
 
 internal enum DownloadStatus
 {

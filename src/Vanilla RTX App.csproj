@@ -15,12 +15,6 @@
 
   <ItemGroup>
     <None Remove="Core\PsaCard.xaml" />
-    <None Remove="Modules\Alchemist.xaml" />
-    <None Remove="Modules\Alchitex\Alchitex.xaml" />
-    <None Remove="Modules\BetterRTXManagerWindow.xaml" />
-    <None Remove="Modules\DefaultRTXModifiers.xaml" />
-    <None Remove="Modules\DLSSSwitcherWindow.xaml" />
-    <None Remove="Modules\PackUpdaterWindow.xaml" />
     <None Remove="Modules\ReviewPromptControl.xaml" />
   </ItemGroup>
 
@@ -42,7 +36,7 @@
     <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.23" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
     <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.9" />
@@ -55,6 +49,8 @@
     <TrimmerRootAssembly Include="Magick.NET.SystemDrawing" />
     <TrimmerRootAssembly Include="Microsoft.Win32.SystemEvents" />
     <TrimmerRootAssembly Include="System.Drawing.Common" />
+    <TrimmerRootAssembly Include="WinUIEx" />
+    <TrimmerRootAssembly Include="Microsoft.Web.WebView2.Core" />
   </ItemGroup>
   <ItemGroup>
     <Content Update="Assets\background_grey.png">
@@ -1089,7 +1085,7 @@
     <None Update="Modules\Alchitex\Assets\splashlogo.super.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <Page Update="Modules\Alchitex\Alchitex.xaml">
+    <Page Update="Modules\Alchitex\AlchitexWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <None Update="Modules\Alchitex\LICENSE.txt">
@@ -1104,7 +1100,7 @@
     <Page Update="Modules\Alchemist.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\DefaultRTXModifiers.xaml">
+    <Page Update="Modules\LUTManagerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="Modules\PackUpdaterWindow.xaml">
@@ -1116,7 +1112,7 @@
     <Page Update="Modules\BetterRTXManagerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\DLSSSwitcherWindow.xaml">
+    <Page Update="Modules\DLSSSwapperWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="PackBrowserWindow.xaml">

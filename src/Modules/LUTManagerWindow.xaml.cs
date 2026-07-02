@@ -19,9 +19,9 @@ using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
-namespace Vanilla_RTX_App.RTXDefaults;
+namespace Vanilla_RTX_App.LUTManager;
 
-public sealed partial class DefaultRTXModifiersWindow : Window
+public sealed partial class LUTManagerWindow : Window
 {
     private const string FnLut = "look_up_tables.png";
     private const string FnSky = "sky.png";
@@ -58,7 +58,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
     private string DefaultSky => Path.Combine(_defaultsFolder, FnSky);
     private string DefaultWater => Path.Combine(_defaultsFolder, FnWater);
 
-    public DefaultRTXModifiersWindow(MainWindow mainWindow)
+    public LUTManagerWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
         _mainWindow = mainWindow;
@@ -84,8 +84,8 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         InstallButton.IsEnabledChanged += (s, e) => ApplyInstallButtonBevel(_isPresetInstalled);
 
-        this.Activated += DefaultRTXModifiersWindow_Activated;
-        this.Closed += DefaultRTXModifiersWindow_Closed;
+        this.Activated += LUTManagerWindow_Activated;
+        this.Closed += LUTManagerWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
 
@@ -103,7 +103,7 @@ public sealed partial class DefaultRTXModifiersWindow : Window
         this.Close();
     }
 
-    private void DefaultRTXModifiersWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+    private void LUTManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
 
     private void Cleanup()
     {
@@ -115,15 +115,15 @@ public sealed partial class DefaultRTXModifiersWindow : Window
 
         ThemeService.ThemeChanged -= ApplyTheme;
         _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= DefaultRTXModifiersWindow_Closed;
+        this.Closed -= LUTManagerWindow_Closed;
     }
 
-    private async void DefaultRTXModifiersWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private async void LUTManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
         await Task.Delay(25);
 
-        this.Activated -= DefaultRTXModifiersWindow_Activated;
+        this.Activated -= LUTManagerWindow_Activated;
 
         SetTitleBar(TitleBarArea);
 

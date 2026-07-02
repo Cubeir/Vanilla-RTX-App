@@ -35,7 +35,7 @@ public sealed partial class PackBrowserWindow : Window
     public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview
         ? "Minecraft Preview" : "Minecraft";
 
-    private const string AlchitexCandidateTag = "Potential Reactor Candidate";
+    private const string AlchitexCandidateTag = "RTX Reactor Candidate";
     private const bool AlchitexLegacyPacksEligible = false;
 
     private static readonly Regex MinecraftFormattingCodeRegex = new(@"§\S", RegexOptions.Compiled);
