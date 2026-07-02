@@ -8,11 +8,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -25,11 +25,8 @@ using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
-using Windows.UI;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.Core.ThemeService;
-using static Vanilla_RTX_App.Core.WindowControlsManager;
 using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.TunerVariables;
 using static Vanilla_RTX_App.TunerVariables.Persistent;
@@ -52,9 +49,6 @@ namespace Vanilla_RTX_App;
 // Use it more conservatively, if not overriding globals makes it additive to globals, which it does
 // ensure it doesn't disable other modules unnecessarily WHERE IT DOESN'T INTEREFERE
 // Allow users to multitask if they really wanna.
-
-// rename classes... the module class' namings are shite
-// and the button names, shite there too, couldn't you make up ur mind on a name? euh?!
 
 // test all infrastructure updates extensively, especially UpdaterWindow because it doesn't define new updater instances and runs
 // of the MainWindow one
@@ -213,6 +207,9 @@ public sealed partial class MainWindow : Window
 {
     #region MainWindow Boilerplate
     public static MainWindow? Instance { get; private set; }
+
+    private readonly List<Window> _childWindows = new();
+    private bool _isClosed = false;
 
     private readonly ProgressBarManager _progressManager;
 
@@ -423,7 +420,16 @@ public sealed partial class MainWindow : Window
         // Do upon app closure
         this.Closed += (s, e) =>
         {
+            _isClosed = true;
+
             SaveSettings();
+
+            // Cascade closure of all windows
+            foreach (var child in _childWindows.ToList())
+            {
+                try { child.Close(); } catch (COMException) { /* already gone */ }
+            }
+
             App.CleanupMutex();
         };
 
@@ -474,11 +480,16 @@ public sealed partial class MainWindow : Window
             ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
             ApplyTargetPreviewBevelColors(root.ActualTheme);
 
-            TargetPreviewToggle.IsEnabledChanged += (s, e) => ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
+            TargetPreviewToggle.IsEnabledChanged += (s, e) =>
+            {
+                if (_isClosed) return; // It crashes the app if we try to set it while window is closed, duh!
+                ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
+            };
             root.FlowDirection = FlowDirection.LeftToRight;
 
             root.ActualThemeChanged += (_, __) =>
             {
+                if (_isClosed) return;
                 ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
                 ApplyTargetPreviewBevelColors(root.ActualTheme);
                 ThemeService.Broadcast(root.ActualTheme);
@@ -955,7 +966,7 @@ public sealed partial class MainWindow : Window
     #endregion -------------------------------
 
 
-    // ------- Titlebar stuff
+    #region Titlebar Features -------------------------------
     private static int lampSecretMessageCounter = 0;
     private void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
@@ -1277,7 +1288,7 @@ public sealed partial class MainWindow : Window
     }
 
 
-    // ------- Top action bar stuff
+    #endregion ------------------------------- Titlebar Features
 
 
     private Dictionary<bool, string?> _previousStatusMessages = new();
@@ -1338,16 +1349,25 @@ public sealed partial class MainWindow : Window
 
     private async void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
+        string[] ToDisable =
+        [
+            "LaunchMinecraftButton", "TargetPreviewToggle",
+    "LaunchAlchitexButton", "LaunchPackUpdateButton",
+    "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton"
+        ];
+
         // If user data isn't valid for the current edition, repurpose this click
         // to let the user locate the data folder manually instead.
         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
         {
+            WindowControlsManager.ToggleControls(this, false);
             await HandleManualDataLocationAsync();
             return;
+            WindowControlsManager.ToggleControls(this, true);
         }
 
         // Normal pack browser flow
-        ToggleControls(this, false);
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
         var packBrowserWindow = new PackBrowser.PackBrowserWindow(this);
         var mainAppWindow = this.AppWindow;
@@ -1359,7 +1379,9 @@ public sealed partial class MainWindow : Window
 
         packBrowserWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true);
+            _childWindows.Remove(packBrowserWindow);
+
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
             if (TunerVariables.SelectedPacks.Count > 0)
             {
@@ -1445,7 +1467,6 @@ public sealed partial class MainWindow : Window
 
 
 
-
     private void TargetPreviewToggle_Checked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = true;
@@ -1476,9 +1497,9 @@ public sealed partial class MainWindow : Window
     private void ApplyTargetPreviewBevelColors(ElementTheme theme)
     {
         LeftEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(
-            ThemeService.GetBevelColor(theme, BevelEdge.Left, accented: IsTargetingPreview, isEnabled: TargetPreviewToggle.IsEnabled));
+            ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Left, accented: IsTargetingPreview, isEnabled: TargetPreviewToggle.IsEnabled));
         RightEdgeOfTargetPreviewButton.BorderBrush = new SolidColorBrush(
-            ThemeService.GetBevelColor(theme, BevelEdge.Right, accented: IsTargetingPreview, isEnabled: TargetPreviewToggle.IsEnabled));
+            ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Right, accented: IsTargetingPreview, isEnabled: TargetPreviewToggle.IsEnabled));
     }
 
 
@@ -1530,7 +1551,7 @@ public sealed partial class MainWindow : Window
         {
             if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
             {
-                ToggleControls(this, false);
+                WindowControlsManager.ToggleControls(this, false);
                 _progressManager.ShowProgress();
                 _ = BlinkingLamp(true);
 
@@ -1540,7 +1561,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ToggleControls(this, true);
+            WindowControlsManager.ToggleControls(this, true);
         }
         // ----- HARD RESET 
 
@@ -1702,6 +1723,14 @@ public sealed partial class MainWindow : Window
 
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
+        string[] ToDisable =
+        [
+         "LaunchMinecraftButton", "TargetPreviewToggle",
+         "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
+         "TuneSelectionButton", "ExportButton", "DeleteButton",
+         "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+        ];
+
         // Build the full list of pack locations to delete:
         // the three Vanilla RTX packs (if enabled) plus every custom selected pack.
         var toDelete = new List<(string location, string displayName)>();
@@ -1739,7 +1768,7 @@ public sealed partial class MainWindow : Window
         if (result != ContentDialogResult.Primary) return;
 
         _progressManager.ShowProgress();
-        ToggleControls(this, false);
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
         int deletedCount = 0;
 
@@ -1783,7 +1812,8 @@ public sealed partial class MainWindow : Window
                 Log("No packs were deleted.", LogLevel.Warning);
 
             _progressManager.HideProgress();
-            ToggleControls(this, true);
+
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
             _ = LocatePacksTask(); // Controls get enabled, their state was captured before deletion, so we re-locate AFTER they're restored, so it properly disables packs that aren't there anymore
             SelectedPacks.Clear();
@@ -1792,8 +1822,16 @@ public sealed partial class MainWindow : Window
     }
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
+        string[] ToDisable =
+        [
+            "LaunchMinecraftButton", "TargetPreviewToggle",
+    "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
+    "TuneSelectionButton", "DeleteButton", "ExportButton",
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+        ];
+
         _progressManager.ShowProgress();
-        ToggleControls(this, false);
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
         int exportedCount = 0;
 
@@ -1876,11 +1914,20 @@ public sealed partial class MainWindow : Window
                 Log("All exports failed.", LogLevel.Warning);
 
             _progressManager.HideProgress();
-            ToggleControls(this, true);
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
         }
     }
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
+        // TuneSelectionButton_Click
+        string[] ToDisable =
+        [
+            "LaunchMinecraftButton", "TargetPreviewToggle",
+    "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
+    "ExportButton", "DeleteButton", "TuneSelectionButton",
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+        ];
+
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
 
@@ -1906,7 +1953,7 @@ public sealed partial class MainWindow : Window
             {
                 _progressManager.ShowProgress();
                 _ = BlinkingLamp(true);
-                ToggleControls(this, false);
+                WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
                 var tuningMessage = await Task.Run(Tuner.TuneSelectedPacks);
                 Log(tuningMessage, LogLevel.Success);
@@ -1919,7 +1966,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _ = BlinkingLamp(false);
-            ToggleControls(this, true);
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
             _progressManager.HideProgress();
         }
     }
@@ -1928,75 +1975,59 @@ public sealed partial class MainWindow : Window
 
     private async void LaunchPackUpdateButton_Click(object sender, RoutedEventArgs e)
     {
+        string[] ToDisable =
+        [
+            "LaunchMinecraftButton", "TargetPreviewToggle",
+    "LaunchAlchitexButton", "BrowsePacksButton",
+    "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchPackUpdateButton",
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+        ];
+
         // The UI display text relies on this, rerun it just in case, few ms overhead worth it
-        try
+        await LocatePacksTask();
+
+        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
         {
-            await LocatePacksTask();
+            Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
-        finally
+
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+
+        var packUpdaterWindow = new PackUpdate.PackUpdateWindow(this);
+        var mainAppWindow = this.AppWindow;
+
+        packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+            mainAppWindow.Size.Width,
+            mainAppWindow.Size.Height));
+        packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
+
+        // Do on window closure
+        packUpdaterWindow.Closed += (s, args) =>
         {
-            if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+            _childWindows.Remove(packUpdaterWindow);
+
+            // Enable main UI buttons again
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+
+            // Set reinstall latest packs button visuals based on cache status
+            if (_updater.HasDeployableCache())
             {
-                Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+                UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
             }
-
-            ToggleControls(this, false);
-
-            var packUpdaterWindow = new PackUpdate.PackUpdateWindow(this);
-            var mainAppWindow = this.AppWindow;
-
-            packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-                mainAppWindow.Size.Width,
-                mainAppWindow.Size.Height));
-            packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
-
-            // Do on window closure
-            packUpdaterWindow.Closed += (s, args) =>
+            else
             {
-                // Enable main UI buttons again
-                ToggleControls(this, true);
+                UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
+            }
+            _ = LocatePacksTask(true); // Trigger an auto pack location check after, only time we log statuses for user to see what's installed
+        };
 
-                // Set reinstall latest packs button visuals based on cache status
-                if (_updater.HasDeployableCache())
-                {
-                    UpdateVanillaRTXGlyph.Glyph = "\uE8F7";
-                }
-                else
-                {
-                    UpdateVanillaRTXGlyph.Glyph = "\uEBD3";
-                }
-                _ = LocatePacksTask(true); // Trigger an automatic pack location check after update (fail or not) -- only time we log statuses
-            };
-
-            packUpdaterWindow.Activate();
-        }
-    }
-    private async void LaunchMinecraftButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (Helpers.IsMinecraftRunning())
-        {
-            Log("Minecraft already seems to be open. Please restart the game for options.txt changes to take effect.", LogLevel.Warning);
-        }
-
-        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        var isShiftHeld = shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-
-        try
-        {
-            var logs = isShiftHeld
-                ? await MinecraftLauncher.LaunchMinecraftStandardAsync(IsTargetingPreview)
-                : await MinecraftLauncher.LaunchMinecraftRTXAsync(IsTargetingPreview);
-
-            Log(logs, LogLevel.Informational);
-        }
-        finally
-        {
-            _ = BlinkingLamp(true, true, 0.0);
-        }
+        packUpdaterWindow.Activate();
     }
     private void LaunchBetterRTXManagerButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false);
+        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton"];
+
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
         var betterRTXWindow = new BetterRTXManager.BetterRTXManagerWindow(this);
 
@@ -2008,7 +2039,9 @@ public sealed partial class MainWindow : Window
 
         betterRTXWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true);
+            _childWindows.Remove(betterRTXWindow);
+
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
             // Log status after window closes
             if (betterRTXWindow.OperationSuccessful)
@@ -2031,29 +2064,33 @@ public sealed partial class MainWindow : Window
     }
     private void LaunchDLSSSwapperButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false);
+        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton"];
 
-        var DLSSSwapper = new DLSSBrowser.DLSSSwapperWindow(this);
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+
+        var DLSSSwapperWindow = new DLSSBrowser.DLSSSwapperWindow(this);
         var mainAppWindow = this.AppWindow;
 
-        DLSSSwapper.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+        DLSSSwapperWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
             mainAppWindow.Size.Width,
             mainAppWindow.Size.Height));
-        DLSSSwapper.AppWindow.Move(mainAppWindow.Position);
+        DLSSSwapperWindow.AppWindow.Move(mainAppWindow.Position);
 
-        DLSSSwapper.Closed += (s, args) =>
+        DLSSSwapperWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true);
+            _childWindows.Remove(DLSSSwapperWindow);
+
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
             // Log status after window closes
-            if (DLSSSwapper.OperationSuccessful)
+            if (DLSSSwapperWindow.OperationSuccessful)
             {
-                Log(DLSSSwapper.StatusMessage, LogLevel.Success);
+                Log(DLSSSwapperWindow.StatusMessage, LogLevel.Success);
                 _ = BlinkingLamp(true, true, 1.0);
             }
-            else if (!string.IsNullOrEmpty(DLSSSwapper.StatusMessage))
+            else if (!string.IsNullOrEmpty(DLSSSwapperWindow.StatusMessage))
             {
-                Log(DLSSSwapper.StatusMessage, LogLevel.Error);
+                Log(DLSSSwapperWindow.StatusMessage, LogLevel.Error);
                 _ = BlinkingLamp(true, true, 0.0);
             }
             else
@@ -2062,32 +2099,36 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        DLSSSwapper.Activate();
+        DLSSSwapperWindow.Activate();
     }
     private void LaunchLUTManagerButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false);
+        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton"];
 
-        var rtxWindow = new LUTManager.LUTManagerWindow(this);
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+
+        var LutManagerWindow = new LUTManager.LUTManagerWindow(this);
         var mainAppWindow = this.AppWindow;
 
-        rtxWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
+        LutManagerWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
             mainAppWindow.Size.Width,
             mainAppWindow.Size.Height));
-        rtxWindow.AppWindow.Move(mainAppWindow.Position);
+        LutManagerWindow.AppWindow.Move(mainAppWindow.Position);
 
-        rtxWindow.Closed += (s, args) =>
+        LutManagerWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true);
+            _childWindows.Remove(LutManagerWindow);
 
-            if (rtxWindow.OperationSuccessful)
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+
+            if (LutManagerWindow.OperationSuccessful)
             {
-                Log(rtxWindow.StatusMessage, LogLevel.Success);
+                Log(LutManagerWindow.StatusMessage, LogLevel.Success);
                 _ = BlinkingLamp(true, true, 1.0);
             }
-            else if (!string.IsNullOrEmpty(rtxWindow.StatusMessage))
+            else if (!string.IsNullOrEmpty(LutManagerWindow.StatusMessage))
             {
-                Log(rtxWindow.StatusMessage, LogLevel.Error);
+                Log(LutManagerWindow.StatusMessage, LogLevel.Error);
                 _ = BlinkingLamp(true, true, 0.0);
             }
             else
@@ -2096,11 +2137,18 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        rtxWindow.Activate();
+        LutManagerWindow.Activate();
     }
     private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
     {
-        ToggleControls(this, false);
+        string[] ToDisable =
+        [
+            "LaunchMinecraftButton", "TargetPreviewToggle",
+    "LaunchPackUpdateButton", "BrowsePacksButton",
+    "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
+        ];
+
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
         var alchitexWindow = new Modules.Alchitex.Alchitex(this);
         var mainAppWindow = this.AppWindow;
         alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2109,9 +2157,35 @@ public sealed partial class MainWindow : Window
         alchitexWindow.AppWindow.Move(mainAppWindow.Position);
         alchitexWindow.Closed += (s, args) =>
         {
-            ToggleControls(this, true);
+            _childWindows.Remove(alchitexWindow);
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
         };
         alchitexWindow.Activate();
+    }
+
+
+    private async void LaunchMinecraftButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Helpers.IsMinecraftRunning())
+        {
+            Log("Minecraft already seems to be open. Please restart the game for options.txt changes to take effect.", LogLevel.Warning);
+        }
+
+        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
+        var isShiftHeld = shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+        try
+        {
+            var logs = isShiftHeld
+                ? await MinecraftLauncher.LaunchMinecraftStandardAsync(IsTargetingPreview)
+                : await MinecraftLauncher.LaunchMinecraftRTXAsync(IsTargetingPreview);
+
+            Log(logs, LogLevel.Informational);
+        }
+        finally
+        {
+            _ = BlinkingLamp(true, true, 0.0);
+        }
     }
 
 
