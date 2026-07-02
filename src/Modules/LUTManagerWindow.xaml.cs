@@ -88,36 +88,6 @@ public sealed partial class LUTManagerWindow : Window
         this.Closed += LUTManagerWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
-        ApplyInstallButtonBevel(_isPresetInstalled);
-    }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void LUTManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-
-    private void Cleanup()
-    {
-        if (_isClosing) return;
-        _isClosing = true;
-
-        _scanCancellationTokenSource?.Cancel();
-        _scanCancellationTokenSource?.Dispose();
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= LUTManagerWindow_Closed;
-    }
-
     private async void LUTManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
@@ -148,6 +118,40 @@ public sealed partial class LUTManagerWindow : Window
         });
     }
 
+    private void LUTManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+    private void MainWindow_Closed(object sender, WindowEventArgs e)
+    {
+        Cleanup();
+        this.Close();
+    }
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        _scanCancellationTokenSource?.Cancel();
+        _scanCancellationTokenSource?.Dispose();
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= LUTManagerWindow_Closed;
+    }
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+        ApplyInstallButtonBevel(_isPresetInstalled);
+    }
+    private void PopulateLutAnnouncements()
+    {
+        LutAnnouncementsPanel.Children.Clear();
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.LutManagerAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            LutAnnouncementsPanel.Children.Add(new PsaCard(item));
+    }
     // -------------------------------------------------------------------------
     // Initialization
     // -------------------------------------------------------------------------
@@ -765,13 +769,4 @@ public sealed partial class LUTManagerWindow : Window
     // -------------------------------------------------------------------------
     // PSA
     // -------------------------------------------------------------------------
-
-    private void PopulateLutAnnouncements()
-    {
-        LutAnnouncementsPanel.Children.Clear();
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.LutManagerAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            LutAnnouncementsPanel.Children.Add(new PsaCard(item));
-    }
 }

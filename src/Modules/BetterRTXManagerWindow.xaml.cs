@@ -155,14 +155,76 @@ public sealed partial class BetterRTXManagerWindow : Window
         this.Closed += BetterRTXManagerWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
+    private async void BetterRTXManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
 
+        this.Activated -= BetterRTXManagerWindow_Activated;
+
+        SetTitleBar(TitleBarArea);
+
+        if (Persistent.IsTargetingPreview)
+        {
+            StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
+            this.Close();
+            return;
+        }
+
+        WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
+
+        ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
+            "Once you're inside the folder called: " +
+            (Persistent.IsTargetingPreview
+                ? MinecraftGDKLocator.MinecraftPreviewFolderName
+                : MinecraftGDKLocator.MinecraftFolderName) +
+                $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
+
+        await InitializeAsync();
+
+        _ = this.DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Delay(75);
+            try { this.Activate(); } catch { }
+        });
+
+        InitializeRefreshButton();
+    }
+
+    private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+    private void MainWindow_Closed(object sender, WindowEventArgs e)
+    {
+        Cleanup();
+        this.Close();
+    }
+
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        _scanCancellationTokenSource?.Cancel();
+        _scanCancellationTokenSource?.Dispose();
+
+        _downloadQueue.Clear();
+        lock (_downloadStatusLock) { _downloadStatuses.Clear(); }
+
+        _betterRtxHttpClient?.Dispose();
+
+        _cooldownTimer?.Stop();
+        _cooldownTimer = null;
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= BetterRTXManagerWindow_Closed;
+    }
     private void ApplyTheme(ElementTheme theme)
     {
         if (this.Content is FrameworkElement root)
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
-
     private void PopulateBetterRTXAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.BetterRTXAnnouncements);
@@ -170,7 +232,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         foreach (var item in items)
             BetterRTXAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
-
     private async Task<bool> ShowDisclaimerDialogAsync()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -267,71 +328,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         return tcs.Task.Result;
     }
 
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-
-    private void Cleanup()
-    {
-        if (_isClosing) return;
-        _isClosing = true;
-
-        _scanCancellationTokenSource?.Cancel();
-        _scanCancellationTokenSource?.Dispose();
-
-        _downloadQueue.Clear();
-        lock (_downloadStatusLock) { _downloadStatuses.Clear(); }
-
-        _betterRtxHttpClient?.Dispose();
-
-        _cooldownTimer?.Stop();
-        _cooldownTimer = null;
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= BetterRTXManagerWindow_Closed;
-    }
-
-    private async void BetterRTXManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
-    {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
-
-        this.Activated -= BetterRTXManagerWindow_Activated;
-
-        SetTitleBar(TitleBarArea);
-
-        if (Persistent.IsTargetingPreview)
-        {
-            StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
-            this.Close();
-            return;
-        }
-
-        WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
-
-        ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
-            "Once you're inside the folder called: " +
-            (Persistent.IsTargetingPreview
-                ? MinecraftGDKLocator.MinecraftPreviewFolderName
-                : MinecraftGDKLocator.MinecraftFolderName) +
-                $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
-
-        await InitializeAsync();
-
-        _ = this.DispatcherQueue.TryEnqueue(async () =>
-        {
-            await Task.Delay(75);
-            try { this.Activate(); } catch { }
-        });
-
-        InitializeRefreshButton();
-    }
-
+    // ======================= Initialization =======================
     private async Task InitializeAsync()
     {
         try

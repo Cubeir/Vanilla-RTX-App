@@ -67,21 +67,31 @@ public sealed partial class PackUpdateWindow : Window
         this.Closed += PackUpdateWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    private void ApplyTheme(ElementTheme theme)
+    private async void PackUpdateWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        await Task.Delay(25);
+
+        this.Activated -= PackUpdateWindow_Activated;
+
+        SetTitleBar(TitleBarArea);
+
+        var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+        WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
+
+        await InitializePackInformation();
+        SetupButtonHandlers();
+
+        // Check if installation is in progress and update UI accordingly
+        CheckAndHandleOngoingInstallation();
     }
 
+    private void PackUpdateWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
         Cleanup();
         this.Close();
     }
-
-    private void PackUpdateWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
 
     private void Cleanup()
     {
@@ -94,7 +104,14 @@ public sealed partial class PackUpdateWindow : Window
         _mainWindow.Closed -= MainWindow_Closed;
         this.Closed -= PackUpdateWindow_Closed;
     }
-    // PSA updates
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+
+    // ---
     private void PopulatePackUpdateAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.PackUpdateAnnouncements);
@@ -161,24 +178,6 @@ public sealed partial class PackUpdateWindow : Window
         storyboard.Begin();
     }
 
-    private async void PackUpdateWindow_Activated(object sender, WindowActivatedEventArgs args)
-    {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
-
-        this.Activated -= PackUpdateWindow_Activated;
-
-        SetTitleBar(TitleBarArea);
-
-        var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-        WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
-
-        await InitializePackInformation();
-        SetupButtonHandlers();
-
-        // Check if installation is in progress and update UI accordingly
-        CheckAndHandleOngoingInstallation();
-    }
 
     // ======================= Initialization =======================
 

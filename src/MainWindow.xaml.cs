@@ -566,7 +566,7 @@ public sealed partial class MainWindow : Window
         {
             for (int i = psa.Length - 1; i >= 0; i--)
             {
-                await Task.Delay(250);
+                await Task.Delay(200);
                 Log(psa[i].Text);
             }
         }

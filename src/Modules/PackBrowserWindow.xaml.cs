@@ -35,7 +35,7 @@ public sealed partial class PackBrowserWindow : Window
     public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview
         ? "Minecraft Preview" : "Minecraft";
 
-    private const string AlchitexCandidateTag = "RTX Reactor Candidate";
+    private const string AlchitexCandidateTag = "Potential Reactor Candidate";
     private const bool AlchitexLegacyPacksEligible = false;
 
     private static readonly Regex MinecraftFormattingCodeRegex = new(@"§\S", RegexOptions.Compiled);
@@ -73,34 +73,6 @@ public sealed partial class PackBrowserWindow : Window
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
         ExpImpDel.ConfirmNonResourceImport = ShowNonResourceDialogAsync;
     }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
-    }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void PackBrowserWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-
-    private void Cleanup()
-    {
-        if (_isClosing) return;
-        _isClosing = true;
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= PackBrowserWindow_Closed;
-
-        ExpImpDel.ImportStatusChanged -= OnImportStatusChanged;
-    }
-
     private async void PackBrowserWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
@@ -132,6 +104,32 @@ public sealed partial class PackBrowserWindow : Window
         });
     }
 
+    private void PackBrowserWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+    private void MainWindow_Closed(object sender, WindowEventArgs e)
+    {
+        Cleanup();
+        this.Close();
+    }
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= PackBrowserWindow_Closed;
+
+        ExpImpDel.ImportStatusChanged -= OnImportStatusChanged;
+    }
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+
+    // ---
     private void PopulatePackBrowserAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);

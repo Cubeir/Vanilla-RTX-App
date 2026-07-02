@@ -65,43 +65,6 @@ public sealed partial class DLSSSwapperWindow : Window
         this.Closed += DLSSSwapperWindow_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
-    }
-
-    private void PopulateDLSSAnnouncements()
-    {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.DLSSAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            DLSSAnnouncementsPanel.Children.Add(new PsaCard(item));
-    }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
-
-    private void Cleanup()
-    {
-        if (_isClosing) return;
-        _isClosing = true;
-
-        _scanCancellationTokenSource?.Cancel();
-        _scanCancellationTokenSource?.Dispose();
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= DLSSSwapperWindow_Closed;
-    }
-
     private async void DLSSSwapperWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
@@ -130,6 +93,39 @@ public sealed partial class DLSSSwapperWindow : Window
         });
     }
 
+    private void MainWindow_Closed(object sender, WindowEventArgs e)
+    {
+        Cleanup();
+        this.Close();
+    }
+    private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e) => Cleanup();
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        _scanCancellationTokenSource?.Cancel();
+        _scanCancellationTokenSource?.Dispose();
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= DLSSSwapperWindow_Closed;
+    }
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+    private void PopulateDLSSAnnouncements()
+    {
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.DLSSAnnouncements);
+        if (items is null) return;
+        foreach (var item in items)
+            DLSSAnnouncementsPanel.Children.Add(new PsaCard(item));
+    }
+    // ======================= Initialization =======================
     private async Task InitializeAsync()
     {
         try

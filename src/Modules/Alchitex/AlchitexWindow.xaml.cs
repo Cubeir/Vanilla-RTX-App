@@ -94,31 +94,6 @@ public sealed partial class Alchitex : Window
         this.Closed += Alchitex_Closed;
         _mainWindow.Closed += MainWindow_Closed;
     }
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
-    }
-
-    private void MainWindow_Closed(object sender, WindowEventArgs e)
-    {
-        Cleanup();
-        this.Close();
-    }
-
-    private void Alchitex_Closed(object sender, WindowEventArgs e) => Cleanup();
-
-    private void Cleanup()
-    {
-        if (_isClosing) return;
-        _isClosing = true;
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        _mainWindow.Closed -= MainWindow_Closed;
-        this.Closed -= Alchitex_Closed;
-    }
-
     private async void Alchitex_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated) return;
@@ -137,6 +112,28 @@ public sealed partial class Alchitex : Window
         });
     }
 
+    private void Alchitex_Closed(object sender, WindowEventArgs e) => Cleanup();
+    private void MainWindow_Closed(object sender, WindowEventArgs e)
+    {
+        Cleanup();
+        this.Close();
+    }
+
+    private void Cleanup()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        ThemeService.ThemeChanged -= ApplyTheme;
+        _mainWindow.Closed -= MainWindow_Closed;
+        this.Closed -= Alchitex_Closed;
+    }
+    private void ApplyTheme(ElementTheme theme)
+    {
+        if (this.Content is FrameworkElement root)
+            root.RequestedTheme = theme;
+        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
     private void PopulateAlchitexAnnouncements()
     {
         var items = OnlineTexts.GetFiltered(OnlineTextsContent.AlchitexDevProgressUpdates);
