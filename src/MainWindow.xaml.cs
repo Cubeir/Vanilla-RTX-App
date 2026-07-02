@@ -1562,17 +1562,23 @@ public sealed partial class MainWindow : Window
         {
             if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
             {
-                WindowControlsManager.ToggleControls(this, false);
+                WindowControlsManagerExtensions.DisableAllControls(this);
                 _progressManager.ShowProgress();
                 _ = BlinkingLamp(true);
 
                 _ = WipeAllStorageData();
+
                 return;
             }
         }
         catch (Exception ex)
         {
-            WindowControlsManager.ToggleControls(this, true);
+            Log($"Hard Reset Error: {ex.ToString}", LogLevel.Error);
+            WindowControlsManagerExtensions.RestoreAllControls(this);
+            _ = BlinkingLamp(false);
+            _progressManager.HideProgress();
+
+            return;
         }
         // ----- HARD RESET 
 
