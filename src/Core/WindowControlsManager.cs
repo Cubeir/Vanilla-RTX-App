@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 
 namespace Vanilla_RTX_App.Core;
-
-// TODO: change the color of little green thing next to preview button
-// similar to how you do it in mainwindow with theme changes etc... (that fucky piece of code)
 
 /// <summary>
 /// Universal control toggle utility for WinUI 3 applications
@@ -15,149 +14,138 @@ namespace Vanilla_RTX_App.Core;
 /// </summary>
 public class WindowControlsManager
 {
-    // Global exclusion list - controls with these names are always ignored
     private static readonly HashSet<string> _globalExclusions = new()
-        {
-            "HelpButton",
-            "DonateButton",
-            "ChatButton",
-            "CycleThemeButton",
-            "LampInteractionButton",
-            "SidebarLog",
-            "SidelogProgressBar",
-        };
+    {
+        "HelpButton", "DonateButton", "ChatButton", "CycleThemeButton",
+        "LampInteractionButton", "SidebarLog", "SidelogProgressBar",
+    };
 
-    // Static dictionary to track states for multiple windows
-    private static readonly Dictionary<Window, Dictionary<Control, bool>> _windowStates = new();
+    // Reference-counted lock state, keyed by control INSTANCE (identity-based dictionary —
+    // Control doesn't override Equals/GetHashCode, so this is safe). A control's IsEnabled is
+    // restored only once its lock count returns to zero, so overlapping disable sessions
+    // (multiple feature windows open at once) can no longer stomp on each other.
+    private static readonly Dictionary<Control, int> _lockCounts = new();
+    private static readonly Dictionary<Control, bool> _preLockState = new();
 
     /// <summary>
-    /// Toggles all supported controls within the specified window
+    /// Blanket mode: disable every supported control in the window EXCEPT the named ones
+    /// (plus global exclusions). Use for "lock the whole window down" operations.
     /// </summary>
-    /// <param name="window">The window containing controls to toggle</param>
-    /// <param name="enable">True to restore original states, false to disable all</param>
-    ///<param name="overrideExclusions">True to override the global ones with the manual exclusion list, otherwise they get compounded
-    /// <param name="excludeNames">Optional list of control names to exclude from toggling</param>
     public static void ToggleControls(Window window, bool enable, bool overrideGlobalExclusions = false, params string[] excludeNames)
+    {
+        if (window == null) return;
+        var content = TryGetContent(window);
+        if (content == null) return;
+
+        var exclusions = overrideGlobalExclusions ? new HashSet<string>() : new HashSet<string>(_globalExclusions);
+        if (excludeNames != null)
+            foreach (var name in excludeNames)
+                if (!string.IsNullOrEmpty(name)) exclusions.Add(name);
+
+        Apply(enable, GetAllSupportedControls(content, exclusions));
+    }
+
+    /// <summary>
+    /// Targeted mode: disable/enable ONLY the named controls (global exclusions still apply
+    /// as a safety net). Use for feature windows that should block a specific handful of
+    /// buttons rather than the whole UI.
+    /// </summary>
+    public static void ToggleSpecificControls(Window window, bool enable, params string[] controlNames)
+    {
+        if (window == null || controlNames == null || controlNames.Length == 0) return;
+        var content = TryGetContent(window);
+        if (content == null) return;
+
+        var wanted = new HashSet<string>(controlNames);
+        wanted.ExceptWith(_globalExclusions);
+
+        var controls = GetAllSupportedControls(content, null).Where(c => wanted.Contains(c.Name));
+        Apply(enable, controls);
+    }
+    // Window.Content throws COMException instead of returning null once the native window
+    // has been torn down (e.g. MainWindow closed while a child feature window is still open
+    // and later calls back into it via a captured "this"). Swallow that specific case —
+    // there's nothing left to toggle on a dead window — but let anything else bubble up.
+    private static UIElement? TryGetContent(Window window)
+    {
+        try
+        {
+            return window.Content;
+        }
+        catch (COMException)
+        {
+            return null;
+        }
+    }
+
+
+
+    /// <summary>
+    /// Emergency reset — force-clears every lock on every control in the window regardless of
+    /// count. Not part of normal flow; use only if a window can be torn down without its
+    /// Closed handler running (crash, forced termination, etc).
+    /// </summary>
+    public static void ClearStates(Window window)
     {
         if (window?.Content == null) return;
 
-        EnsureWindowStateExists(window);
-        var states = _windowStates[window];
-
-        HashSet<string> exclusions;
-
-        if (overrideGlobalExclusions)
+        foreach (var control in GetAllSupportedControls(window.Content, null).ToList())
         {
-            // Use only the provided excludeNames, ignore global exclusions
-            exclusions = new HashSet<string>();
-        }
-        else
-        {
-            // Start with global exclusions (default behavior)
-            exclusions = new HashSet<string>(_globalExclusions);
-        }
-
-        // Add any additional exclusions
-        if (excludeNames != null)
-        {
-            foreach (var name in excludeNames)
-            {
-                if (!string.IsNullOrEmpty(name))
-                    exclusions.Add(name);
-            }
-        }
-
-        if (enable)
-        {
-            RestoreControlStates(states);
-        }
-        else
-        {
-            StoreAndDisableControls(window, states, exclusions);
+            if (_lockCounts.Remove(control) && _preLockState.Remove(control, out var original))
+                control.IsEnabled = original;
         }
     }
 
-
-    /// <summary>
-    /// Adds a control name to the global exclusion list
-    /// </summary>
-    /// <param name="controlName">Name of the control to always exclude</param>
-    public static void AddGlobalExclusion(string controlName)
+    private static void Apply(bool enable, IEnumerable<Control> controls)
     {
-        if (!string.IsNullOrEmpty(controlName))
-        {
-            _globalExclusions.Add(controlName);
-        }
+        var list = controls as IList<Control> ?? controls.ToList(); // materialize before mutating
+        if (enable) Release(list); else Acquire(list);
     }
 
-    /// <summary>
-    /// Removes a control name from the global exclusion list
-    /// </summary>
-    /// <param name="controlName">Name of the control to remove from exclusions</param>
-    public static void RemoveGlobalExclusion(string controlName)
+    private static void Acquire(IEnumerable<Control> controls)
     {
-        if (!string.IsNullOrEmpty(controlName))
-        {
-            _globalExclusions.Remove(controlName);
-        }
-    }
-
-    /// <summary>
-    /// Clears all global exclusions
-    /// </summary>
-    public static void ClearGlobalExclusions()
-    {
-        _globalExclusions.Clear();
-    }
-
-    /// <summary>
-    /// Clears stored states for a window (useful for cleanup)
-    /// </summary>
-    /// <param name="window">The window to clear states for</param>
-    public static void ClearStates(Window window)
-    {
-        if (window != null && _windowStates.ContainsKey(window))
-        {
-            _windowStates[window].Clear();
-            _windowStates.Remove(window);
-        }
-    }
-
-    private static void EnsureWindowStateExists(Window window)
-    {
-        if (!_windowStates.ContainsKey(window))
-        {
-            _windowStates[window] = new Dictionary<Control, bool>();
-        }
-    }
-
-    private static void StoreAndDisableControls(Window window, Dictionary<Control, bool> states, HashSet<string> exclusions)
-    {
-        states.Clear();
-        var controls = GetAllSupportedControls(window.Content, exclusions);
-
         foreach (var control in controls)
         {
-            states[control] = control.IsEnabled;
-            control.IsEnabled = false;
+            _lockCounts.TryGetValue(control, out var count);
+            if (count == 0)
+            {
+                _preLockState[control] = control.IsEnabled;
+                control.IsEnabled = false;
+            }
+            _lockCounts[control] = count + 1;
         }
     }
 
-    private static void RestoreControlStates(Dictionary<Control, bool> states)
+    private static void Release(IEnumerable<Control> controls)
     {
-        foreach (var kvp in states)
+        foreach (var control in controls)
         {
-            kvp.Key.IsEnabled = kvp.Value;
+            if (!_lockCounts.TryGetValue(control, out var count) || count <= 0)
+                continue; // never locked / already released — ignore stray release, don't go negative
+
+            count--;
+            if (count == 0)
+            {
+                _lockCounts.Remove(control);
+                if (_preLockState.Remove(control, out var original))
+                    control.IsEnabled = original;
+            }
+            else
+            {
+                _lockCounts[control] = count;
+            }
         }
-        states.Clear();
     }
 
-    private static IEnumerable<Control> GetAllSupportedControls(DependencyObject parent, HashSet<string>? exclusions = null)
+    public static void AddGlobalExclusion(string controlName) { if (!string.IsNullOrEmpty(controlName)) _globalExclusions.Add(controlName); }
+    public static void RemoveGlobalExclusion(string controlName) { if (!string.IsNullOrEmpty(controlName)) _globalExclusions.Remove(controlName); }
+    public static void ClearGlobalExclusions() => _globalExclusions.Clear();
+
+    private static IEnumerable<Control> GetAllSupportedControls(DependencyObject parent, HashSet<string>? exclusions)
     {
         if (parent == null) yield break;
 
         var childCount = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(parent);
-
         for (var i = 0; i < childCount; i++)
         {
             var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(parent, i);
@@ -165,43 +153,20 @@ public class WindowControlsManager
             if (IsSupportedControl(child))
             {
                 var control = (Control)child;
-
-                // Check if this control should be excluded
                 if (exclusions == null || !exclusions.Contains(control.Name))
-                {
                     yield return control;
-                }
             }
 
             foreach (var grandChild in GetAllSupportedControls(child, exclusions))
-            {
                 yield return grandChild;
-            }
         }
     }
 
-    private static bool IsSupportedControl(DependencyObject control)
-    {
-        return control is Button ||
-               control is CheckBox ||
-               control is RadioButton ||
-               control is Slider ||
-               control is TextBox ||
-               control is PasswordBox ||
-               control is ComboBox ||
-               control is ListBox ||
-               control is ListView ||
-               control is ToggleButton ||
-               control is RatingControl ||
-               control is NumberBox ||
-               control is DatePicker ||
-               control is TimePicker ||
-               control is ToggleSwitch ||
-               control is MenuFlyoutItem ||
-               control is AppBarButton ||
-               control is AppBarToggleButton ||
-               control is AutoSuggestBox;
-    }
+    private static bool IsSupportedControl(DependencyObject control) =>
+        control is Button or CheckBox or RadioButton or Slider or TextBox or PasswordBox or ComboBox or
+        ListBox or ListView or Microsoft.UI.Xaml.Controls.Primitives.ToggleButton or RatingControl or
+        NumberBox or DatePicker or TimePicker or ToggleSwitch or MenuFlyoutItem or AppBarButton or
+        AppBarToggleButton or AutoSuggestBox;
 }
 
 // TODO: you forgot you have this?! this would've been so useful to use in other windows wherever you needed to stop user from intracting with the window for a bit
