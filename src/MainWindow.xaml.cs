@@ -447,7 +447,7 @@ public sealed partial class MainWindow : Window
             {
                 _shiftPressed = true;
                 SetShiftText(ResetButton_TextBlock, "Wipe", ResetButton_FontIcon, "\uE7BA");
-                SetShiftText(LaunchButtonText, "Disable Minecraft RTX", LaunchButtonFontIcon, "\uE7A7");
+                SetShiftText(LaunchButtonText, "Launch with VSync Enabled", LaunchButtonFontIcon, "\uE7A7");
                 // Add more as needed...
             }
         };

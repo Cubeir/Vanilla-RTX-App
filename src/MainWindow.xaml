@@ -1291,7 +1291,7 @@
                             CornerRadius="0,0,0,6"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.
-                            &#x0a;&#x0a;FOR ADVANCED USERS: Holding shift while pressing this button disables Minecraft RTX and enables VSync instead.">
+                            &#x0a;&#x0a;FOR ADVANCED USERS: Holding shift while pressing this button enables game's VSync back">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE78B;"

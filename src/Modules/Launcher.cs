@@ -34,7 +34,6 @@ public class MinecraftLauncher
         => LaunchWithOptionsAsync(
             isTargetingPreview,
             launchAfterUpdate: true,
-            ("graphics_mode", 1),       // 1 = Fancy
             ("gfx_vsync", 1)
         );
 
