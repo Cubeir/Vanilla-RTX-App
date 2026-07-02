@@ -467,13 +467,16 @@ public sealed partial class MainWindow : Window
             CycleThemeButton.Opacity = opacity;
         };
         // Things to do after mainwindow is initialized...
-        this.Activated += MainWindow_Activated;
+        if (Content is FrameworkElement root)
+            root.Loaded += MainWindow_Loaded;
     }
 
-    private async void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        // Unsubscribe to avoid running this again, just for safety
-        this.Activated -= MainWindow_Activated;
+        FrameworkElement? root = Content as FrameworkElement;
+
+        if (root != null)
+            root.Loaded -= MainWindow_Loaded;
 
         // Load variables back in from previous session
         LoadSettings();
@@ -485,7 +488,7 @@ public sealed partial class MainWindow : Window
         await Task.Delay(150);
 
         // Watches theme changes and adjusts based on theme
-        if (Content is FrameworkElement root)
+        if (root != null)
         {
             ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
             ApplyTargetPreviewBevelColors(root.ActualTheme);
