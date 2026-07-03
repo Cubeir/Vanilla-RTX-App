@@ -824,8 +824,8 @@
                                        Margin="0,0,13.5,0"
                                        Visibility="Collapsed"
                                        IsTextScaleFactorEnabled="False"
-                                       ToolTipService.ToolTip="This option is intended for RTX resource packs only, do not enable for Vibrant Visuals resource packs.
-                                       &#x0a;Furthermore, If this option is enabled while tuning a resource pack, future tuning attempts on that pack will skip applying the Emissivity Multiplier slider to keep the pack from breaking." />
+                                       ToolTipService.ToolTip="Enabling this option while tuning a resource pack will cause future tuning attempts to skip applying the Emissivity Multiplier slider to that pack, this intentional guardrail keeps PBR from appearing broken.
+                                       &#x0a;Furthermore, this option is intended for RTX resource packs only, do not enable for Vibrant Visuals resource packs. Use this option sparingly or as the last step in tuning a resource pack to your taste." />
                         </Grid>
                     </StackPanel>
 
