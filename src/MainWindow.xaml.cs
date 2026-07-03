@@ -42,8 +42,7 @@ namespace Vanilla_RTX_App;
 // and allowing anything to launch that, think around it and about it
 // also ties into the idea of telling user to finish their job and come back to mainwindow/ explain why certain buttons are disabled
 // in case they forget they got windows open elsewhere... good QoL
-
-// Further adjust which controls do and don't getdisabled and audit the usage of both primary WindowControlManager methods throughout
+// warn don't close windows mid-op, the app should be able to recover, but don't do it
 
 // call the block that follows         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview)) in more places
 // any feature that relies directly on user data locations, it must redirect to that if not valid // should probably update OTHER control names based on validity of
@@ -51,9 +50,6 @@ namespace Vanilla_RTX_App;
 
 // potentially update other windows to rely on Loaded event instead of activated as well... or don't, there may be more considerations to it
 // e..g WHEN it actually fires and how long it takes, etc..
-
-// as for testing all windows most of them are FINE to be honest, even if killed mid op
-// some are more critical, like updater, you can test extensively and adjust as needed, dw though, the code's robust/overengineered already
 
 // Gotta add more guards // some features must not be launching or at least should be more clear about it
 //when they dont have user data access, for example, the apck updater, which proceeds as usual, then fails half way and returns an error
@@ -447,7 +443,7 @@ public sealed partial class MainWindow : Window
             {
                 _shiftPressed = true;
                 SetShiftText(ResetButton_TextBlock, "Wipe", ResetButton_FontIcon, "\uE7BA");
-                SetShiftText(LaunchButtonText, "Launch with VSync Enabled", LaunchButtonFontIcon, "\uE7A7");
+                SetShiftText(LaunchButtonText, "Launch Minecraft RTX (w/ VSync)", LaunchButtonFontIcon, "\uEC74");
                 // Add more as needed...
             }
         };
@@ -1363,7 +1359,7 @@ public sealed partial class MainWindow : Window
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
              "LaunchAlchitexButton", "LaunchPackUpdateButton",
-              "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton"
+              "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton", "ClearButton", "ResetButton"
         ];
         // If user data isn't valid for the current edition, repurpose this click
         // to let the user locate the data folder manually instead.
@@ -1745,7 +1741,7 @@ public sealed partial class MainWindow : Window
          "LaunchMinecraftButton", "TargetPreviewToggle",
          "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
          "TuneSelectionButton", "ExportButton", "DeleteButton",
-         "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+         "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton"
         ];
 
         // Build the full list of pack locations to delete:
@@ -1844,7 +1840,7 @@ public sealed partial class MainWindow : Window
             "LaunchMinecraftButton", "TargetPreviewToggle",
     "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
     "TuneSelectionButton", "DeleteButton", "ExportButton",
-             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton"
         ];
 
         _progressManager.ShowProgress();
@@ -1942,7 +1938,7 @@ public sealed partial class MainWindow : Window
             "LaunchMinecraftButton", "TargetPreviewToggle",
     "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
     "ExportButton", "DeleteButton", "TuneSelectionButton",
-             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton"
         ];
 
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -1997,7 +1993,7 @@ public sealed partial class MainWindow : Window
             "LaunchMinecraftButton", "TargetPreviewToggle",
     "LaunchAlchitexButton", "BrowsePacksButton",
     "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchPackUpdateButton",
-             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox"
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox","ClearButton", "ResetButton"
         ];
 
         // The UI display text relies on this, rerun it just in case, few ms overhead worth it
@@ -2043,7 +2039,7 @@ public sealed partial class MainWindow : Window
     }
     private void LaunchBetterRTXManagerButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton"];
+        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton", "ResetButton"];
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
@@ -2083,7 +2079,7 @@ public sealed partial class MainWindow : Window
     }
     private void LaunchDLSSSwapperButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton"];
+        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton", "ResetButton"];
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
@@ -2123,7 +2119,7 @@ public sealed partial class MainWindow : Window
     }
     private void LaunchLUTManagerButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton"];
+        string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton", "ResetButton"];
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
@@ -2164,8 +2160,8 @@ public sealed partial class MainWindow : Window
     {
         if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
         {
+            Log("RTX Reactor generates proper RTX support only for non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
             Log("You must select at least one resource pack tagged as a 'Potential Candidate' to be use this feature.", LogLevel.Warning);
-            Log("RTX Reactor will generate PBR textures and proper RTX support only for certain non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
             return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
             // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
             // have a higher chance of breaking, not working, or not seeing any benefit from this feature.
@@ -2175,9 +2171,8 @@ public sealed partial class MainWindow : Window
 
         string[] ToDisable =
         [
-            "LaunchMinecraftButton", "TargetPreviewToggle",
-        "LaunchPackUpdateButton", "BrowsePacksButton",
-        "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
+         "LaunchMinecraftButton", "TargetPreviewToggle",
+        "BrowsePacksButton", "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
         ];
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
@@ -2415,6 +2410,23 @@ Test thoroughly, ensure no latent trimming bugs, on a fresh release build
 TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1
+
+- Make shift-clicking the LOCATE PACKS button or something allow user to manually select another path
+To be honest:
+this is a fucking mess
+you should've had a settings panel
+inside it, left the options to configure what the launch button does exactly
+configure user data and game data paths manually
+configure theme
+etc..
+could collapse all of the titlebar buttons into a gear that opens it instead
+that's pretty cool now isn't it?
+clean, clear, instead of trying to get the user to do the right thing via logs
+leave a place they can instinctively go to and configure everyting IF needed, totally optional
+you're still taking the extreme measures needed to keep as many users away from having to touch settings as possible
+but that's just better, think about it
+
+its not too late
 
 - Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
