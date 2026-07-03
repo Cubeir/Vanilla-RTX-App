@@ -33,28 +33,6 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-// and do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
-// make it secondary to the primary manner of its workings, y'know? be clever with the design
-
-// Add a simple service to randomly log useful facts
-// or don't, just do the thing, about reusing manual user data selection on buttons that need it
-// potentially disabling or enabling buttons at startup depending on state of cache and later down the methods
-// and allowing anything to launch that, think around it and about it
-// also ties into the idea of telling user to finish their job and come back to mainwindow/ explain why certain buttons are disabled
-// in case they forget they got windows open elsewhere... good QoL
-// warn don't close windows mid-op, the app should be able to recover, but don't do it
-
-// call the block that follows         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview)) in more places
-// any feature that relies directly on user data locations, it must redirect to that if not valid // should probably update OTHER control names based on validity of
-// this as well
-
-// potentially update other windows to rely on Loaded event instead of activated as well... or don't, there may be more considerations to it
-// e..g WHEN it actually fires and how long it takes, etc..
-
-// Gotta add more guards // some features must not be launching or at least should be more clear about it
-//when they dont have user data access, for example, the apck updater, which proceeds as usual, then fails half way and returns an error
-// could add checks earlier, disabling related buttons sounds like the best option
-// you could also just return button calls early, and tell user wtf u doing? select user data or something, this is better UX than stonewalling
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
@@ -252,10 +230,10 @@ public sealed partial class MainWindow : Window
         var occasion = GetSpecialOccasionName();
         var (prefix, count) = occasion switch
         {
-            "birthday" => ("vrtx.birthday", 3),
-            "pumpkin" => ("vrtx.pumpkin", 3),
+            "birthday"  => ("vrtx.birthday", 3),
+            "pumpkin"   => ("vrtx.pumpkin", 3),
             "christmas" => ("vrtx.christmas", 5),
-            _ => ("vrtx.app", 32)
+            _           => ("vrtx.app", 32)
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
@@ -538,14 +516,6 @@ public sealed partial class MainWindow : Window
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
 
-        // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
-        if (!IsTargetingPreview)
-            _ = LocatePacksTask();
-        else
-        {
-            LaunchBetterRTXManagerButton.IsEnabled = false;
-        }
-
         // Previewer
         InitializePreviewerImages();
 
@@ -557,10 +527,10 @@ public sealed partial class MainWindow : Window
         var occasion = GetSpecialOccasionName();
         var (prefix, count) = occasion switch
         {
-            "birthday" => ("vrtx.birthday", 3),
-            "pumpkin" => ("vrtx.pumpkin", 3),
-            "christmas" => ("vrtx.christmas", 5),
-            _ => ("vrtx.app", 32)
+            "birthday"    => ("vrtx.birthday", 3),
+            "pumpkin"     => ("vrtx.pumpkin", 3),
+            "christmas"   => ("vrtx.christmas", 5),
+            _             => ("vrtx.app", 32)
         };
         int rng = Random.Shared.Next(1, count + 1);
         Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
@@ -598,6 +568,14 @@ public sealed partial class MainWindow : Window
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         // Updates the button responsible for allowing the user to select another user data path.
         UpdateUserDataDependentUI(IsTargetingPreview);
+
+        // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
+        if (!IsTargetingPreview)
+            _ = LocatePacksTask();
+        else
+        {
+            LaunchBetterRTXManagerButton.IsEnabled = false;
+        }
 
         // ============= End
         async Task FadeOutSplashScreen()
@@ -849,23 +827,13 @@ public sealed partial class MainWindow : Window
 #endif
     }
 
-    public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.075)
+    public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.05)
     {
-        if (_titlebarLampAnimator == null)
-        {
-            Trace.WriteLine("[MainWindow] BlinkingLamp called before animators were initialized");
-            return;
-        }
-        await _titlebarLampAnimator.Animate(enable, singleFlash, singleFlashOnChance, rotate: GetSpecialOccasionName() != null, rapidFlashChance: rapidFlashChance);
+        await _titlebarLampAnimator!.Animate(enable, singleFlash, singleFlashOnChance, rotate: GetSpecialOccasionName() != null, rapidFlashChance: rapidFlashChance);
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
-        if (_splashLampAnimator == null)
-        {
-            Trace.WriteLine("[MainWindow] AnimateSplash called before animators were initialized");
-            return;
-        }
-        await _splashLampAnimator.Animate(false, true, 0.9, duration: splashDurationMs, rotate: GetSpecialOccasionName() != null, rapidFlashChance: 0.01);
+        await _splashLampAnimator!.Animate(false, true, 0.9, duration: splashDurationMs, rotate: GetSpecialOccasionName() != null, rapidFlashChance: 0.01);
     }
 
 
@@ -1120,7 +1088,7 @@ public sealed partial class MainWindow : Window
                     }
                 }
             }
-            _ = BlinkingLamp(true, true, 1.0, 0.15);
+            _ = BlinkingLamp(true, true, 1.0, 0.1);
         }
 
         void CollectUIControlsState(StringBuilder sb)
@@ -2348,25 +2316,14 @@ public sealed partial class MainWindow : Window
 
 
 /* ### BACKLOG // TODO ###
- * 
-- Fix startup flash, keep playing around with the sequence, you had it fixed, then ruined it again somehow
-// commenting out bits also helps tracking down what causes it
-improvements were made last night
-but its not enough
-Keep Perfecting it
-what makese sense to be where. that's the question
-its prolly that the window gets activated while mainwidnow() stuffare already running
-also, that themewatcher is a wretch! could be that too
-
-- READ ALL MS Store COMMENTS
-there are a lot of useful issue reports in Microsoft Store comments, READ ALL OF THEM.
-Like that crash one, you wouldn't have become aware was it not for that comment
 
 - Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
 
 - Test unhandled exception log catcher thingy, especially with startup and close crashes
 on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
 Do artifical throws in random placess
+
+- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
@@ -2376,6 +2333,12 @@ must probably focus userdata locator more on concerning itself with validating a
 and have features construct the rest htemselves
 buts its nice focusing even that in one place.
 think about it
+
+// call this block:
+if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
+in more places
+any feature that relies directly on user data locations, it must redirect to that if not valid
+should probably update OTHER control names based on validity of this as well
 
 - Stress test GDKLocator again
 
@@ -2412,37 +2375,56 @@ TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1
 
-- Make shift-clicking the LOCATE PACKS button or something allow user to manually select another path
-To be honest:
-this is a fucking mess
-you should've had a settings panel
-inside it, left the options to configure what the launch button does exactly
-configure user data and game data paths manually
-configure theme
-etc..
-could collapse all of the titlebar buttons into a gear that opens it instead
-that's pretty cool now isn't it?
-clean, clear, instead of trying to get the user to do the right thing via logs
-leave a place they can instinctively go to and configure everyting IF needed, totally optional
-you're still taking the extreme measures needed to keep as many users away from having to touch settings as possible
-but that's just better, think about it
+- FUCK IT, add the ability to TOTALLY DISABLE entire features on startup
+PARTICULARY BETTERRTX
+Not all features need this, so a full system may not be needed, in-app announcements could serve as the host, online texts could
+be used as the parser
+DISABEL the button when betterrtx is broken, manually enable it again when not.
 
-its not too late
+- do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
+Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
+publicly maintained apis to do this too.
+WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
+- IDEA: Add a simple service to randomly log useful facts
+or don't, just do the thing, about reusing manual user data selection on buttons that need it
+potentially disabling or enabling buttons at startup depending on state of cache and later down the methods
+and allowing anything to launch that, think around it and about it
+also ties into the idea of telling user to finish their job and come back to mainwindow/ explain why certain buttons are disabled
+in case they forget they got windows open elsewhere... good QoL
+warn don't close windows mid-op, the app should be able to recover, but don't do it
+
+- Update other windows to rely on Loaded event instead of Activated as well... or don't, there may be more considerations to it
+// e..g WHEN it actually fires and how long it takes, etc..
+
+// Gotta add more guards // some features must not be launching or at least should be more clear about it
+// when they dont have user data access, for example, the pack updater, which proceeds as usual, then fails half way and returns an error
+// could add checks earlier, disabling related buttons sounds like the best option
+// you could also just return button calls early, and tell user wtf u doing? select user data or something, this is better UX than stonewalling
+
+- Make a  secondary image fade in and out briefly over lampinteraction when clicked
+same as bottom vessel
+so you can create this feeling of lamp shining brighter while its just the translucent parts being overlayed
+two arrays passed in
+both arrays must select the same image/same rng etc..
+- Slowly rework and improve art vessels, introduce 1-2 variants for some static buttons, maybe fire could burn brighter when delete button
+gets clicked, if the above is implemented, things can look really nice
+
+> This whole thing would've worked a lot easier if you weren't trying to be a smartass and minimize the number of vessels used for lampanimator/previewer
+
+
+
 
 - Idea: when other windows launch, recieve clicks on the main window, and just log something that tells user, finish your work in the current
 open module before returning to main window.
 just.. it'd be nice QoL.
-
 Btw random thought
 indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
 
-- Either set random preview arts on startup, featuring locations from Vanilla RTX's history (Autumn's End, Pale Horizons, Bevy of Bugs, etc...)
-Or simple pixel arts you'd like to make in the same style
-OR, simply add more renders, more special ones
+===== NEXT MAJOR REDESIGN THOUGHTS
+======== Below are some thoughts on the next design iteration, possibly for 4.0 and Beyond
 
-- Do the redesign.
+- Do the redesign?
 Offload export and delete to PackBrowser menu, allow deletion and export on the spot
 
 While using bindings for everything else, rip out old checkboxes code paths
@@ -2475,6 +2457,23 @@ But you can't just retire it?!
 It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
 Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
 so yeah, you can't actually just scrap all this and call it a day? there's more involved
+
+- Make shift-clicking the LOCATE PACKS button or something allow user to manually select another path
+To be honest:
+this is a fucking mess
+you should've had a settings panel
+inside it, left the options to configure what the launch button does exactly
+configure user data and game data paths manually
+configure theme
+etc..
+could collapse all of the titlebar buttons into a gear that opens it instead
+that's pretty cool now isn't it?
+clean, clear, instead of trying to get the user to do the right thing via logs
+leave a place they can instinctively go to and configure everyting IF needed, totally optional
+you're still taking the extreme measures needed to keep as many users away from having to touch settings as possible
+but that's just better, think about it
+
+its not too late
 
 
 - Begin using Bindings for:
@@ -2529,7 +2528,6 @@ is just... NOPE!
 That said, it's a cool feature for those who might want it.
 >> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
 
-
 - Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
 Especially release builds, There COULD BE LATENT TRIMMING BUGS!
 Game detection and cache invalidation could be improved for both
@@ -2554,10 +2552,7 @@ only concern is performance with large logs
 This idea can be a public static method and it won't ever ever block Ui thread
 A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
 
-^ yeah lets dedicate more code clutter to visual things
-
 - Make holding shift turn the lamp Green to indicate its debugging functionality
-
 
 - Begin embedding most visual assets into the .resx, fewer IO operations, good optimization
 very low prio though, not too many assets, things are good
