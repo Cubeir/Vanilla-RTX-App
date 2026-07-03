@@ -400,6 +400,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/reactor.promo.tile.png"
         );
 
+        _ = Previewer.Instance.PreloadAllRegisteredImagesAsync();
     }
 
     /// For buttons hidden under shiftkey
@@ -2406,7 +2407,7 @@ this defeats the purpose if they gotta wait 59 or 30 seconds
 Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
 
 - BEFORE RELEASE:
-Test thoroughly, ensure no latent trimming bugs, on a fresh release build
+Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
 TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1
@@ -2556,6 +2557,10 @@ A variable is getting constantly updated with new logs, a worker in main UI thre
 ^ yeah lets dedicate more code clutter to visual things
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
+
+
+- Begin embedding most visual assets into the .resx, fewer IO operations, good optimization
+very low prio though, not too many assets, things are good
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not

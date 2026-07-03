@@ -16,9 +16,6 @@ namespace Vanilla_RTX_App.Core;
 /// </summary>
 public class LampAnimator
 {
-    private static readonly Dictionary<string, BitmapImage> _globalImageCache = new();
-    private static readonly SemaphoreSlim _cacheLock = new(1, 1);
-
     private readonly LampContext _context;
     private readonly Image _baseImage;
     private readonly Image? _overlayImage;
@@ -452,36 +449,7 @@ public class LampAnimator
 
     private async Task<BitmapImage?> GetCachedImageAsync(string? path)
     {
-        if (string.IsNullOrEmpty(path)) return null;
-
-        await _cacheLock.WaitAsync();
-        try
-        {
-            if (_globalImageCache.TryGetValue(path, out var cached))
-                return cached;
-
-            BitmapImage bmp;
-            if (path.StartsWith("ms-appx:///"))
-            {
-                bmp = new BitmapImage(new Uri(path));
-            }
-            else
-            {
-                if (!File.Exists(path))
-                    return null;
-
-                using var stream = File.OpenRead(path);
-                bmp = new BitmapImage();
-                await bmp.SetSourceAsync(stream.AsRandomAccessStream());
-            }
-
-            _globalImageCache[path] = bmp;
-            return bmp;
-        }
-        finally
-        {
-            _cacheLock.Release();
-        }
+        return await SharedImageCache.GetOrLoadAsync(path);
     }
 
     private async Task SetImageAsync(Image? imageControl, string? path)

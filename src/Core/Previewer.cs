@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -9,6 +12,16 @@ namespace Vanilla_RTX_App.Core;
 
 public class Previewer
 {
+    private readonly HashSet<string> _registeredPaths = new();
+    private void RegisterPath(string? path)
+    {
+        if (!string.IsNullOrEmpty(path)) _registeredPaths.Add(path);
+    }
+    public async Task PreloadAllRegisteredImagesAsync()
+    {
+        await Task.WhenAll(_registeredPaths.Select(SharedImageCache.GetOrLoadAsync));
+    }
+
     private static Previewer? _instance;
     private static readonly object _lock = new();
 
@@ -90,6 +103,7 @@ public class Previewer
     }
 
     // - - - - - Utility Methods
+
 
     public void SetImages(string imageOnPath, string imageOffPath, bool useSmoothTransition = false)
     {
@@ -247,6 +261,10 @@ public class Previewer
             DefaultValue = defaultValue
         });
 
+        RegisterPath(defaultImagePath);
+        RegisterPath(minImagePath);
+        RegisterPath(maxImagePath);
+
         slider.ValueChanged += (s, e) => UpdateSliderPreview(slider);
 
         slider.PointerEntered += (s, e) =>
@@ -298,6 +316,9 @@ public class Previewer
             ImageOnPaths = clickedImagePaths ?? [],
             CurrentRandomIndex = 0
         });
+
+        foreach (var p in hoverImagePaths ?? []) RegisterPath(p);
+        foreach (var p in clickedImagePaths ?? []) RegisterPath(p);
 
         button.PointerEntered += (s, e) =>
         {
@@ -369,6 +390,9 @@ public class Previewer
             ImageOffPath = imageOffPath
         });
 
+        RegisterPath(imageOnPath);
+        RegisterPath(imageOffPath);
+
         toggleButton.Checked += (s, e) =>
         {
             if (_activeControl == toggleButton)
@@ -429,6 +453,9 @@ public class Previewer
             ImageOffPath = imageOffPath
         });
 
+        RegisterPath(imageOnPath);
+        RegisterPath(imageOffPath);
+
         toggleSwitch.Toggled += (s, e) =>
         {
             if (_activeControl == toggleSwitch)
@@ -479,6 +506,9 @@ public class Previewer
             ImageOnPath = imageOnPath,
             ImageOffPath = imageOffPath
         });
+
+        RegisterPath(imageOnPath);
+        RegisterPath(imageOffPath);
 
         checkBox.Checked += (s, e) =>
         {
@@ -928,17 +958,31 @@ public class Previewer
 
     private void SetBottomVesselImage(string imagePath)
     {
-        if (!string.IsNullOrEmpty(imagePath))
+        if (string.IsNullOrEmpty(imagePath)) return;
+
+        if (SharedImageCache.TryGet(imagePath, out var cached) && cached != null)
+        {
+            _bottomVessel.Source = cached;
+        }
+        else
         {
             _bottomVessel.Source = new BitmapImage(new Uri(imagePath));
+            _ = SharedImageCache.GetOrLoadAsync(imagePath);
         }
     }
 
     private void SetTopVesselImage(string imagePath)
     {
-        if (!string.IsNullOrEmpty(imagePath))
+        if (string.IsNullOrEmpty(imagePath)) return;
+
+        if (SharedImageCache.TryGet(imagePath, out var cached) && cached != null)
+        {
+            _topVessel.Source = cached;
+        }
+        else
         {
             _topVessel.Source = new BitmapImage(new Uri(imagePath));
+            _ = SharedImageCache.GetOrLoadAsync(imagePath);
         }
     }
 
