@@ -27,13 +27,14 @@ public class MinecraftLauncher
         );
 
     /// <summary>
-    /// Disables ray tracing (reverts to Fancy graphics mode) and re-enables VSync,
-    /// then launches the game. Wired to the shift-click variant of LaunchButton_Click.
+    /// Same as regular but with vsync
     /// </summary>
     public static Task<string> LaunchMinecraftStandardAsync(bool isTargetingPreview)
         => LaunchWithOptionsAsync(
             isTargetingPreview,
             launchAfterUpdate: true,
+            ("graphics_mode", 3),
+            ("graphics_mode_switch", 1),
             ("gfx_vsync", 1)
         );
 
