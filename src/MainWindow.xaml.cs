@@ -2416,12 +2416,6 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
-- Minor issue exposed
-Multiple automatic system wide searches can begin
-IT DOESN'T INTERRUPT AND RETURN if paths are found and validated THROUGH OTHER MEANS
-e.g. by OTHER windows
-maybe adding a periodic check inside GDKLocator AS IT scours through the file would help?
-
 - manifests with comments, do all related features finally play well with them? Test and confirm
 PackLocator seems to not like it still, but it is handled
 
