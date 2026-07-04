@@ -499,7 +499,7 @@ public sealed partial class MainWindow : Window
             };
         }
 
-        // Check for crash logs, might summon a content dialogue
+        // Check for crash logs, might summon a ContentDialogue
         await CheckForCrashLog();
 
         // Splash Blinking Animation
@@ -527,7 +527,7 @@ public sealed partial class MainWindow : Window
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
 
-        // Previewer
+        // Assign Previewer images a bit after attaching vessels, just a safety gap
         InitializePreviewerImages();
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
@@ -545,14 +545,14 @@ public sealed partial class MainWindow : Window
         }
 
 
-        _isInitializing = false; // This makes sure the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below 
+        _isInitializing = false; // This makes sure ONLY the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below, aka, Unblocks these operations from running in regular Preview button toggles
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
         UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status  
         _ = LocatePacksTask(); // Trigger finding packs
 
         // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
-        // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
-        // we deal with cache, for showing things, the app deals with updating it later
+        // The whole idea is, there is separation of concerns, on this side, we only show what's in the cache, the app tries to update the cache sometimes
+        // we deal with cache, for showing things, another task deals with updating sometimes it at App start
         _ = Task.Run(async () =>
         {
             var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
@@ -1462,7 +1462,7 @@ public sealed partial class MainWindow : Window
             Log($"Couldn't find {versionName} user data folder automatically. Here's what to do:\n" +
                 $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
                 $"- It's the one with a \"Users\" subfolder inside it.\n" +
-                $"If you don't have {versionName} installed, you can ignore this warning.",
+                $"If you don't have {versionName} installed, you can ignore this warning. Also make sure you've played the game at least once if you've installed or reinstalled recently.",
                 LogLevel.Error);
         }
     }
