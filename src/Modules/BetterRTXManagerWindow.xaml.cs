@@ -170,13 +170,6 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
 
-        ManualSelectionText.Text = "If this is taking too long, click to manually locate the game's executable file. " +
-            "Once you're inside the folder called: " +
-            (Persistent.IsTargetingPreview
-                ? MinecraftGDKLocator.MinecraftPreviewFolderName
-                : MinecraftGDKLocator.MinecraftFolderName) +
-                $"\nSelect the file called: {MinecraftGDKLocator.MinecraftExecutableName} and confirm.";
-
         await InitializeAsync();
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>

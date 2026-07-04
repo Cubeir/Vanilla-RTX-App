@@ -2416,7 +2416,11 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
-- Stress test GDKLocator again
+- Minor issue exposed
+Multiple automatic system wide searches can begin
+IT DOESN'T INTERRUPT AND RETURN if paths are found and validated THROUGH OTHER MEANS
+e.g. by OTHER windows
+maybe adding a periodic check inside GDKLocator AS IT scours through the file would help?
 
 - manifests with comments, do all related features finally play well with them? Test and confirm
 PackLocator seems to not like it still, but it is handled
@@ -2448,6 +2452,14 @@ Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
 TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1, Ideas below AREN'T mature enough, let them rest
+
+- ISSUE:
+User has to open Minecraft.Windows.exe to select a file with the way GDKLocator is
+and that file CAN BE PROTECTED ON MOST SYSTEMS
+which WILl send the user down the path of taking ownership, etc... TOO MUCH HASSLE1
+MAKE manual selection ASK the user to select the folder iwth the exe file IN IT instead,
+That way, they won't have to deal with shit
+The GDKLOCATOR STILL DOES the whole verification process by latching onto the .exe though, so, no behavioral change past that. easy enough?
 
 - Tuner: there is a memory leak!? it seems so, images remain in the memory after being modified
 dispose of them properly, test again, with large hd packs especially

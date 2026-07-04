@@ -631,7 +631,7 @@ public static class MinecraftGDKLocator
     public const string MinecraftPreviewFolderName = "Minecraft Preview for Windows";
     public const string MinecraftExecutableName = "Minecraft.Windows.exe";
     private const string GameConfigFileName = "MicrosoftGame.Config";
-    private const int MaxSearchDepth = 10;
+    private const int MaxSearchDepth = 9;
 
     // Package family names — stable post-GDK (1.21.120+)
     private const string MinecraftStablePackageFamilyName = "Microsoft.MinecraftUWP_8wekyb3d8bbwe";
@@ -805,9 +805,15 @@ public static class MinecraftGDKLocator
     }
 
     /// <summary>
-    /// PHASE 3: Manual selection — user picks Minecraft.Windows.exe directly.
-    /// This is the clearest possible UX: no ambiguity about which folder to pick.
-    /// Returns the physical directory containing the selected executable.
+    /// PHASE 3: Manual selection — user picks a folder near the installation
+    /// (folder picker, not file picker: the exe itself may sit in a
+    /// permission-protected directory that the OS won't allow the app to "open,"
+    /// even though only the path is needed — folders don't carry that restriction).
+    ///
+    /// Tolerant of imprecision: accepts the exact folder containing Minecraft.Windows.exe,
+    /// or a folder one level shallower (the install root, whose child folder — named
+    /// anything, including a GUID — holds the exe). This mirrors the leniency
+    /// MinecraftUserDataLocator gives when accepting Shared/Users subfolders.
     /// Edition is verified via MicrosoftGame.Config, not folder name.
     /// </summary>
     public static async Task<string?> LocateMinecraftManuallyAsync(bool isPreview, IntPtr windowHandle)
@@ -816,50 +822,37 @@ public static class MinecraftGDKLocator
 
         try
         {
-            var picker = new FileOpenPicker
+            var picker = new FolderPicker
             {
                 SuggestedStartLocation = PickerLocationId.ComputerFolder,
                 ViewMode = PickerViewMode.List
             };
-            picker.FileTypeFilter.Add(".exe");
+            picker.FileTypeFilter.Add("*");
 
             InitializeWithWindow.Initialize(picker, windowHandle);
 
-            var file = await picker.PickSingleFileAsync();
-
-            if (file == null)
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder == null)
             {
-                Trace.WriteLine("[GDKLocator] User cancelled file selection");
+                Trace.WriteLine("[GDKLocator] User cancelled folder selection");
                 return null;
             }
 
-            Trace.WriteLine($"[GDKLocator] User selected: {file.Path}");
+            Trace.WriteLine($"[GDKLocator] User selected: {folder.Path}");
 
-            if (!file.Name.Equals(MinecraftExecutableName, StringComparison.OrdinalIgnoreCase))
+            var resolvedSelection = ResolveToPhysicalPath(folder.Path);
+            if (!resolvedSelection.Equals(folder.Path, StringComparison.OrdinalIgnoreCase))
+                Trace.WriteLine($"[GDKLocator] Resolved selection: {folder.Path} → {resolvedSelection}");
+
+            var exeDirectory = FindExecutableDirectoryNearby(resolvedSelection);
+            if (exeDirectory == null)
             {
-                Trace.WriteLine($"[GDKLocator] Selected file is not {MinecraftExecutableName}: {file.Name}");
-                return null;
-            }
-
-            var exeDirectory = Path.GetDirectoryName(file.Path);
-            if (string.IsNullOrEmpty(exeDirectory))
-            {
-                Trace.WriteLine("[GDKLocator] Could not determine directory from selected file");
-                return null;
-            }
-
-            // Resolve symlinks — user may have navigated via a junction in Explorer
-            var resolvedDirectory = ResolveToPhysicalPath(exeDirectory);
-            Trace.WriteLine($"[GDKLocator] Resolved exe directory: {exeDirectory} → {resolvedDirectory}");
-
-            if (!IsValidExecutableDirectory(resolvedDirectory))
-            {
-                Trace.WriteLine("[GDKLocator] Resolved directory does not contain a valid Minecraft installation");
+                Trace.WriteLine($"[GDKLocator] Could not find {MinecraftExecutableName} in or one level under the selected folder");
                 return null;
             }
 
             // Authoritative edition check via MicrosoftGame.Config.
-            var detectedEdition = TryGetEditionFromGameConfig(resolvedDirectory);
+            var detectedEdition = TryGetEditionFromGameConfig(exeDirectory);
             if (detectedEdition.HasValue)
             {
                 if (detectedEdition.Value != isPreview)
@@ -872,11 +865,9 @@ public static class MinecraftGDKLocator
             }
             else
             {
-                // No usable MicrosoftGame.Config found — degrade to a soft folder-name check
-                // as a last resort rather than blocking the user outright. This only ever
-                // rejects an *obvious* mismatch; an unrecognized folder name passes through.
+                // No usable config — soft folder-name guard as last resort, same as before.
                 var unexpectedFolderName = isPreview ? MinecraftFolderName : MinecraftPreviewFolderName;
-                var installRoot = Directory.GetParent(resolvedDirectory)?.Name ?? string.Empty;
+                var installRoot = Directory.GetParent(exeDirectory)?.Name ?? string.Empty;
                 if (installRoot.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
                 {
                     Trace.WriteLine($"[GDKLocator] Selected wrong version — install root is: {installRoot}");
@@ -885,15 +876,51 @@ public static class MinecraftGDKLocator
                 Trace.WriteLine("[GDKLocator] MicrosoftGame.Config unavailable — proceeding on unverified edition (folder name didn't indicate a mismatch)");
             }
 
-            Trace.WriteLine($"[GDKLocator] Valid installation selected: {resolvedDirectory}");
-            CacheInstallation(isPreview, resolvedDirectory);
-            return resolvedDirectory;
+            Trace.WriteLine($"[GDKLocator] Valid installation selected: {exeDirectory}");
+            CacheInstallation(isPreview, exeDirectory);
+            return exeDirectory;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[GDKLocator] Error during manual selection: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Looks for Minecraft.Windows.exe directly inside the selected folder, or one
+    /// level deeper — tolerating the user having selected the install root instead
+    /// of the exe's own folder. No name assumption on that child folder: it could be
+    /// "Content", a GUID, or anything a third-party launcher decided to call it.
+    /// Each candidate is symlink-resolved before being checked, since a subfolder
+    /// can itself turn out to be a junction. This is a bounded, one-hop convenience —
+    /// not a search; Phase 2 already owns unbounded discovery.
+    /// </summary>
+    private static string? FindExecutableDirectoryNearby(string selectedPath)
+    {
+        if (string.IsNullOrWhiteSpace(selectedPath) || !Directory.Exists(selectedPath))
+            return null;
+
+        // Direct hit — selected folder already contains the exe
+        if (IsValidExecutableDirectory(selectedPath))
+            return selectedPath;
+
+        // One level deeper — selected folder was probably the install root
+        try
+        {
+            foreach (var subdir in Directory.GetDirectories(selectedPath))
+            {
+                var resolvedSubdir = ResolveToPhysicalPath(subdir);
+                if (IsValidExecutableDirectory(resolvedSubdir))
+                    return resolvedSubdir;
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[GDKLocator] Error scanning subfolders of {selectedPath}: {ex.Message}");
+        }
+
+        return null;
     }
 
     /// <summary>
