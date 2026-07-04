@@ -808,7 +808,7 @@ public class Tuner
         var duration = FormatDuration(elapsed);
         return packCount == 1
             ? $"{verb} tuning in {duration}."
-            : $"{verb} tuning {packCount} packs — took {duration}!)";
+            : $"{verb} tuning {packCount} packs - took {duration}!)";
 
         static string FormatDuration(TimeSpan elapsed)
         {
@@ -818,7 +818,7 @@ public class Tuner
 
             if (minutes == 0)
             {
-                if (totalSeconds < 1) return "Under a second!";
+                if (totalSeconds < 1) return "under a second!";
                 return $"{seconds} second{(seconds == 1 ? "" : "s")}";
             }
 
