@@ -2416,17 +2416,15 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
-- manifests with comments, do all related features finally play well with them? Test and confirm
-PackLocator seems to not like it still, but it is handled
-
-- For any feature that deals with user RP directories:
-Ensure it POOLS dev/regular folders, AND across ALL users!
-For importing and selecting packs upstream it is ESPECIALLY important
-PackUpdater already handles this pretty well iirc, explicitly decide all edge scenarios.
-
 - Do a review of all cooldowns and retry times.
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
+
+- Reduce cache retry timers for PACK UPDATER version retrieval
+it hangs too long trying to get from remote
+the whole deal is that user quickly gets access to the cached version if no internet is available
+this defeats the purpose if they gotta wait 59 or 30 seconds
+Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
 
 - Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
@@ -2434,12 +2432,6 @@ Update them to reflect the latest features/changes
 >> Be more explicit about the right channels to give feedback, report issues, etc...
 like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
 maybe you should do it more often, in more places
-
-- Reduce cache retry timers for PACK UPDATER version retrieval
-it hangs too long trying to get from remote
-the whole deal is that user quickly gets access to the cached version if no internet is available
-this defeats the purpose if they gotta wait 59 or 30 seconds
-Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
 
 - BEFORE RELEASE:
 Test thoroughly, ensure no latent trimming bugs, on a FRESH release build

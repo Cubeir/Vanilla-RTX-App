@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using Windows.Storage;
 using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are stored there for locating packs
 
@@ -1160,12 +1161,28 @@ public class PackUpdater
         }
     }
 
+    private static JObject? ParseManifestJson(string json)
+    {
+        try
+        {
+            using var sr = new StringReader(json);
+            using var reader = new JsonTextReader(sr) { DateParseHandling = DateParseHandling.None };
+            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
+            return JObject.Load(reader, loadSettings);
+        }
+        catch
+        {
+            try { return JObject.Parse(json); }
+            catch { return null; }
+        }
+    }
     private async Task<(string headerUUID, string moduleUUID)?> ReadManifestUUIDs(string manifestPath)
     {
         try
         {
             var json = await File.ReadAllTextAsync(manifestPath);
-            var data = JObject.Parse(json);
+            var data = ParseManifestJson(json);
+            if (data == null) return null;
 
             string? headerUUID = data["header"]?["uuid"]?.ToString();
             string? moduleUUID = data["modules"]?[0]?["uuid"]?.ToString();
