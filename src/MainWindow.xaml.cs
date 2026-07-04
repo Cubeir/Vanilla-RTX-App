@@ -190,7 +190,8 @@ public sealed partial class MainWindow : Window
     public static MainWindow? Instance { get; private set; }
 
     private readonly List<Window> _childWindows = new();
-    private bool _isClosed = false;
+    private bool _isClosing = false;
+    private bool _isInitializing = true;
 
     private readonly ProgressBarManager _progressManager;
 
@@ -402,7 +403,7 @@ public sealed partial class MainWindow : Window
         // Do upon app closure
         this.Closed += (s, e) =>
         {
-            _isClosed = true;
+            _isClosing = true;
 
             SaveSettings();
 
@@ -466,7 +467,7 @@ public sealed partial class MainWindow : Window
         CycleThemeButton_Click(null, null);
 
         // Give the window time to render
-        await Task.Delay(125);
+        await Task.Delay(100);
 
         // Apply some colors, then continue to watch theme changes and adjust based on theme
         if (root != null)
@@ -476,14 +477,14 @@ public sealed partial class MainWindow : Window
 
             TargetPreviewToggle.IsEnabledChanged += (s, e) =>
             {
-                if (_isClosed) return; // It crashes the app if we try to set it while window is closed, duh!
+                if (_isClosing) return; // It crashes the app if we try to set it while window is closed, duh!
                 ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
             };
             root.FlowDirection = FlowDirection.LeftToRight;
 
             root.ActualThemeChanged += (_, __) =>
             {
-                if (_isClosed) return;
+                if (_isClosing) return;
                 ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
                 ApplyTargetPreviewBevelColors(root.ActualTheme);
                 ThemeService.Broadcast(root.ActualTheme);
@@ -494,7 +495,7 @@ public sealed partial class MainWindow : Window
         await CheckForCrashLog();
 
         // Splash Blinking Animation
-        _ = AnimateSplash(125);
+        _ = AnimateSplash(100);
 
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
@@ -522,7 +523,7 @@ public sealed partial class MainWindow : Window
         InitializePreviewerImages();
 
         // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
-        await Task.Delay(750);
+        await Task.Delay(700);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
         // Random previewer image
@@ -567,18 +568,13 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages to be at the top, so, calling it last
+        // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
+        // at the top, so calling it last, unconditionally, exactly once, regardless of which edition
+        // UpdateUI() ended up restoring — toggle handlers were suppressed above via _isInitializing.
+        _isInitializing = false;
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        // Updates the button responsible for allowing the user to select another user data path.
         UpdateUserDataDependentUI(IsTargetingPreview);
-
-        // Locate packs, if Preview is enabled, the toggle itself auto-triggers another pack location, this avoids redundant operation, when it is bound to run anyway
-        if (!IsTargetingPreview)
-            _ = LocatePacksTask();
-        else
-        {
-            LaunchBetterRTXManagerButton.IsEnabled = false;
-        }
+        _ = LocatePacksTask();
 
         // ============= End
         async Task FadeOutSplashScreen()
@@ -589,7 +585,7 @@ public sealed partial class MainWindow : Window
             {
                 From = 1.0,
                 To = 0.0,
-                Duration = new Duration(TimeSpan.FromMilliseconds(125)),
+                Duration = new Duration(TimeSpan.FromMilliseconds(100)),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
             };
 
@@ -845,7 +841,14 @@ public sealed partial class MainWindow : Window
         // Suppress Previewer Updates
         Previewer.Instance.Freeze();
 
-        // Sliders
+        // 1. Match bool-based UI elements to their current bools
+        TargetPreviewToggle.IsChecked = Persistent.IsTargetingPreview;
+        EmissivityAmbientLightToggle.IsOn = Persistent.AddEmissivityAmbientLight;
+        VanillaRTXCheckBox.IsChecked = TunerVariables.IsVanillaRTXEnabled;
+        NormalsCheckBox.IsChecked = TunerVariables.IsNormalsEnabled;
+        OpusCheckBox.IsChecked = TunerVariables.IsOpusEnabled;
+
+        // Sliders/texbox pairs
         var sliderConfigs = new[]
         {
         (FogMultiplierSlider, FogMultiplierBox, Persistent.FogMultiplier, false),
@@ -856,14 +859,7 @@ public sealed partial class MainWindow : Window
         (LazifyNormalsSlider, LazifyNormalsBox, (double)Persistent.LazifyNormalAlpha, true)
         };
 
-        // Match bool-based UI elements to their current bools
-        VanillaRTXCheckBox.IsChecked = TunerVariables.IsVanillaRTXEnabled;
-        NormalsCheckBox.IsChecked = TunerVariables.IsNormalsEnabled;
-        OpusCheckBox.IsChecked = TunerVariables.IsOpusEnabled;
-        EmissivityAmbientLightToggle.IsOn = Persistent.AddEmissivityAmbientLight;
-        TargetPreviewToggle.IsChecked = Persistent.IsTargetingPreview;
-
-        // Animate sliders (intentionally put here, don't move up or down)
+        // 2. Animate sliders (intentionally put here, don't move up or down)
         await AnimateSliders(sliderConfigs, animationDurationSeconds);
 
         // Resume Previewer Updates
@@ -1374,6 +1370,9 @@ public sealed partial class MainWindow : Window
 
         packBrowserWindow.Activate();
     }
+
+    private bool _hasWarnedMissingStableData;
+    private bool _hasWarnedMissingPreviewData;
     public async Task HandleManualDataLocationAsync()
     {
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(IsTargetingPreview);
@@ -1431,16 +1430,39 @@ public sealed partial class MainWindow : Window
             PackVM.SetLabelOverride(null);
             ToolTipService.SetToolTip(BrowsePacksButton,
                 "Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.");
+
+            // Reset so if it goes missing again later (folder moved/deleted), they're told once more
+            if (isTargetingPreview) _hasWarnedMissingPreviewData = false;
+            else _hasWarnedMissingStableData = false;
+
             _ = LocatePacksTask();
         }
         else
         {
-            string PreviewOrStable = isTargetingPreview ? "Preview" : "Stable";
-            PackVM.SetLabelOverride($"Locate {PreviewOrStable} user data");
+            var editionLabel = isTargetingPreview ? "Preview" : "Stable";
+            var expectedFolderName = isTargetingPreview
+                ? MinecraftUserDataLocator.PreviewRootFolderName
+                : MinecraftUserDataLocator.StableRootFolderName;
+
+            PackVM.SetLabelOverride($"Locate {editionLabel} user data");
             ToolTipService.SetToolTip(BrowsePacksButton,
-                $"The app couldn't find {versionName} data folder, automatically, click to locate it manually.");
+                $"The app couldn't find {versionName} data folder automatically — click to locate it manually.");
+
+            bool alreadyWarned = isTargetingPreview ? _hasWarnedMissingPreviewData : _hasWarnedMissingStableData;
+            if (!alreadyWarned)
+            {
+                Log($"Couldn't find {versionName} user data folder automatically.\n" +
+                    $"Click \"Locate {editionLabel} user data\" above and select the folder named \"{expectedFolderName}\" " +
+                    $"- it's the one with a \"Users\" subfolder inside it.\n" +
+                    $"If you don't have {versionName} installed, you can ignore this.",
+                    LogLevel.Warning);
+
+                if (isTargetingPreview) _hasWarnedMissingPreviewData = true;
+                else _hasWarnedMissingStableData = true;
+            }
         }
     }
+
 
 
 
@@ -1448,12 +1470,16 @@ public sealed partial class MainWindow : Window
     private void TargetPreviewToggle_Checked(object sender, RoutedEventArgs e)
     {
         IsTargetingPreview = true;
+
+        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
+        LaunchBetterRTXManagerButton.IsEnabled = false;
+
+        if (_isInitializing) return; // return early, so the part below this line doesn't run on Window init-triggered TogglePreview (by UpdateUI method...)
+        // Locating user data, updating ui based on it, and locating packs, runs regardless, we're avoiding the dupe operation here basically. so we safely run all there instead where its appropriate
+
         SelectedPacks.Clear();
         Log("Targeting Minecraft Preview.", LogLevel.Informational);
 
-        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
-
-        LaunchBetterRTXManagerButton.IsEnabled = false;
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
@@ -1462,12 +1488,15 @@ public sealed partial class MainWindow : Window
     {
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
+
+        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
+        LaunchBetterRTXManagerButton.IsEnabled = true;
+
+        if (_isInitializing) return; // same as Checked
+
         SelectedPacks.Clear();
         Log("Targeting Release Minecraft.", LogLevel.Informational);
 
-        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
-
-        LaunchBetterRTXManagerButton.IsEnabled = true;
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
         _ = LocatePacksTask();
@@ -2000,6 +2029,8 @@ public sealed partial class MainWindow : Window
 
     private async void LaunchPackUpdateButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+
         string[] ToDisable =
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
@@ -2170,6 +2201,8 @@ public sealed partial class MainWindow : Window
     }
     private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+
         if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
@@ -2210,6 +2243,8 @@ public sealed partial class MainWindow : Window
 
     private async void LaunchMinecraftButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+
         if (Helpers.IsMinecraftRunning())
         {
             Log("Minecraft already seems to be open. Please restart the game for options.txt changes to take effect.", LogLevel.Warning);
@@ -2359,9 +2394,7 @@ public sealed partial class MainWindow : Window
     #endregion
 }
 
-
-
-/* ### BACKLOG // TODO ###
+/* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
 - Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
 
@@ -2369,23 +2402,6 @@ public sealed partial class MainWindow : Window
 test for memory leaks
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
-y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
-locate button allows u to select it, it gets cached, revalidated all the time, its good good good.
-
-must probably focus userdata locator more on concerning itself with validating and filling up the persistent path variables
-and have features construct the rest htemselves
-buts its nice focusing even that in one place.
-think about it
-
-// call this block:
-if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
-in more places
-any feature that relies directly on user data locations, it must redirect to that if not valid
-should probably update OTHER control names based on validity of this as well
-
->>>> The app keeps bothering the user about preview userdata location not being there, if they dont have preview mc installed to begin with
-The solution, stop the check from being ON BOTH VERSIONS ALL GOD DAMN TIME
-Focus it on ONE version, the version IsTargetingPreview designates !!!
 
 - Stress test GDKLocator again
 
@@ -2418,8 +2434,6 @@ Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
 TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1, Ideas below AREN'T mature enough, let them rest
-
-
 
 - FUCK IT, add the ability to TOTALLY DISABLE entire features on startup
 PARTICULARY BETTERRTX
@@ -2467,6 +2481,16 @@ indeed, button functionalities hidden under shift have Debug/Development related
 
 ===== NEXT MAJOR REDESIGN THOUGHTS
 ======== Below are some thoughts on the next design iteration, possibly for 4.0 and Beyond
+
+- Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
+useful down the line
+
+>> while at it, MOVE Art Previewer vessel thingy to a new container beteween the 3x2 button grid, and tune/export/delete grid
+Taller default app height, but, here's the cool part
+Use can Collapse the window/reduce height, and all it'll do is Swallow the container, so effectively it gives user to the ability to
+"Hide or Disable" preview art section in a totally indirect way, which is pretty cool.
+Better yet, it should have a Collapse/Expand button, that Updates the Minimum height of the window itself, that'd be better! no ugly half visible previewer vessels
+Might end up redoing a whole bunch of art for this, since there's now more space, a wide area to work with.
 
 - Do the redesign?
 Offload export and delete to PackBrowser menu, allow deletion and export on the spot
