@@ -1930,7 +1930,7 @@ public sealed partial class MainWindow : Window
                 if (hasIncompatibleCustom)
                     Log("None of the selected packs are RTX or Vibrant Visuals compatible. Select at least one compatible pack to tune.", LogLevel.Warning);
                 else
-                    Log("Select at least one pack to tune.", LogLevel.Warning);
+                    Log("Select at least one compatible pack to tune.", LogLevel.Warning);
                 return;
             }
             else
@@ -2131,7 +2131,10 @@ public sealed partial class MainWindow : Window
     {
         if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
         {
-            Log("RTX Reactor generates proper RTX support only for non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
+            if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
+            {
+                Log("RTX Reactor generates proper RTX support only for non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
+            }
             Log("You must select at least one resource pack tagged as a 'Potential Candidate' to be use this feature.", LogLevel.Warning);
             return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
             // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
