@@ -1469,11 +1469,6 @@ public static class MinecraftUserDataLocator
 
         // 3. Not found? tell the user exactly what to look for
         Trace.WriteLine($"[UserDataLocator] {versionName} data root not found");
-        Log($"If you do not have {versionName} version of Minecraft installed at all, ignore the warning above.", LogLevel.Informational);
-        Log($"The app couldn't find {versionName} Minecraft user data folder automatically. Here's what to do:\n" +
-            $"Click \"Locate {versionName} user data\", find and select the folder named \"{folderName}\"." +
-            $"\nℹ️ It's the one with a subfolder called \"Users\".",
-            LogLevel.Warning);
         return false;
     }
 
@@ -1506,6 +1501,29 @@ public static class MinecraftUserDataLocator
     {
         if (isPreview) TunerVariables.Persistent.MinecraftPreviewDataPath = path;
         else TunerVariables.Persistent.MinecraftDataPath = path;
+    }
+
+
+    /// <summary>
+    /// Helper. Call at the top of any feature that depends on the current edition's user
+    /// data folder. Returns true if the caller should proceed; false means the
+    /// feature was short-circuited and the user has already been told what to do.
+    /// Uses a live filesystem check rather than the cached validity flag, so it
+    /// still catches the folder having gone missing mid-session.
+    /// </summary>
+    public static bool RequireValidUserData(bool isTargetingPreview)
+    {
+        if (GetDataRoot(isTargetingPreview) != null)
+            return true;
+
+        var versionName = GetVersionDisplayName(isTargetingPreview);
+        var editionLabel = isTargetingPreview ? "Preview" : "Stable";
+
+        MainWindow.Log($"Can't do this yet — {versionName} user data folder hasn't been located. " +
+            $"Use \"Locate {editionLabel} user data\" above first.",
+            LogLevel.Warning);
+
+        return false;
     }
 }
 
