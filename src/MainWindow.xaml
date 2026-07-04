@@ -360,7 +360,8 @@
                       IsHitTestVisible="False">
                     <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
                     <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
-                            BorderThickness="3,0,0,0" />
+                            BorderThickness="3,0,0,0"
+                            x:Name="RightEdgeOfLocateButton"/>
                 </Grid>
                 <Grid Grid.Column="2"
                       HorizontalAlignment="Left"

@@ -526,6 +526,39 @@ public sealed partial class MainWindow : Window
         await Task.Delay(700);
         // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
+        Log($"App Version: {appVersion}" + new string('\n', 2) +
+            $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
+        ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
+
+        // Warning if MC is running
+        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+        {
+            Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+        }
+
+
+        _isInitializing = false; // This makes sure the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below 
+        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
+        UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status  
+        _ = LocatePacksTask(); // Trigger finding packs
+
+        // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
+        // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
+        // we deal with cache, for showing things, the app deals with updating it later
+        _ = Task.Run(async () =>
+        {
+            var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
+            await Task.Delay(1000);
+            if (psa is { Length: > 0 })
+            {
+                for (int i = psa.Length - 1; i >= 0; i--)
+                {
+                    Log(psa[i].Text);
+                    await Task.Delay(500);
+                }
+            }
+        });
+
         // Random previewer image
         var occasion = GetSpecialOccasionName();
         var (prefix, count) = occasion switch
@@ -538,43 +571,10 @@ public sealed partial class MainWindow : Window
         int rng = Random.Shared.Next(1, count + 1);
         Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
 
-        // ============================================================= 
         await FadeOutSplashScreen();
 
         // Show Leave a Review prompt
         _ = ReviewPromptManager.InitializeAsync(MainGrid);
-
-        Log($"App Version: {appVersion}" + new string('\n', 2) +
-            $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
-        ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
-
-        // Warning if MC is running
-        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
-        {
-            Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
-        }
-
-        // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
-        // The whole idea is, there is separation of concerns, on one side, we only show what's in the cache, the app tries to update the cache sometimes
-        // we deal with cache, for showing things, the app deals with updating it later
-        var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
-        if (psa is { Length: > 0 })
-        {
-            for (int i = psa.Length - 1; i >= 0; i--)
-            {
-                await Task.Delay(75);
-                Log(psa[i].Text);
-                await Task.Delay(75);
-            }
-        }
-
-        // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
-        // at the top, so calling it last, unconditionally, exactly once, regardless of which edition
-        // UpdateUI() ended up restoring — toggle handlers were suppressed above via _isInitializing.
-        _isInitializing = false;
-        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
-        UpdateUserDataDependentUI(IsTargetingPreview);
-        _ = LocatePacksTask();
 
         // ============= End
         async Task FadeOutSplashScreen()
@@ -1371,10 +1371,10 @@ public sealed partial class MainWindow : Window
         packBrowserWindow.Activate();
     }
 
-    private bool _hasWarnedMissingStableData;
-    private bool _hasWarnedMissingPreviewData;
     public async Task HandleManualDataLocationAsync()
     {
+        _ = BlinkingLamp(false, true, 0.5, 1.0);
+
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(IsTargetingPreview);
         var expectedName = IsTargetingPreview
             ? MinecraftUserDataLocator.PreviewRootFolderName
@@ -1414,7 +1414,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        Log($"{versionName} data folder set: {acceptedPath}", LogLevel.Success);
+        Log($"{versionName} data folder set: {acceptedPath}\n\n" +
+            $"ℹ️ The app is going to remember this location, you can now continue to use features that relied on user data. Enjoy!", LogLevel.Success);
 
         // Update button state and kick off pack detection now that the path is known
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -1431,10 +1432,6 @@ public sealed partial class MainWindow : Window
             ToolTipService.SetToolTip(BrowsePacksButton,
                 "Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.");
 
-            // Reset so if it goes missing again later (folder moved/deleted), they're told once more
-            if (isTargetingPreview) _hasWarnedMissingPreviewData = false;
-            else _hasWarnedMissingStableData = false;
-
             _ = LocatePacksTask();
         }
         else
@@ -1446,20 +1443,13 @@ public sealed partial class MainWindow : Window
 
             PackVM.SetLabelOverride($"Locate {editionLabel} user data");
             ToolTipService.SetToolTip(BrowsePacksButton,
-                $"The app couldn't find {versionName} data folder automatically — click to locate it manually.");
+                $"The app couldn't find {versionName} data folder automatically - click to locate it manually.");
 
-            bool alreadyWarned = isTargetingPreview ? _hasWarnedMissingPreviewData : _hasWarnedMissingStableData;
-            if (!alreadyWarned)
-            {
-                Log($"Couldn't find {versionName} user data folder automatically.\n" +
-                    $"Click \"Locate {editionLabel} user data\" above and select the folder named \"{expectedFolderName}\" " +
-                    $"- it's the one with a \"Users\" subfolder inside it.\n" +
-                    $"If you don't have {versionName} installed, you can ignore this.",
-                    LogLevel.Warning);
-
-                if (isTargetingPreview) _hasWarnedMissingPreviewData = true;
-                else _hasWarnedMissingStableData = true;
-            }
+            Log($"Couldn't find {versionName} user data folder automatically. Here's what to do:\n" +
+                $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
+                $"- It's the one with a \"Users\" subfolder inside it.\n" +
+                $"If you don't have {versionName} installed, you can ignore this warning.",
+                LogLevel.Error);
         }
     }
 
@@ -1473,6 +1463,8 @@ public sealed partial class MainWindow : Window
 
         ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
         LaunchBetterRTXManagerButton.IsEnabled = false;
+
+        // _Checked runs up until here IF the persistent IsTargetingPreview is True, UpdateUI makes sure this happens...
 
         if (_isInitializing) return; // return early, so the part below this line doesn't run on Window init-triggered TogglePreview (by UpdateUI method...)
         // Locating user data, updating ui based on it, and locating packs, runs regardless, we're avoiding the dupe operation here basically. so we safely run all there instead where its appropriate
@@ -1495,7 +1487,7 @@ public sealed partial class MainWindow : Window
         if (_isInitializing) return; // same as Checked
 
         SelectedPacks.Clear();
-        Log("Targeting Release Minecraft.", LogLevel.Informational);
+        Log("Targeting stable Minecraft release.", LogLevel.Informational);
 
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
