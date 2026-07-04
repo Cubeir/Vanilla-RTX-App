@@ -1786,6 +1786,8 @@ public sealed partial class MainWindow : Window
 
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+
         string[] ToDisable =
         [
          "LaunchMinecraftButton", "TargetPreviewToggle",
@@ -1885,6 +1887,8 @@ public sealed partial class MainWindow : Window
     }
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+
         string[] ToDisable =
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
@@ -1982,13 +1986,20 @@ public sealed partial class MainWindow : Window
     }
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+
         // TuneSelectionButton_Click
         string[] ToDisable =
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
     "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
     "ExportButton", "DeleteButton", "TuneSelectionButton",
-             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton"
+             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton",
+             "FogMultiplierSlider", "FogMultiplierBox",
+"EmissivityMultiplierSlider", "EmissivityMultiplierBox", "NormalIntensitySlider", "NormalIntensityBox",
+"MaterialNoiseSlider", "MaterialNoiseBox", "RoughenUpSlider", "RoughenUpBox",
+"LazifyNormalsSlider", "LazifyNormalsBox", "EmissivityAmbientLightToggle"
+
         ];
 
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -2405,14 +2416,10 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
-- Keep writing/rewriting/adding more tooltips, especially focusing on other windows now, mainwindow's good
-
-- Test memory usage when tuning multiple LARGE packs
-test for memory leaks
-
 - Stress test GDKLocator again
 
 - manifests with comments, do all related features finally play well with them? Test and confirm
+PackLocator seems to not like it still, but it is handled
 
 - For any feature that deals with user RP directories:
 Ensure it POOLS dev/regular folders, AND across ALL users!
@@ -2442,11 +2449,22 @@ TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1, Ideas below AREN'T mature enough, let them rest
 
-- FUCK IT, add the ability to TOTALLY DISABLE entire features on startup
+- Tuner: there is a memory leak!? it seems so, images remain in the memory after being modified
+dispose of them properly, test again, with large hd packs especially
+
+- The manner of reading/modifying/saving images could be improved in Tuner
+GetPixel/SetPixel is too slow
+Switch to something faster, maybe use GPU, or process pixels in parallel, just do something, its tooooooooooo slooooooooooooow
+even after the rewrite
+
+- add the ability to TOTALLY DISABLE entire features on startup?
 PARTICULARY BETTERRTX
 Not all features need this, so a full system may not be needed, in-app announcements could serve as the host, online texts could
 be used as the parser
 DISABEL the button when betterrtx is broken, manually enable it again when not.
+
+> Prolly not a good idea warnings are enough.
+
 
 - do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
