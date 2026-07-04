@@ -384,7 +384,7 @@
                               Checked="TargetPreviewToggle_Checked"
                               Unchecked="TargetPreviewToggle_Unchecked"
                               IsTextScaleFactorEnabled="False"
-                              ToolTipService.ToolTip="If enabled, all functionalities of the app target Minecraft Preview instead of regular Minecraft.">
+                              ToolTipService.ToolTip="If enabled, all functionalities of the app target Minecraft Preview instead of stable Minecraft Release.">
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center">
                         <FontIcon Glyph="&#xE98F;"

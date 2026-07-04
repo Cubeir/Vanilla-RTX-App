@@ -1518,10 +1518,13 @@ public static class MinecraftUserDataLocator
 
         var versionName = GetVersionDisplayName(isTargetingPreview);
         var editionLabel = isTargetingPreview ? "Preview" : "Stable";
+        var expectedFolderName = isTargetingPreview
+                                 ? MinecraftUserDataLocator.PreviewRootFolderName
+                                 : MinecraftUserDataLocator.StableRootFolderName;
 
-        MainWindow.Log($"Can't do this yet — {versionName} user data folder hasn't been located. " +
-            $"Use \"Locate {editionLabel} user data\" above first.",
-            LogLevel.Warning);
+        MainWindow.Log($"You can't use this feature without first locating where your {versionName} user data folder is located. " +
+                       $"Click \"Locate {editionLabel} user data\" above, find and select the folder named \"{expectedFolderName}\" " +
+                       $"- It's the one with a \"Users\" subfolder inside it.", LogLevel.Warning);
 
         return false;
     }
