@@ -183,7 +183,8 @@
                                         <!-- Install Button -->
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
-                                              MinHeight="60">
+                                              MinHeight="60"
+                                              Translation="0,0,24">
                                             <Button x:Name="VanillaRTXNormals_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -192,6 +193,9 @@
                                                     VerticalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
+                                            <Grid.Shadow>
+                                                <ThemeShadow />
+                                            </Grid.Shadow>
                                         </Grid>
                                     </Grid>
                                 </StackPanel>
@@ -319,7 +323,8 @@
                                         <!-- Install Button -->
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
-                                              MinHeight="60">
+                                              MinHeight="60"
+                                              Translation="0,0,32">
                                             <Button x:Name="VanillaRTX_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -328,6 +333,9 @@
                                                     VerticalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
+                                            <Grid.Shadow>
+                                                <ThemeShadow />
+                                            </Grid.Shadow>
                                         </Grid>
                                     </Grid>
                                 </StackPanel>
@@ -455,7 +463,8 @@
                                         <!-- Install Button -->
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
-                                              MinHeight="60">
+                                              MinHeight="60"
+                                              Translation="0,0,24">
                                             <Button x:Name="VanillaRTXOpus_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -464,6 +473,9 @@
                                                     VerticalAlignment="Stretch"
                                                     IsEnabled="False"
                                                     IsTextScaleFactorEnabled="False" />
+                                            <Grid.Shadow>
+                                                <ThemeShadow />
+                                            </Grid.Shadow>
                                         </Grid>
                                     </Grid>
                                 </StackPanel>

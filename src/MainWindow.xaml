@@ -672,8 +672,8 @@
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Default Function: Resets tuning options back to their default values.
-                                &#x0a;&#x0a;Hidden Function: Hold shit while pressing to perform a hard reset that wipes all of app's data. (FOR ADVANCED USERS ONLY)
-                                &#x0a;WARNING: Please revert to game's default files manually (through BetterRTX manager, lut manager, or even DLSS swapper) if performing a hard reset to avoid losing your game's default files! So the app can pick up the defaults again after the hard reset.">
+                                &#x0a;&#x0a;Hidden Function: Hold shit while pressing to perform a hard reset that wipes all of app's data everywhere, making it as if it was freshly installed.
+                                Might also prompt you for reverting back to Default RTX/Default LUT files if needed, so your defaults aren't lost the next time you use the app.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xE777;"
@@ -723,8 +723,8 @@
                                    &#x0a;&#x0a;Recommended ranges:
                                    &#x0a;0.2–0.8 for lighter fog
                                    &#x0a;1.5-3.0 for dense fog
-                                   &#x0a;0 to disable air fog
-                                   &#x0a;&#x0a;Pro tip: The value of the multiplier will be treated as a literal density value if fog density is already too small to multiply." />
+                                   &#x0a;0.0 to disable air fog
+                                   &#x0a;&#x0a;Advanced tip: The value of the multiplier will be treated as, and applied, as a literal density value if fog density is already too small (like 0) to multiply." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <!-- Slider room -->
@@ -764,9 +764,10 @@
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Scales emissivity of all emissive blocks.
+                                   &#x0a;&#x0a;Examples:
                                    &#x0a;1 = default
                                    &#x0a;0.5 = half brightness
-                                   &#x0a;higher values = stronger emissives." />
+                                   &#x0a;higher values = stronger glowing effects on blocks." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -802,7 +803,7 @@
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Modifies ambient lighting when emissivity is adjusted, higher emissive multipliers strengthen the effect.
-                                   &#x0a;&#x0a;Note: Applying this option to a resource pack will block Emissive multiplier from being applied to that resource pack again unless the resource pack is reset/reintalled." />
+                                   &#x0a;&#x0a;Note: Applying this option to a resource pack will block Emissive multiplier from being applied to that resource pack ever again unless the resource pack is reset/reintalled freshly." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -838,10 +839,10 @@
                         <TextBlock Text="Surface normal intensity"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps in percentage if available.
-                                   &#x0a;0% = flattens all textures
+                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps in percentage, if available.
+                                   &#x0a;&#x0a;0% = flattens all textures
                                    &#x0a;100% = default (no change)
-                                   &#x0a;Higher values = stronger 3D effects on surfaces." />
+                                   &#x0a;Higher values = stronger 3D effects on surfaces."/>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"
@@ -960,7 +961,7 @@
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Lazifies heightmaps and normal maps by reducing refinedness.
-                                   &#x0a;0 = no change
+                                   &#x0a;&#x0a;0 = no change
                                    &#x0a;255 = fully lazy
                                    &#x0a;Reresource packs that are already shoddy might see no change or even slight improvements, while higher quality packs can receive an additional layer of detail, for which a small value under 20 is generally recommended." />
                         <Grid>
@@ -1037,7 +1038,7 @@
                             CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Begins permanently modifying the select packs using current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
+                            ToolTipService.ToolTip="Begins permanently modifying the select packs using the current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF4A5;"
@@ -1184,7 +1185,7 @@
                             CornerRadius="6, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="See installation information and update availability, install, update, or simply reinstall each Vanilla RTX resource pack.">
+                            ToolTipService.ToolTip="See installation information, update availability and news of Vanilla RTX resource packs, install, update, or simply reinstall each pack.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xEBD3;"
@@ -1238,7 +1239,7 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Yup, you heard it right, RTX Reactor is coming to Vanilla RTX App!">
+                            ToolTipService.ToolTip="Yup, you heard it right! RTX Reactor is coming to Vanilla RTX App later down the road!">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF196;"
@@ -1264,7 +1265,7 @@
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Manage and install BetterRTX presets.
-                            &#x0a;&#x0a;WARNING: It is your responsibility to make sure your game is up-to-date, and that BetterRTX is up-to-date, before you inject presets into your game, otherwise in case of issues, revert to Default RTX preset which is backed up from YOUR OWN game files upon installing your first preset.">
+                            &#x0a;&#x0a;WARNING: It is your responsibility to make sure your game and BetterRTX are up-to-date, before you inject presets into your game, otherwise it could cause issues, in such cases, revert back to Default RTX preset which is backed up from YOUR latest game installation files upon installing your first preset.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE794;"
@@ -1292,7 +1293,7 @@
                             CornerRadius="0,0,0,6"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.
-                            &#x0a;&#x0a;FOR ADVANCED USERS: Holding shift while pressing this button enables game's VSync back">
+                            &#x0a;&#x0a;FOR ADVANCED USERS: Holding shift while pressing this button enables game's VSync instead.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE78B;"
