@@ -473,20 +473,28 @@ public sealed partial class MainWindow : Window
         if (root != null)
         {
             ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
-            ApplyTargetPreviewBevelColors(root.ActualTheme);
+            root.FlowDirection = FlowDirection.LeftToRight;
 
+            ApplyTargetPreviewBevelColors(root.ActualTheme);
+            ApplyLocateUserDataColors(root.ActualTheme);
             TargetPreviewToggle.IsEnabledChanged += (s, e) =>
             {
                 if (_isClosing) return; // It crashes the app if we try to set it while window is closed, duh!
                 ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
             };
-            root.FlowDirection = FlowDirection.LeftToRight;
+            BrowsePacksButton.IsEnabledChanged += (s, e) =>
+            {
+                if (_isClosing) return;
+                ApplyLocateUserDataColors(((FrameworkElement)Content).ActualTheme);
+            };
 
             root.ActualThemeChanged += (_, __) =>
             {
                 if (_isClosing) return;
                 ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
                 ApplyTargetPreviewBevelColors(root.ActualTheme);
+                ApplyLocateUserDataColors(root.ActualTheme);
+
                 ThemeService.Broadcast(root.ActualTheme);
             };
         }
@@ -1432,6 +1440,9 @@ public sealed partial class MainWindow : Window
             ToolTipService.SetToolTip(BrowsePacksButton,
                 "Select resource packs that you'd want to tune, export, or delete, you can also import more packs into Minecraft from this menu.");
 
+            BrowsePacksButton.Style = (Style)Application.Current.Resources["DefaultButtonStyle"];
+            ApplyLocateUserDataColors(RightEdgeOfLocateButton.ActualTheme);
+
             _ = LocatePacksTask();
         }
         else
@@ -1445,6 +1456,9 @@ public sealed partial class MainWindow : Window
             ToolTipService.SetToolTip(BrowsePacksButton,
                 $"The app couldn't find {versionName} data folder automatically - click to locate it manually.");
 
+            BrowsePacksButton.Style =  (Style)Application.Current.Resources["AccentButtonStyle"];
+            ApplyLocateUserDataColors(RightEdgeOfLocateButton.ActualTheme);
+
             Log($"Couldn't find {versionName} user data folder automatically. Here's what to do:\n" +
                 $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
                 $"- It's the one with a \"Users\" subfolder inside it.\n" +
@@ -1452,9 +1466,12 @@ public sealed partial class MainWindow : Window
                 LogLevel.Error);
         }
     }
-
-
-
+    private void ApplyLocateUserDataColors(ElementTheme theme)
+    {
+        bool needsAttention = !MinecraftUserDataLocator.IsDataValid(IsTargetingPreview);
+        RightEdgeOfLocateButton.BorderBrush = new SolidColorBrush(
+            ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Right, accented: needsAttention, isEnabled: BrowsePacksButton.IsEnabled));
+    }
 
 
     private void TargetPreviewToggle_Checked(object sender, RoutedEventArgs e)
@@ -2388,12 +2405,10 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
-- Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
+- Keep writing/rewriting/adding more tooltips, especially focusing on other windows now, mainwindow's good
 
 - Test memory usage when tuning multiple LARGE packs
 test for memory leaks
-
-- userdatalocator expansion is done, just stress test it, figure out edge cases
 
 - Stress test GDKLocator again
 
