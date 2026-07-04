@@ -7,12 +7,12 @@ using Vanilla_RTX_App.BetterRTXManager;
 using Vanilla_RTX_App.LUTManager;
 using static Vanilla_RTX_App.TunerVariables;
 
-namespace Vanilla_RTX_App.Modules.DefaultsGuard;
+namespace Vanilla_RTX_App.Modules;
 
 /// <summary>
 /// Outcome of a pre-wipe "is a custom preset currently installed?" check.
 /// </summary>
-public enum DefaultsGuardResult
+public enum RTXDefaultsGuard
 {
     /// <summary>No Default backup exists, or the game already matches it - nothing to do.</summary>
     NoActionNeeded,
@@ -41,7 +41,7 @@ public static class DefaultsGuard
     private const string LutFile_Sky = "sky.png";
     private const string LutFile_Water = "water_n.tga";
 
-    public static async Task<DefaultsGuardResult> RestoreBetterRTXDefaultIfNeededAsync(Action<string>? log = null)
+    public static async Task<RTXDefaultsGuard> RestoreBetterRTXDefaultIfNeededAsync(Action<string>? log = null)
     {
         try
         {
@@ -52,28 +52,28 @@ public static class DefaultsGuard
             if (!Directory.Exists(defaultFolder))
             {
                 log?.Invoke("[BetterRTX Guard] No __DEFAULT backup exists - nothing to protect.");
-                return DefaultsGuardResult.NoActionNeeded;
+                return RTXDefaultsGuard.NoActionNeeded;
             }
 
             var defaultBinFiles = Directory.GetFiles(defaultFolder, "*.bin", SearchOption.TopDirectoryOnly).ToList();
             if (defaultBinFiles.Count == 0)
             {
                 log?.Invoke("[BetterRTX Guard] __DEFAULT folder exists but has no .bin files, nothing to restore.");
-                return DefaultsGuardResult.NoActionNeeded;
+                return RTXDefaultsGuard.NoActionNeeded;
             }
 
             var cachedPath = Persistent.MinecraftInstallPath;
             if (!MinecraftGDKLocator.RevalidateCachedPath(cachedPath, false))
             {
                 log?.Invoke("[BetterRTX Guard] Default backup exists but no valid Minecraft path is known - can't verify or restore.");
-                return DefaultsGuardResult.Skipped;
+                return RTXDefaultsGuard.Skipped;
             }
 
             var gameMaterialsPath = Path.Combine(cachedPath!, "data", "renderer", "materials");
             if (!Directory.Exists(gameMaterialsPath))
             {
                 log?.Invoke("[BetterRTX Guard] Materials folder not found in game install - can't verify current preset state.");
-                return DefaultsGuardResult.Skipped;
+                return RTXDefaultsGuard.Skipped;
             }
 
             var defaultHashes = BetterRTXManagerWindow.GetPresetHashes(defaultBinFiles);
@@ -82,13 +82,13 @@ public static class DefaultsGuard
             if (currentHashes.Count == 0)
             {
                 log?.Invoke("[BetterRTX Guard] Could not read any Core RTX files from the game - skipping to avoid acting on incomplete info.");
-                return DefaultsGuardResult.Skipped;
+                return RTXDefaultsGuard.Skipped;
             }
 
             if (BetterRTXManagerWindow.AreHashesMatching(currentHashes, defaultHashes))
             {
                 log?.Invoke("[BetterRTX Guard] Game already matches Default - nothing to do.");
-                return DefaultsGuardResult.NoActionNeeded;
+                return RTXDefaultsGuard.NoActionNeeded;
             }
 
             log?.Invoke("[BetterRTX Guard] Non-default preset detected - restoring Default before wipe...");
@@ -100,16 +100,16 @@ public static class DefaultsGuard
             var success = await Helpers.ReplaceFilesWithElevation(filesToApply, "[BetterRTX Guard]", "betterrtx_predelete_restore");
 
             log?.Invoke(success ? "[BetterRTX Guard] Default restored successfully." : "[BetterRTX Guard] Failed to restore Default.");
-            return success ? DefaultsGuardResult.Restored : DefaultsGuardResult.RestoreFailed;
+            return success ? RTXDefaultsGuard.Restored : RTXDefaultsGuard.RestoreFailed;
         }
         catch (Exception ex)
         {
             log?.Invoke($"[BetterRTX Guard] Exception: {ex.Message}");
-            return DefaultsGuardResult.Skipped;
+            return RTXDefaultsGuard.Skipped;
         }
     }
 
-    public static async Task<DefaultsGuardResult> RestoreLutDefaultIfNeededAsync(bool targetPreview, Action<string>? log = null)
+    public static async Task<RTXDefaultsGuard> RestoreLutDefaultIfNeededAsync(bool targetPreview, Action<string>? log = null)
     {
         try
         {
@@ -121,14 +121,14 @@ public static class DefaultsGuard
             if (!File.Exists(defaultLut) || !File.Exists(defaultSky) || !File.Exists(defaultWater))
             {
                 log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] No complete Default backup exists - nothing to protect.");
-                return DefaultsGuardResult.NoActionNeeded;
+                return RTXDefaultsGuard.NoActionNeeded;
             }
 
             var cachedPath = targetPreview ? Persistent.MinecraftPreviewInstallPath : Persistent.MinecraftInstallPath;
             if (!MinecraftGDKLocator.RevalidateCachedPath(cachedPath, targetPreview))
             {
                 log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Default backup exists but no valid Minecraft path is known - can't verify or restore.");
-                return DefaultsGuardResult.Skipped;
+                return RTXDefaultsGuard.Skipped;
             }
 
             var dstLut = Path.Combine(cachedPath!, "data", "ray_tracing", LutFile_LookUpTables);
@@ -138,7 +138,7 @@ public static class DefaultsGuard
             if (!File.Exists(dstLut) || !File.Exists(dstSky) || !File.Exists(dstWater))
             {
                 log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Game's ray_tracing files are missing/incomplete - can't verify current preset state.");
-                return DefaultsGuardResult.Skipped;
+                return RTXDefaultsGuard.Skipped;
             }
 
             bool alreadyDefault =
@@ -149,7 +149,7 @@ public static class DefaultsGuard
             if (alreadyDefault)
             {
                 log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Game already matches Default - nothing to do.");
-                return DefaultsGuardResult.NoActionNeeded;
+                return RTXDefaultsGuard.NoActionNeeded;
             }
 
             log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Non-default preset detected - restoring Default before wipe...");
@@ -164,12 +164,12 @@ public static class DefaultsGuard
             var success = await Helpers.ReplaceFilesWithElevation(files, "[LUT Guard]", "rtx_defaults_predelete_restore");
 
             log?.Invoke(success ? "[LUT Guard] Default restored successfully." : "[LUT Guard] Failed to restore Default.");
-            return success ? DefaultsGuardResult.Restored : DefaultsGuardResult.RestoreFailed;
+            return success ? RTXDefaultsGuard.Restored : RTXDefaultsGuard.RestoreFailed;
         }
         catch (Exception ex)
         {
             log?.Invoke($"[LUT Guard] Exception: {ex.Message}");
-            return DefaultsGuardResult.Skipped;
+            return RTXDefaultsGuard.Skipped;
         }
     }
 }

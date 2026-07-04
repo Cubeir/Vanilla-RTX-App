@@ -22,7 +22,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
-using Vanilla_RTX_App.Modules.DefaultsGuard;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
@@ -231,10 +230,10 @@ public sealed partial class MainWindow : Window
         var occasion = GetSpecialOccasionName();
         var (prefix, count) = occasion switch
         {
-            "birthday"  => ("vrtx.birthday", 3),
-            "pumpkin"   => ("vrtx.pumpkin", 3),
+            "birthday" => ("vrtx.birthday", 3),
+            "pumpkin" => ("vrtx.pumpkin", 3),
             "christmas" => ("vrtx.christmas", 5),
-            _           => ("vrtx.app", 32)
+            _ => ("vrtx.app", 32)
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
@@ -530,10 +529,10 @@ public sealed partial class MainWindow : Window
         var occasion = GetSpecialOccasionName();
         var (prefix, count) = occasion switch
         {
-            "birthday"    => ("vrtx.birthday", 3),
-            "pumpkin"     => ("vrtx.pumpkin", 3),
-            "christmas"   => ("vrtx.christmas", 5),
-            _             => ("vrtx.app", 32)
+            "birthday" => ("vrtx.birthday", 3),
+            "pumpkin" => ("vrtx.pumpkin", 3),
+            "christmas" => ("vrtx.christmas", 5),
+            _ => ("vrtx.app", 32)
         };
         int rng = Random.Shared.Next(1, count + 1);
         Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
@@ -968,7 +967,7 @@ public sealed partial class MainWindow : Window
                     {
                         var value = field.GetValue(null);
 
-                        // Special-case SelectedPacks — the tuple list won't print usefully via ToString()
+                        // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
                         if (field.Name == nameof(TunerVariables.SelectedPacks) &&
                             value is List<(string Location, string Name, string Type)> selectedPacks)
                         {
@@ -1725,21 +1724,21 @@ public sealed partial class MainWindow : Window
             await Task.Delay(150);
         }
 
-        async Task RunGuard(string featureName, Task<DefaultsGuardResult> guardTask)
+        async Task RunGuard(string featureName, Task<RTXDefaultsGuard> guardTask)
         {
             var result = await guardTask;
             switch (result)
             {
-                case DefaultsGuardResult.Restored:
+                case RTXDefaultsGuard.Restored:
                     Log($"{featureName}: reverted to Default before wipe.", LogLevel.Success);
                     break;
-                case DefaultsGuardResult.RestoreFailed:
+                case RTXDefaultsGuard.RestoreFailed:
                     Log($"{featureName}: tried to revert to Default but it failed - the game may still be on a modified preset.", LogLevel.Warning);
                     break;
-                case DefaultsGuardResult.Skipped:
+                case RTXDefaultsGuard.Skipped:
                     Log($"{featureName}: couldn't safely verify preset state - left untouched.", LogLevel.Warning);
                     break;
-                case DefaultsGuardResult.NoActionNeeded:
+                case RTXDefaultsGuard.NoActionNeeded:
                     Log($"{featureName}: already on Default or nothing to protect.", LogLevel.Informational);
                     break;
             }
@@ -1812,7 +1811,7 @@ public sealed partial class MainWindow : Window
 
                 if (!seenPaths.Add(normalised))
                 {
-                    Log($"{displayName} was in the list more than once — skipping duplicate selection.", LogLevel.Warning);
+                    Log($"{displayName} was in the list more than once - skipping duplicate selection.", LogLevel.Warning);
                     continue;
                 }
 
@@ -2366,7 +2365,8 @@ public sealed partial class MainWindow : Window
 
 - Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
 
-- Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
+- Test memory usage when tuning multiple LARGE packs
+test for memory leaks
 
 - userdatalocator expansion is done, just stress test it, figure out edge cases
 y'know what the design idea was, it always updates, switching to preview, path doesn't seem to be there?
@@ -2383,16 +2383,13 @@ in more places
 any feature that relies directly on user data locations, it must redirect to that if not valid
 should probably update OTHER control names based on validity of this as well
 
-- The app keeps bothering the user about preview userdata location not being there, if they dont have preview mc installed to begin with
+>>>> The app keeps bothering the user about preview userdata location not being there, if they dont have preview mc installed to begin with
 The solution, stop the check from being ON BOTH VERSIONS ALL GOD DAMN TIME
 Focus it on ONE version, the version IsTargetingPreview designates !!!
 
 - Stress test GDKLocator again
 
 - manifests with comments, do all related features finally play well with them? Test and confirm
-
-- Test memory usage when tuning multiple LARGE packs
-test for memory leaks
 
 - For any feature that deals with user RP directories:
 Ensure it POOLS dev/regular folders, AND across ALL users!
