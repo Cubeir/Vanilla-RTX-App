@@ -112,7 +112,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
-    private static readonly string[] CoreRTXFiles =
+    internal static readonly string[] CoreRTXFiles =
     [
        "RTXPostFX.Bloom.material.bin",
        "RTXPostFX.material.bin",
@@ -1796,7 +1796,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
 
 
-    private string? ComputeFileHash(string filePath)
+    internal static string? ComputeFileHash(string filePath)
     {
         try
         {
@@ -1817,13 +1817,15 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    private Dictionary<string, string> GetCurrentlyInstalledHashes()
+    private Dictionary<string, string> GetCurrentlyInstalledHashes() => GetCurrentlyInstalledHashes(_gameMaterialsPath);
+
+    internal static Dictionary<string, string> GetCurrentlyInstalledHashes(string gameMaterialsPath)
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var fileName in CoreRTXFiles)
         {
-            var filePath = Path.Combine(_gameMaterialsPath, fileName);
+            var filePath = Path.Combine(gameMaterialsPath, fileName);
             if (File.Exists(filePath))
             {
                 var hash = ComputeFileHash(filePath);
@@ -1839,7 +1841,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         return hashes;
     }
 
-    private Dictionary<string, string> GetPresetHashes(List<string> binFiles)
+    internal static Dictionary<string, string> GetPresetHashes(List<string> binFiles)
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -1861,7 +1863,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         return hashes;
     }
 
-    private bool AreHashesMatching(Dictionary<string, string> currentHashes, Dictionary<string, string> presetHashes)
+    internal static bool AreHashesMatching(Dictionary<string, string> currentHashes, Dictionary<string, string> presetHashes)
     {
         if (currentHashes == null || presetHashes == null)
         {

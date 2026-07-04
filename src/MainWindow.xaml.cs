@@ -22,6 +22,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
+using Vanilla_RTX_App.Modules.DefaultsGuard;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
@@ -1610,6 +1611,8 @@ public sealed partial class MainWindow : Window
             Log("Starting hard reset, this will wipe all of app's storage and temporary files...", LogLevel.Warning);
             await Task.Delay(250);
 
+            await GuardActivePresetsBeforeWipeAsync();
+
             // ── 1. Local Settings (recursive containers) ─────────────────────────
             var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
             var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
@@ -1700,9 +1703,48 @@ public sealed partial class MainWindow : Window
         {
             Log($"Error during hard reset: {ex.Message}", LogLevel.Error);
         }
+
+        // ── local helpers, only meaningful when trying to wipe and user doesn't have their default presets installed if any ───────────
+
+        async Task GuardActivePresetsBeforeWipeAsync()
+        {
+            Log("Checking for active custom presets that need to be reverted first...", LogLevel.Informational);
+
+            await RunGuard("BetterRTX",
+                DefaultsGuard.RestoreBetterRTXDefaultIfNeededAsync(
+                    msg => Log(msg, LogLevel.Informational)));
+
+            await RunGuard("RTX LUT (Release)",
+                DefaultsGuard.RestoreLutDefaultIfNeededAsync(
+                    targetPreview: false, log: msg => Log(msg, LogLevel.Informational)));
+
+            await RunGuard("RTX LUT (Preview)",
+                DefaultsGuard.RestoreLutDefaultIfNeededAsync(
+                    targetPreview: true, log: msg => Log(msg, LogLevel.Informational)));
+
+            await Task.Delay(150);
+        }
+
+        async Task RunGuard(string featureName, Task<DefaultsGuardResult> guardTask)
+        {
+            var result = await guardTask;
+            switch (result)
+            {
+                case DefaultsGuardResult.Restored:
+                    Log($"{featureName}: reverted to Default before wipe.", LogLevel.Success);
+                    break;
+                case DefaultsGuardResult.RestoreFailed:
+                    Log($"{featureName}: tried to revert to Default but it failed - the game may still be on a modified preset.", LogLevel.Warning);
+                    break;
+                case DefaultsGuardResult.Skipped:
+                    Log($"{featureName}: couldn't safely verify preset state - left untouched.", LogLevel.Warning);
+                    break;
+                case DefaultsGuardResult.NoActionNeeded:
+                    Log($"{featureName}: already on Default or nothing to protect.", LogLevel.Informational);
+                    break;
+            }
+        }
     }
-
-
 
 
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
@@ -2341,6 +2383,10 @@ in more places
 any feature that relies directly on user data locations, it must redirect to that if not valid
 should probably update OTHER control names based on validity of this as well
 
+- The app keeps bothering the user about preview userdata location not being there, if they dont have preview mc installed to begin with
+The solution, stop the check from being ON BOTH VERSIONS ALL GOD DAMN TIME
+Focus it on ONE version, the version IsTargetingPreview designates !!!
+
 - Stress test GDKLocator again
 
 - manifests with comments, do all related features finally play well with them? Test and confirm
@@ -2374,7 +2420,9 @@ Github raw should return it within 5-7 seconds at worst, much faster, that's it.
 Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
 TEST EVERTHING! EVERY. LITTLE. THING.
 
-==================== ENOUGH FOR 3.1
+==================== ENOUGH FOR 3.1, Ideas below AREN'T mature enough, let them rest
+
+
 
 - FUCK IT, add the ability to TOTALLY DISABLE entire features on startup
 PARTICULARY BETTERRTX
@@ -2412,8 +2460,6 @@ both arrays must select the same image/same rng etc..
 gets clicked, if the above is implemented, things can look really nice
 
 > This whole thing would've worked a lot easier if you weren't trying to be a smartass and minimize the number of vessels used for lampanimator/previewer
-
-
 
 
 - Idea: when other windows launch, recieve clicks on the main window, and just log something that tells user, finish your work in the current

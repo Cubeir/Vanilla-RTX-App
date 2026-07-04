@@ -711,7 +711,7 @@ public sealed partial class LUTManagerWindow : Window
     // Hash comparison  (SHA-256)
     // -------------------------------------------------------------------------
 
-    private static bool HashesMatch(string pathA, string pathB)
+    internal static bool HashesMatch(string pathA, string pathB)
     {
         using var sha = SHA256.Create();
         using var streamA = File.OpenRead(pathA);
