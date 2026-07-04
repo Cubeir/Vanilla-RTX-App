@@ -5,7 +5,7 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PSA
 ### app update announcement
-📯 Welcome to Vanilla RTX App 3.1! This update brings dynamic info panels throughout the app to help you stay informed, including Changelogs for Vanilla RTX updates!
+📯 This update brings dynamic info panels throughout the app to help you stay informed, including Changelogs for Vanilla RTX updates, and much, much more...
 
 ### reactor temp announcement
 🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App!
@@ -18,13 +18,14 @@ Find detailed changelogs by clicking name of a pack to go to its CurseForge page
 
 ## Chaos Cubes [cd:"120"] [glyph:"F158"]
 Support for Chaos Cubed game drop will be arriving soon.
-Check back daily!
+Check back every now and then!
 
 ### Tip [glyph:"E95B"]
 Hint: It is always preferred to activate RTX resource packs in your Global Resource Pack settings instead of per-World or Realm.
 
 ### Tip
-Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts! Reinstalls happen faster from a cached version unless a new version happens to be available.
+Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts!
+Reinstalls happen quicker from a cached version, unless a new version happens to be available.
 
 
 
