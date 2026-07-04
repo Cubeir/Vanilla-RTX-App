@@ -111,7 +111,7 @@ public class PackLocator
                 catch (Exception ex)
                 {
                     System.Diagnostics.Trace.WriteLine($"[PACK_LOCATOR] Parsed a malformed manifest.json, reason:\n{ex.ToString}\nat file: {file}");
-                    results.Add("⚠️ One of (likely third-party) packages had a malformed manifest.");
+                    results.Add("⚠️ Detected a package with a malformed manifest (likely from a third-party, you can ignore this warning).");
                 }
             }
 
