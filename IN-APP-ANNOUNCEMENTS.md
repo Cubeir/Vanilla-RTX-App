@@ -5,12 +5,10 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PSA
 ### app update announcement
-📯 3.1 Update brings Dynamic Announcements to directly communicate the latest information surrounding Minecraft RTX, app features, pack updates changelogs, etc...
-Alongside numerous QoL features and improvements under the hood.
+📯 Welcome to Vanilla RTX App 3.1! This update brings dynamic info panels throughout the app to help you stay informed, including Changelogs for Vanilla RTX updates!
 
 ### reactor temp announcement
-🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App. It'll be time-intensive, you can support my projects on Ko-Fi to help my plans come to fruition faster!
-
+🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App!
 
 # PackUpdateAnnouncements
 ### Update [glyph:"E789"]
