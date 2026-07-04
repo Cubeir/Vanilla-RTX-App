@@ -33,14 +33,16 @@ Tip: You can come back here to quickly reinstall packs to restore them to their 
 
 # BetterRTXAnnouncements
 
+## [cd:"0"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will change. CHECK BACK LATER!
+It is currnetly likely safe to install BetterRTX presets, the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner to be safe, and continue downloading and installing your presets. (This text may change later).
+
 ## Warning 1 [glyph:"E730"] [cd:"10000"]
-If your preset list has been auto-reset since your last visit:
+Reminder: If your preset list has been auto-reset since your last visit, or this is your first visit:
 It is a good idea to wait and check from the BetterRTX Discord whether it has been updated for the latest game version before installing a preset. Installing presets while it serves outdated files could result in crashes and visual glitches. In this scenario, revert to Default RTX, and once BetterRTX is updated, use the refresh button in the top left corner. 
 In other words: Minecraft updates can break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly. If installing BetterRTX causes issues for you, follow these steps:
 1. Revert to Default RTX for now
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to re-fetch the latest files.
-
 
 
 # LutManagerAnnouncements 

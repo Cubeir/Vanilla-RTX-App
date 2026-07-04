@@ -462,13 +462,13 @@ public sealed partial class MainWindow : Window
         // Load variables back in from previous session
         LoadSettings();
 
-        // APPLY THEME if it isn't a button click they won't cycle and apply the loaded setting instead
+        // APPLY THEME, passing nulls means it isn't a button, instead of cycling, it applies the loaded setting
         CycleThemeButton_Click(null, null);
 
         // Give the window time to render
         await Task.Delay(125);
 
-        // Watches theme changes and adjusts based on theme
+        // Apply some colors, then continue to watch theme changes and adjust based on theme
         if (root != null)
         {
             ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
@@ -499,8 +499,10 @@ public sealed partial class MainWindow : Window
         // Attach previewer/art vessels
         Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
 
-        // Set reinstall latest packs button visuals based on cache status (TODO: COULD maybe have a third "Update to latest" stat, but it requires checking remote on startup)
-        // It is also set after closing pack update window, don't forget to update it there.
+        // Set reinstall latest packs button visuals based on cache status
+        // It is also set after closing pack update window, don't forget to update it there if done here
+        // TODO: COULD maybe have a third "Update to latest?" stat to return, but it requires checking remote on startup)
+        // a way to let user know of Vanilla RTX updates inside the main window.
         if (_updater.HasDeployableCache())
         {
             UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
@@ -559,12 +561,13 @@ public sealed partial class MainWindow : Window
         {
             for (int i = psa.Length - 1; i >= 0; i--)
             {
-                await Task.Delay(200);
+                await Task.Delay(75);
                 Log(psa[i].Text);
+                await Task.Delay(75);
             }
         }
 
-        // Similar to GDKLocator but for user data, its fast, so its ok to call it last, and we want its warning messages to be at the top, so...
+        // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages to be at the top, so, calling it last
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         // Updates the button responsible for allowing the user to select another user data path.
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -622,7 +625,7 @@ public sealed partial class MainWindow : Window
         manager.IsResizable = true;
         manager.IsMaximizable = true;
 
-        // Center window if not already (we know by quering if WinUIEx keys exist or not, which keep saved positions)
+        // Center window if we no saved pos, by quering if "WinUIEx" key container exists or not, which keep saved positions)
         var settings = Windows.Storage.ApplicationData.Current.LocalSettings;
         if (!settings.Containers.ContainsKey("WinUIEx"))
             this.CenterOnScreen();
@@ -1229,35 +1232,34 @@ public sealed partial class MainWindow : Window
         }
 
         var root = Instance!.Content as FrameworkElement;
-        root!.RequestedTheme = mode switch
+
+        ElementTheme targetTheme = mode switch
         {
             "Light" => ElementTheme.Light,
             "Dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
 
+        if (root!.RequestedTheme != targetTheme)
+            root.RequestedTheme = targetTheme;
+
         Button btn = (sender as Button) ?? CycleThemeButton;
 
         // Visual Feedback
-        if (mode == "System")
-        {
-            btn.Content = new TextBlock
+        btn.Content = mode == "System"
+            ? new TextBlock
             {
                 Text = "A",
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 15
-            };
-        }
-        else
-        {
-            btn.Content = mode switch
+            }
+            : mode switch
             {
                 "Light" => "\uE706",
                 "Dark" => "\uEC46",
                 _ => "A",
             };
-        }
 
         ToolTipService.SetToolTip(btn, "Theme: " + mode);
     }
@@ -2318,10 +2320,6 @@ public sealed partial class MainWindow : Window
 /* ### BACKLOG // TODO ###
 
 - Keep writing/rewriting/adding more tooltips, especially focus on other windows now, mainwindow's good
-
-- Test unhandled exception log catcher thingy, especially with startup and close crashes
-on next startup, it can behave weirdly, depending on the startup sequence.... so much depends on there
-Do artifical throws in random placess
 
 - Safeguard against loss of default RTX files by auto triggering default preset reinstalls for BetterRTX and LUT Manager upon hard reset
 
