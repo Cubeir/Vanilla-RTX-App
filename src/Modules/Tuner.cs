@@ -1,11 +1,16 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.Modules.ProcessorVariables;
@@ -340,59 +345,90 @@ public static class TextureSetHelper
     }
 
     /// <summary>
-    /// Loads all bitmaps for a list of resolved texture sets.
-    /// Virtual (inline) colours become 1×1 bitmaps and are flagged accordingly.
-    /// Sets whose color bitmap cannot be loaded are skipped.
+    /// Loads all bitmaps for a single resolved texture set. Virtual (inline) colours
+    /// become 1×1 bitmaps and are flagged accordingly. Returns null (and leaves nothing
+    /// allocated) if the color bitmap can't be loaded.
+    ///
+    /// This is deliberately a single-item operation rather than a batch: decoding an
+    /// image from disk is real, sometimes-slow I/O work, and the orchestrator pipelines
+    /// load → process → save per texture set (in parallel across texture sets) so that
+    /// progress reporting and cancellation are granular to "one texture", not "one pack".
     /// </summary>
+    public static LoadedTextureSet? LoadTextureSet(ResolvedTextureSet rs)
+    {
+        // previously, if the color layer loaded fine but the MER or normal
+        // layer then *threw* while loading (rather than just returning null),
+        // the already-loaded colorBmp/merBmp were never disposed - a real (if rare)
+        // native GDI+ handle + memory leak. Track everything allocated here and
+        // dispose it on any failure path via `finally`.
+        Bitmap? colorBmp = null;
+        Bitmap? merBmp = null;
+        Bitmap? normalBmp = null;
+        var success = false;
+
+        try
+        {
+            colorBmp = LoadLayer(rs.Color);
+            if (colorBmp == null)
+            {
+                Trace.WriteLine($"[TUNER] Skipping texture set '{rs.JsonFilePath}': color bitmap could not be loaded.");
+                return null;
+            }
+
+            if (rs.Mer != null)
+            {
+                merBmp = LoadLayer(rs.Mer);
+                if (merBmp == null)
+                    Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': MER layer could not be loaded; MER processors will be skipped.");
+            }
+
+            if (rs.NormalOrHeight != null)
+            {
+                normalBmp = LoadLayer(rs.NormalOrHeight);
+                if (normalBmp == null)
+                    Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': normal/heightmap layer could not be loaded; normal processors will be skipped.");
+            }
+
+            var result = new LoadedTextureSet
+            {
+                Resolved = rs,
+                ColorBmp = colorBmp,
+                ColorIsVirtual = rs.Color.IsInline,
+                MerBmp = merBmp,
+                MerIsVirtual = rs.Mer?.IsInline ?? false,
+                NormalBmp = normalBmp,
+                NormalIsVirtual = rs.NormalOrHeight?.IsInline ?? false,
+            };
+            success = true;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[TUNER] Error loading texture set '{rs.JsonFilePath}': {ex.Message}");
+            return null;
+        }
+        finally
+        {
+            if (!success)
+            {
+                colorBmp?.Dispose();
+                merBmp?.Dispose();
+                normalBmp?.Dispose();
+            }
+        }
+    }
+
+    /// <summary>Batch convenience wrapper kept for any other callers - loads every
+    /// resolved set sequentially. Tuner's own pipeline calls LoadTextureSet directly
+    /// per-item instead, so it can parallelize and report progress per texture.</summary>
     public static IReadOnlyList<LoadedTextureSet> LoadTextureSets(IReadOnlyList<ResolvedTextureSet> resolved)
     {
         var results = new List<LoadedTextureSet>(resolved.Count);
-
         foreach (var rs in resolved)
         {
-            try
-            {
-                var colorBmp = LoadLayer(rs.Color);
-                if (colorBmp == null)
-                {
-                    Trace.WriteLine($"[TUNER] Skipping texture set '{rs.JsonFilePath}': color bitmap could not be loaded.");
-                    continue;
-                }
-
-                Bitmap? merBmp = null;
-                Bitmap? normalBmp = null;
-
-                if (rs.Mer != null)
-                {
-                    merBmp = LoadLayer(rs.Mer);
-                    if (merBmp == null)
-                        Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': MER layer could not be loaded; MER processors will be skipped.");
-                }
-
-                if (rs.NormalOrHeight != null)
-                {
-                    normalBmp = LoadLayer(rs.NormalOrHeight);
-                    if (normalBmp == null)
-                        Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': normal/heightmap layer could not be loaded; normal processors will be skipped.");
-                }
-
-                results.Add(new LoadedTextureSet
-                {
-                    Resolved = rs,
-                    ColorBmp = colorBmp,
-                    ColorIsVirtual = rs.Color.IsInline,
-                    MerBmp = merBmp,
-                    MerIsVirtual = rs.Mer?.IsInline ?? false,
-                    NormalBmp = normalBmp,
-                    NormalIsVirtual = rs.NormalOrHeight?.IsInline ?? false,
-                });
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[TUNER] Error loading texture set '{rs.JsonFilePath}': {ex.Message}");
-            }
+            var lts = LoadTextureSet(rs);
+            if (lts != null) results.Add(lts);
         }
-
         return results;
     }
 
@@ -545,21 +581,33 @@ public static class TextureSetHelper
                 break;
 
             case ".png":
-                using (var canonical = EnsureArgb32(bmp))
-                    canonical.Save(originalPath, ImageFormat.Png);
-                break;
+                {
+                    // EnsureArgb32 returns the *same* instance when bmp is already
+                    // Format32bppArgb (the common case). The old code wrapped that in a
+                    // `using`, which disposed the caller's bitmap here - and then the
+                    // orchestrator disposed it again a moment later. Bitmap.Dispose()
+                    // happens to tolerate double-dispose, but it's fragile to rely on
+                    // that; only dispose the canonical copy when it's actually a new object.
+                    var canonical = EnsureArgb32(bmp);
+                    try { canonical.Save(originalPath, ImageFormat.Png); }
+                    finally { if (!ReferenceEquals(canonical, bmp)) canonical.Dispose(); }
+                    break;
+                }
 
             case ".jpg":
             case ".jpeg":
-                var jpegEncoder = GetEncoder(ImageFormat.Jpeg);
-                if (jpegEncoder == null) goto default;
+                {
+                    var jpegEncoder = GetEncoder(ImageFormat.Jpeg);
+                    if (jpegEncoder == null) goto default;
 
-                var qualityParam = new EncoderParameters(1);
-                qualityParam.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
+                    var qualityParam = new EncoderParameters(1);
+                    qualityParam.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
 
-                using (var canonical = EnsureArgb32(bmp))
-                    canonical.Save(originalPath, jpegEncoder, qualityParam);
-                break;
+                    var canonical = EnsureArgb32(bmp);
+                    try { canonical.Save(originalPath, jpegEncoder, qualityParam); }
+                    finally { if (!ReferenceEquals(canonical, bmp)) canonical.Dispose(); }
+                    break;
+                }
 
             default:
                 WriteImageAsTGA(bmp, originalPath);
@@ -588,11 +636,115 @@ public static class TextureSetHelper
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  FastBitmap  ──  LockBits-based pixel accessor, drop-in for GetPixel/SetPixel
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Replaces Bitmap.GetPixel/SetPixel for bulk pixel work. Each GetPixel/SetPixel
+/// call on a System.Drawing.Bitmap round-trips through native GDI+ with format
+/// checks and marshalling on every single pixel; for a 512x512 image that's a
+/// quarter million native calls per full pass. FastBitmap instead locks the
+/// bitmap once, bulk-copies its raw bytes into a managed buffer with a single
+/// Marshal.Copy, and does all reads/writes against that plain byte[] (fast,
+/// bounds-checked, no native calls). On Dispose it copies the buffer back
+/// (only if opened writable) and unlocks.
+///
+/// Always requests Format32bppArgb regardless of the bitmap's real pixel
+/// format - this exactly mirrors what GetPixel/SetPixel already did (they always
+/// hand back/accept a plain ARGB Color regardless of underlying storage), so
+/// output is unaffected: GDI+ performs the same implicit conversion on lock/unlock
+/// that GetPixel/SetPixel performed internally per call.
+/// </summary>
+public sealed class FastBitmap : IDisposable
+{
+    private readonly Bitmap _bitmap;
+    private readonly BitmapData _data;
+    private readonly byte[] _buffer;
+    private readonly int _stride;
+    private readonly bool _writable;
+    private bool _disposed;
+
+    public int Width { get; }
+    public int Height { get; }
+
+    public FastBitmap(Bitmap bitmap, bool writable)
+    {
+        _bitmap = bitmap;
+        _writable = writable;
+        Width = bitmap.Width;
+        Height = bitmap.Height;
+
+        _data = bitmap.LockBits(
+            new Rectangle(0, 0, Width, Height),
+            writable ? ImageLockMode.ReadWrite : ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
+
+        _stride = _data.Stride;
+        _buffer = new byte[_stride * Height];
+        Marshal.Copy(_data.Scan0, _buffer, 0, _buffer.Length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Color Get(int x, int y)
+    {
+        var i = y * _stride + x * 4;
+        // Format32bppArgb byte order in memory is B, G, R, A.
+        return Color.FromArgb(_buffer[i + 3], _buffer[i + 2], _buffer[i + 1], _buffer[i]);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Set(int x, int y, Color c)
+    {
+        var i = y * _stride + x * 4;
+        _buffer[i] = c.B;
+        _buffer[i + 1] = c.G;
+        _buffer[i + 2] = c.R;
+        _buffer[i + 3] = c.A;
+    }
+
+    /// <summary>
+    /// Deliberately named as an indexer rather than GetPixel/SetPixel: those names
+    /// read exactly like the slow Bitmap API this class replaces, which caused real
+    /// confusion during review even though the implementation underneath is entirely
+    /// different (plain array access, no GDI+ calls). fb[x, y] makes it visually
+    /// obvious it's not that.
+    /// </summary>
+    public Color this[int x, int y]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Get(x, y);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => Set(x, y, value);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        try
+        {
+            if (_writable)
+                Marshal.Copy(_buffer, 0, _data.Scan0, _buffer.Length);
+        }
+        finally
+        {
+            _bitmap.UnlockBits(_data);
+        }
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  Processor  ──  orchestrator + all sub-processors
 // ══════════════════════════════════════════════════════════════════════════════
 
 public class Tuner
 {
+    /// <summary>Reported via IProgress&lt;T&gt; while a tuning run is in progress.
+    /// Total == 0 means "work amount unknown yet" (caller should show an
+    /// indeterminate bar); once Total is known, Completed/Total gives a real ratio.</summary>
+    public readonly record struct TuningProgress(int Completed, int Total, string StatusText);
+
     private struct PackInfo
     {
         public string Name;
@@ -607,7 +759,13 @@ public class Tuner
         }
     }
 
-    public static string TuneSelectedPacks()
+    /// <param name="progress">Optional progress sink. Safe to pass a UI-thread-created
+    /// System.Progress&lt;TuningProgress&gt; - callbacks are marshalled back to whatever
+    /// SynchronizationContext was current when it was constructed.</param>
+    /// <param name="cancellationToken">Checked between packs and once per texture set.
+    /// When cancelled, work already completed for the pack currently in flight is
+    /// still saved to disk before the method returns - nothing already-finished is lost.</param>
+    public static string TuneSelectedPacks(IProgress<TuningProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
         static string NormalizePath(string path)
@@ -666,136 +824,233 @@ public class Tuner
         bool doNormalInt = NormalIntensity != Defaults.NormalIntensity;
         bool doRoughness = RoughnessControlValue != Defaults.RoughnessControlValue;
         bool doGrain = MaterialNoiseOffset != Defaults.MaterialNoiseOffset;
+        bool needsTextureProcessing = doEmissivity || doLazify || doNormalInt || doRoughness || doGrain;
 
-        foreach (var pack in packs)
+        // Pre-resolve texture sets for every pack up front. This costs one extra JSON
+        // parse pass (cheap - it's just text, no bitmaps loaded yet) but means we know
+        // the total unit count for progress reporting *before* the slow bitmap work
+        // starts, and the main loop below re-uses these results instead of re-parsing.
+        var resolvedByPackPath = new Dictionary<string, IReadOnlyList<TextureSetHelper.ResolvedTextureSet>>(StringComparer.OrdinalIgnoreCase);
+        var totalTextureSets = 0;
+
+        if (needsTextureProcessing)
         {
-            if (doFog)
+            foreach (var pack in packs)
             {
-                ProcessFog(pack);
-                ProcessFog(pack, processWaterOnly: true);
+                if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path)) continue;
+                var resolved = TextureSetHelper.ResolveTextureSets(pack.Path);
+                resolvedByPackPath[pack.Path] = resolved;
+                totalTextureSets += resolved.Count;
             }
-
-            if (!doEmissivity && !doLazify && !doNormalInt && !doRoughness && !doGrain)
-                continue;
-
-            if (string.IsNullOrEmpty(pack.Path) || !Directory.Exists(pack.Path))
-            {
-                Trace.WriteLine($"[TUNER] Skipping texture processing for '{pack.Name}': path missing or inaccessible.");
-                continue;
-            }
-
-            // Read pack context to determine guardrails for this pack
-            var packCtx = PackContextFile.Read(pack.Path);
-
-            // If this pack was previously tuned with ambient lighting, suppress the
-            // multiplier pass to prevent blinding over-brightness. The ambient pass
-            // itself (second pass) is still allowed to run.
-            bool skipEmissivityMultiplierPass = packCtx.HadAmbientLighting;
-
-            if (skipEmissivityMultiplierPass && doEmissivity && EmissivityMultiplier != Defaults.EmissivityMultiplier)
-                Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed — pack was previously tuned with ambient lighting.");
-
-            var resolved = TextureSetHelper.ResolveTextureSets(pack.Path);
-            if (resolved.Count == 0)
-            {
-                Trace.WriteLine($"[TUNER] '{pack.Name}': no valid texture sets found.");
-                continue;
-            }
-
-            var loaded = TextureSetHelper.LoadTextureSets(resolved);
-            if (loaded.Count == 0)
-            {
-                Trace.WriteLine($"[TUNER] '{pack.Name}': no texture sets could be loaded.");
-                continue;
-            }
-
-            var grainCache = new Dictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)>(
-                StringComparer.OrdinalIgnoreCase);
-
-            foreach (var lts in loaded)
-            {
-                if (doEmissivity && lts.MerBmp != null)
-                {
-                    try
-                    {
-                        lts.MerDirty |= ApplyEmissivity(lts.MerBmp, skipEmissivityMultiplierPass);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[TUNER] Emissivity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                    }
-                }
-
-                if (doNormalInt && lts.NormalBmp != null)
-                {
-                    try
-                    {
-                        lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[TUNER] NormalIntensity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                    }
-                }
-
-                // Lazify requires two same-resolution real bitmaps — skip if either is virtual.
-                if (doLazify
-                    && lts.ColorBmp != null && !lts.ColorIsVirtual
-                    && lts.NormalBmp != null && !lts.NormalIsVirtual)
-                {
-                    try
-                    {
-                        lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[TUNER] Lazify failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                    }
-                }
-
-                if (doRoughness && lts.MerBmp != null)
-                {
-                    try
-                    {
-                        lts.MerDirty |= ApplyRoughness(lts.MerBmp);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[TUNER] Roughness failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                    }
-                }
-
-                if (doGrain && lts.MerBmp != null && !lts.MerIsVirtual)
-                {
-                    try
-                    {
-                        lts.MerDirty |= ApplyMaterialGrain(lts.MerBmp, lts.Resolved.Mer?.FilePath, grainCache);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[TUNER] MaterialGrain failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                    }
-                }
-            }
-
-            foreach (var lts in loaded)
-            {
-                if (lts.ColorDirty || lts.MerDirty || lts.NormalDirty)
-                    TextureSetHelper.SaveDirtyLayers(lts);
-
-                lts.ColorBmp?.Dispose();
-                lts.MerBmp?.Dispose();
-                lts.NormalBmp?.Dispose();
-            }
-
-            // Update the pack context file to reflect what was just applied.
-            // Once ambient lighting has ever been applied to a pack, that flag is
-            // permanent — it is never cleared back to false.
-            packCtx.HadAmbientLighting = packCtx.HadAmbientLighting || AddEmissivityAmbientLight;
-            PackContextFile.Write(pack.Path, packCtx);
         }
 
+        var processedTextureSets = 0;
+        var wasCancelled = false;
+        progress?.Report(new TuningProgress(0, totalTextureSets, "Starting tuning..."));
+
+        try
+        {
+            foreach (var pack in packs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (doFog)
+                {
+                    ProcessFog(pack, cancellationToken);
+                    ProcessFog(pack, cancellationToken, processWaterOnly: true);
+                }
+
+                if (!needsTextureProcessing)
+                    continue;
+
+                if (string.IsNullOrEmpty(pack.Path))
+                {
+                    Trace.WriteLine($"[TUNER] Skipping texture processing for '{pack.Name}': path missing.");
+                    continue;
+                }
+
+                if (!resolvedByPackPath.TryGetValue(pack.Path, out var resolved))
+                {
+                    Trace.WriteLine($"[TUNER] Skipping texture processing for '{pack.Name}': path missing or inaccessible.");
+                    continue;
+                }
+
+                // Read pack context to determine guardrails for this pack
+                var packCtx = PackContextFile.Read(pack.Path);
+
+                // If this pack was previously tuned with ambient lighting, suppress the
+                // multiplier pass to prevent blinding over-brightness. The ambient pass
+                // itself (second pass) is still allowed to run.
+                bool skipEmissivityMultiplierPass = packCtx.HadAmbientLighting;
+
+                if (skipEmissivityMultiplierPass && doEmissivity && EmissivityMultiplier != Defaults.EmissivityMultiplier)
+                    Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed - pack was previously tuned with ambient lighting.");
+
+                if (resolved.Count == 0)
+                {
+                    Trace.WriteLine($"[TUNER] '{pack.Name}': no valid texture sets found.");
+                    continue;
+                }
+
+                // Record the ambient-lighting flag *before* processing rather than after.
+                // If the run gets cancelled partway through this pack, some textures may
+                // already have ambient light baked in and saved to disk; recording the
+                // flag up front means a future run will still correctly suppress the
+                // multiplier pass for this pack instead of risking over-brightness.
+                if (AddEmissivityAmbientLight && !packCtx.HadAmbientLighting)
+                {
+                    packCtx.HadAmbientLighting = true;
+                    PackContextFile.Write(pack.Path, packCtx);
+                }
+
+                // Thread-safe: multiple texture sets (e.g. "torch_on"/"torch_off" variants
+                // that share a base filename) can race to populate the same cache key.
+                // GetOrAdd guarantees every caller ends up with the *same* winning noise
+                // pattern even if two threads both compute a value for a fresh key.
+                var grainCache = new ConcurrentDictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)>(
+                    StringComparer.OrdinalIgnoreCase);
+
+                var parallelOptions = new ParallelOptions
+                {
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = Environment.ProcessorCount
+                };
+
+                // Each texture set is pipelined end-to-end (load from disk → apply the
+                // enabled ops → save dirty layers → dispose) as a single unit, in parallel
+                // across texture sets. This matters for two reasons beyond raw throughput:
+                //  - Progress becomes accurate. Decoding images from disk is frequently the
+                //    actual bottleneck (more so now that LockBits made the pixel math fast),
+                //    so folding load+save into the reported unit means the bar moves with
+                //    where the time is really going, instead of sitting at 0 through the
+                //    whole load phase and then jumping to 100 once the fast math phase runs.
+                //  - Cancellation becomes responsive. Previously ALL images in a pack were
+                //    loaded synchronously (uncancellable) before any parallel work began, so
+                //    hitting "Scram" during that phase did nothing until it finished on its
+                //    own. Now the token is checked once per texture set, so worst case you
+                //    wait for one image's load+process+save instead of the whole pack's.
+                Parallel.ForEach(resolved, parallelOptions, rs =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    TextureSetHelper.LoadedTextureSet? lts = null;
+                    try
+                    {
+                        lts = TextureSetHelper.LoadTextureSet(rs);
+                        if (lts == null) return;
+
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        if (doEmissivity && lts.MerBmp != null)
+                        {
+                            try
+                            {
+                                lts.MerDirty |= ApplyEmissivity(lts.MerBmp, skipEmissivityMultiplierPass);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.WriteLine($"[TUNER] Emissivity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                            }
+                        }
+
+                        if (doNormalInt && lts.NormalBmp != null)
+                        {
+                            try
+                            {
+                                lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.WriteLine($"[TUNER] NormalIntensity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                            }
+                        }
+
+                        // Lazify requires two same-resolution real bitmaps - skip if either is virtual.
+                        if (doLazify
+                            && lts.ColorBmp != null && !lts.ColorIsVirtual
+                            && lts.NormalBmp != null && !lts.NormalIsVirtual)
+                        {
+                            try
+                            {
+                                lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.WriteLine($"[TUNER] Lazify failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                            }
+                        }
+
+                        if (doRoughness && lts.MerBmp != null)
+                        {
+                            try
+                            {
+                                lts.MerDirty |= ApplyRoughness(lts.MerBmp);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.WriteLine($"[TUNER] Roughness failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                            }
+                        }
+
+                        if (doGrain && lts.MerBmp != null && !lts.MerIsVirtual)
+                        {
+                            try
+                            {
+                                lts.MerDirty |= ApplyMaterialGrain(lts.MerBmp, lts.Resolved.Mer?.FilePath, grainCache);
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.WriteLine($"[TUNER] MaterialGrain failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                            }
+                        }
+
+                        if (lts.ColorDirty || lts.MerDirty || lts.NormalDirty)
+                            TextureSetHelper.SaveDirtyLayers(lts);
+                    }
+                    finally
+                    {
+                        // Runs even if cancellation was thrown mid-unit, so a texture that
+                        // was only partway through is never left as a leaked bitmap handle
+                        // (it's simply not saved - at most one in-flight texture's work is
+                        // discarded on cancel, everything already completed stays on disk).
+                        lts?.ColorBmp?.Dispose();
+                        lts?.MerBmp?.Dispose();
+                        lts?.NormalBmp?.Dispose();
+
+                        var done = Interlocked.Increment(ref processedTextureSets);
+                        progress?.Report(new TuningProgress(done, totalTextureSets, pack.Name));
+                    }
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            wasCancelled = true;
+        }
+
+        // an earlier version of this method called GC.Collect(blocking: true,
+        // compacting: true, GCCollectionMode.Aggressive) here to reclaim the RAM
+        // this file's class-level doc comment above used to describe. Removed: a
+        // blocking, compacting Gen2 collection stops *every* thread in the process,
+        // not just this one - including the UI thread and any other window's message
+        // pump. If another window was mid-initialization (e.g. an `await Task.Delay(...)`
+        // continuation queued on the UI dispatcher) when this fired, that continuation
+        // would sit frozen for however long the collection took, then resume against
+        // UI state that may no longer be valid - which is what caused the
+        // "WinUI Desktop Window object has already been closed" crash. The elevated
+        // idle RAM this was trying to fix is cosmetic (see the comment on
+        // TuneSelectedPacks' summary above) and not worth risking that.  If reclaiming
+        // it is still wanted, do it non-blocking and only when the app is truly idle
+        // (e.g. from the main window, once no tuning is running and no other windows
+        // are open) with `GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized,
+        // blocking: false, compacting: false)` - non-blocking mode lets the GC fold
+        // the work into its normal background collections instead of stopping the world.
+
         stopwatch.Stop();
+
+        if (wasCancelled)
+            return $"Tuning was cancelled after {FormatDuration(stopwatch.Elapsed)}.";
+
         return BuildTuningCompletionMessage(packs.Length, stopwatch.Elapsed);
     }
 
@@ -809,24 +1064,24 @@ public class Tuner
         return packCount == 1
             ? $"{verb} tuning in {duration}."
             : $"{verb} tuning {packCount} packs - took {duration}!)";
+    }
 
-        static string FormatDuration(TimeSpan elapsed)
+    private static string FormatDuration(TimeSpan elapsed)
+    {
+        int totalSeconds = (int)Math.Round(elapsed.TotalSeconds);
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+
+        if (minutes == 0)
         {
-            int totalSeconds = (int)Math.Round(elapsed.TotalSeconds);
-            int minutes = totalSeconds / 60;
-            int seconds = totalSeconds % 60;
-
-            if (minutes == 0)
-            {
-                if (totalSeconds < 1) return "under a second!";
-                return $"{seconds} second{(seconds == 1 ? "" : "s")}";
-            }
-
-            var minutePart = $"{minutes} minute{(minutes == 1 ? "" : "s")}";
-            return seconds == 0
-                ? minutePart
-                : $"{minutePart} and {seconds} second{(seconds == 1 ? "" : "s")}";
+            if (totalSeconds < 1) return "under a second!";
+            return $"{seconds} second{(seconds == 1 ? "" : "s")}";
         }
+
+        var minutePart = $"{minutes} minute{(minutes == 1 ? "" : "s")}";
+        return seconds == 0
+            ? minutePart
+            : $"{minutePart} and {seconds} second{(seconds == 1 ? "" : "s")}";
     }
 
 
@@ -834,7 +1089,7 @@ public class Tuner
     //  Fog processor  ──  standalone
     // ══════════════════════════════════════════════════════════════════════════
 
-    private static void ProcessFog(PackInfo pack, bool processWaterOnly = false)
+    private static void ProcessFog(PackInfo pack, CancellationToken cancellationToken, bool processWaterOnly = false)
     {
         const double MIN_VALUE_THRESHOLD = 0.00000001;
         const int DECIMAL_PRECISION = 6;
@@ -870,6 +1125,8 @@ public class Tuner
 
         foreach (var file in files)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 var text = File.ReadAllText(file);
@@ -1132,6 +1389,8 @@ public class Tuner
         var height = bmp.Height;
         var wroteBack = false;
 
+        using var fb = new FastBitmap(bmp, writable: true);
+
         // If user mult under 1.0, always run, if higher, skip multiplier pass becomes relevant, it must be false for it to run.
         // The bool is determined elsewhere in the code via PackContext
         if (userMult < 1.0 || (!skipMultiplierPass && userMult > 1.0))
@@ -1140,7 +1399,7 @@ public class Tuner
             for (var y = 0; y < height; y++)
                 for (var x = 0; x < width; x++)
                 {
-                    int g = bmp.GetPixel(x, y).G;
+                    int g = fb[x, y].G;
                     if (g > maxGreen) maxGreen = g;
                 }
 
@@ -1158,7 +1417,7 @@ public class Tuner
                 {
                     for (var x = 0; x < width; x++)
                     {
-                        var origColor = bmp.GetPixel(x, y);
+                        var origColor = fb[x, y];
                         int origG = origColor.G;
                         if (origG == 0) continue;
 
@@ -1174,7 +1433,7 @@ public class Tuner
                         if (finalG != origG)
                         {
                             wroteBack = true;
-                            bmp.SetPixel(x, y, Color.FromArgb(origColor.A, origColor.R, finalG, origColor.B));
+                            fb[x, y] = Color.FromArgb(origColor.A, origColor.R, finalG, origColor.B);
                         }
                     }
                 }
@@ -1188,12 +1447,12 @@ public class Tuner
             {
                 for (var x = 0; x < width; x++)
                 {
-                    var origColor = bmp.GetPixel(x, y);
+                    var origColor = fb[x, y];
                     var newG = Math.Clamp(origColor.G + ambientAmount, 0, 255);
                     if (newG != origColor.G)
                     {
                         wroteBack = true;
-                        bmp.SetPixel(x, y, Color.FromArgb(origColor.A, origColor.R, newG, origColor.B));
+                        fb[x, y] = Color.FromArgb(origColor.A, origColor.R, newG, origColor.B);
                     }
                 }
             }
@@ -1216,20 +1475,22 @@ public class Tuner
         var height = bmp.Height;
         var wroteBack = false;
 
+        using var fb = new FastBitmap(bmp, writable: true);
+
         if (intensityPercent <= 1.0)
         {
             for (var y = 0; y < height; y++)
             {
                 for (var x = 0; x < width; x++)
                 {
-                    var orig = bmp.GetPixel(x, y);
+                    var orig = fb[x, y];
                     var newR = Math.Clamp((int)Math.Round(128 + (orig.R - 128) * intensityPercent), 0, 255);
                     var newG = Math.Clamp((int)Math.Round(128 + (orig.G - 128) * intensityPercent), 0, 255);
 
                     if (newR != orig.R || newG != orig.G)
                     {
                         wroteBack = true;
-                        bmp.SetPixel(x, y, Color.FromArgb(orig.A, newR, newG, orig.B));
+                        fb[x, y] = Color.FromArgb(orig.A, newR, newG, orig.B);
                     }
                 }
             }
@@ -1240,7 +1501,7 @@ public class Tuner
             for (var y = 0; y < height; y++)
                 for (var x = 0; x < width; x++)
                 {
-                    var pixel = bmp.GetPixel(x, y);
+                    var pixel = fb[x, y];
                     var maxDev = Math.Max(
                         Math.Abs((pixel.R - 128.0) * intensityPercent),
                         Math.Abs((pixel.G - 128.0) * intensityPercent));
@@ -1255,14 +1516,14 @@ public class Tuner
             {
                 for (var x = 0; x < width; x++)
                 {
-                    var orig = bmp.GetPixel(x, y);
+                    var orig = fb[x, y];
                     var newR = Math.Clamp((int)Math.Round(128.0 + (orig.R - 128.0) * intensityPercent * compressionRatio), 0, 255);
                     var newG = Math.Clamp((int)Math.Round(128.0 + (orig.G - 128.0) * intensityPercent * compressionRatio), 0, 255);
 
                     if (newR != orig.R || newG != orig.G)
                     {
                         wroteBack = true;
-                        bmp.SetPixel(x, y, Color.FromArgb(orig.A, newR, newG, orig.B));
+                        fb[x, y] = Color.FromArgb(orig.A, newR, newG, orig.B);
                     }
                 }
             }
@@ -1277,11 +1538,13 @@ public class Tuner
         var width = bmp.Width;
         var height = bmp.Height;
 
+        using var fb = new FastBitmap(bmp, writable: true);
+
         int minGray = 255, maxGray = 0;
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
             {
-                var gray = bmp.GetPixel(x, y).R;
+                var gray = fb[x, y].R;
                 if (gray < minGray) minGray = gray;
                 if (gray > maxGray) maxGray = gray;
             }
@@ -1299,13 +1562,13 @@ public class Tuner
         {
             for (var x = 0; x < width; x++)
             {
-                var orig = bmp.GetPixel(x, y);
+                var orig = fb[x, y];
                 var newGray = Math.Clamp((int)Math.Round(127.5 + (orig.R - currentCenter) * userIntensity * compressionRatio), 0, 255);
 
                 if (newGray != orig.R)
                 {
                     wroteBack = true;
-                    bmp.SetPixel(x, y, Color.FromArgb(orig.A, newGray, newGray, newGray));
+                    fb[x, y] = Color.FromArgb(orig.A, newGray, newGray, newGray);
                 }
             }
         }
@@ -1326,7 +1589,8 @@ public class Tuner
         if (colorBmp.Width != width || colorBmp.Height != height)
             return false;
 
-        var paddedColormap = ApplyEdgePadding(colorBmp);
+        using var colorFb = new FastBitmap(colorBmp, writable: false);
+        var paddedColormap = ApplyEdgePadding(colorFb);
 
         var greyscale = new byte[width, height];
         byte minV = 255, maxV = 0;
@@ -1357,33 +1621,35 @@ public class Tuner
                     stretched[x, y] = (byte)((greyscale[x, y] - minV) / range * 255);
         }
 
+        using var normalFb = new FastBitmap(normalBmp, writable: true);
+
         return isHeightmap
-            ? LazifyHeightmap(normalBmp, stretched, alpha, width, height)
-            : LazifyNormalMap(normalBmp, stretched, alpha, width, height);
+            ? LazifyHeightmap(normalFb, stretched, alpha, width, height)
+            : LazifyNormalMap(normalFb, stretched, alpha, width, height);
     }
 
-    private static bool LazifyHeightmap(Bitmap bmp, byte[,] stretched, int alpha, int width, int height)
+    private static bool LazifyHeightmap(FastBitmap fb, byte[,] stretched, int alpha, int width, int height)
     {
         var wroteBack = false;
         for (var y = 0; y < height; y++)
         {
             for (var x = 0; x < width; x++)
             {
-                var orig = bmp.GetPixel(x, y);
+                var orig = fb[x, y];
                 var blended = (alpha * stretched[x, y] + (255 - alpha) * orig.R) / 255;
                 var finalValue = (byte)Math.Clamp(blended, 0, 255);
 
                 if (finalValue != orig.R)
                 {
                     wroteBack = true;
-                    bmp.SetPixel(x, y, Color.FromArgb(orig.A, finalValue, finalValue, finalValue));
+                    fb[x, y] = Color.FromArgb(orig.A, finalValue, finalValue, finalValue);
                 }
             }
         }
         return wroteBack;
     }
 
-    private static bool LazifyNormalMap(Bitmap bmp, byte[,] stretched, int alpha, int width, int height)
+    private static bool LazifyNormalMap(FastBitmap fb, byte[,] stretched, int alpha, int width, int height)
     {
         var expW = width * 3;
         var expH = height * 3;
@@ -1429,7 +1695,7 @@ public class Tuner
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
             {
-                var p = bmp.GetPixel(x, y);
+                var p = fb[x, y];
                 origIntensitySum += (Math.Abs(p.R - 128) + Math.Abs(p.G - 128)) / 2.0;
             }
         double originalIntensity = origIntensitySum / (width * height);
@@ -1439,7 +1705,7 @@ public class Tuner
         {
             for (var x = 0; x < width; x++)
             {
-                var orig = bmp.GetPixel(x, y);
+                var orig = fb[x, y];
                 var (newR, newG) = genNormals[x, y];
 
                 var detailR = (alpha * newR + (255 - alpha) * 128) / 255.0;
@@ -1478,7 +1744,7 @@ public class Tuner
         {
             for (var x = 0; x < width; x++)
             {
-                var orig = bmp.GetPixel(x, y);
+                var orig = fb[x, y];
                 var (bR, bG) = blended[x, y];
 
                 var finalR = (byte)Math.Clamp(128 + (bR - 128) * intensityRatio, 0, 255);
@@ -1487,7 +1753,7 @@ public class Tuner
                 if (finalR != orig.R || finalG != orig.G)
                 {
                     wroteBack = true;
-                    bmp.SetPixel(x, y, Color.FromArgb(orig.A, finalR, finalG, 255));
+                    fb[x, y] = Color.FromArgb(orig.A, finalR, finalG, 255);
                 }
             }
         }
@@ -1495,17 +1761,17 @@ public class Tuner
         return wroteBack;
     }
 
-    private static Color[,] ApplyEdgePadding(Bitmap bitmap)
+    private static Color[,] ApplyEdgePadding(FastBitmap fb)
     {
-        var width = bitmap.Width;
-        var height = bitmap.Height;
+        var width = fb.Width;
+        var height = fb.Height;
         var result = new Color[width, height];
         var isOpaque = new bool[width, height];
 
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
             {
-                var p = bitmap.GetPixel(x, y);
+                var p = fb[x, y];
                 result[x, y] = p;
                 isOpaque[x, y] = p.A > 0;
             }
@@ -1562,11 +1828,13 @@ public class Tuner
         var height = bmp.Height;
         var wroteBack = false;
 
+        using var fb = new FastBitmap(bmp, writable: true);
+
         for (var y = 0; y < height; y++)
         {
             for (var x = 0; x < width; x++)
             {
-                var orig = bmp.GetPixel(x, y);
+                var orig = fb[x, y];
                 int origRoughness = orig.B;
                 int origMetalness = orig.R;
                 int newRoughness, newMetalness;
@@ -1608,7 +1876,7 @@ public class Tuner
                 if (newRoughness != origRoughness || newMetalness != origMetalness)
                 {
                     wroteBack = true;
-                    bmp.SetPixel(x, y, Color.FromArgb(orig.A, newMetalness, orig.G, newRoughness));
+                    fb[x, y] = Color.FromArgb(orig.A, newMetalness, orig.G, newRoughness);
                 }
             }
         }
@@ -1619,7 +1887,7 @@ public class Tuner
     private static bool ApplyMaterialGrain(
         Bitmap bmp,
         string? sourceFilePath,
-        Dictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)> noiseCache)
+        ConcurrentDictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)> noiseCache)
     {
         const double CHECKERBOARD_INTENSITY = 0.2;
         const double CHECKERBOARD_NOISE_AMOUNT = 0.2;
@@ -1639,43 +1907,37 @@ public class Tuner
             : $"virtual_{width}x{frameHeight}";
         var cacheKey = $"{baseFilename}_{width}x{frameHeight}";
 
-        int[,] redOffsets, greenOffsets, blueOffsets, checkerboardOffsets;
-
-        if (noiseCache.TryGetValue(cacheKey, out var cached))
-        {
-            redOffsets = cached.red;
-            greenOffsets = cached.green;
-            blueOffsets = cached.blue;
-            checkerboardOffsets = cached.checker;
-        }
-        else
+        // GetOrAdd: safe even if two texture-set variants race to populate the same
+        // key concurrently - every caller ends up with the one winning noise pattern.
+        var (redOffsets, greenOffsets, blueOffsets, checkerboardOffsets) = noiseCache.GetOrAdd(cacheKey, _ =>
         {
             var rng = Random.Shared;
-            redOffsets = new int[width, frameHeight];
-            greenOffsets = new int[width, frameHeight];
-            blueOffsets = new int[width, frameHeight];
-            checkerboardOffsets = new int[width, frameHeight];
+            var red = new int[width, frameHeight];
+            var green = new int[width, frameHeight];
+            var blue = new int[width, frameHeight];
+            var checker = new int[width, frameHeight];
 
             for (var y = 0; y < frameHeight; y++)
             {
                 for (var x = 0; x < width; x++)
                 {
-                    redOffsets[x, y] = rng.Next(-materialNoiseOffset, materialNoiseOffset + 1);
-                    greenOffsets[x, y] = rng.Next(-materialNoiseOffset, materialNoiseOffset + 1);
-                    blueOffsets[x, y] = rng.Next(-materialNoiseOffset, materialNoiseOffset + 1);
+                    red[x, y] = rng.Next(-materialNoiseOffset, materialNoiseOffset + 1);
+                    green[x, y] = rng.Next(-materialNoiseOffset, materialNoiseOffset + 1);
+                    blue[x, y] = rng.Next(-materialNoiseOffset, materialNoiseOffset + 1);
 
                     var baseChecker = ((x + y) % 2) * 255;
                     var checkerNoise = rng.Next(
                         (int)(-materialNoiseOffset * CHECKERBOARD_NOISE_AMOUNT),
                         (int)(materialNoiseOffset * CHECKERBOARD_NOISE_AMOUNT) + 1);
-                    checkerboardOffsets[x, y] = Math.Clamp(baseChecker + checkerNoise, 0, 255);
+                    checker[x, y] = Math.Clamp(baseChecker + checkerNoise, 0, 255);
                 }
             }
 
-            noiseCache[cacheKey] = (redOffsets, greenOffsets, blueOffsets, checkerboardOffsets);
-        }
+            return (red, green, blue, checker);
+        });
 
         var wroteBack = false;
+        using var fb = new FastBitmap(bmp, writable: true);
 
         for (var frame = 0; frame < frameCount; frame++)
         {
@@ -1686,7 +1948,7 @@ public class Tuner
                 for (var x = 0; x < width; x++)
                 {
                     var actualY = frameStartY + y;
-                    var orig = bmp.GetPixel(x, actualY);
+                    var orig = fb[x, actualY];
                     int r = orig.R, g = orig.G, b = orig.B;
 
                     var checkerValue = (checkerboardOffsets[x, y] - 127.5) * (materialNoiseOffset / 127.5);
@@ -1710,7 +1972,7 @@ public class Tuner
                     if (newR != r || newG != g || newB != b)
                     {
                         wroteBack = true;
-                        bmp.SetPixel(x, actualY, Color.FromArgb(orig.A, newR, newG, newB));
+                        fb[x, actualY] = Color.FromArgb(orig.A, newR, newG, newB);
                     }
                 }
             }
