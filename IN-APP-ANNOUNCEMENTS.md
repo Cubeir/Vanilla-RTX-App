@@ -32,8 +32,8 @@ Reinstalls happen quicker from a cached version, unless a new version happens to
 
 # BetterRTXAnnouncements
 
-## [cd:"0"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will change. CHECK BACK LATER!
-It is currnetly likely safe to install BetterRTX presets, the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner to be safe, and continue downloading and installing your presets. (This text may change later).
+## [cd:"0"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will also change. CHECK BACK LATER!
+It is currnetly likely safe to install BetterRTX presets, the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure, and continue downloading and installing your presets. (This text may update later).
 
 ## Warning 1 [glyph:"E730"] [cd:"10000"]
 Reminder: If your preset list has been auto-reset since your last visit, or this is your first visit:
