@@ -382,14 +382,21 @@ public sealed partial class PackBrowserWindow : Window
     {
         var flyout = new MenuFlyout();
 
-        var selectAll = new MenuFlyoutItem
+        if (_knownTags.Count > 0)
         {
-            Text = "Select all",
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            FontWeight = FontWeights.SemiBold
-        };
-        selectAll.Click += (_, _) => SetAllPacksSelected(true);
-        flyout.Items.Add(selectAll);
+            foreach (var tag in _knownTags)
+            {
+                var capturedTag = tag;
+                var item = new MenuFlyoutItem
+                {
+                    Text = $"Include all with \"{capturedTag}\" tag",
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                };
+                item.Click += (_, _) => SelectPacksByTag(capturedTag);
+                flyout.Items.Add(item);
+            }
+            flyout.Items.Add(new MenuFlyoutSeparator());
+        }
 
         var deselectAll = new MenuFlyoutItem
         {
@@ -401,18 +408,14 @@ public sealed partial class PackBrowserWindow : Window
         deselectAll.Click += (_, _) => SetAllPacksSelected(false);
         flyout.Items.Add(deselectAll);
 
-        if (_knownTags.Count > 0)
+        var selectAll = new MenuFlyoutItem
         {
-            flyout.Items.Add(new MenuFlyoutSeparator());
-
-            foreach (var tag in _knownTags)
-            {
-                var capturedTag = tag;
-                var item = new MenuFlyoutItem { Text = $"Add all \"{capturedTag}\" to selections", HorizontalAlignment = HorizontalAlignment.Stretch };
-                item.Click += (_, _) => SelectPacksByTag(capturedTag);
-                flyout.Items.Add(item);
-            }
-        }
+            Text = "Select all",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            FontWeight = FontWeights.SemiBold
+        };
+        selectAll.Click += (_, _) => SetAllPacksSelected(true);
+        flyout.Items.Add(selectAll);
 
         SelectAll_Button.Flyout = flyout;
     }
