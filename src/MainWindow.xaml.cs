@@ -2281,6 +2281,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(alchitexWindow);
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            _ = BlinkingLamp(true, true, 0.0, 1.0);
         };
 
         _childWindows.Add(alchitexWindow);
@@ -2463,7 +2464,6 @@ maybe you should do it more often, in more places
 - BEFORE RELEASE:
 Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
 TEST EVERTHING! EVERY. LITTLE. THING.
-
 
 - Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
