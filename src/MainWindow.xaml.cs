@@ -1203,20 +1203,20 @@ public sealed partial class MainWindow : Window
     private void DonateButton_Click(object sender, RoutedEventArgs e)
     {
         DonateButton.Content = "\uEB52";
-        ShowCreditsOnce();
+        RollCredits();
         _ = OpenUrl("https://ko-fi.com/cubeir");
     }
     private void DonateButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         DonateButton.Content = "\uEB52";
-        ShowCreditsOnce();
+        RollCredits();
     }
     private void DonateButton_PointerExited(object sender, PointerRoutedEventArgs e)
     {
         DonateButton.Content = "\uEB51";
-        ShowCreditsOnce();
+        RollCredits();
     }
-    private void ShowCreditsOnce()
+    private void RollCredits()
     {
         var credits = OnlineTextsContent.Credits?[0].Text;
         if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Wrote_Supporter_Shoutout"))
@@ -2076,6 +2076,9 @@ public sealed partial class MainWindow : Window
             _tuningCts = null;
         }
     }
+
+
+
 
     private async void LaunchPackUpdateButton_Click(object sender, RoutedEventArgs e)
     {
