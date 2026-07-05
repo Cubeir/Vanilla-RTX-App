@@ -891,7 +891,7 @@ public class Tuner
                 bool skipEmissivityMultiplierPass = packCtx.HadAmbientLighting;
 
                 if (skipEmissivityMultiplierPass && doEmissivity && EmissivityMultiplier != Defaults.EmissivityMultiplier)
-                    Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed — pack was previously tuned with ambient lighting.");
+                    Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed - pack was previously tuned with ambient lighting.");
 
                 if (resolved.Count == 0)
                 {
@@ -1024,9 +1024,16 @@ public class Tuner
 
                         // Normal/heightmap: NormalIntensity and Lazify both mutate the same
                         // bitmap/file. Same claim-once-up-front gate as MER above.
-                        var wantsLazify = doLazify && lts.ColorBmp != null && !lts.ColorIsVirtual && !lts.NormalIsVirtual;
+                        // Captured into locals (rather than re-reading lts.NormalBmp/lts.ColorBmp
+                        // further down) so the null-narrowing from these checks reliably survives
+                        // the ApplyNormalIntensity call in between - a property read can lose
+                        // Roslyn's tracked non-null state across an intervening method call in a
+                        // way a local variable won't.
+                        var normalBmp = lts.NormalBmp;
+                        var colorBmp = lts.ColorBmp;
+                        var wantsLazify = doLazify && colorBmp != null && !lts.ColorIsVirtual && !lts.NormalIsVirtual;
 
-                        if (lts.NormalBmp != null && (doNormalInt || wantsLazify))
+                        if (normalBmp != null && (doNormalInt || wantsLazify))
                         {
                             var normalFilePath = lts.NormalIsVirtual ? null : lts.Resolved.NormalOrHeight?.FilePath;
 
@@ -1036,7 +1043,7 @@ public class Tuner
                                 {
                                     try
                                     {
-                                        lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
+                                        lts.NormalDirty |= ApplyNormalIntensity(normalBmp, lts.Resolved.IsHeightmap);
                                     }
                                     catch (Exception ex)
                                     {
@@ -1048,7 +1055,7 @@ public class Tuner
                                 {
                                     try
                                     {
-                                        lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
+                                        lts.NormalDirty |= ApplyLazify(colorBmp!, normalBmp, lts.Resolved.IsHeightmap);
                                     }
                                     catch (Exception ex)
                                     {
