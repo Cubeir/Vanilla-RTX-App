@@ -819,11 +819,11 @@
                             <TextBlock x:Name="EmissivityWarningIcon"
                                        Style="{ThemeResource TextBlockSegIcons}"
                                        Grid.Column="1"
-                                       Text="&#xE814;"
-                                       FontSize="35"
+                                       Text="&#xE7BA;"
+                                       FontSize="36"
                                        VerticalAlignment="Top"
                                        HorizontalAlignment="Right"
-                                       Margin="0,0,13.5,0"
+                                       Margin="0,0,14,0"
                                        Visibility="Collapsed"
                                        IsTextScaleFactorEnabled="False"
                                        ToolTipService.ToolTip="Enabling this option while tuning a resource pack will cause future tuning attempts to skip applying the Emissivity Multiplier slider to that pack, this intentional guardrail keeps PBR from appearing broken.
@@ -1041,15 +1041,16 @@
                             ToolTipService.ToolTip="Begins permanently modifying the select packs using the current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xF4A5;"
+                            <FontIcon x:Name="TuneSelectionButtonIcon"
+                                      Glyph="&#xE9F5;"
                                       FontSize="18"
-                                      Margin="0,1,6,0"
+                                      Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Tune selection"
+                            <TextBlock x:Name="TuneSelectionButtonText"
+                                       Text="Tune selection"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
-
                     <!-- Export Selection Button -->
                     <Button x:Name="ExportButton"
                             Click="ExportButton_Click"
@@ -1239,16 +1240,14 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Yup, you heard it right! RTX Reactor is coming to Vanilla RTX App later down the road!">
+                            ToolTipService.ToolTip="RTX Reactor ">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xF196;"
+                            <FontIcon Glyph="&#xF4A5;"
                                       FontSize="18"
-                                      Opacity="0.67"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
-                            <TextBlock Text="Coming later!"
-                                       Opacity="0.67"
+                            <TextBlock Text="RTX Reactor"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -1268,7 +1267,7 @@
                             &#x0a;&#x0a;WARNING: It is your responsibility to make sure your game and BetterRTX are up-to-date, before you inject presets into your game, otherwise it could cause issues, in such cases, revert back to Default RTX preset which is backed up from YOUR latest game installation files upon installing your first preset.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE794;"
+                            <FontIcon Glyph="&#xEABC;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
