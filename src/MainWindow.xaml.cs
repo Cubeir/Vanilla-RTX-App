@@ -96,7 +96,7 @@ public static class TunerVariables
 
     // Set Window size default for all windows
     public const int WindowSizeX = 1150;
-    public const int WindowSizeY = 640;
+    public const int WindowSizeY = 630;
     public const int WindowMinSizeX = 950;
     public const int WindowMinSizeY = 615;
 
@@ -2487,6 +2487,13 @@ it's FUNCTIONALLY CORRECT all throughout at the moment, but it was a lot of hass
 LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled) or not is something u can't do with binding, and the existing code's perfect for it.
 but you may be able to shorten UpdateUI,
 its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
+
+>> Tried once, the boilerplate required to pull this off is INDEED not worth it
+It's MESSIER somehow
+little to no benefit
+current logic around manually handling everything is FRAGILE yes, but it is PERFECT at this moment.
+so FORGET IT.
+
 
 - Do the TODOs scattered in the code
 

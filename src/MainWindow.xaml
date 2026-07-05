@@ -716,7 +716,7 @@
                                 Grid.Row="0"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Fog multiplier"
+                        <TextBlock Text="Fog density multiplier"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Scales all fog densities with the given multiplier.
@@ -760,10 +760,10 @@
                                 Grid.Row="2"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Emissivity multiplier"
+                        <TextBlock Text="Emissive strength multiplier"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Scales emissivity of all emissive blocks.
+                                   ToolTipService.ToolTip="Scales glowing effects of all emissive blocks. 
                                    &#x0a;&#x0a;Examples:
                                    &#x0a;1 = default
                                    &#x0a;0.5 = half brightness
