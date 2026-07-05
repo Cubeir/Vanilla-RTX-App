@@ -102,13 +102,6 @@ public sealed partial class LUTManagerWindow : Window
 
         await InitializeAsync();
         if (_isClosing) return;
-
-        _ = this.DispatcherQueue.TryEnqueue(async () =>
-        {
-            await Task.Delay(75);
-            if (_isClosing) return;
-            try { this.Activate(); } catch { }
-        });
     }
 
     private void LUTManagerWindow_Closed(object sender, WindowEventArgs e)
