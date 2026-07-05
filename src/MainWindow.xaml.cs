@@ -22,7 +22,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.LUTManager;
 using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -35,6 +34,8 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
+// fix SelectedPacks: System.Collections.ObjectModel.ObservableCollection`1[System.ValueTuple`4[System.String,System.String,System.String,System.Boolean]]
+// in trace stack reports
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
@@ -1682,7 +1683,7 @@ public sealed partial class MainWindow : Window
             (path: Windows.Storage.ApplicationData.Current.LocalFolder.Path,      label: "LocalFolder (LocalState)"),
             (path: Windows.Storage.ApplicationData.Current.LocalCacheFolder.Path, label: "LocalCacheFolder"),
             (path: Windows.Storage.ApplicationData.Current.TemporaryFolder.Path,  label: "TemporaryFolder"),
-        };
+            };
 
             int totalItemsDeleted = 0;
 
@@ -1853,7 +1854,7 @@ public sealed partial class MainWindow : Window
 
                 if (!seenPaths.Add(normalised))
                 {
-                    Log($"{displayName} was in the list more than once - skipping duplicate selection.", LogLevel.Warning);
+                    Log($"{displayName} was found in the list more than once - skipped duplicate selection.", LogLevel.Warning);
                     continue;
                 }
 
@@ -2446,7 +2447,7 @@ public sealed partial class MainWindow : Window
 
 - Do a review of all cooldowns and retry times, as well usage of a shared http header... IS IT?! huah!?
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
-All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
+All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots in doing what it must
 
 - Reduce cache retry timers for PACK UPDATER version retrieval
 it hangs too long trying to get from remote
