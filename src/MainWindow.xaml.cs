@@ -1012,7 +1012,7 @@ public sealed partial class MainWindow : Window
                     var dataPackage = new DataPackage();
                     dataPackage.SetText(sb.ToString());
                     Clipboard.SetContent(dataPackage);
-                    Log("Copied debug logs to clipboard.", LogLevel.Success);
+                    Log("Copied stack trace to clipboard.", LogLevel.Success);
                     _ = BlinkingLamp(true, true, 0.0, 1.0);
                 }
             }
@@ -1025,7 +1025,7 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
-                Log("Hold shift and click the lamp again to copy debug logs.\nAttach these if making an issue report.", LogLevel.Informational);
+                Log("Hold shift and click the lamp again to copy stack trace.\nAttach these if making an issue report.", LogLevel.Informational);
             }
             else
             {
