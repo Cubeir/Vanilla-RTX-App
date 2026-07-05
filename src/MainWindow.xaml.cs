@@ -1986,9 +1986,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-
     private CancellationTokenSource? _tuningCts;
-
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         if (_tuningCts != null)

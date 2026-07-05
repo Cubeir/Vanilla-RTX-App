@@ -1132,7 +1132,7 @@ public class Tuner
 
         if (minutes == 0)
         {
-            if (totalSeconds < 1) return "under a second!";
+            if (totalSeconds < 1) return "under a second";
             return $"{seconds} second{(seconds == 1 ? "" : "s")}";
         }
 
