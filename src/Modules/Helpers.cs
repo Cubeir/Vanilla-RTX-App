@@ -1036,6 +1036,15 @@ public static class MinecraftGDKLocator
             return;
         }
 
+        // STAGE 0.5: Try to look up the junction has a hardcoded path, a hail mary in case previous step fails, before moving on
+        var junctionPath = TryGetInstallPathFromWindowsAppsJunction(isPreview);
+        if (junctionPath != null)
+        {
+            Trace.WriteLine($"[GDKLocator] Found {versionName} via a blind try at hardcoded Junction/Symlink resolution: {packagePath}");
+            updateCache(junctionPath);
+            return; 
+        }
+
         // STAGE 1: Common locations across all drives (friendly names + known GUIDs)
         foreach (var location in GetCommonLocations(isPreview))
         {
@@ -1106,6 +1115,52 @@ public static class MinecraftGDKLocator
         }
     }
 
+    /// <summary>
+    /// STAGE 0.5: Direct WindowsApps junction lookup — a cheap, single-directory
+    /// fallback for the rare case PackageManager itself fails (policy restrictions,
+    /// odd app contexts) despite the package actually being installed. The junction's
+    /// naming convention (family name + version + architecture) is stable and
+    /// well-documented, unlike a full-drive search.
+    /// </summary>
+    private static string? TryGetInstallPathFromWindowsAppsJunction(bool isPreview)
+    {
+        var familyName = isPreview ? MinecraftPreviewPackageFamilyName : MinecraftStablePackageFamilyName;
+        var windowsAppsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "WindowsApps");
+
+        if (!Directory.Exists(windowsAppsPath))
+            return null;
+
+        try
+        {
+            // Junction folders are named "{PackageFamilyName-prefix}_{version}_{arch}__{publisherId}"
+            // e.g. Microsoft.MinecraftUWP_1.26.3005.0_x64__8wekyb3d8bbwe
+            var familyPrefix = familyName.Split('_')[0]; // "Microsoft.MinecraftUWP"
+
+            foreach (var dir in Directory.GetDirectories(windowsAppsPath, $"{familyPrefix}_*"))
+            {
+                var resolved = ResolveToPhysicalPath(dir);
+
+                if (IsValidExecutableDirectoryForEdition(resolved, isPreview))
+                    return resolved;
+
+                var contentSubdir = Path.Combine(resolved, "Content");
+                if (IsValidExecutableDirectoryForEdition(contentSubdir, isPreview))
+                    return contentSubdir;
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Trace.WriteLine("[GDKLocator] Access denied to WindowsApps folder");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[GDKLocator] Error scanning WindowsApps: {ex.Message}");
+        }
+
+        return null;
+    }
     /// <summary>
     /// Resolves a path to its physical target, following symlinks/junctions to the end.
     /// Returns the original path unchanged if it is not a link or resolution fails.
