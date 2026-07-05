@@ -61,7 +61,6 @@ public sealed partial class PackBrowserWindow : Window
         ThemeService.ThemeChanged += ApplyTheme;
         ApplyTheme(ThemeService.ResolveInitialTheme());
 
-        this.Activated += PackBrowserWindow_Activated;
         this.Closed += PackBrowserWindow_Closed;
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.browse.ico"));
@@ -69,15 +68,19 @@ public sealed partial class PackBrowserWindow : Window
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
         ExpImpDel.ConfirmNonResourceImport = ShowNonResourceDialogAsync;
+
+        if (Content is FrameworkElement root)
+            root.Loaded += PackBrowserWindow_Loaded;
     }
-    private async void PackBrowserWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private async void PackBrowserWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
+        if (Content is FrameworkElement root)
+            root.Loaded -= PackBrowserWindow_Loaded;
 
-        this.Activated -= PackBrowserWindow_Activated;
+        if (_isClosing) return;
 
-        SetTitleBar(TitleBarArea);
+        try { SetTitleBar(TitleBarArea); }
+        catch (Exception ex) { Trace.WriteLine($"[PackBrowser] SetTitleBar failed (window likely closing): {ex.Message}"); }
 
         WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
         AddPackDescriptionText.Text =
@@ -93,10 +96,12 @@ public sealed partial class PackBrowserWindow : Window
         }
 
         await LoadPacksAsync();
+        if (_isClosing) return;
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(75);
+            if (_isClosing) return;
             try { this.Activate(); } catch { }
         });
     }
@@ -105,6 +110,9 @@ public sealed partial class PackBrowserWindow : Window
     {
         if (_isClosing) return;
         _isClosing = true;
+
+        if (Content is FrameworkElement root)
+            root.Loaded -= PackBrowserWindow_Loaded;
 
         ThemeService.ThemeChanged -= ApplyTheme;
         this.Closed -= PackBrowserWindow_Closed;

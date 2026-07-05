@@ -149,21 +149,24 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.brtx.ico"));
 
-        this.Activated += BetterRTXManagerWindow_Activated;
         this.Closed += BetterRTXManagerWindow_Closed;
+
+        if (Content is FrameworkElement root)
+            root.Loaded += BetterRTXManagerWindow_Loaded;
     }
-    private async void BetterRTXManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private async void BetterRTXManagerWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
+        if (Content is FrameworkElement root)
+            root.Loaded -= BetterRTXManagerWindow_Loaded;
 
-        this.Activated -= BetterRTXManagerWindow_Activated;
+        if (_isClosing) return;
 
-        SetTitleBar(TitleBarArea);
+        try { SetTitleBar(TitleBarArea); }
+        catch (Exception ex) { Trace.WriteLine($"[BetterRTXManager] SetTitleBar failed (window likely closing): {ex.Message}"); }
 
         if (Persistent.IsTargetingPreview)
         {
-            StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview at this time.";
+            StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview, the API only provides files intended for stable Minecraft releases that may not work on the latest Preview.";
             this.Close();
             return;
         }
@@ -171,19 +174,25 @@ public sealed partial class BetterRTXManagerWindow : Window
         WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
 
         await InitializeAsync();
+        if (_isClosing) return;
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(75);
+            if (_isClosing) return;
             try { this.Activate(); } catch { }
         });
 
         InitializeRefreshButton();
     }
+
     private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
+
+        if (Content is FrameworkElement root)
+            root.Loaded -= BetterRTXManagerWindow_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();

@@ -81,35 +81,43 @@ public sealed partial class LUTManagerWindow : Window
 
         InstallButton.IsEnabledChanged += (s, e) => ApplyInstallButtonBevel(_isPresetInstalled);
 
-        this.Activated += LUTManagerWindow_Activated;
         this.Closed += LUTManagerWindow_Closed;
+
+        if (Content is FrameworkElement root)
+            root.Loaded += LUTManagerWindow_Loaded;
     }
-    private async void LUTManagerWindow_Activated(object sender, WindowActivatedEventArgs args)
+
+    private async void LUTManagerWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
+        if (Content is FrameworkElement root)
+            root.Loaded -= LUTManagerWindow_Loaded;
 
-        this.Activated -= LUTManagerWindow_Activated;
+        if (_isClosing) return;
 
-        SetTitleBar(TitleBarArea);
+        try { SetTitleBar(TitleBarArea); }
+        catch (Exception ex) { Trace.WriteLine($"[LUTManager] SetTitleBar failed (window likely closing): {ex.Message}"); }
 
-        var target = Persistent.IsTargetingPreview
-            ? "Minecraft Preview"
-            : "Minecraft Release";
+        var target = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
         WindowTitle.Text = $"RTX LUT manager - {target}";
 
         await InitializeAsync();
+        if (_isClosing) return;
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(75);
+            if (_isClosing) return;
             try { this.Activate(); } catch { }
         });
     }
+
     private void LUTManagerWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
+
+        if (Content is FrameworkElement root)
+            root.Loaded -= LUTManagerWindow_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();

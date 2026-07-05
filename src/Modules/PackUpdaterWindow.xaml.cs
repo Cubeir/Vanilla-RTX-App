@@ -63,31 +63,38 @@ public sealed partial class PackUpdateWindow : Window
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.update.ico"));
 
-        this.Activated += PackUpdateWindow_Activated;
         this.Closed += PackUpdateWindow_Closed;
+
+        if (Content is FrameworkElement root)
+            root.Loaded += PackUpdateWindow_Loaded;
     }
-    private async void PackUpdateWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private async void PackUpdateWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
+        if (Content is FrameworkElement root)
+            root.Loaded -= PackUpdateWindow_Loaded;
 
-        this.Activated -= PackUpdateWindow_Activated;
+        if (_isClosing) return;
 
-        SetTitleBar(TitleBarArea);
+        try { SetTitleBar(TitleBarArea); }
+        catch (Exception ex) { Trace.WriteLine($"[PackUpdateWindow] SetTitleBar failed (window likely closing): {ex.Message}"); }
 
         var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
         WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
         await InitializePackInformation();
-        SetupButtonHandlers();
+        if (_isClosing) return;
 
-        // Check if installation is in progress and update UI accordingly
+        SetupButtonHandlers();
         CheckAndHandleOngoingInstallation();
     }
+
     private void PackUpdateWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
+
+        if (Content is FrameworkElement root)
+            root.Loaded -= PackUpdateWindow_Loaded;
 
         StopInstallingAnimation();
 

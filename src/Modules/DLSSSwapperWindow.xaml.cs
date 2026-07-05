@@ -59,33 +59,42 @@ public sealed partial class DLSSSwapperWindow : Window
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.dlss.ico"));
 
-        this.Activated += DLSSSwapperWindow_Activated;
         this.Closed += DLSSSwapperWindow_Closed;
+
+        if (Content is FrameworkElement root)
+            root.Loaded += DLSSSwapperWindow_Loaded;
     }
-    private async void DLSSSwapperWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private async void DLSSSwapperWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
+        if (Content is FrameworkElement root)
+            root.Loaded -= DLSSSwapperWindow_Loaded;
 
-        this.Activated -= DLSSSwapperWindow_Activated;
+        if (_isClosing) return;
 
-        SetTitleBar(TitleBarArea);
+        try { SetTitleBar(TitleBarArea); }
+        catch (Exception ex) { Trace.WriteLine($"[DLSSSwapper] SetTitleBar failed (window likely closing): {ex.Message}"); }
 
         var text = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
         WindowTitle.Text = $"Swap DLSS version for {text}";
 
         await InitializeAsync();
+        if (_isClosing) return;
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(75);
+            if (_isClosing) return;
             try { this.Activate(); } catch { }
         });
     }
+
     private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
+
+        if (Content is FrameworkElement root)
+            root.Loaded -= DLSSSwapperWindow_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();

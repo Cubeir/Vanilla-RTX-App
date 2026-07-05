@@ -88,30 +88,41 @@ public sealed partial class Alchitex : Window
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
 
-        this.Activated += Alchitex_Activated;
         this.Closed += Alchitex_Closed;
+
+        if (Content is FrameworkElement root)
+            root.Loaded += Alchitex_Loaded;
     }
-    private async void Alchitex_Activated(object sender, WindowActivatedEventArgs args)
+    private async void Alchitex_Loaded(object sender, RoutedEventArgs e)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        await Task.Delay(25);
+        if (Content is FrameworkElement root)
+            root.Loaded -= Alchitex_Loaded;
 
-        this.Activated -= Alchitex_Activated;
+        if (_isClosing) return;
 
-        SetTitleBar(TitleBarDragArea);
+        try { SetTitleBar(TitleBarDragArea); }
+        catch (Exception ex) { Trace.WriteLine($"[Alchitex] SetTitleBar failed (window likely closing): {ex.Message}"); }
+
         PopulateAlchitexAnnouncements();
+
         await InitializeAsync();
+        if (_isClosing) return;
 
         _ = this.DispatcherQueue.TryEnqueue(async () =>
         {
             await Task.Delay(75);
+            if (_isClosing) return;
             try { this.Activate(); } catch { }
         });
     }
+
     private void Alchitex_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
+
+        if (Content is FrameworkElement root)
+            root.Loaded -= Alchitex_Loaded;
 
         ThemeService.ThemeChanged -= ApplyTheme;
         this.Closed -= Alchitex_Closed;
