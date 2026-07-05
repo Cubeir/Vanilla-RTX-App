@@ -415,8 +415,6 @@ public sealed partial class MainWindow : Window
             {
                 try { child.Close(); } catch (COMException) { /* already gone */ }
             }
-
-            App.CleanupMutex();
         };
 
         // For dynamiclly changing text with Shift key
@@ -648,7 +646,7 @@ public sealed partial class MainWindow : Window
         {
             var logPath = Path.Combine(
                 ApplicationData.Current.LocalFolder.Path,
-                "crash_log.txt");
+                "last_session_crash_log.txt");
 
             if (!File.Exists(logPath)) return;
 

@@ -36,7 +36,7 @@ public partial class App : Application
         // 1. Catches unhandled exceptions on the UI thread from any window
         this.UnhandledException += (s, e) =>
         {
-            WriteCrashLog("UI Thread", e.Message, e.Exception.ToString());
+            WriteCrashLog("UI Thread", $"[{e.Exception.GetType().FullName} / 0x{e.Exception.HResult:X8}] {e.Message}", e.Exception.ToString());
             // intentionally not setting e.Handled = true
             // let it crash naturally so WER still gets the dump
         };
@@ -107,19 +107,18 @@ public partial class App : Application
         {
             var logPath = Path.Combine(
                 Windows.Storage.ApplicationData.Current.LocalFolder.Path,
-                "crash_log.txt");
+                "last_session_crash_log.txt");
 
-            // Append rather than overwrite, in case multiple things throw
-            // during the same session before the process dies
             File.AppendAllText(logPath,
                 $"=== Crash Report ===\n" +
                 $"Version:   {TunerVariables.appVersion ?? "unknown"}\n" +
                 $"Source:    {source}\n" +
                 $"Time:      {DateTime.Now}\n" +
                 $"Message:   {message}\n" +
-                $"Detail:\n{detail}\n\n");
+                $"Detail:\n{detail}\n\n" +
+                $"--- Recent Trace Log ---\n{TraceManager.GetAllTraceLogs()}\n\n");
         }
-        catch { }
+        catch { /* we're truly fucked then */ }
     }
 
     public static string GetUniqueName()
@@ -141,21 +140,6 @@ public partial class App : Application
     public static string GetAppVersion()
     {
         var version = Windows.ApplicationModel.Package.Current.Id.Version; return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
-    }
-
-    // Clean up mutex when app exits
-    ~App()
-    {
-        _mutex?.ReleaseMutex();
-        _mutex?.Dispose();
-    }
-
-    public static void CleanupMutex()
-    {
-        _wakeEvent?.Set();  // unblock the wait thread so it can exit
-        _wakeEvent?.Dispose();
-        _mutex?.ReleaseMutex();
-        _mutex?.Dispose();
     }
 }
 
