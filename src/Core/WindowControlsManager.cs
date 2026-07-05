@@ -171,11 +171,11 @@ public class WindowControlsManager
         AppBarToggleButton or AutoSuggestBox;
 
     /// <summary>
-    /// Activates a freshly-launched window with a double-click guard that caused
-    /// the mainwindow to come to foreground unintentioanlly. re-asserts activation ~500ms later
-    /// (Windows' default double-click interval) to reclaim focus if the second
-    /// click of the double-click that launched this window landed back on the
-    /// caller before the new window's HWND fully took over that screen region.
+    /// Activates a freshly-launched window, then re-asserts activation ~500ms later
+    /// (Windows' default double-click interval) as a guard: without this, the second
+    /// click of the double-click that launched this window could land back on the
+    /// caller before the new window's HWND fully took over that screen region,
+    /// unintentionally bringing MainWindow back to the foreground.
     /// </summary>
     public static void Activate(Window window, int guardDelayMs = 500)
     {
