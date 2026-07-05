@@ -2318,7 +2318,7 @@ public sealed partial class MainWindow : Window
 
     #region =============== SLIDER HANDLERS ===============
 
-    private void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
+    private static void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
     {
         double roundedValue = Math.Round(slider.Value, decimalPlaces);
         property = roundedValue;
@@ -2332,7 +2332,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void HandleDoubleTextBoxLostFocus(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
+    private static void HandleDoubleTextBoxLostFocus(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
     {
         // Try parsing with user's culture first (respects comma vs period)
         bool parsed = double.TryParse(textBox.Text, NumberStyles.Float | NumberStyles.AllowThousands,
@@ -2365,14 +2365,14 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private void HandleIntSliderValueChanged(Slider slider, TextBox textBox, ref int property)
+    private static void HandleIntSliderValueChanged(Slider slider, TextBox textBox, ref int property)
     {
         property = (int)Math.Round(slider.Value);
         if (textBox != null && textBox.FocusState == FocusState.Unfocused)
             textBox.Text = property.ToString(CultureInfo.InvariantCulture);
     }
 
-    private void HandleIntTextBoxLostFocus(Slider slider, TextBox textBox, ref int property)
+    private static void HandleIntTextBoxLostFocus(Slider slider, TextBox textBox, ref int property)
     {
         if (int.TryParse(textBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int val))
         {
