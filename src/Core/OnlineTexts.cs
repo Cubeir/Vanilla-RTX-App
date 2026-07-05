@@ -14,6 +14,8 @@ using Windows.Storage;
 
 namespace Vanilla_RTX_App.Core;
 
+// IDEA: could be expanded on, have a field at the end, to disable/enable features/buttons/controls on a whim
+
 // =====================================================================================================================
 // PsaItem — A single announcement entry.
 // =====================================================================================================================

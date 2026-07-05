@@ -2442,7 +2442,7 @@ public sealed partial class MainWindow : Window
     #endregion
 }
 
-/* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
+/* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
 - Upgrade module window patterns to use _Loaded instead of _Activated, make it all safer all around
 
@@ -2467,23 +2467,65 @@ maybe you should do it more often, in more places
 Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
 TEST EVERTHING! EVERY. LITTLE. THING.
 
-==================== ENOUGH FOR 3.1, Ideas below AREN'T mature enough, let them rest
 
-- ISSUE:
-User has to open Minecraft.Windows.exe to select a file with the way GDKLocator is
-and that file CAN BE PROTECTED ON MOST SYSTEMS
-which WILl send the user down the path of taking ownership, etc... TOO MUCH HASSLE1
-MAKE manual selection ASK the user to select the folder iwth the exe file IN IT instead,
-That way, they won't have to deal with shit
-The GDKLOCATOR STILL DOES the whole verification process by latching onto the .exe though, so, no behavioral change past that. easy enough?
+- Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
+Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
+publicly maintained apis to do this too.
+WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-- Tuner: there is a memory leak!? it seems so, images remain in the memory after being modified
-dispose of them properly, test again, with large hd packs especially
+- More previewer asset ideas:
+random block renders thrown in there
+iconns/logos of features of app thrown in there too, one for each would be enough
 
-- The manner of reading/modifying/saving images could be improved in Tuner
-GetPixel/SetPixel is too slow
-Switch to something faster, maybe use GPU, or process pixels in parallel, just do something, its tooooooooooo slooooooooooooow
-even after the rewrite
+- Begin using Bindings for:
+Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
+The code surrounding it, especially checkboxes, is very messy
+it's FUNCTIONALLY CORRECT all throughout at the moment, but it was a lot of hassle, and its messy
+LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled) or not is something u can't do with binding, and the existing code's perfect for it.
+but you may be able to shorten UpdateUI,
+its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
+
+- Do the TODOs scattered in the code
+
+- Create a BetterRTX-like lut preset, gets the looks 80% there! 
+
+*/
+// ============================================================================================================
+/* THE GULAG 
+
+- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
+Give it special treatment same as default preset and avoid changing existing logic
+they appear at the bottom
+expects zips, rtpacks, or .tar.gz, in any of the 3
+look for the .bin files, call the presets custom1, 2, etc.. don't convolute it
+since their structure can vary, have something robust for all kinds of custom presets.
+to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
+basically, instead of changing the current pipeline, integerate this/build it on top of it
+that way it'll surely work without fucking things up
+> This is probably not so useful
+And it goes against your design philosphies
+The flow of going to a site, twiddling ALL those knobs, coming back, and having to do it again with mc updates
+is just... NOPE!
+That said, it's a cool feature for those who might want it.
+>> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
+
+
+- A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
+Besides that you're gonna need something to unify the logging
+A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
+This way direct interaction with non-UI threads will be zero
+Long running tasks dump their text, UI thread gradually writes it out on its own.
+only concern is performance with large logs
+This idea can be a public static method and it won't ever ever block Ui thread
+A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
+
+- Make holding shift turn the lamp Green to indicate its debugging functionality
+
+- Begin embedding most visual assets into the .resx, fewer IO operations, good optimization
+very low prio though, not too many assets, things are good
+
+- Account for different font scalings, windows accessibility settings, etc...
+gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
 
 - add the ability to TOTALLY DISABLE entire features on startup?
 PARTICULARY BETTERRTX
@@ -2493,27 +2535,6 @@ DISABEL the button when betterrtx is broken, manually enable it again when not.
 
 > Prolly not a good idea warnings are enough.
 
-
-- do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
-Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
-publicly maintained apis to do this too.
-WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
-
-- IDEA: Add a simple service to randomly log useful facts
-or don't, just do the thing, about reusing manual user data selection on buttons that need it
-potentially disabling or enabling buttons at startup depending on state of cache and later down the methods
-and allowing anything to launch that, think around it and about it
-also ties into the idea of telling user to finish their job and come back to mainwindow/ explain why certain buttons are disabled
-in case they forget they got windows open elsewhere... good QoL
-warn don't close windows mid-op, the app should be able to recover, but don't do it
-
-- Update other windows to rely on Loaded event instead of Activated as well... or don't, there may be more considerations to it
-// e..g WHEN it actually fires and how long it takes, etc..
-
-// Gotta add more guards // some features must not be launching or at least should be more clear about it
-// when they dont have user data access, for example, the pack updater, which proceeds as usual, then fails half way and returns an error
-// could add checks earlier, disabling related buttons sounds like the best option
-// you could also just return button calls early, and tell user wtf u doing? select user data or something, this is better UX than stonewalling
 
 - Make a  secondary image fade in and out briefly over lampinteraction when clicked
 same as bottom vessel
@@ -2531,13 +2552,6 @@ open module before returning to main window.
 just.. it'd be nice QoL.
 Btw random thought
 indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
-
-===== NEXT MAJOR REDESIGN THOUGHTS
-======== Below are some thoughts on the next design iteration, possibly for 4.0 and Beyond
-
-- More previewer asset ideas:
-random block renders thrown in there
-iconns/logos of features of app thrown in there too, one for each would be enough
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line
@@ -2601,87 +2615,4 @@ but that's just better, think about it
 its not too late
 
 
-- Begin using Bindings for:
-Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
-The code surrounding it, especially checkboxes, is very messy
-it's FUNCTIONALLY CORRECT all throughout at the moment, but it was a lot of hassle, and its messy
-LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled) or not is something u can't do with binding, and the existing code's perfect for it.
-but you may be able to shorten UpdateUI,
-its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
-
-- Do the TODOs scattered in the code
-
-- Create a BetterRTX-like lut preset, gets the looks 80% there! 
-
-- Review use of OpenURL/Prcoess.start where you use those
-Use the built-in Laucnh URI as necessary
-already doing in OpenURL, It's the more correct way there 
-
-- Implement a proper Tuning Progress bar
-Update the progressbar manager, allow it to move slowly, to give an indication of the progress of the tuning process
-have it update in real time, all files/processed, should be easy enough...
->> Alongside it, add the ability to Abort the operation, WHILE tuning, change tune button to "Abort Tuning Process" with a warning glyph
-or &#xE730; would be nicer, &#xECE4; too
-
-Maybe call it Scram or Back out, or, something
-Will require redoing of progress bar managaer, but thats fine -- here's what, move the progrssbar itself to the bottom, under previewer vessels, on that thin line???
-or WIDE at the very bottom or top of the app! OR VERTICAL ON THE SIDEBAR LOG! leftside!
-
-- Go over Main Window again some time, especially update ToggleControls usage, its... weird to say the least
-Be more CONSISTENT with it, and ensure sidebarlogbox NEVER EVER EVER gets disabled on the main window!
-Some overrides now disable it while they should not.
-
-
-- TTService.GetToolTip could be very useful,
-users don't read tooltips, hide verbose guides in there, its fine
-AND PRINT THEM TO USER when they repeat a mistake a few times and cause errors.
-just an idea
-
-- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
-Give it special treatment same as default preset and avoid changing existing logic
-they appear at the bottom
-expects zips, rtpacks, or .tar.gz, in any of the 3
-look for the .bin files, call the presets custom1, 2, etc.. don't convolute it
-since their structure can vary, have something robust for all kinds of custom presets.
-to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
-basically, instead of changing the current pipeline, integerate this/build it on top of it
-that way it'll surely work without fucking things up
-> This is probably not so useful
-And it goes against your design philosphies
-The flow of going to a site, twiddling ALL those knobs, coming back, and having to do it again with mc updates
-is just... NOPE!
-That said, it's a cool feature for those who might want it.
->> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
-
-- Further review PackUpdater and BetterRTX manager codes, ensure no stone is left unturned.
-Especially release builds, There COULD BE LATENT TRIMMING BUGS!
-Game detection and cache invalidation could be improved for both
-PackUpdater may have blindspots still, though HIGHLY unlikely, still, review and test, make changes on the go
-
-Potentially add a way to deploy from a different branch on github for preview version of the game
-that is, assuming you really do plan on separating the development branches upstream
-
->>
-Go after these classes, all modules
-Further SEPARATE Servicing from Presentation
-Break down these fat monolithic classes, then you may be able to do more with them, defragment code, and reuse a bunch of it...
-already did a bit of that with file replacement, etc..
-but more could be done for sure.
-
-- A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
-Besides that you're gonna need something to unify the logging
-A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
-This way direct interaction with non-UI threads will be zero
-Long running tasks dump their text, UI thread gradually writes it out on its own.
-only concern is performance with large logs
-This idea can be a public static method and it won't ever ever block Ui thread
-A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
-
-- Make holding shift turn the lamp Green to indicate its debugging functionality
-
-- Begin embedding most visual assets into the .resx, fewer IO operations, good optimization
-very low prio though, not too many assets, things are good
-
-- Account for different font scalings, windows accessibility settings, etc...
-gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
 */
