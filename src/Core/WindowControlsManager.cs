@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
+using Vanilla_RTX_App.Modules;
 
 namespace Vanilla_RTX_App.Core;
 
@@ -169,8 +170,6 @@ public class WindowControlsManager
         AppBarToggleButton or AutoSuggestBox;
 }
 
-// TODO: you forgot you have this?! this would've been so useful to use in other windows wherever you needed to stop user from intracting with the window for a bit
-// Not only that, these would've simplified otherwise convoluted uses of togglecontrols in some scenarios. Check.
 /// <summary>
 /// Extension methods for convenient usage
 /// </summary>
@@ -214,44 +213,52 @@ public static class WindowControlsManagerExtensions
         WindowControlsManager.ClearStates(window);
     }
 }
-// TODO: Just marking it, come here and check this out later, expand on it, non-intermidate states, paused, and error states, support them
-// begin properly utilizing it
+
 /// <summary>
-/// This shouldn't really be here, a utility class for managing a simple progress bar on/off while preventing race conditions
-/// Update it later to use a more robust solution like IProgress<T> or async/await patterns, show real time progress, etc.
-/// In fact, remove the thing entirely, you've already got the lamp to show "something is going on" this is just VISUAL CLUTTER
+/// Utility class for driving a WinUI ProgressBar safely from background threads,
+/// with three modes:
+///   - Indeterminate "something is happening" (original ShowProgress/HideProgress behavior,
+///     kept for any other long-running operation in the app that doesn't report real progress).
+///   - Determinate, fed by Tuner's IProgress&lt;TuningProgress&gt; reports (falls back to
+///     indeterminate automatically while the total unit count is still unknown).
+///   - Error / cancelled terminal states, using the ProgressBar's built-in ShowError/ShowPaused
+///     visuals so the user gets a distinct look without extra UI.
+/// All public methods are safe to call from any thread; UI mutation is always marshalled
+/// onto the ProgressBar's DispatcherQueue.
 /// </summary>
 public class ProgressBarManager
 {
     private readonly ProgressBar _progressBar;
-    private int _activeOperations = 0;
+    private readonly DispatcherQueue _dispatcherQueue;
     private readonly object _lock = new();
+    private int _activeOperations;
 
     public ProgressBarManager(ProgressBar progressBar)
     {
         _progressBar = progressBar ?? throw new ArgumentNullException(nameof(progressBar));
-
-        // Initialize to hidden state
-        _progressBar.IsIndeterminate = false;
-        _progressBar.Visibility = Visibility.Collapsed;
+        _dispatcherQueue = progressBar.DispatcherQueue;
+        ResetVisual();
     }
 
+    // ── Legacy indeterminate public API ─────────────────────────
+
     /// <summary>
-    /// Shows the progress bar. Call this when starting a long-running operation.
-    /// Multiple calls are safe - progress bar stays visible until all operations complete.
+    /// Shows the progress bar in indeterminate mode. Call this when starting a long-running
+    /// operation that has no meaningful "percent done". Multiple calls are safe - the bar
+    /// stays visible until all operations complete.
     /// </summary>
     public void ShowProgress()
     {
         lock (_lock)
         {
             _activeOperations++;
-            UpdateProgressBarState();
+            UpdateIndeterminateState();
         }
     }
 
     /// <summary>
-    /// Hides the progress bar. Call this when completing a long-running operation.
-    /// Progress bar only hides when all operations have completed.
+    /// Hides the progress bar. Only hides once every ShowProgress() call has a matching
+    /// HideProgress() call.
     /// </summary>
     public void HideProgress()
     {
@@ -260,60 +267,122 @@ public class ProgressBarManager
             if (_activeOperations > 0)
             {
                 _activeOperations--;
-                UpdateProgressBarState();
+                UpdateIndeterminateState();
             }
         }
     }
 
-    /// <summary>
-    /// Forces the progress bar to hide regardless of active operations count.
-    /// Use sparingly, typically only for error handling or app shutdown.
-    /// </summary>
+    /// <summary>Forces the progress bar to hide regardless of active operation count.</summary>
     public void ForceHide()
     {
         lock (_lock)
         {
             _activeOperations = 0;
-            UpdateProgressBarState();
+            UpdateIndeterminateState();
         }
     }
 
-    /// <summary>
-    /// Gets whether the progress bar is currently visible.
-    /// </summary>
     public bool IsVisible
     {
-        get
-        {
-            lock (_lock)
-            {
-                return _activeOperations > 0;
-            }
-        }
+        get { lock (_lock) { return _activeOperations > 0; } }
     }
 
-    /// <summary>
-    /// Gets the current number of active operations.
-    /// </summary>
     public int ActiveOperationsCount
     {
-        get
-        {
-            lock (_lock)
-            {
-                return _activeOperations;
-            }
-        }
+        get { lock (_lock) { return _activeOperations; } }
     }
 
-    private void UpdateProgressBarState()
+    private void UpdateIndeterminateState()
     {
         var shouldShow = _activeOperations > 0;
+        RunOnUi(() =>
+        {
+            _progressBar.ShowError = false;
+            _progressBar.ShowPaused = false;
+            _progressBar.IsIndeterminate = shouldShow;
+            _progressBar.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+        });
+    }
 
-        _progressBar.IsIndeterminate = shouldShow;
-        _progressBar.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+    // ── New determinate API, meant for Tuner.TuneSelectedPacks' IProgress<T> ──
+
+    /// <summary>
+    /// Feeds a Tuner.TuningProgress report straight into the bar. Pass this as
+    /// `new Progress&lt;Tuner.TuningProgress&gt;(progressManager.ReportTuningProgress)`.
+    /// Total &lt;= 0 means the amount of work isn't known yet, so the bar stays
+    /// indeterminate until a real total shows up.
+    /// </summary>
+    public void ReportTuningProgress(Tuner.TuningProgress p)
+    {
+        RunOnUi(() =>
+        {
+            _progressBar.ShowError = false;
+            _progressBar.ShowPaused = false;
+            _progressBar.Visibility = Visibility.Visible;
+
+            if (p.Total <= 0)
+            {
+                _progressBar.IsIndeterminate = true;
+                return;
+            }
+
+            _progressBar.IsIndeterminate = false;
+            _progressBar.Minimum = 0;
+            _progressBar.Maximum = p.Total;
+            _progressBar.Value = Math.Clamp(p.Completed, 0, p.Total);
+        });
+    }
+
+    /// <summary>Marks the bar complete and hides it (success path).</summary>
+    public void Complete()
+    {
+        RunOnUi(ResetVisual);
+    }
+
+    /// <summary>Shows the built-in WinUI "error" tint, e.g. after an exception.</summary>
+    public void ReportError()
+    {
+        RunOnUi(() =>
+        {
+            _progressBar.IsIndeterminate = false;
+            _progressBar.ShowPaused = false;
+            _progressBar.ShowError = true;
+            _progressBar.Visibility = Visibility.Visible;
+        });
+    }
+
+    /// <summary>Shows the built-in WinUI "paused" tint, used here for user-initiated cancellation.</summary>
+    public void ReportCancelled()
+    {
+        RunOnUi(() =>
+        {
+            _progressBar.IsIndeterminate = false;
+            _progressBar.ShowError = false;
+            _progressBar.ShowPaused = true;
+            _progressBar.Visibility = Visibility.Visible;
+        });
+    }
+
+    private void ResetVisual()
+    {
+        _progressBar.IsIndeterminate = false;
+        _progressBar.ShowError = false;
+        _progressBar.ShowPaused = false;
+        _progressBar.Minimum = 0;
+        _progressBar.Maximum = 100;
+        _progressBar.Value = 0;
+        _progressBar.Visibility = Visibility.Collapsed;
+    }
+
+    private void RunOnUi(Action action)
+    {
+        if (_dispatcherQueue.HasThreadAccess)
+            action();
+        else
+            _dispatcherQueue.TryEnqueue(() => action());
     }
 }
+
 public static class ProgressBarExtensions
 {
     private static readonly Dictionary<ProgressBar, ProgressBarManager> _managers = new();
