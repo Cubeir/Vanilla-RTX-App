@@ -28,12 +28,11 @@ public static class Helpers
             var width = (int)sourceImage.Width;
             var height = (int)sourceImage.Height;
 
-
             var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
             using (var sourcePixels = sourceImage.GetPixels())
+            using (var fb = new FastBitmap(bitmap, writable: true))
             {
-
                 for (var y = 0; y < height; y++)
                 {
                     for (var x = 0; x < width; x++)
@@ -106,8 +105,8 @@ public static class Helpers
                                 a = 255;
                             }
                         }
-                        var pixelColor = Color.FromArgb(a, r, g, b);
-                        bitmap.SetPixel(x, y, pixelColor);
+
+                        fb[x, y] = Color.FromArgb(a, r, g, b);
                     }
                 }
             }
@@ -129,6 +128,7 @@ public static class Helpers
             return errorBitmap;
         }
     }
+
     /// <summary>
     /// Write a bitmap to a path as raw, pure targa with 4 channels, 8 bit per channel
     /// </summary>
@@ -155,11 +155,13 @@ public static class Helpers
             writer.Write((byte)32);       // Pixel Depth (32-bit RGBA)
             writer.Write((byte)8);        // Image Descriptor (default origin, 8-bit alpha)
 
+            using var fb = new FastBitmap(bitmap, writable: false);
+
             for (var y = height - 1; y >= 0; y--) // TGA is bottom-up by default
             {
                 for (var x = 0; x < width; x++)
                 {
-                    var pixel = bitmap.GetPixel(x, y);
+                    var pixel = fb[x, y];
 
                     writer.Write(pixel.B);
                     writer.Write(pixel.G);
