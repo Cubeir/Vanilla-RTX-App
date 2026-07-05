@@ -202,7 +202,7 @@ public sealed partial class MainWindow : Window
 
     private LampAnimator? _titlebarLampAnimator;
     private LampAnimator? _splashLampAnimator;
-    public PackSelectionViewModel PackVM { get; } = new PackSelectionViewModel();
+    public PackSelectionViewModel PackVM { get; } = new();
 
     private async void InitializeLampAnimators()
     {
@@ -550,7 +550,9 @@ public sealed partial class MainWindow : Window
 
         _isInitializing = false; // This makes sure ONLY the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below, aka, Unblocks these operations from running in regular Preview button toggles
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
-        UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status  
+        UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status
+        Bindings.Update(); // Update bindings cause of a x:Bind gotcha where values come alive after some unrelated property change
+
         _ = LocatePacksTask(); // Trigger finding packs
 
         // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
@@ -2485,7 +2487,13 @@ its a bit risky touching that part of the code, cuz of its annoying bugs with th
 
 - Do the TODOs scattered in the code
 
-- Create a BetterRTX-like lut preset, gets the looks 80% there! 
+- Create a BetterRTX-like lut preset, gets the looks 80% there!
+
+- Effects, possibly with win2d, for tags/badges
+RTX Reactor, pixelated rain like its tiles
+RTX glow
+VV... blobl colors moving around maybe
+Incompatible, switch between VV-like orange, and red, to indicate vv packs are in-between being compatible and not being compatible with tuner, its true.
 
 */
 // ============================================================================================================
@@ -2576,9 +2584,6 @@ PackUpdater menu prints statuses anyway, there's no use to it
 LEAVE THAT AREA EMPTY, there's no harm in it
 Make it sit Directly below the VANILLA RTX APP title text and logo roughly, so it draws more attention
 that's actually good design! And gives some breathing room/makes it look a lot less overwhelming
-
-And do the idea of making pack tags have Unique effects, that was nice.
-For delete and export, keep using the Titlebar updates -> finish the job -> reload window strategy that importer already does
 
 But there are more considerations to this:
 Remove all code paths related to the checkboxes
