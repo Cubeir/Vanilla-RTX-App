@@ -117,8 +117,8 @@
                         HorizontalAlignment="Center"
                         Visibility="Collapsed"
                         Spacing="12">
-                <FontIcon Glyph="&#xE794;"
-                          FontSize="48"
+                <FontIcon Glyph="&#xEABC;"
+                          FontSize="50"
                           IsTextScaleFactorEnabled="False"
                           Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                 <TextBlock x:Name="EmptyStateText"

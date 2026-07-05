@@ -1228,20 +1228,20 @@ public sealed partial class BetterRTXManagerWindow : Window
                     if (apiCacheExists)
                     {
                         // Cache exists but is empty/corrupt
-                        EmptyStateText.Text = "No presets available. The preset list may be corrupted - try clicking the Refresh button.";
+                        EmptyStateText.Text = "No presets available. The preset list may be corrupted - try clicking the Refresh button in the top left corner.";
                         Trace.WriteLine("[BetterRTX] ⚠ Empty state: Cache exists but no presets loaded (possible corruption)");
                     }
                     else
                     {
                         // No cache, probably offline
-                        EmptyStateText.Text = "No presets available. An internet connection is required to load BetterRTX presets.";
+                        EmptyStateText.Text = "No presets available. An internet connection is required to fetch BetterRTX preset information.";
                         Trace.WriteLine("[BetterRTX] ⚠ Empty state: No cache and no presets (offline?)");
                     }
                 }
                 else
                 {
                     // We have data but nothing to display (edge case)
-                    EmptyStateText.Text = "No BetterRTX presets could be displayed. Try clicking the Refresh button.";
+                    EmptyStateText.Text = "No BetterRTX presets could be displayed. Try clicking the Refresh button in the top left corner.";
                     Trace.WriteLine($"[BetterRTX] ⚠ Empty state: API={apiCount}, Local={localCount} but no displayable presets (parsing issue?)");
                 }
             }

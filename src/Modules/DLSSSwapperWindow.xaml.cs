@@ -7,14 +7,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.UI.Text;
 using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
@@ -586,8 +589,19 @@ public sealed partial class DLSSSwapperWindow : Window
             Content = "Download More DLLs",
             NavigateUri = new Uri("https://www.techpowerup.com/download/nvidia-dlss-dll/"),
             VerticalAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(16, 6, 16, 6),
+            FontWeight = FontWeights.Medium,
+            FontSize = 14,
+            Padding = new Thickness(18, 8, 16, 8),
+            Translation = new System.Numerics.Vector3(0,0,24),
             IsTextScaleFactorEnabled = false
+        };
+
+        var hyperLinkShadow = new ThemeShadow();
+        hyperlinkButton.Shadow = hyperLinkShadow;
+        hyperlinkButton.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                hyperLinkShadow.Receivers.Add(ShadowReceiverGrid);
         };
 
         Grid.SetColumn(hyperlinkButton, 4);

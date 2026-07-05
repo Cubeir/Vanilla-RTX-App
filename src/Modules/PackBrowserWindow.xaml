@@ -106,7 +106,7 @@
                               IsTextScaleFactorEnabled="False"
                               Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                     <TextBlock x:Name="EmptyStateText"
-                               Text="You don't seem to have any resource pack installed! Import your packs or install Vanilla RTX from the main menu."
+                               Text="You don't seem to have any resource pack installed! Begin importing your packs here, or install Vanilla RTX from the main menu."
                                FontSize="14"
                                IsTextScaleFactorEnabled="False"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
