@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -234,7 +235,7 @@ public sealed partial class MainWindow : Window
             "birthday" => ("vrtx.birthday", 3),
             "pumpkin" => ("vrtx.pumpkin", 3),
             "christmas" => ("vrtx.christmas", 5),
-            _ => ("vrtx.app", 32)
+            _ => ("vrtx.app", 50)
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
@@ -574,7 +575,7 @@ public sealed partial class MainWindow : Window
             "birthday" => ("vrtx.birthday", 3),
             "pumpkin" => ("vrtx.pumpkin", 3),
             "christmas" => ("vrtx.christmas", 5),
-            _ => ("vrtx.app", 32)
+            _ => ("vrtx.app", 50)
         };
         int rng = Random.Shared.Next(1, count + 1);
         Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
@@ -1456,7 +1457,7 @@ public sealed partial class MainWindow : Window
             ToolTipService.SetToolTip(BrowsePacksButton,
                 $"The app couldn't find {versionName} data folder automatically - click to locate it manually.");
 
-            BrowsePacksButton.Style =  (Style)Application.Current.Resources["AccentButtonStyle"];
+            BrowsePacksButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
             ApplyLocateUserDataColors(RightEdgeOfLocateButton.ActualTheme);
 
             Log($"Couldn't find {versionName} user data folder automatically. Here's what to do:\n" +
@@ -1984,22 +1985,32 @@ public sealed partial class MainWindow : Window
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
         }
     }
+
+
+    private CancellationTokenSource? _tuningCts;
+
     private async void TuneSelectionButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_tuningCts != null)
+        {
+            TuneSelectionButton.IsEnabled = false;
+            TuneSelectionButtonText.Text = "Stopping...";
+            _tuningCts.Cancel();
+            return;
+        }
+
         if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
 
-        // TuneSelectionButton_Click
         string[] ToDisable =
         [
             "LaunchMinecraftButton", "TargetPreviewToggle",
-    "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
-    "ExportButton", "DeleteButton", "TuneSelectionButton",
-             "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton",
-             "FogMultiplierSlider", "FogMultiplierBox",
-"EmissivityMultiplierSlider", "EmissivityMultiplierBox", "NormalIntensitySlider", "NormalIntensityBox",
-"MaterialNoiseSlider", "MaterialNoiseBox", "RoughenUpSlider", "RoughenUpBox",
-"LazifyNormalsSlider", "LazifyNormalsBox", "EmissivityAmbientLightToggle"
-
+        "LaunchAlchitexButton", "LaunchPackUpdateButton", "BrowsePacksButton",
+        "ExportButton", "DeleteButton",
+        "VanillaRTXCheckBox", "NormalsCheckBox", "OpusCheckBox", "ClearButton", "ResetButton",
+        "FogMultiplierSlider", "FogMultiplierBox",
+        "EmissivityMultiplierSlider", "EmissivityMultiplierBox", "NormalIntensitySlider", "NormalIntensityBox",
+        "MaterialNoiseSlider", "MaterialNoiseBox", "RoughenUpSlider", "RoughenUpBox",
+        "LazifyNormalsSlider", "LazifyNormalsBox", "EmissivityAmbientLightToggle"
         ];
 
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -2011,7 +2022,6 @@ public sealed partial class MainWindow : Window
             bool hasCompatibleCustom = TunerVariables.SelectedPacks.Any(p => p.Type != "Incompatible");
             bool hasIncompatibleCustom = TunerVariables.SelectedPacks.Any(p => p.Type == "Incompatible");
 
-            // Mixed: at least one compatible AND at least one incompatible in the custom selection
             if ((hasVanillaPacks || hasCompatibleCustom) && hasIncompatibleCustom)
                 Log("Some of the selected packs are not RTX compatible & will be excluded from the tuning process.", LogLevel.Warning);
 
@@ -2023,29 +2033,47 @@ public sealed partial class MainWindow : Window
                     Log("Select at least one compatible pack to tune.", LogLevel.Warning);
                 return;
             }
-            else
-            {
-                _progressManager.ShowProgress();
-                _ = BlinkingLamp(true);
-                WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-                var tuningMessage = await Task.Run(Tuner.TuneSelectedPacks);
-                Log(tuningMessage, LogLevel.Success);
-            }
+            _tuningCts = new CancellationTokenSource();
+            var progress = new Progress<Tuner.TuningProgress>(p => _progressManager.ReportTuningProgress(p));
+
+            _ = BlinkingLamp(true);
+            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+
+            TuneSelectionButtonIcon.Glyph = "\uE733";
+            TuneSelectionButtonText.Text = "Abort tuning operation";
+            ToolTipService.SetToolTip(TuneSelectionButton,
+                "Stops the tuning operation. Textures already finished keep their changes; anything not yet reached is left untouched.");
+
+            var tuningMessage = await Task.Run(() => Tuner.TuneSelectedPacks(progress, _tuningCts.Token));
+            Log(tuningMessage, LogLevel.Success);
+            _progressManager.Complete();
+        }
+        catch (OperationCanceledException)
+        {
+            Log("Tuning was cancelled.", LogLevel.Warning);
+            _progressManager.ReportCancelled();
         }
         catch (Exception ex)
         {
-            Log($"Something went wrong during the tuning process: {ex.ToString}", LogLevel.Error);
+            Log($"Something went wrong during the tuning process: {ex}", LogLevel.Error);
+            _progressManager.ReportError();
         }
         finally
         {
             _ = BlinkingLamp(false);
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
-            _progressManager.HideProgress();
+
+            TuneSelectionButtonIcon.Glyph = "\uE9F5";
+            TuneSelectionButtonText.Text = "Tune selection";
+            ToolTipService.SetToolTip(TuneSelectionButton,
+                "Begins permanently modifying the select packs using the current set parameters.\n\nMake sure Minecraft is closed while packs are being tuned.");
+            TuneSelectionButton.IsEnabled = true;
+
+            _tuningCts?.Dispose();
+            _tuningCts = null;
         }
     }
-
-
 
     private async void LaunchPackUpdateButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2416,7 +2444,9 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGH CORTISOL SOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
-- Do a review of all cooldowns and retry times.
+- Upgrade module window patterns to use _Loaded instead of _Activated, make it all safer all around
+
+- Do a review of all cooldowns and retry times, as well usage of a shared http header... IS IT?! huah!?
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots
 
@@ -2434,7 +2464,7 @@ like the new content dialogue for crashes, its literally the only place people a
 maybe you should do it more often, in more places
 
 - BEFORE RELEASE:
-Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
+Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
 TEST EVERTHING! EVERY. LITTLE. THING.
 
 ==================== ENOUGH FOR 3.1, Ideas below AREN'T mature enough, let them rest
@@ -2504,6 +2534,10 @@ indeed, button functionalities hidden under shift have Debug/Development related
 
 ===== NEXT MAJOR REDESIGN THOUGHTS
 ======== Below are some thoughts on the next design iteration, possibly for 4.0 and Beyond
+
+- More previewer asset ideas:
+random block renders thrown in there
+iconns/logos of features of app thrown in there too, one for each would be enough
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line
