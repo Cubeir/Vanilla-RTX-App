@@ -654,6 +654,8 @@ public static class TextureSetHelper
 /// hand back/accept a plain ARGB Color regardless of underlying storage), so
 /// output is unaffected: GDI+ performs the same implicit conversion on lock/unlock
 /// that GetPixel/SetPixel performed internally per call.
+///
+/// No `unsafe` blocks are required, so no project/csproj changes are needed.
 /// </summary>
 public sealed class FastBitmap : IDisposable
 {
@@ -863,6 +865,11 @@ public class Tuner
                 if (!needsTextureProcessing)
                     continue;
 
+                // Narrows pack.Path to non-null for the rest of this scope (the compiler
+                // can't see through the resolvedByPackPath dictionary lookup below to know
+                // it only ever contains entries keyed by a non-null, non-empty path - this
+                // check makes that guarantee visible locally instead of relying on it, and
+                // is what clears the CS8604 warning on the Read/Write calls further down).
                 if (string.IsNullOrEmpty(pack.Path))
                 {
                     Trace.WriteLine($"[TUNER] Skipping texture processing for '{pack.Name}': path missing.");
@@ -884,7 +891,7 @@ public class Tuner
                 bool skipEmissivityMultiplierPass = packCtx.HadAmbientLighting;
 
                 if (skipEmissivityMultiplierPass && doEmissivity && EmissivityMultiplier != Defaults.EmissivityMultiplier)
-                    Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed - pack was previously tuned with ambient lighting.");
+                    Trace.WriteLine($"[TUNER] '{pack.Name}': emissivity multiplier suppressed — pack was previously tuned with ambient lighting.");
 
                 if (resolved.Count == 0)
                 {
@@ -909,6 +916,28 @@ public class Tuner
                 // pattern even if two threads both compute a value for a fresh key.
                 var grainCache = new ConcurrentDictionary<string, (int[,] red, int[,] green, int[,] blue, int[,] checker)>(
                     StringComparer.OrdinalIgnoreCase);
+
+                // Some packs point more than one .texture_set.json at the *same physical*
+                // MER/normal file (e.g. two blocks sharing one texture). Without a guard,
+                // parallel processing could load, mutate, and save that one file from two
+                // texture sets at once - at best wasted duplicate work, at worst a torn
+                // write or a double-application of a transform. TryAdd on a
+                // ConcurrentDictionary is an atomic claim: whichever texture set gets there
+                // first "owns" that file for this run and is the only one allowed to mutate
+                // and save it; every other texture set referencing the same path is barred.
+                // This only matters for real files - inline/virtual values live inside their
+                // own .texture_set.json and can never collide with another texture set's.
+                // Color is intentionally not covered here: no processor currently marks it
+                // dirty (it's read-only input, e.g. for Lazify's luminance guide), so there's
+                // nothing to race on. If a future processor ever starts mutating Color, apply
+                // the same TryClaimFile gate to it too.
+                var claimedFiles = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+
+                bool TryClaimFile(string? filePath)
+                {
+                    if (filePath == null) return true; // inline/virtual - not shared, always eligible
+                    return claimedFiles.TryAdd(Path.GetFullPath(filePath), 0);
+                }
 
                 var parallelOptions = new ParallelOptions
                 {
@@ -941,66 +970,95 @@ public class Tuner
 
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        if (doEmissivity && lts.MerBmp != null)
+                        // MER: Emissivity, Roughness, and Grain all mutate the same bitmap/file.
+                        // Claim once, up front, and only proceed with any of the three if this
+                        // texture set is the one that won the claim (or the layer is virtual,
+                        // which never needs claiming).
+                        if (lts.MerBmp != null && (doEmissivity || doRoughness || doGrain))
                         {
-                            try
+                            var merFilePath = lts.MerIsVirtual ? null : lts.Resolved.Mer?.FilePath;
+
+                            if (TryClaimFile(merFilePath))
                             {
-                                lts.MerDirty |= ApplyEmissivity(lts.MerBmp, skipEmissivityMultiplierPass);
+                                if (doEmissivity)
+                                {
+                                    try
+                                    {
+                                        lts.MerDirty |= ApplyEmissivity(lts.MerBmp, skipEmissivityMultiplierPass);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"[TUNER] Emissivity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                    }
+                                }
+
+                                if (doRoughness)
+                                {
+                                    try
+                                    {
+                                        lts.MerDirty |= ApplyRoughness(lts.MerBmp);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"[TUNER] Roughness failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                    }
+                                }
+
+                                if (doGrain && !lts.MerIsVirtual)
+                                {
+                                    try
+                                    {
+                                        lts.MerDirty |= ApplyMaterialGrain(lts.MerBmp, lts.Resolved.Mer?.FilePath, grainCache);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"[TUNER] MaterialGrain failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                    }
+                                }
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                Trace.WriteLine($"[TUNER] Emissivity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                Trace.WriteLine($"[TUNER] '{lts.Resolved.JsonFilePath}': MER file '{merFilePath}' already claimed by another texture set referencing the same file this run - skipping to avoid double-processing.");
                             }
                         }
 
-                        if (doNormalInt && lts.NormalBmp != null)
-                        {
-                            try
-                            {
-                                lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.WriteLine($"[TUNER] NormalIntensity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                            }
-                        }
+                        // Normal/heightmap: NormalIntensity and Lazify both mutate the same
+                        // bitmap/file. Same claim-once-up-front gate as MER above.
+                        var wantsLazify = doLazify && lts.ColorBmp != null && !lts.ColorIsVirtual && !lts.NormalIsVirtual;
 
-                        // Lazify requires two same-resolution real bitmaps - skip if either is virtual.
-                        if (doLazify
-                            && lts.ColorBmp != null && !lts.ColorIsVirtual
-                            && lts.NormalBmp != null && !lts.NormalIsVirtual)
+                        if (lts.NormalBmp != null && (doNormalInt || wantsLazify))
                         {
-                            try
-                            {
-                                lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.WriteLine($"[TUNER] Lazify failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                            }
-                        }
+                            var normalFilePath = lts.NormalIsVirtual ? null : lts.Resolved.NormalOrHeight?.FilePath;
 
-                        if (doRoughness && lts.MerBmp != null)
-                        {
-                            try
+                            if (TryClaimFile(normalFilePath))
                             {
-                                lts.MerDirty |= ApplyRoughness(lts.MerBmp);
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.WriteLine($"[TUNER] Roughness failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
-                            }
-                        }
+                                if (doNormalInt)
+                                {
+                                    try
+                                    {
+                                        lts.NormalDirty |= ApplyNormalIntensity(lts.NormalBmp, lts.Resolved.IsHeightmap);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"[TUNER] NormalIntensity failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                    }
+                                }
 
-                        if (doGrain && lts.MerBmp != null && !lts.MerIsVirtual)
-                        {
-                            try
-                            {
-                                lts.MerDirty |= ApplyMaterialGrain(lts.MerBmp, lts.Resolved.Mer?.FilePath, grainCache);
+                                if (wantsLazify)
+                                {
+                                    try
+                                    {
+                                        lts.NormalDirty |= ApplyLazify(lts.ColorBmp, lts.NormalBmp, lts.Resolved.IsHeightmap);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.WriteLine($"[TUNER] Lazify failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                    }
+                                }
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                Trace.WriteLine($"[TUNER] MaterialGrain failed for '{lts.Resolved.JsonFilePath}': {ex.Message}");
+                                Trace.WriteLine($"[TUNER] '{lts.Resolved.JsonFilePath}': normal/heightmap file '{normalFilePath}' already claimed by another texture set referencing the same file this run - skipping to avoid double-processing.");
                             }
                         }
 
@@ -1028,7 +1086,7 @@ public class Tuner
             wasCancelled = true;
         }
 
-        // an earlier version of this method called GC.Collect(blocking: true,
+        // NOTE: an earlier version of this method called GC.Collect(blocking: true,
         // compacting: true, GCCollectionMode.Aggressive) here to reclaim the RAM
         // this file's class-level doc comment above used to describe. Removed: a
         // blocking, compacting Gen2 collection stops *every* thread in the process,
@@ -1375,6 +1433,8 @@ public class Tuner
 
     // ══════════════════════════════════════════════════════════════════════════
     //  Sub-processors
+    //  (all rewritten to use FastBitmap instead of GetPixel/SetPixel - math and
+    //  results are untouched, only the pixel access mechanism changed)
     // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
