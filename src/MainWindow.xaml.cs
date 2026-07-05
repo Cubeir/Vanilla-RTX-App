@@ -22,6 +22,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.LUTManager;
 using Vanilla_RTX_App.Modules;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -1377,7 +1378,7 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        packBrowserWindow.Activate();
+        WindowControlsManager.Activate(packBrowserWindow);
     }
 
     public async Task HandleManualDataLocationAsync()
@@ -2124,7 +2125,7 @@ public sealed partial class MainWindow : Window
         };
 
         _childWindows.Add(packUpdaterWindow);
-        packUpdaterWindow.Activate();
+        WindowControlsManager.Activate(packUpdaterWindow);
     }
     private void LaunchBetterRTXManagerButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2164,7 +2165,7 @@ public sealed partial class MainWindow : Window
         };
 
         _childWindows.Add(betterRTXWindow);
-        betterRTXWindow.Activate();
+        WindowControlsManager.Activate(betterRTXWindow);
     }
     private void LaunchDLSSSwapperButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2204,7 +2205,7 @@ public sealed partial class MainWindow : Window
         };
 
         _childWindows.Add(DLSSSwapperWindow);
-        DLSSSwapperWindow.Activate();
+        WindowControlsManager.Activate(DLSSSwapperWindow);
     }
     private void LaunchLUTManagerButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2243,7 +2244,7 @@ public sealed partial class MainWindow : Window
         };
 
         _childWindows.Add(LutManagerWindow);
-        LutManagerWindow.Activate();
+        WindowControlsManager.Activate(LutManagerWindow);
     }
     private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2283,7 +2284,7 @@ public sealed partial class MainWindow : Window
         };
 
         _childWindows.Add(alchitexWindow);
-        alchitexWindow.Activate();
+        WindowControlsManager.Activate(alchitexWindow);
     }
 
 
@@ -2441,8 +2442,6 @@ public sealed partial class MainWindow : Window
 }
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
-
-- Upgrade module window patterns to use _Loaded instead of _Activated, make it all safer all around
 
 - Do a review of all cooldowns and retry times, as well usage of a shared http header... IS IT?! huah!?
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible

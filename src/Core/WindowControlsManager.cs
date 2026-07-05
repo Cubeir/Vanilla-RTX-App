@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -168,6 +169,24 @@ public class WindowControlsManager
         ListBox or ListView or Microsoft.UI.Xaml.Controls.Primitives.ToggleButton or RatingControl or
         NumberBox or DatePicker or TimePicker or ToggleSwitch or MenuFlyoutItem or AppBarButton or
         AppBarToggleButton or AutoSuggestBox;
+
+    /// <summary>
+    /// Activates a freshly-launched window with a double-click guard that caused
+    /// the mainwindow to come to foreground unintentioanlly. re-asserts activation ~500ms later
+    /// (Windows' default double-click interval) to reclaim focus if the second
+    /// click of the double-click that launched this window landed back on the
+    /// caller before the new window's HWND fully took over that screen region.
+    /// </summary>
+    public static void Activate(Window window, int guardDelayMs = 500)
+    {
+        window.Activate();
+
+        _ = window.DispatcherQueue.TryEnqueue(async () =>
+        {
+            await Task.Delay(guardDelayMs);
+            try { window.Activate(); } catch { /* window may already be closed */ }
+        });
+    }
 }
 
 /// <summary>
