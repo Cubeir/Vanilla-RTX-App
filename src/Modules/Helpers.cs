@@ -30,14 +30,28 @@ public static class Helpers
 
             var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
+            // this loop used to call sourcePixels.GetPixel(x, y) - a native
+            // ImageMagick call per pixel - AND bitmap.SetPixel(x, y, ...) - a native
+            // GDI+ call per pixel. Both were replaced with a single bulk native
+            // call on each side: GetValues() fetches every channel of every pixel in
+            // one call (verified against Magick.NET's own test suite: the returned
+            // array's length is exactly width * height * channelCount, in the same
+            // row-major, channel-interleaved order that indexing a single GetPixel(x,y)
+            // result already used), and FastBitmap replaces the GDI+ side. The decode
+            // logic itself - every ColorType branch, the >>8 truncation, maxOpacity -
+            // is untouched; only how the raw channel values are fetched changed.
             using (var sourcePixels = sourceImage.GetPixels())
             using (var fb = new FastBitmap(bitmap, writable: true))
             {
+                var channelCount = (int)sourceImage.ChannelCount;
+                var values = sourcePixels.GetValues()
+                    ?? throw new InvalidOperationException($"Failed to read pixel data for '{imagePath}'.");
+
                 for (var y = 0; y < height; y++)
                 {
                     for (var x = 0; x < width; x++)
                     {
-                        var pixelData = sourcePixels.GetPixel(x, y);
+                        var pixelIndex = (y * width + x) * channelCount;
 
                         byte r, g, b, a;
 
@@ -45,41 +59,41 @@ public static class Helpers
 
                         if (sourceImage.ColorType == ColorType.Grayscale)
                         {
-                            var gray = (byte)(pixelData[0] >> 8);
+                            var gray = (byte)(values[pixelIndex + 0] >> 8);
                             r = g = b = gray;
                             a = 255;
                         }
                         else if (sourceImage.ColorType == ColorType.GrayscaleAlpha)
                         {
-                            var gray = (byte)(pixelData[0] >> 8);
+                            var gray = (byte)(values[pixelIndex + 0] >> 8);
                             r = g = b = gray;
-                            var originalAlpha = (byte)(pixelData[1] >> 8);
+                            var originalAlpha = (byte)(values[pixelIndex + 1] >> 8);
                             a = maxOpacity ? (byte)255 : originalAlpha;
                         }
                         else if (sourceImage.ColorType == ColorType.TrueColor)
                         {
-                            r = (byte)(pixelData[0] >> 8);
-                            g = (byte)(pixelData[1] >> 8);
-                            b = (byte)(pixelData[2] >> 8);
+                            r = (byte)(values[pixelIndex + 0] >> 8);
+                            g = (byte)(values[pixelIndex + 1] >> 8);
+                            b = (byte)(values[pixelIndex + 2] >> 8);
                             a = 255;
                         }
                         else if (sourceImage.ColorType == ColorType.TrueColorAlpha)
                         {
-                            r = (byte)(pixelData[0] >> 8);
-                            g = (byte)(pixelData[1] >> 8);
-                            b = (byte)(pixelData[2] >> 8);
-                            var originalAlpha = (byte)(pixelData[3] >> 8);
+                            r = (byte)(values[pixelIndex + 0] >> 8);
+                            g = (byte)(values[pixelIndex + 1] >> 8);
+                            b = (byte)(values[pixelIndex + 2] >> 8);
+                            var originalAlpha = (byte)(values[pixelIndex + 3] >> 8);
                             a = maxOpacity ? (byte)255 : originalAlpha;
                         }
                         else if (sourceImage.ColorType == ColorType.Palette)
                         {
-                            r = (byte)(pixelData[0] >> 8);
-                            g = (byte)(pixelData[1] >> 8);
-                            b = (byte)(pixelData[2] >> 8);
+                            r = (byte)(values[pixelIndex + 0] >> 8);
+                            g = (byte)(values[pixelIndex + 1] >> 8);
+                            b = (byte)(values[pixelIndex + 2] >> 8);
 
                             if (hasAlpha && sourceImage.ChannelCount > 3)
                             {
-                                var originalAlpha = (byte)(pixelData[3] >> 8);
+                                var originalAlpha = (byte)(values[pixelIndex + 3] >> 8);
                                 a = maxOpacity ? (byte)255 : originalAlpha;
                             }
                             else
@@ -91,13 +105,13 @@ public static class Helpers
                         {
                             var channels = (int)sourceImage.ChannelCount;
 
-                            r = channels > 0 ? (byte)(pixelData[0] >> 8) : (byte)0;
-                            g = channels > 1 ? (byte)(pixelData[1] >> 8) : r;
-                            b = channels > 2 ? (byte)(pixelData[2] >> 8) : r;
+                            r = channels > 0 ? (byte)(values[pixelIndex + 0] >> 8) : (byte)0;
+                            g = channels > 1 ? (byte)(values[pixelIndex + 1] >> 8) : r;
+                            b = channels > 2 ? (byte)(values[pixelIndex + 2] >> 8) : r;
 
                             if (hasAlpha && channels > 3)
                             {
-                                var originalAlpha = (byte)(pixelData[3] >> 8);
+                                var originalAlpha = (byte)(values[pixelIndex + 3] >> 8);
                                 a = maxOpacity ? (byte)255 : originalAlpha;
                             }
                             else
@@ -155,6 +169,9 @@ public static class Helpers
             writer.Write((byte)32);       // Pixel Depth (32-bit RGBA)
             writer.Write((byte)8);        // Image Descriptor (default origin, 8-bit alpha)
 
+            // FIX: was bitmap.GetPixel(x, y) per pixel - every TGA save (the majority
+            // format for RTX PBR packs) paid this. FastBitmap bulk-copies the whole
+            // buffer once via LockBits/Marshal.Copy, then reads are plain array indexing.
             using var fb = new FastBitmap(bitmap, writable: false);
 
             for (var y = height - 1; y >= 0; y--) // TGA is bottom-up by default
@@ -352,7 +369,7 @@ public static class Helpers
         {
             if (filesToReplace == null || filesToReplace.Count == 0)
             {
-                Trace.WriteLine($"{logPrefix} ReplaceFilesWithElevation called with no files — nothing to do");
+                Trace.WriteLine($"{logPrefix} ReplaceFilesWithElevation called with no files - nothing to do");
                 return false;
             }
 
@@ -605,9 +622,9 @@ public static class Helpers
 /// Handles caching, validation, system-wide searching, and manual selection.
 ///
 /// Contract: every path returned or cached by this class is the PHYSICAL directory
-/// containing Minecraft.Windows.exe — i.e. the Content subfolder of the install root.
+/// containing Minecraft.Windows.exe - i.e. the Content subfolder of the install root.
 /// Callers reference files as Path.Combine(installPath, "filename") directly.
-/// No symlinks or junctions are ever stored — all paths are resolved to physical targets.
+/// No symlinks or junctions are ever stored - all paths are resolved to physical targets.
 ///
 /// Edition detection (Preview vs Stable) is authoritative, not name-based: every
 /// GDK Minecraft install ships a MicrosoftGame.Config next to the exe whose
@@ -615,17 +632,17 @@ public static class Helpers
 /// "Microsoft.MinecraftWindowsBeta" (preview). This value is baked in by Mojang/Microsoft
 /// and is independent of folder names, GUIDs, drive letters, or which launcher installed it.
 /// Folder names and known package GUIDs are used only as fast-path optimizations to try
-/// first — they are never required for correctness.
+/// first - they are never required for correctness.
 ///
 /// Location flow:
 ///   Phase 1 (startup, fast):
 ///     Cache check → Stage 0: PackageManager → Stage 1: Common locations
 ///   Phase 2 (async, slow):
-///     System-wide recursive search across all fixed drives — matches on the
+///     System-wide recursive search across all fixed drives - matches on the
 ///     presence of Minecraft.Windows.exe + a MicrosoftGame.Config with the
 ///     correct Identity, never on folder name.
 ///   Phase 3 (manual):
-///     User picks Minecraft.Windows.exe — directory is validated and cached
+///     User picks Minecraft.Windows.exe - directory is validated and cached
 /// </summary>
 public static class MinecraftGDKLocator
 {
@@ -635,11 +652,11 @@ public static class MinecraftGDKLocator
     private const string GameConfigFileName = "MicrosoftGame.Config";
     private const int MaxSearchDepth = 9;
 
-    // Package family names — stable post-GDK (1.21.120+)
+    // Package family names - stable post-GDK (1.21.120+)
     private const string MinecraftStablePackageFamilyName = "Microsoft.MinecraftUWP_8wekyb3d8bbwe";
     private const string MinecraftPreviewPackageFamilyName = "Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe";
 
-    // MicrosoftGame.Config <Identity Name="..."/> values — the authoritative,
+    // MicrosoftGame.Config <Identity Name="..."/> values - the authoritative,
     // folder-name-independent way to tell stable and preview apart. These are
     // the same identity strings the package family names above are built from,
     // and they have remained unchanged even through the "Beta" → "Preview" rebrand.
@@ -648,7 +665,7 @@ public static class MinecraftGDKLocator
 
     // Known Microsoft Store install GUIDs used in place of friendly folder names
     // by some install paths. Treated as fully interchangeable with the friendly
-    // names below — both are just fast-path hints, never a requirement.
+    // names below - both are just fast-path hints, never a requirement.
     private const string MinecraftStableStoreGuid = "7792D9CE-355A-493C-AFBD-768F4A77C3B0";
     private const string MinecraftPreviewStoreGuid = "98BD2335-9B01-4E4C-BD05-CCC01614078B";
 
@@ -711,22 +728,22 @@ public static class MinecraftGDKLocator
             return false;
         }
 
-        // Evict if the cached path is still a symlink — force re-discovery
+        // Evict if the cached path is still a symlink - force re-discovery
         // so the physical path gets written to cache instead.
         var resolved = ResolveToPhysicalPath(cachedPath);
         if (!resolved.Equals(cachedPath, StringComparison.OrdinalIgnoreCase))
         {
-            Trace.WriteLine($"[GDKLocator] ⚠ Cached path is a symlink — evicting so physical path gets cached: {resolved}");
+            Trace.WriteLine($"[GDKLocator] ⚠ Cached path is a symlink - evicting so physical path gets cached: {resolved}");
             return false;
         }
 
         // Authoritative edition check via MicrosoftGame.Config. If the config is
-        // missing or unreadable we don't evict on that basis alone (degrade gracefully —
+        // missing or unreadable we don't evict on that basis alone (degrade gracefully -
         // see TryGetEditionFromGameConfig), but a confirmed mismatch is disqualifying.
         var detectedEdition = TryGetEditionFromGameConfig(resolved);
         if (detectedEdition.HasValue && detectedEdition.Value != expectedPreview)
         {
-            Trace.WriteLine($"[GDKLocator] ⚠ Cached path edition mismatch (expected Preview={expectedPreview}, found Preview={detectedEdition.Value}) — evicting");
+            Trace.WriteLine($"[GDKLocator] ⚠ Cached path edition mismatch (expected Preview={expectedPreview}, found Preview={detectedEdition.Value}) - evicting");
             return false;
         }
 
@@ -740,7 +757,7 @@ public static class MinecraftGDKLocator
     /// Returns the physical directory containing Minecraft.Windows.exe.
     ///
     /// Matching is based entirely on file contents (exe + MicrosoftGame.Config
-    /// Identity), never on folder name — friendly names and known GUIDs are only
+    /// Identity), never on folder name - friendly names and known GUIDs are only
     /// used as a priority pass to find common cases fast.
     /// </summary>
     public static async Task<string?> SearchForMinecraftAsync(bool searchForPreview, CancellationToken cancellationToken)
@@ -779,7 +796,7 @@ public static class MinecraftGDKLocator
                     }
                 }
 
-                // Deep recursive search of this drive — matches on exe + config identity only,
+                // Deep recursive search of this drive - matches on exe + config identity only,
                 // completely independent of folder naming.
                 var foundPath = await RecursiveSearchAsync(
                     drive.Name,
@@ -807,14 +824,14 @@ public static class MinecraftGDKLocator
     }
 
     /// <summary>
-    /// PHASE 3: Manual selection — user picks a folder near the installation
+    /// PHASE 3: Manual selection - user picks a folder near the installation
     /// (folder picker, not file picker: the exe itself may sit in a
     /// permission-protected directory that the OS won't allow the app to "open,"
-    /// even though only the path is needed — folders don't carry that restriction).
+    /// even though only the path is needed - folders don't carry that restriction).
     ///
     /// Tolerant of imprecision: accepts the exact folder containing Minecraft.Windows.exe,
-    /// or a folder one level shallower (the install root, whose child folder — named
-    /// anything, including a GUID — holds the exe). This mirrors the leniency
+    /// or a folder one level shallower (the install root, whose child folder - named
+    /// anything, including a GUID - holds the exe). This mirrors the leniency
     /// MinecraftUserDataLocator gives when accepting Shared/Users subfolders.
     /// Edition is verified via MicrosoftGame.Config, not folder name.
     /// </summary>
@@ -861,21 +878,21 @@ public static class MinecraftGDKLocator
                 {
                     var foundName = detectedEdition.Value ? "Preview" : "Stable";
                     var expectedName = isPreview ? "Preview" : "Stable";
-                    Trace.WriteLine($"[GDKLocator] Selected wrong version — MicrosoftGame.Config identifies this as {foundName}, expected {expectedName}");
+                    Trace.WriteLine($"[GDKLocator] Selected wrong version - MicrosoftGame.Config identifies this as {foundName}, expected {expectedName}");
                     return null;
                 }
             }
             else
             {
-                // No usable config — soft folder-name guard as last resort, same as before.
+                // No usable config - soft folder-name guard as last resort, same as before.
                 var unexpectedFolderName = isPreview ? MinecraftFolderName : MinecraftPreviewFolderName;
                 var installRoot = Directory.GetParent(exeDirectory)?.Name ?? string.Empty;
                 if (installRoot.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
                 {
-                    Trace.WriteLine($"[GDKLocator] Selected wrong version — install root is: {installRoot}");
+                    Trace.WriteLine($"[GDKLocator] Selected wrong version - install root is: {installRoot}");
                     return null;
                 }
-                Trace.WriteLine("[GDKLocator] MicrosoftGame.Config unavailable — proceeding on unverified edition (folder name didn't indicate a mismatch)");
+                Trace.WriteLine("[GDKLocator] MicrosoftGame.Config unavailable - proceeding on unverified edition (folder name didn't indicate a mismatch)");
             }
 
             Trace.WriteLine($"[GDKLocator] Valid installation selected: {exeDirectory}");
@@ -891,11 +908,11 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Looks for Minecraft.Windows.exe directly inside the selected folder, or one
-    /// level deeper — tolerating the user having selected the install root instead
+    /// level deeper - tolerating the user having selected the install root instead
     /// of the exe's own folder. No name assumption on that child folder: it could be
     /// "Content", a GUID, or anything a third-party launcher decided to call it.
     /// Each candidate is symlink-resolved before being checked, since a subfolder
-    /// can itself turn out to be a junction. This is a bounded, one-hop convenience —
+    /// can itself turn out to be a junction. This is a bounded, one-hop convenience -
     /// not a search; Phase 2 already owns unbounded discovery.
     /// </summary>
     private static string? FindExecutableDirectoryNearby(string selectedPath)
@@ -903,11 +920,11 @@ public static class MinecraftGDKLocator
         if (string.IsNullOrWhiteSpace(selectedPath) || !Directory.Exists(selectedPath))
             return null;
 
-        // Direct hit — selected folder already contains the exe
+        // Direct hit - selected folder already contains the exe
         if (IsValidExecutableDirectory(selectedPath))
             return selectedPath;
 
-        // One level deeper — selected folder was probably the install root
+        // One level deeper - selected folder was probably the install root
         try
         {
             foreach (var subdir in Directory.GetDirectories(selectedPath))
@@ -927,10 +944,10 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Returns common installation locations for a given drive (or all fixed drives).
-    /// Includes both friendly folder names and known Microsoft Store GUIDs — the two
+    /// Includes both friendly folder names and known Microsoft Store GUIDs - the two
     /// are fully interchangeable as far as this locator is concerned, since some
     /// installers use one and some use the other. Returns the Content subdirectory
-    /// directly — the directory where the exe lives.
+    /// directly - the directory where the exe lives.
     /// </summary>
     public static IEnumerable<string> GetCommonLocations(bool isPreview, DriveInfo? onlyDrive = null)
     {
@@ -947,7 +964,7 @@ public static class MinecraftGDKLocator
 
             // Xbox App install, friendly name
             yield return Path.Combine(root, "XboxGames", friendlyFolder, "Content");
-            // Direct Microsoft Store install, GUID-named — fully equivalent to the friendly name
+            // Direct Microsoft Store install, GUID-named - fully equivalent to the friendly name
             yield return Path.Combine(root, "XboxGames", storeGuid, "Content");
             // Some installs land directly under Program Files
             yield return Path.Combine(root, "Program Files", "Microsoft Games", friendlyFolder, "Content");
@@ -991,7 +1008,7 @@ public static class MinecraftGDKLocator
             updateCache(null);
 
             // The cache might have been invalid purely because it was a symlink
-            // pointing at an otherwise-correct physical path — try that quick
+            // pointing at an otherwise-correct physical path - try that quick
             // resolve-and-recache before falling all the way through to Stage 0/1.
             if (Directory.Exists(cachedPath) && IsValidExecutableDirectory(cachedPath))
             {
@@ -999,7 +1016,7 @@ public static class MinecraftGDKLocator
                 var resolvedEdition = TryGetEditionFromGameConfig(resolved);
                 if (!resolvedEdition.HasValue || resolvedEdition.Value == isPreview)
                 {
-                    Trace.WriteLine($"[GDKLocator] Cache was a symlink — re-caching physical path: {resolved}");
+                    Trace.WriteLine($"[GDKLocator] Cache was a symlink - re-caching physical path: {resolved}");
                     updateCache(resolved);
                     return;
                 }
@@ -1010,7 +1027,7 @@ public static class MinecraftGDKLocator
             Trace.WriteLine($"[GDKLocator] No cached path for {versionName}");
         }
 
-        // STAGE 0: PackageManager — authoritative OS query, instant
+        // STAGE 0: PackageManager - authoritative OS query, instant
         var packagePath = TryGetInstallPathFromPackageManager(isPreview);
         if (packagePath != null)
         {
@@ -1036,7 +1053,7 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// STAGE 0: Query PackageManager for the game's registered install location.
-    /// PackageManager returns the WindowsApps junction — resolved to the physical
+    /// PackageManager returns the WindowsApps junction - resolved to the physical
     /// Content directory (where Minecraft.Windows.exe lives) before returning.
     /// </summary>
     private static string? TryGetInstallPathFromPackageManager(bool isPreview)
@@ -1092,7 +1109,7 @@ public static class MinecraftGDKLocator
     /// <summary>
     /// Resolves a path to its physical target, following symlinks/junctions to the end.
     /// Returns the original path unchanged if it is not a link or resolution fails.
-    /// Safe to call on any path — non-links are a no-op.
+    /// Safe to call on any path - non-links are a no-op.
     /// </summary>
     private static string ResolveToPhysicalPath(string path)
     {
@@ -1115,7 +1132,7 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Returns true if the directory exists and directly contains Minecraft.Windows.exe.
-    /// This is the canonical validity check — the contract path always satisfies this.
+    /// This is the canonical validity check - the contract path always satisfies this.
     /// Does NOT verify edition; use IsValidExecutableDirectoryForEdition when the
     /// caller cares which edition it is.
     /// </summary>
@@ -1130,7 +1147,7 @@ public static class MinecraftGDKLocator
     /// <summary>
     /// Returns true if the directory contains Minecraft.Windows.exe AND its
     /// MicrosoftGame.Config identifies it as the requested edition. If the config
-    /// is missing or unparseable, this degrades to exe-presence only — we never
+    /// is missing or unparseable, this degrades to exe-presence only - we never
     /// want a missing/corrupt config to make an otherwise-good install invisible.
     /// </summary>
     private static bool IsValidExecutableDirectoryForEdition(string path, bool expectedPreview)
@@ -1177,7 +1194,7 @@ public static class MinecraftGDKLocator
             if (identityName.Equals(MinecraftStableIdentityName, StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            // Recognized config, but an identity we don't know — don't guess.
+            // Recognized config, but an identity we don't know - don't guess.
             Trace.WriteLine($"[GDKLocator] Unrecognized MicrosoftGame.Config Identity: {identityName}");
             return null;
         }
@@ -1190,8 +1207,8 @@ public static class MinecraftGDKLocator
 
     /// <summary>
     /// Recursively searches a directory tree for a Minecraft install of the requested
-    /// edition. Matching is based entirely on directory contents — Minecraft.Windows.exe
-    /// plus a MicrosoftGame.Config confirming the edition — never on folder name. This
+    /// edition. Matching is based entirely on directory contents - Minecraft.Windows.exe
+    /// plus a MicrosoftGame.Config confirming the edition - never on folder name. This
     /// makes the fallback genuinely unconditional: GUID folders, third-party launcher
     /// naming, anything goes, as long as the files are really there.
     /// Used in Phase 2 only. Respects FoldersToSkip and CancellationToken.
@@ -1207,7 +1224,7 @@ public static class MinecraftGDKLocator
 
         try
         {
-            // Test this directory directly — exe presence + confirmed edition.
+            // Test this directory directly - exe presence + confirmed edition.
             // Unlike the old folder-name-gated approach, every directory visited
             // is tested, not just ones matching a known name.
             if (IsValidExecutableDirectoryForEdition(searchPath, searchForPreview))
@@ -1260,17 +1277,17 @@ public static class MinecraftGDKLocator
 # region MC USER DATA LOCATOR TOOLS
 
 /// <summary>
-/// Centralizes discovery and validation of Minecraft's GDK user data root —
+/// Centralizes discovery and validation of Minecraft's GDK user data root -
 /// the folder that contains worlds, options, resource packs, and the Shared tree.
 ///
 /// Contract: the path stored in TunerVariables.Persistent.MinecraftDataPath (and
 /// MinecraftPreviewDataPath) is always the "Minecraft Bedrock" or "Minecraft Bedrock
-/// Preview" root folder — the one that directly contains a "Users" subfolder.
+/// Preview" root folder - the one that directly contains a "Users" subfolder.
 /// All deeper paths (com.mojang, resource_packs, options.txt) are derived from this
 /// root on demand via the helper methods below.
 ///
 /// Unlike GDKLocator, there is no exe or config file to serve as an absolute gospel
-/// here — validation is based on folder structure (presence of the "Users" subfolder).
+/// here - validation is based on folder structure (presence of the "Users" subfolder).
 /// If the default AppData location is absent, we cannot reliably auto-discover an
 /// alternative (third-party launchers like LeviLauncher can put this anywhere), so
 /// we surface that as a user-actionable warning rather than attempting a blind search.
@@ -1297,7 +1314,7 @@ public static class MinecraftUserDataLocator
     public static bool IsPreviewDataValid { get; private set; }
 
     // =========================================================================
-    //  PUBLIC API — startup + path resolution
+    //  PUBLIC API - startup + path resolution
     // =========================================================================
 
     /// <summary>
@@ -1315,7 +1332,7 @@ public static class MinecraftUserDataLocator
         IsStableDataValid = ValidateSingleEdition(isPreview: false);
         IsPreviewDataValid = ValidateSingleEdition(isPreview: true);
 
-        Trace.WriteLine($"=== [UserDataLocator] Complete — Stable={IsStableDataValid}, Preview={IsPreviewDataValid} ===");
+        Trace.WriteLine($"=== [UserDataLocator] Complete - Stable={IsStableDataValid}, Preview={IsPreviewDataValid} ===");
     }
 
     /// <summary>
@@ -1450,7 +1467,7 @@ public static class MinecraftUserDataLocator
     }
 
     /// <summary>
-    /// Display name for the targeted edition — "Minecraft" or "Minecraft Preview".
+    /// Display name for the targeted edition - "Minecraft" or "Minecraft Preview".
     /// </summary>
     public static string GetVersionDisplayName(bool isPreview)
         => isPreview ? "Minecraft Preview" : "Minecraft";
@@ -1470,7 +1487,7 @@ public static class MinecraftUserDataLocator
             ? TunerVariables.Persistent.MinecraftPreviewDataPath
             : TunerVariables.Persistent.MinecraftDataPath;
 
-        // 1. Cached path — still there and valid?
+        // 1. Cached path - still there and valid?
         if (!string.IsNullOrEmpty(cachedPath))
         {
             if (IsValidDataRoot(cachedPath, isPreview))
@@ -1503,7 +1520,7 @@ public static class MinecraftUserDataLocator
 
     /// <summary>
     /// A data root is valid if it exists on disk and contains a "Users" subfolder.
-    /// This is the closest equivalent to GDKLocator's exe-presence check — the
+    /// This is the closest equivalent to GDKLocator's exe-presence check - the
     /// "Users" folder is created by the game on first launch and is required for
     /// all per-user data to exist under it.
     /// </summary>
@@ -1519,7 +1536,7 @@ public static class MinecraftUserDataLocator
         var wrongEditionName = isPreview ? StableRootFolderName : PreviewRootFolderName;
         if (folderName.Equals(wrongEditionName, StringComparison.OrdinalIgnoreCase))
         {
-            Trace.WriteLine($"[UserDataLocator] Rejected path — folder name indicates wrong edition: {folderName}");
+            Trace.WriteLine($"[UserDataLocator] Rejected path - folder name indicates wrong edition: {folderName}");
             return false;
         }
 
