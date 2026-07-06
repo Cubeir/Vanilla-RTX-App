@@ -2392,13 +2392,7 @@ public sealed partial class MainWindow : Window
     #endregion
 
 
-    // The solution to it looking weird AS it types out, it types behind the current line
-    // then 
     #region Logger
-
-    // Even if you decide to scrap this in the future, the concept of logging to a variable, which happens
-    // INSTANTLY and won't hold up the UI thread, and then using a secondary method that, independantly, hands the
-    // text from the variable to the UI textbox, is worth KEEPING. It is safer than the older dispatcher queue thingy
 
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
@@ -2422,8 +2416,29 @@ public sealed partial class MainWindow : Window
     private int _activeRevealed = 0;  // chars revealed so far of the current (oldest-pending) entry
 
     private const double BaselineCharsPerTick = 2.0; // relaxed pace for small/no backlog
-    private const double CatchUpFraction = 0.15;      // reveal % of the backlog each tick
-    private const int TickIntervalMs = 33; // 16 = 60hz
+    private const double CatchUpFraction = 0.10;      // reveal % of the backlog each tick
+    private static readonly int TickIntervalMs = ComputeTickInterval();
+    private static int ComputeTickInterval()
+    {
+        try
+        {
+            if (Windows.System.Power.PowerManager.EnergySaverStatus == Windows.System.Power.EnergySaverStatus.On)
+                return 64;
+
+            return Environment.ProcessorCount switch
+            {
+                >= 24 => 4,
+                >= 16 => 8,
+                >= 8 => 16,
+                >= 5 => 32,
+                _ => 64, // 4 cores or fewer
+            };
+        }
+        catch
+        {
+            return 16; // safe default if anything above misbehaves
+        }
+    }
 
     // Structural marker ONLY — never rendered, never typed character-by-character, never
     // confused with a real "\n\n" the user's own message text might contain. Two Private-Use-Area
@@ -2434,7 +2449,7 @@ public sealed partial class MainWindow : Window
 
     // Idle/typing cursor — sits at the current write-head
     private const bool ShowTypingCursor = true;
-    private const int CursorBlinkMs = 640;
+    private const int CursorBlinkMs = 750;
     private const string CursorOnGlyph = " |";
     private const string CursorOffGlyph = "  ";
 
