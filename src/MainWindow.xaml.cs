@@ -34,9 +34,6 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-// fix SelectedPacks: System.Collections.ObjectModel.ObservableCollection`1[System.ValueTuple`4[System.String,System.String,System.String,System.Boolean]]
-// in trace stack reports
-
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -523,7 +520,7 @@ public sealed partial class MainWindow : Window
         }
 
         // Update UI to reflect loaded settings
-        UpdateUI(0.1);
+        UpdateUI(0.01);
 
         // Calling it last since it might add a bit of delay as it searches a few dirs and files
         MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -970,13 +967,14 @@ public sealed partial class MainWindow : Window
                     // Tuner variables
                     sb.AppendLine("===== Tuner Variables");
                     var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+
                     foreach (var field in fields)
                     {
                         var value = field.GetValue(null);
 
                         // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
                         if (field.Name == nameof(TunerVariables.SelectedPacks) &&
-                            value is List<(string Location, string Name, string Type)> selectedPacks)
+                            value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
                         {
                             if (selectedPacks.Count == 0)
                             {
@@ -985,14 +983,32 @@ public sealed partial class MainWindow : Window
                             else
                             {
                                 sb.AppendLine("SelectedPacks:");
-                                foreach (var (location, name, type) in selectedPacks)
-                                    sb.AppendLine($"  [{type}] {name} → {location}");
+                                foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
+                                    sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
                             }
+                            continue;
+                        }
+                        else if (value is System.Collections.IEnumerable enumerable && value is not string)
+                        {
+                            var items = enumerable.Cast<object>().ToList();
+                            sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
+                            foreach (var item in items)
+                                sb.AppendLine($"  {FormatValue(item)}");
                             continue;
                         }
 
                         sb.AppendLine($"{field.Name}: {value ?? "null"}");
                     }
+
+                    static string FormatValue(object? value)
+                    {
+                        if (value is null) return "null";
+                        var type = value.GetType();
+                        if (type.IsGenericType && type.FullName!.StartsWith("System.ValueTuple"))
+                            return string.Join(", ", type.GetFields().Select(f => f.GetValue(value)));
+                        return value.ToString() ?? "null";
+                    }
+
                     sb.AppendLine();
                     // Persistent variables
                     sb.AppendLine("===== Persistent Variables");
@@ -1025,6 +1041,7 @@ public sealed partial class MainWindow : Window
         }
         else
         {
+            _ = BlinkingLamp(true, true, 1.0, 0.1);
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
                 Log("Hold shift and click the lamp again to copy stack trace.\nAttach these if making an issue report.", LogLevel.Informational);
@@ -1098,7 +1115,6 @@ public sealed partial class MainWindow : Window
                     }
                 }
             }
-            _ = BlinkingLamp(true, true, 1.0, 0.1);
         }
 
         void CollectUIControlsState(StringBuilder sb)
