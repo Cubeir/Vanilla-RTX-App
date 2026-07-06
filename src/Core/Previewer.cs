@@ -10,6 +10,11 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Vanilla_RTX_App.Core;
 
+// TODO: Stop being an smartass, the fuck is with the 2-vessel design? GO FOR THREE!
+// So much can be simplified if we don't keep "swapping" images between containers, having DEAD moments in between
+// Minimizing number of vessels used to save a few lines in the XAML or what? what was wrong with you? redesigning it will take a bit
+// but do it if you can, good polish
+
 public class Previewer
 {
     private readonly HashSet<string> _registeredPaths = new();

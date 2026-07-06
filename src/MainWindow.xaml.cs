@@ -34,6 +34,9 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
+// READD THE BORDERS OF BUTTONS GOD DAMMIT! YOU CAN ADD IT TO TOPS AND BOTTOMS OF 3X2, STIPS, ETC..! DO IT!
+// The default border widths of 1 px, wil lalready make it look a LOT less flat
+
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -2458,7 +2461,7 @@ public sealed partial class MainWindow : Window
             LogLevel.LUT => "🎨 ",
             LogLevel.VanillaRTX => "⛏️ ",
             null => "",
-            _ => "🛸 "
+            _ => "💩 "
         };
 
         string entry = $"{prefix}{message}";
