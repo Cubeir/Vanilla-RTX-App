@@ -11,13 +11,11 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Windows.UI.Text;
 using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
@@ -592,7 +590,7 @@ public sealed partial class DLSSSwapperWindow : Window
             FontWeight = FontWeights.Medium,
             FontSize = 14,
             Padding = new Thickness(18, 8, 16, 8),
-            Translation = new System.Numerics.Vector3(0,0,24),
+            Translation = new System.Numerics.Vector3(0, 0, 24),
             IsTextScaleFactorEnabled = false
         };
 
