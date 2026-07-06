@@ -957,89 +957,87 @@ public sealed partial class MainWindow : Window
         {
             try
             {
-                if (!string.IsNullOrEmpty(SidebarLog.Text))
+                var sb = new StringBuilder();
+                // Original sidebar log (important status messages)
+                sb.AppendLine("===== Sidebar Log");
+                sb.AppendLine(SidebarLog.Text);
+                sb.AppendLine();
+                // Tuner variables
+                sb.AppendLine("===== Tuner Variables");
+                var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+
+                foreach (var field in fields)
                 {
-                    var sb = new StringBuilder();
-                    // Original sidebar log (important status messages)
-                    sb.AppendLine("===== Sidebar Log (UI-shown Messages)");
-                    sb.AppendLine(SidebarLog.Text);
-                    sb.AppendLine();
-                    // Tuner variables
-                    sb.AppendLine("===== Tuner Variables");
-                    var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+                    var value = field.GetValue(null);
 
-                    foreach (var field in fields)
+                    // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
+                    if (field.Name == nameof(TunerVariables.SelectedPacks) &&
+                        value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
                     {
-                        var value = field.GetValue(null);
-
-                        // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
-                        if (field.Name == nameof(TunerVariables.SelectedPacks) &&
-                            value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
+                        if (selectedPacks.Count == 0)
                         {
-                            if (selectedPacks.Count == 0)
-                            {
-                                sb.AppendLine("SelectedPacks: (empty)");
-                            }
-                            else
-                            {
-                                sb.AppendLine("SelectedPacks:");
-                                foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
-                                    sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
-                            }
-                            continue;
+                            sb.AppendLine("SelectedPacks: (empty)");
                         }
-                        else if (value is System.Collections.IEnumerable enumerable && value is not string)
+                        else
                         {
-                            var items = enumerable.Cast<object>().ToList();
-                            sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
-                            foreach (var item in items)
-                                sb.AppendLine($"  {FormatValue(item)}");
-                            continue;
+                            sb.AppendLine("SelectedPacks:");
+                            foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
+                                sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
                         }
-
-                        sb.AppendLine($"{field.Name}: {value ?? "null"}");
+                        continue;
                     }
-
-                    static string FormatValue(object? value)
+                    else if (value is System.Collections.IEnumerable enumerable && value is not string)
                     {
-                        if (value is null) return "null";
-                        var type = value.GetType();
-                        if (type.IsGenericType && type.FullName!.StartsWith("System.ValueTuple"))
-                            return string.Join(", ", type.GetFields().Select(f => f.GetValue(value)));
-                        return value.ToString() ?? "null";
+                        var items = enumerable.Cast<object>().ToList();
+                        sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
+                        foreach (var item in items)
+                            sb.AppendLine($"  {FormatValue(item)}");
+                        continue;
                     }
 
-                    sb.AppendLine();
-                    // Persistent variables
-                    sb.AppendLine("===== Persistent Variables");
-                    var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
-                    foreach (var field in persistentFields)
-                    {
-                        var value = field.GetValue(null);
-                        sb.AppendLine($"{field.Name}: {value ?? "null"}");
-                    }
-                    sb.AppendLine();
-                    // Trace logs
-                    sb.AppendLine(TraceManager.GetAllTraceLogs());
-
-                    // UI Controls State
-                    sb.AppendLine();
-                    sb.AppendLine("===== UI Controls State");
-                    CollectUIControlsState(sb);
-
-                    var dataPackage = new DataPackage();
-                    dataPackage.SetText(sb.ToString());
-                    Clipboard.SetContent(dataPackage);
-                    Log("Copied stack trace to clipboard.", LogLevel.Success);
-                    _ = BlinkingLamp(true, true, 0.0, 1.0);
+                    sb.AppendLine($"{field.Name}: {value ?? "null"}");
                 }
+
+                static string FormatValue(object? value)
+                {
+                    if (value is null) return "null";
+                    var type = value.GetType();
+                    if (type.IsGenericType && type.FullName!.StartsWith("System.ValueTuple"))
+                        return string.Join(", ", type.GetFields().Select(f => f.GetValue(value)));
+                    return value.ToString() ?? "null";
+                }
+
+                sb.AppendLine();
+                // Persistent variables
+                sb.AppendLine("===== Persistent Tuner Variables");
+                var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+                foreach (var field in persistentFields)
+                {
+                    var value = field.GetValue(null);
+                    sb.AppendLine($"{field.Name}: {value ?? "null"}");
+                }
+                sb.AppendLine();
+                // Trace logs
+                sb.AppendLine(TraceManager.GetAllTraceLogs());
+
+                // UI Controls State
+                sb.AppendLine();
+                sb.AppendLine("===== UI Controls State");
+                CollectUIControlsState(sb);
+
+                var dataPackage = new DataPackage();
+                dataPackage.SetText(sb.ToString());
+                Clipboard.SetContent(dataPackage);
+                Log("Copied stack trace to clipboard.", LogLevel.Success);
+                _ = BlinkingLamp(true, true, 0.0, 1.0);
+
             }
             catch (Exception ex)
             {
                 Trace.WriteLine($"[MainWindow] Error during lamp interaction debug copy: {ex}");
             }
         }
-        else
+        else // regular non-shift clicks
         {
             _ = BlinkingLamp(true, true, 1.0, 0.1);
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
