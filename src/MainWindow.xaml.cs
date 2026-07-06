@@ -1315,8 +1315,8 @@ public sealed partial class MainWindow : Window
 
             if (TunerVariables.SelectedPacks.Count > 0)
             {
-                var names = string.Join(", ", TunerVariables.SelectedPacks.Select(p => p.Name));
-                Log($"Selected: {names}", LogLevel.Selected);
+                var names = string.Join(Environment.NewLine, TunerVariables.SelectedPacks.Select(p => p.Name));
+                Log($"Selected the following:\n{names}", LogLevel.Selected);
                 _ = BlinkingLamp(true, true, 1.0);
             }
             else
@@ -2620,21 +2620,6 @@ WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know
 random block renders thrown in there
 iconns/logos of features of app thrown in there too, one for each would be enough
 
-- Begin using Bindings for:
-Sliders and their checkboxes (two-way binding), Preview toggle, RTX pack toggles 
-The code surrounding it, especially checkboxes, is very messy
-it's FUNCTIONALLY CORRECT all throughout at the moment, but it was a lot of hassle, and its messy
-LocatePacks task determining whether the 3 checkboxes are togglable (.IsEnabled) or not is something u can't do with binding, and the existing code's perfect for it.
-but you may be able to shorten UpdateUI,
-its a bit risky touching that part of the code, cuz of its annoying bugs with the previewer, fights over vessels/otheredge cases
-
->> Tried once, the boilerplate required to pull this off is INDEED not worth it
-It's MESSIER somehow
-little to no benefit
-current logic around manually handling everything is FRAGILE yes, but it is PERFECT at this moment.
-so FORGET IT.
-
-
 - Do the TODOs scattered in the code
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
@@ -2665,15 +2650,9 @@ is just... NOPE!
 That said, it's a cool feature for those who might want it.
 >> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
 
+// json says he might unify the output of /creator with what the /api gives.
+good news!
 
-- A cool "Gradual logger" -- log texts gradually but very quickly! It helps make it less overwhelming when dumping huge logs
-Besides that you're gonna need something to unify the logging
-A public variable that gets all text dumped to perhaps, and gradually writes out its contents to sidebarlog whenever it is changed, async
-This way direct interaction with non-UI threads will be zero
-Long running tasks dump their text, UI thread gradually writes it out on its own.
-only concern is performance with large logs
-This idea can be a public static method and it won't ever ever block Ui thread
-A variable is getting constantly updated with new logs, a worker in main UI thread's only job is to write out its content as it comes along
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
