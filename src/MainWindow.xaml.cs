@@ -387,7 +387,7 @@ public sealed partial class MainWindow : Window
     private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
     private bool _shiftPressed = false;
 
-    #endregion MainWindow Boilerplate
+    #endregion
 
     public MainWindow()
     {
@@ -395,6 +395,7 @@ public sealed partial class MainWindow : Window
         SetMainWindowProperties();
         InitializeComponent();
 
+        InitializeLogTypewriter();
         InitializeLampAnimators();
         SetTitleBar(TitleBarDragArea);
         Instance = this;
@@ -742,77 +743,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-    public enum LogLevel
-    {
-        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex
-    }
-    public static void Log(string message, LogLevel? level = null)
-    {
-        void Prepend()
-        {
-            if (Instance == null)
-                return;
-
-            var textBox = Instance.SidebarLog;
-            string prefix = level switch
-            {
-                LogLevel.Success => "✅ ",
-                LogLevel.Informational => "ℹ️ ",
-                LogLevel.Warning => "⚠️ ",
-                LogLevel.Error => "❌ ",
-                LogLevel.Network => "🛜 ",
-                LogLevel.Lengthy => "⏳ ",
-                LogLevel.Debug => "🔍 ",
-                LogLevel.PSA => "📢 ",
-                LogLevel.Alchitex => "🟦 ",
-                _ => ""
-            };
-
-            string prefixedMessage = $"{prefix}{message}";
-            string separator = "";
-
-            if (string.IsNullOrWhiteSpace(textBox.Text))
-            {
-                textBox.Text = prefixedMessage + "\n";
-            }
-            else
-            {
-                var sb = new StringBuilder(prefixedMessage.Length + textBox.Text.Length + separator.Length + 2);
-                sb.Append(prefixedMessage)
-                  .Append('\n')
-                  .Append(separator)
-                  .Append('\n')
-                  .Append(textBox.Text);
-                textBox.Text = sb.ToString();
-            }
-
-            // Scroll to top
-            textBox.UpdateLayout();
-            var sv = GetScrollViewer(textBox);
-            sv?.ChangeView(null, 0, null);
-        }
-        if (Instance == null) { return; }
-        if (Instance.DispatcherQueue.HasThreadAccess)
-            Prepend();
-        else
-            Instance.DispatcherQueue.TryEnqueue(Prepend);
-    }
-    public static ScrollViewer? GetScrollViewer(DependencyObject obj)
-    {
-        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
-        {
-            var child = VisualTreeHelper.GetChild(obj, i);
-            if (child is ScrollViewer sv)
-                return sv;
-
-            var result = GetScrollViewer(child);
-            if (result != null)
-                return result;
-        }
-        return null;
-    }
-
-
     public static async Task OpenUrl(string url)
     {
 #if DEBUG
@@ -912,7 +842,6 @@ public sealed partial class MainWindow : Window
     }
 
 
-
     private void SetShiftText(FrameworkElement control, string shiftText, FontIcon? icon = null, string? shiftGlyph = null)
     {
         // Save + apply text
@@ -960,7 +889,7 @@ public sealed partial class MainWindow : Window
                 var sb = new StringBuilder();
                 // Original sidebar log (important status messages)
                 sb.AppendLine("===== Sidebar Log");
-                sb.AppendLine(SidebarLog.Text);
+                sb.AppendLine(LogText);
                 sb.AppendLine();
                 // Tuner variables
                 sb.AppendLine("===== Tuner Variables");
@@ -1384,7 +1313,7 @@ public sealed partial class MainWindow : Window
             if (TunerVariables.SelectedPacks.Count > 0)
             {
                 var names = string.Join(", ", TunerVariables.SelectedPacks.Select(p => p.Name));
-                Log($"Selected: {names}", LogLevel.Success);
+                Log($"Selected: {names}", LogLevel.Selected);
                 _ = BlinkingLamp(true, true, 1.0);
             }
             else
@@ -1504,7 +1433,7 @@ public sealed partial class MainWindow : Window
         // Locating user data, updating ui based on it, and locating packs, runs regardless, we're avoiding the dupe operation here basically. so we safely run all there instead where its appropriate
 
         SelectedPacks.Clear();
-        Log("Targeting Minecraft Preview.", LogLevel.Informational);
+        Log("Targeting Minecraft Preview.", LogLevel.MCPreview);
 
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -1521,7 +1450,7 @@ public sealed partial class MainWindow : Window
         if (_isInitializing) return; // same as Checked
 
         SelectedPacks.Clear();
-        Log("Targeting stable Minecraft release.", LogLevel.Informational);
+        Log("Targeting stable Minecraft release.", LogLevel.MCRelease);
 
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -1616,19 +1545,19 @@ public sealed partial class MainWindow : Window
         // Manually updates UI based on new values
         UpdateUI();
 
-        // Empty the sidebarlog
-        SidebarLog.Text = "";
-
         // Lamp single off flash
         _ = BlinkingLamp(true, true, 0.0);
 
-        RuntimeFlags.Unset("Wrote_Supporter_Shoutout");
+        if (5 < Random.Shared.Next(1, 10 +1))
+        {
+            RuntimeFlags.Unset("Wrote_Supporter_Shoutout");
+        }
 
         if (RuntimeFlags.Set("Said_Extra_Resetting_Information"))
         {
             Log($"Note:\nThis does not restore the packs to their default state!\nTo reset packs back to original you can quickly reinstall the latest versions of Vanilla RTX using the '{UpdateVanillaRTXButtonText.Text}' button. Other packs will require manual reinstallation. Use Export to back them up and quickly reimport them as you need.", LogLevel.Informational);
         }
-        Log("Tuning environment reset.", LogLevel.Success);
+        Log("Tuning environment reset.", LogLevel.Reset);
     }
     private void ClearButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1651,9 +1580,9 @@ public sealed partial class MainWindow : Window
         _ = BlinkingLamp(true, true, 0.0);
 
         if (hadCustomPacks)
-            Log("Cleared all pack selections.", LogLevel.Success);
+            Log("Cleared all pack selections.", LogLevel.Cleaning);
         else if (hadVanillaRTX)
-            Log("Deselected all Vanilla RTX packs.", LogLevel.Success);
+            Log("Deselected all Vanilla RTX packs.", LogLevel.Cleaning);
         else
             Log("You haven't selected any packs to clear.", LogLevel.Informational);
     }
@@ -2168,7 +2097,7 @@ public sealed partial class MainWindow : Window
             // Log status after window closes
             if (betterRTXWindow.OperationSuccessful)
             {
-                Log(betterRTXWindow.StatusMessage, LogLevel.Success);
+                Log(betterRTXWindow.StatusMessage, LogLevel.BetterRTX);
                 _ = BlinkingLamp(true, true, 1.0);
             }
             else if (!string.IsNullOrEmpty(betterRTXWindow.StatusMessage))
@@ -2208,7 +2137,7 @@ public sealed partial class MainWindow : Window
             // Log status after window closes
             if (DLSSSwapperWindow.OperationSuccessful)
             {
-                Log(DLSSSwapperWindow.StatusMessage, LogLevel.Success);
+                Log(DLSSSwapperWindow.StatusMessage, LogLevel.DLSS);
                 _ = BlinkingLamp(true, true, 1.0);
             }
             else if (!string.IsNullOrEmpty(DLSSSwapperWindow.StatusMessage))
@@ -2247,7 +2176,7 @@ public sealed partial class MainWindow : Window
 
             if (LutManagerWindow.OperationSuccessful)
             {
-                Log(LutManagerWindow.StatusMessage, LogLevel.Success);
+                Log(LutManagerWindow.StatusMessage, LogLevel.LUT);
                 _ = BlinkingLamp(true, true, 1.0);
             }
             else if (!string.IsNullOrEmpty(LutManagerWindow.StatusMessage))
@@ -2325,7 +2254,7 @@ public sealed partial class MainWindow : Window
                 ? await MinecraftLauncher.LaunchVSyncMinecraftRTXAsync(IsTargetingPreview)
                 : await MinecraftLauncher.LaunchMinecraftRTXAsync(IsTargetingPreview);
 
-            Log(logs, LogLevel.Informational);
+            Log(logs, (IsTargetingPreview ? LogLevel.MCPreview : LogLevel.MCRelease));
         }
         finally
         {
@@ -2456,6 +2385,205 @@ public sealed partial class MainWindow : Window
 
         // Show/hide the warning icon
         EmissivityWarningIcon.Visibility = toggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+    }
+    #endregion
+
+
+    // The solution to it looking weird AS it types out, it types behind the current line
+    // then 
+    #region Logger
+
+    // Even if you decide to scrap this in the future, the concept of logging to a variable, which happens
+    // INSTANTLY and won't hold up the UI thread, and then using a secondary method that, independantly, hands the
+    // text from the variable to the UI textbox, is worth KEEPING. It is safer than the older dispatcher queue thingy
+
+    // add more types, specifically, let feature windows use their own unique emojis!
+    public enum LogLevel
+    {
+        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex,
+        DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset
+    }
+
+    // The single source of truth, Log() only ever writes here
+    public static string LogText = "";
+    private static readonly object _logGate = new();
+
+    // Typewriter state, only ever touched on the UI thread, inside TypewriterTick()
+    // Logger writes fast; typewriter reveals it to the UI on its own schedule — always the
+    // oldest not-yet-shown entry first, left-to-right within it — so chronology holds up
+    // AND each message types start-to-finish instead of finish-to-start.
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _typewriterTimer;
+    private ScrollViewer? _logScrollViewer;
+
+    private int _settledLength = 0;   // trailing chars of LogText already fully shown & final
+    private int _activeRevealed = 0;  // chars revealed so far of the current (oldest-pending) entry
+
+    private const double BaselineCharsPerTick = 2.0; // relaxed pace for small/no backlog
+    private const double CatchUpFraction = 0.15;      // reveal % of the backlog each tick
+    private const int TickIntervalMs = 33; // 16 = 60hz
+
+    // Structural marker ONLY — never rendered, never typed character-by-character, never
+    // confused with a real "\n\n" the user's own message text might contain. Two Private-Use-Area
+    // maybe use \uE000\uE001 which are reserved by the Unicode standard for exactly this kind of internal use, so no
+    // real message can ever accidentally contain them
+    // but this be human-readable in a debugger same mechanism either way, swap it out for whatever
+    private const string EntrySentinel = "———";
+
+    // Idle/typing cursor — sits at the current write-head
+    private const bool ShowTypingCursor = true;
+    private const int CursorBlinkMs = 640;
+    private const string CursorOnGlyph = " |";
+    private const string CursorOffGlyph = "  ";
+
+    public static void Log(string message, LogLevel? level = null)
+    {
+        string prefix = level switch
+        {
+            LogLevel.Success => "✅ ",
+            LogLevel.Informational => "ℹ️ ",
+            LogLevel.Warning => "⚠️ ",
+            LogLevel.Error => "❌ ",
+            LogLevel.Selected => "📍 ",
+            LogLevel.MCPreview => "🚧 ",
+            LogLevel.MCRelease => "🟩 ",
+            LogLevel.Cleaning => "🧹 ",
+            LogLevel.Reset => "🔄️ ",
+            LogLevel.Lengthy => "⏳ ",
+            LogLevel.PSA => "📢 ",
+            LogLevel.Network => "🛜 ",
+            LogLevel.Debug => "🔍 ",
+            LogLevel.Alchitex => "🟦 ",
+            LogLevel.DLSS => "🫧 ",
+            LogLevel.BetterRTX => "🧈 ",
+            LogLevel.LUT => "🎨 ",
+            LogLevel.VanillaRTX => "⛏️ ",
+            null => "",
+            _ => "🛸 "
+        };
+
+        string entry = $"{prefix}{message}";
+
+        lock (_logGate)
+            LogText = string.IsNullOrEmpty(LogText) ? entry : $"{entry}{EntrySentinel}{LogText}";
+    }
+
+    private void InitializeLogTypewriter()
+    {
+        SidebarLog.Loaded += (_, _) => _logScrollViewer ??= GetScrollViewer(SidebarLog);
+        if (SidebarLog.IsLoaded) _logScrollViewer ??= GetScrollViewer(SidebarLog);
+
+        _typewriterTimer = DispatcherQueue.CreateTimer();
+        _typewriterTimer.Interval = TimeSpan.FromMilliseconds(TickIntervalMs);
+        _typewriterTimer.Tick += (_, _) => TypewriterTick();
+        _typewriterTimer.Start();
+    }
+
+    private void TypewriterTick()
+    {
+        string current;
+        lock (_logGate) current = LogText;
+
+        int unshownLength = current.Length - _settledLength;
+
+        if (unshownLength > 0)
+        {
+            // The oldest not-yet-shown entry sits adjacent to the settled region. Its own
+            // trailing sentinel (connecting it to whatever follows) isn't a real boundary
+            // between two DIFFERENT pending entries, so exclude it before searching.
+            int trailingConnector = _settledLength > 0 ? EntrySentinel.Length : 0;
+            int searchLength = Math.Max(0, unshownLength - trailingConnector);
+
+            int sepIndex = searchLength > 0
+                ? current.LastIndexOf(EntrySentinel, searchLength - 1, searchLength, StringComparison.Ordinal)
+                : -1;
+
+            int activeStart = sepIndex >= 0 ? sepIndex + EntrySentinel.Length : 0;
+            int activeTextLength = searchLength - activeStart; // entry's OWN text only, sentinel excluded
+
+            int remaining = unshownLength - _activeRevealed; // whole backlog left — drives speed-up
+            int charsThisTick = (int)Math.Max(BaselineCharsPerTick, Math.Ceiling(remaining * CatchUpFraction));
+
+            _activeRevealed = Math.Min(activeTextLength, _activeRevealed + charsThisTick);
+            _activeRevealed = SnapForward(current, activeStart, _activeRevealed);
+
+            if (_activeRevealed >= activeTextLength)
+            {
+                // Entry fully typed — fold it (and its sentinel, converted to a real blank
+                // line) into settled INSTANTLY. The separator is never itself "typed."
+                _settledLength = current.Length - activeStart;
+                _activeRevealed = 0;
+
+                SidebarLog.UpdateLayout();
+                _logScrollViewer?.ChangeView(null, 0, null, true); // once, per finished entry
+            }
+            else
+            {
+                RenderFrame(current, activeStart, _activeRevealed);
+                return;
+            }
+        }
+
+        RenderFrame(current, 0, 0);
+    }
+
+    private void RenderFrame(string current, int activeStart, int activeRevealed)
+    {
+        string revealedPrefix = activeRevealed > 0 ? current.Substring(activeStart, activeRevealed) : "";
+        string settledDisplay = _settledLength > 0
+            ? current.Substring(current.Length - _settledLength).Replace(EntrySentinel, "\n\n")
+            : "";
+
+        string headText, tailText;
+        if (revealedPrefix.Length > 0)
+        {
+            // Actively typing — the write-head sits right at the end of what's been revealed so far.
+            headText = revealedPrefix;
+            tailText = settledDisplay;
+        }
+        else
+        {
+            // Idle — nothing's being typed right now, so the write-head rests at the end of the
+            // most recently finished (topmost) entry, not at the absolute start of the textbox.
+            int firstBoundary = settledDisplay.IndexOf("\n\n", StringComparison.Ordinal);
+            headText = firstBoundary >= 0 ? settledDisplay[..firstBoundary] : settledDisplay;
+            tailText = firstBoundary >= 0 ? settledDisplay[firstBoundary..] : "";
+        }
+
+        string cursor = ShowTypingCursor
+            ? ((Environment.TickCount64 / CursorBlinkMs) % 2 == 0 ? CursorOnGlyph : CursorOffGlyph)
+            : "";
+
+        SidebarLog.Text = headText + cursor + tailText;
+    }
+
+    // Never reveal a cut that splits a surrogate pair or strands an emoji's
+    // variation-selector/combining mark — grows past them instead of stopping mid-glyph.
+    private static int SnapForward(string s, int rangeStart, int localIndex)
+    {
+        int i = rangeStart + localIndex;
+        if (i <= rangeStart || i >= s.Length) return localIndex;
+
+        if (char.IsHighSurrogate(s[i - 1]) && char.IsLowSurrogate(s[i]))
+            i++;
+
+        while (i < s.Length && IsJoiningMark(s[i]))
+            i++;
+
+        return i - rangeStart;
+    }
+    private static bool IsJoiningMark(char c) =>
+        c is '\uFE0F' or '\uFE0E' ||
+        CharUnicodeInfo.GetUnicodeCategory(c) is UnicodeCategory.NonSpacingMark or UnicodeCategory.EnclosingMark;
+    public static ScrollViewer? GetScrollViewer(DependencyObject obj)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+        {
+            var child = VisualTreeHelper.GetChild(obj, i);
+            if (child is ScrollViewer sv) return sv;
+            var result = GetScrollViewer(child);
+            if (result != null) return result;
+        }
+        return null;
     }
     #endregion
 }
