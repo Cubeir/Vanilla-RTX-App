@@ -971,7 +971,7 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 1.0, 0.1);
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
-                Log("Hold shift and click the lamp again to copy stack trace.\nAttach these if making an issue report.", LogLevel.Informational);
+                Log("Hold shift and click the lamp again to copy stack trace. Attach these if making an issue report.", LogLevel.Debug);
             }
             else
             {
@@ -2451,7 +2451,7 @@ public sealed partial class MainWindow : Window
             LogLevel.Lengthy => "⏳ ",
             LogLevel.PSA => "📢 ",
             LogLevel.Network => "🛜 ",
-            LogLevel.Debug => "🔍 ",
+            LogLevel.Debug => "🛸 ",
             LogLevel.Alchitex => "🟦 ",
             LogLevel.DLSS => "🫧 ",
             LogLevel.BetterRTX => "🧈 ",
@@ -2536,14 +2536,11 @@ public sealed partial class MainWindow : Window
         string headText, tailText;
         if (revealedPrefix.Length > 0)
         {
-            // Actively typing — the write-head sits right at the end of what's been revealed so far.
             headText = revealedPrefix;
-            tailText = settledDisplay;
+            tailText = settledDisplay.Length > 0 ? "\n\n" + settledDisplay : "";
         }
         else
         {
-            // Idle — nothing's being typed right now, so the write-head rests at the end of the
-            // most recently finished (topmost) entry, not at the absolute start of the textbox.
             int firstBoundary = settledDisplay.IndexOf("\n\n", StringComparison.Ordinal);
             headText = firstBoundary >= 0 ? settledDisplay[..firstBoundary] : settledDisplay;
             tailText = firstBoundary >= 0 ? settledDisplay[firstBoundary..] : "";
