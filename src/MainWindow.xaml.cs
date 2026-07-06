@@ -91,7 +91,7 @@ public static class TunerVariables
         public const bool AddEmissivityAmbientLight = false;
     }
 
-    // Set Window size default for all windows
+    // Window size defaults for all windows
     public const int WindowSizeX = 1150;
     public const int WindowSizeY = 630;
     public const int WindowMinSizeX = 950;
@@ -2324,7 +2324,7 @@ public sealed partial class MainWindow : Window
         try
         {
             var logs = isShiftHeld
-                ? await MinecraftLauncher.LaunchMinecraftStandardAsync(IsTargetingPreview)
+                ? await MinecraftLauncher.LaunchVSyncMinecraftRTXAsync(IsTargetingPreview)
                 : await MinecraftLauncher.LaunchMinecraftRTXAsync(IsTargetingPreview);
 
             Log(logs, LogLevel.Informational);

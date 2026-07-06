@@ -28,7 +28,7 @@ public enum RTXDefaultsGuard
 }
 
 /// <summary>
-/// QoL safety net for the "full app reset" button. BetterRTX and RTX LUT both keep a
+/// QoL safety net for the "hard wipe" button. BetterRTX and RTX LUT both keep a
 /// Default preset backup used to restore the game's original files - but that backup
 /// lives in local storage, which the reset button wipes. If the game currently has a
 /// non-default preset installed when that happens, the user loses their only path back

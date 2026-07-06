@@ -19,13 +19,18 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App.Modules;
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  Hardcoded Processor Variables —— Read individual comments
+// ══════════════════════════════════════════════════════════════════════════════
 
-public static class ProcessorVariables
+internal static class ProcessorVariables
 {
+    // If set to true, replaces height values, if any, with uniform fog, this was planned to be exposed to user
+    // But the app later pivoted towards "making everything dumb simple" and this option wouldn't have been "simple" enough.
     public const bool FOG_UNIFORM_HEIGHT = false;
-    public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
+    // Excess of the multiplier is applied to other pixels, but heavily dampenend using this number
+    public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1; 
 }
-
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  PackContextFile  ──  per-pack tuning state written to __vanillartxtuner_context

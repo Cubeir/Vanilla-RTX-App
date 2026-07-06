@@ -10,7 +10,7 @@ namespace Vanilla_RTX_App.Modules;
 public class MinecraftLauncher
 {
     // -------------------------------------------------------------------------
-    // PUBLIC API — semantic wrappers around the general options.txt updater
+    // PUBLIC API, add semantic wrappers around the general-use options.txt updater as needed.
     // -------------------------------------------------------------------------
 
     /// <summary>
@@ -29,7 +29,7 @@ public class MinecraftLauncher
     /// <summary>
     /// Same as regular but with vsync
     /// </summary>
-    public static Task<string> LaunchMinecraftStandardAsync(bool isTargetingPreview)
+    public static Task<string> LaunchVSyncMinecraftRTXAsync(bool isTargetingPreview)
         => LaunchWithOptionsAsync(
             isTargetingPreview,
             launchAfterUpdate: true,
