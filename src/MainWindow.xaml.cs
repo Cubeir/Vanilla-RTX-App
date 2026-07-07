@@ -2640,8 +2640,11 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
-- Unfortunately, crashdumps still generate if user closes the app too early after startup
-i.e. during the startup sequence, create more guards.
+- BEFORE RELEASE:
+Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
+TEST EVERTHING! EVERY. LITTLE. THING.
+
+Release it asap, then begin updating images and readmes and such while the update rolls out, efficient.
 
 - Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
@@ -2650,26 +2653,24 @@ Update them to reflect the latest features/changes
 like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
 maybe you should do it more often, in more places
 
-- BEFORE RELEASE:
-Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
-TEST EVERTHING! EVERY. LITTLE. THING.
-
-
-- More previewer asset ideas:
-random block renders thrown in there
-iconns/logos of features of app thrown in there too, one for each would be enough
-
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
 
-- Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
+- Do the TODOs scattered in the code
 
-- Effects, possibly with win2d, for tags/badges
+- PackBrowser pack badge Effects, possibly with win2d, for tags/badges:
 RTX Reactor, pixelated rain like its tiles
 RTX glow
 VV... blobl colors moving around maybe
 Incompatible, switch between VV-like orange, and red, to indicate vv packs are in-between being compatible and not being compatible with tuner, its true.
 
-- Do the TODOs scattered in the code
+- Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
+
+- More previewer asset ideas:
+random block renders thrown in there
+iconns/logos of features of app thrown in there too, one for each would be enough
+Idea, of a render of a Tuner block, but each side features one of the feature-unique icons you've made!
+Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
+Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
 
 */
 // ============================================================================================================
