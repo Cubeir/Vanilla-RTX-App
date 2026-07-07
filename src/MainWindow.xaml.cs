@@ -2641,8 +2641,8 @@ public sealed partial class MainWindow : Window
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
 - BEFORE RELEASE:
-Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
-TEST EVERTHING! EVERY. LITTLE. THING.
+Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
+// fresh as in, ensure all assets that should be copied, are copied, not just on your system from older builds.
 
 Release it asap, then begin updating images and readmes and such while the update rolls out, efficient.
 

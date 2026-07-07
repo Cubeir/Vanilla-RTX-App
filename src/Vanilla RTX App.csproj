@@ -40,7 +40,7 @@
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.14.0" />
     <PackageReference Include="Magick.NET.Core" Version="14.14.0" />
     <PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.23" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4022.49" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
     <PackageReference Include="Microsoft.Win32.SystemEvents" Version="10.0.9" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
@@ -56,7 +56,6 @@
     <TrimmerRootAssembly Include="Microsoft.Win32.SystemEvents" />
     <TrimmerRootAssembly Include="System.Drawing.Common" />
     <TrimmerRootAssembly Include="WinUIEx" />
-    <TrimmerRootAssembly Include="Microsoft.Web.WebView2.Core" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
@@ -1421,7 +1420,7 @@
     <Copyright>All Rights Reserved.</Copyright>
     <PackageProjectUrl>https://github.com/Cubeir/Vanilla-RTX-App</PackageProjectUrl>
     <RepositoryUrl>https://github.com/cubeir/Vanilla-RTX-App</RepositoryUrl>
-    <AppxBundlePlatforms>x64</AppxBundlePlatforms>
+    <AppxBundlePlatforms>x64|arm64</AppxBundlePlatforms>
     <AssemblyName>Vanilla RTX App</AssemblyName>
     <AssemblyOriginatorKeyFile>CubeirSoftware.pfx</AssemblyOriginatorKeyFile>
     <NuGetAuditMode>all</NuGetAuditMode>
