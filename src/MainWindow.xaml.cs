@@ -2634,17 +2634,6 @@ public sealed partial class MainWindow : Window
 - Unfortunately, crashdumps still generate if user closes the app too early after startup
 i.e. during the startup sequence, create more guards.
 
-- Do a review of all cooldowns and retry times, as well usage of a shared http header... IS IT?! huah!?
-
-- Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
-All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots in doing what it must
-
-- Reduce cache retry timers for PACK UPDATER version retrieval
-it hangs too long trying to get from remote
-the whole deal is that user quickly gets access to the cached version if no internet is available
-this defeats the purpose if they gotta wait 59 or 30 seconds
-Github raw should return it within 5-7 seconds at worst, much faster, that's it. if it does not, must resort to cache almost instantly...
-
 - Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
 Update them to reflect the latest features/changes
 
@@ -2656,10 +2645,6 @@ maybe you should do it more often, in more places
 Test thoroughly, ensure no latent trimming bugs, on a FRESH release build on the SLOW LAPTOP
 TEST EVERTHING! EVERY. LITTLE. THING.
 
-- Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
-Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
-publicly maintained apis to do this too.
-WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
 - More previewer asset ideas:
 random block renders thrown in there
@@ -2668,6 +2653,8 @@ iconns/logos of features of app thrown in there too, one for each would be enoug
 - Do the TODOs scattered in the code
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
+
+- Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
 
 - Effects, possibly with win2d, for tags/badges
 RTX Reactor, pixelated rain like its tiles
@@ -2678,6 +2665,11 @@ Incompatible, switch between VV-like orange, and red, to indicate vv packs are i
 */
 // ============================================================================================================
 /* THE GULAG 
+
+- Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
+Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
+publicly maintained apis to do this too.
+WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
@@ -2697,6 +2689,14 @@ That said, it's a cool feature for those who might want it.
 
 // json says he might unify the output of /creator with what the /api gives.
 good news!
+
+// IDEA: RTX Creator can become a reality, powerd by bedrock.graphics if it lasts
+use webview, direct, while building aclhitex, route a pipeline through there:
+manually creating each block by twiddling knobs, pretty cool, manual edits possible
+talk to json about it some time, It's a cool idea for the long run
+
+It's what RTX Reactor was initially supposed to be, before the idea mutated.
+
 
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality

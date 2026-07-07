@@ -23,8 +23,15 @@ public sealed partial class PackUpdateWindow : Window
     private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
     private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
 
+    // How frequently differences of Installed version versus Cached version (versus offline or online) can invalidate the cache
+    // Only once every few mins, so user can't get a way to spam github by changing pack versions constantly. while also allowing INSTALLED versions to invalidate
     private const string CACHE_INVALIDATION_COOLDOWN_KEY = "PackUpdater_CacheInvalidation_LastTimestamp";
-    private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 2;
+    private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 5;
+    // Source could either be the online zipball's manifests, or the version of files inside the offline/cached zipball
+    // UI-displayed versions are from the INSTALLED version of the pack, this determines how frequently it gets to invalidate based solely on that.
+    // The service code (PackUpdater.cs) only concerns itself with REMOTE VS CACHE and grapples to keep it updated there.
+    // what we have here is just one extra check that closes all the gaps. In case that's on cooldown, this ends up
+    // being another layer than can invalidate user's cache and lets them receive the latest version of the pack.
 
     private string? _currentInstallActionType;
 

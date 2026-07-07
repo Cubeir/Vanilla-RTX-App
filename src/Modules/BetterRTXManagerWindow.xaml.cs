@@ -99,11 +99,11 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 20;
+    private const int REFRESH_COOLDOWN_SECONDS = 30;
     private DispatcherTimer? _cooldownTimer;
 
     private const string API_LAST_FETCH_KEY = "BetterRTXManager_ApiLastFetchTimestamp";
-    private const int API_REFETCH_INTERVAL_HOURS = 2;
+    private const int API_REFETCH_INTERVAL_HOURS = 1;
     private string? _cachedApiHash = null;
 
     public const string BETTERRTX_DISCLAIMER_KEY = $"BetterRTXDisclaimerAgreed_Key";

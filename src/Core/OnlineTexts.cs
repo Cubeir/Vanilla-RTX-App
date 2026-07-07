@@ -161,7 +161,7 @@ public static class OnlineTexts
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning PSAs
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
-    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(6);
+    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
     private const int MAX_RETRIES = 3;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────

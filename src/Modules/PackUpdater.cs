@@ -42,23 +42,23 @@ public class PackUpdater
     private const string VANILLA_RTX_OPUS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Opus/manifest.json";
     private const string VANILLA_RTX_REPO_ZIPBALL_URL = "https://github.com/Cubeir/Vanilla-RTX/archive/refs/heads/master.zip";
 
+    // Remote version cache // how frequently to check the remote again for manifest's versions
+    private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
+    private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
+    private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
+    private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(10);
+
+    // Cache validation check cooldown (Zip re-check versus remote before trying to install from it)
+    private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
+    private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
+    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(55);
+
     public event Action<string>? ProgressUpdate;
     private readonly List<string> _logMessages = new();
 
     private bool _installationInProgress = false;
     private PackType? _currentInstallingPack = null;
-
-    // Remote version cache
-    private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
-    private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
-    private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
-    private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(7);
-
-    // Cache validation check cooldown
-    private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
-    private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
-    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(55);
 
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;
