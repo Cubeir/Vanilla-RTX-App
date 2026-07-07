@@ -937,13 +937,16 @@ public sealed partial class MainWindow : Window
 
                     sb.AppendLine($"{field.Name}: {value ?? "null"}");
                 }
-
                 static string FormatValue(object? value)
                 {
                     if (value is null) return "null";
-                    var type = value.GetType();
-                    if (type.IsGenericType && type.FullName!.StartsWith("System.ValueTuple"))
-                        return string.Join(", ", type.GetFields().Select(f => f.GetValue(value)));
+                    if (value is System.Runtime.CompilerServices.ITuple tuple)
+                    {
+                        var items = new object?[tuple.Length];
+                        for (int i = 0; i < tuple.Length; i++)
+                            items[i] = tuple[i]?.ToString() ?? "null";
+                        return string.Join(", ", items);
+                    }
                     return value.ToString() ?? "null";
                 }
 
