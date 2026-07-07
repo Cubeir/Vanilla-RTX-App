@@ -34,9 +34,6 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-// READD THE BORDERS OF BUTTONS GOD DAMMIT! YOU CAN ADD IT TO TOPS AND BOTTOMS OF 3X2, STIPS, ETC..! DO IT!
-// The default border widths of 1 px, wil lalready make it look a LOT less flat
-
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -891,7 +888,7 @@ public sealed partial class MainWindow : Window
             {
                 var sb = new StringBuilder();
                 // Original sidebar log (important status messages)
-                sb.AppendLine("===== Sidebar Log");
+                sb.AppendLine($"===== Sidebar Log (Last {MaxLogChars.ToString()} Chars)");
                 string logSnapshot;
                 lock (_logGate) logSnapshot = LogText;
                 sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
@@ -985,7 +982,7 @@ public sealed partial class MainWindow : Window
                 {
                     if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
                     {
-                        Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.Warning);
+                        Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.VanillaRTX);
                         Task.Run(async () =>
                         {
                             await Task.Delay(5000);
@@ -993,11 +990,11 @@ public sealed partial class MainWindow : Window
                             await Task.Delay(4000);
                             _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
                             await Task.Delay(3014);
-                            Log("I just love this track! That's it. Hope you like it too.", LogLevel.Success);
+                            Log("I just love this piece! That's it. Hope you like it too.", LogLevel.Debug);
                             await Task.Delay(delay: TimeSpan.FromMinutes(10));
                             Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
                             await Task.Delay(delay: TimeSpan.FromHours(7));
-                            Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.Lengthy);
+                            Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.VanillaRTX);
                             await Task.Delay(2718);
                             Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
                             await Task.Delay(2718);
@@ -1321,6 +1318,10 @@ public sealed partial class MainWindow : Window
                 Log($"Selected the following:\n{names}", LogLevel.Selected);
                 _ = BlinkingLamp(true, true, 1.0);
             }
+            else if (SelectedPacks.Count == 0)
+            {
+                Log($"Selected:\nNothing{(Random.Shared.Next(1,3) > 1 ? ", literally!" : ".")}", LogLevel.Selected);
+            }
             else
             {
                 _ = BlinkingLamp(true, true, 0.0);
@@ -1552,11 +1553,6 @@ public sealed partial class MainWindow : Window
 
         // Lamp single off flash
         _ = BlinkingLamp(true, true, 0.0);
-
-        if (5 < Random.Shared.Next(1, 10 + 1))
-        {
-            RuntimeFlags.Unset("Wrote_Supporter_Shoutout");
-        }
 
         if (RuntimeFlags.Set("Said_Extra_Resetting_Information"))
         {
