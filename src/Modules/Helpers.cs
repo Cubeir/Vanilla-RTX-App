@@ -1108,12 +1108,11 @@ public static class MinecraftGDKLocator
             updateCache(packagePath);
             return;
         }
-
-        // STAGE 0.5: Try to look up the junction has a hardcoded path, a hail mary in case previous step fails, before moving on
+        // STAGE 0.5 (0's FALLBACK): Try to look up the junction has a hardcoded path, a hail mary in case previous step fails, before moving on
         var junctionPath = TryGetInstallPathFromWindowsAppsJunction(isPreview);
         if (junctionPath != null)
         {
-            Trace.WriteLine($"[GDKLocator] Found {versionName} via a blind try at hardcoded Junction/Symlink resolution: {packagePath}");
+            Trace.WriteLine($"[GDKLocator] Found {versionName} via a blind try at hardcoded Junction/Symlink resolution: {junctionPath}");
             updateCache(junctionPath);
             return;
         }
