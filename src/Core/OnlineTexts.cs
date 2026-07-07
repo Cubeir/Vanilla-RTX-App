@@ -252,7 +252,7 @@ public static class OnlineTexts
                 return true;
             }
 
-            Trace.WriteLine("[OnlineTexts] All attempts failed — staying on cache");
+            Trace.WriteLine("[OnlineTexts] All attempts failed - staying on cache (if available).");
             return false;
         }
         catch (Exception ex)
