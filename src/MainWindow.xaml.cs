@@ -456,164 +456,171 @@ public sealed partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        FrameworkElement? root = Content as FrameworkElement;
-
-        if (root != null)
-            root.Loaded -= MainWindow_Loaded;
-
-        // Load variables back in from previous session
-        LoadSettings();
-
-        // APPLY THEME, passing nulls means it isn't a button, instead of cycling, it applies the loaded setting
-        CycleThemeButton_Click(null, null);
-
-        // Give the window time to render
-        await Task.Delay(100);
-
-        // Apply some colors, then continue to watch theme changes and adjust based on theme
-        if (root != null)
+        try
         {
-            ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
-            root.FlowDirection = FlowDirection.LeftToRight;
+            FrameworkElement? root = Content as FrameworkElement;
 
-            ApplyTargetPreviewBevelColors(root.ActualTheme);
-            ApplyLocateUserDataColors(root.ActualTheme);
-            TargetPreviewToggle.IsEnabledChanged += (s, e) =>
-            {
-                if (_isClosing) return; // It crashes the app if we try to set it while window is closed, duh!
-                ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
-            };
-            BrowsePacksButton.IsEnabledChanged += (s, e) =>
-            {
-                if (_isClosing) return;
-                ApplyLocateUserDataColors(((FrameworkElement)Content).ActualTheme);
-            };
+            if (root != null)
+                root.Loaded -= MainWindow_Loaded;
 
-            root.ActualThemeChanged += (_, __) =>
+            // Load variables back in from previous session
+            LoadSettings();
+
+            // APPLY THEME, passing nulls means it isn't a button, instead of cycling, it applies the loaded setting
+            CycleThemeButton_Click(null, null);
+
+            // Give the window time to render
+            await Task.Delay(100);
+
+            // Apply some colors, then continue to watch theme changes and adjust based on theme
+            if (root != null)
             {
-                if (_isClosing) return;
                 ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
+                root.FlowDirection = FlowDirection.LeftToRight;
+
                 ApplyTargetPreviewBevelColors(root.ActualTheme);
                 ApplyLocateUserDataColors(root.ActualTheme);
-
-                ThemeService.Broadcast(root.ActualTheme);
-            };
-        }
-
-        // Check for crash logs, might summon a ContentDialogue
-        await CheckForCrashLog();
-
-        // Splash Blinking Animation
-        _ = AnimateSplash(100);
-
-        // Attach previewer/art vessels
-        Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
-
-        // Set reinstall latest packs button visuals based on cache status
-        // It is also set after closing pack update window, don't forget to update it there if done here
-        // TODO: COULD maybe have a third "Update to latest?" stat to return, but it requires checking remote on startup)
-        // a way to let user know of Vanilla RTX updates inside the main window.
-        if (_updater.HasDeployableCache())
-        {
-            UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
-        }
-        else
-        {
-            UpdateVanillaRTXGlyph.Glyph = "\uEBD3"; // Default cloud icon
-        }
-
-        // Update UI to reflect loaded settings
-        UpdateUI(0.01);
-
-        // Calling it last since it might add a bit of delay as it searches a few dirs and files
-        MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
-
-        // Assign Previewer images a bit after attaching vessels, just a safety gap
-        InitializePreviewerImages();
-
-        // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
-        await Task.Delay(700);
-        // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
-
-        Log($"App Version: {appVersion}" + new string('\n', 2) +
-            $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
-        ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
-
-        // Warning if MC is running
-        if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
-        {
-            Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
-        }
-
-
-        _isInitializing = false; // This makes sure ONLY the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below, aka, Unblocks these operations from running in regular Preview button toggles
-        MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
-        UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status
-        Bindings.Update(); // Update bindings cause of a x:Bind gotcha where values come alive after some unrelated property change
-
-        _ = LocatePacksTask(); // Trigger finding packs
-
-        // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
-        // The whole idea is, there is separation of concerns, on this side, we only show what's in the cache, the app tries to update the cache sometimes
-        // we deal with cache, for showing things, another task deals with updating sometimes it at App start
-        _ = Task.Run(async () =>
-        {
-            var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
-            await Task.Delay(1000);
-            if (psa is { Length: > 0 })
-            {
-                for (int i = psa.Length - 1; i >= 0; i--)
+                TargetPreviewToggle.IsEnabledChanged += (s, e) =>
                 {
-                    Log(psa[i].Text);
-                    await Task.Delay(500);
-                }
+                    if (_isClosing) return; // It crashes the app if we try to set it while window is closed, duh!
+                    ApplyTargetPreviewBevelColors(((FrameworkElement)Content).ActualTheme);
+                };
+                BrowsePacksButton.IsEnabledChanged += (s, e) =>
+                {
+                    if (_isClosing) return;
+                    ApplyLocateUserDataColors(((FrameworkElement)Content).ActualTheme);
+                };
+
+                root.ActualThemeChanged += (_, __) =>
+                {
+                    if (_isClosing) return;
+                    ThemeService.ApplyTitleBarColors(this.AppWindow, root.ActualTheme);
+                    ApplyTargetPreviewBevelColors(root.ActualTheme);
+                    ApplyLocateUserDataColors(root.ActualTheme);
+
+                    ThemeService.Broadcast(root.ActualTheme);
+                };
             }
-        });
 
-        // Random previewer image
-        var occasion = GetSpecialOccasionName();
-        var (prefix, count) = occasion switch
-        {
-            "birthday" => ("vrtx.birthday", 3),
-            "pumpkin" => ("vrtx.pumpkin", 3),
-            "christmas" => ("vrtx.christmas", 5),
-            _ => ("vrtx.app", 50)
-        };
-        int rng = Random.Shared.Next(1, count + 1);
-        Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
+            // Check for crash logs, might summon a ContentDialogue
+            await CheckForCrashLog();
 
-        await FadeOutSplashScreen();
+            // Splash Blinking Animation
+            _ = AnimateSplash(100);
 
-        // Show Leave a Review prompt
-        _ = ReviewPromptManager.InitializeAsync(MainGrid);
+            // Attach previewer/art vessels
+            Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
 
-        // ============= End
-        async Task FadeOutSplashScreen()
-        {
-            if (SplashOverlay == null) return;
-
-            var fadeOut = new DoubleAnimation
+            // Set reinstall latest packs button visuals based on cache status
+            // It is also set after closing pack update window, don't forget to update it there if done here
+            // TODO: COULD maybe have a third "Update to latest?" stat to return, but it requires checking remote on startup)
+            // a way to let user know of Vanilla RTX updates inside the main window.
+            if (_updater.HasDeployableCache())
             {
-                From = 1.0,
-                To = 0.0,
-                Duration = new Duration(TimeSpan.FromMilliseconds(100)),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-
-            var storyboard = new Storyboard();
-            Storyboard.SetTarget(fadeOut, SplashOverlay);
-            Storyboard.SetTargetProperty(fadeOut, "Opacity");
-            storyboard.Children.Add(fadeOut);
-
-            var tcs = new TaskCompletionSource<bool>();
-            storyboard.Completed += (s, e) =>
+                UpdateVanillaRTXGlyph.Glyph = "\uE8F7"; // Syncfolder icon
+            }
+            else
             {
-                SplashOverlay.Visibility = Visibility.Collapsed;
-                tcs.SetResult(true);
-            };
+                UpdateVanillaRTXGlyph.Glyph = "\uEBD3"; // Default cloud icon
+            }
 
-            storyboard.Begin();
-            await tcs.Task;
+            // Update UI to reflect loaded settings
+            UpdateUI(0.01);
+
+            // Calling it last since it might add a bit of delay as it searches a few dirs and files
+            MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
+
+            // Assign Previewer images a bit after attaching vessels, just a safety gap
+            InitializePreviewerImages();
+
+            // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
+            await Task.Delay(700);
+            // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
+
+            Log($"App Version: {appVersion}" + new string('\n', 2) +
+                $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
+            ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
+
+            // Warning if MC is running
+            if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
+            {
+                Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
+            }
+
+
+            _isInitializing = false; // This makes sure ONLY the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below, aka, Unblocks these operations from running in regular Preview button toggles
+            MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
+            UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status
+            Bindings.Update(); // Update bindings cause of a x:Bind gotcha where values come alive after some unrelated property change
+
+            _ = LocatePacksTask(); // Trigger finding packs
+
+            // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
+            // The whole idea is, there is separation of concerns, on this side, we only show what's in the cache, the app tries to update the cache sometimes
+            // we deal with cache, for showing things, another task deals with updating sometimes it at App start
+            _ = Task.Run(async () =>
+            {
+                var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
+                await Task.Delay(1000);
+                if (psa is { Length: > 0 })
+                {
+                    for (int i = psa.Length - 1; i >= 0; i--)
+                    {
+                        Log(psa[i].Text);
+                        await Task.Delay(500);
+                    }
+                }
+            });
+
+            // Random previewer image
+            var occasion = GetSpecialOccasionName();
+            var (prefix, count) = occasion switch
+            {
+                "birthday" => ("vrtx.birthday", 3),
+                "pumpkin" => ("vrtx.pumpkin", 3),
+                "christmas" => ("vrtx.christmas", 5),
+                _ => ("vrtx.app", 50)
+            };
+            int rng = Random.Shared.Next(1, count + 1);
+            Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
+
+            await FadeOutSplashScreen();
+
+            // Show Leave a Review prompt
+            _ = ReviewPromptManager.InitializeAsync(MainGrid);
+
+            // ============= End
+            async Task FadeOutSplashScreen()
+            {
+                if (SplashOverlay == null) return;
+
+                var fadeOut = new DoubleAnimation
+                {
+                    From = 1.0,
+                    To = 0.0,
+                    Duration = new Duration(TimeSpan.FromMilliseconds(100)),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+                };
+
+                var storyboard = new Storyboard();
+                Storyboard.SetTarget(fadeOut, SplashOverlay);
+                Storyboard.SetTargetProperty(fadeOut, "Opacity");
+                storyboard.Children.Add(fadeOut);
+
+                var tcs = new TaskCompletionSource<bool>();
+                storyboard.Completed += (s, e) =>
+                {
+                    SplashOverlay.Visibility = Visibility.Collapsed;
+                    tcs.SetResult(true);
+                };
+
+                storyboard.Begin();
+                await tcs.Task;
+            }
+        }
+        catch (Exception ex)
+        {
+            App.WriteCrashLog("Mainwindow_Loaded ", ex?.Message ?? "Unknown error", ex!.ToString());
         }
     }
 

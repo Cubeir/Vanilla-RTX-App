@@ -95,18 +95,25 @@ public sealed partial class Alchitex : Window
     }
     private async void Alchitex_Loaded(object sender, RoutedEventArgs e)
     {
-        if (Content is FrameworkElement root)
-            root.Loaded -= Alchitex_Loaded;
+        try
+        {
+            if (Content is FrameworkElement root)
+                root.Loaded -= Alchitex_Loaded;
 
-        if (_isClosing) return;
+            if (_isClosing) return;
 
-        try { SetTitleBar(TitleBarDragArea); }
-        catch (Exception ex) { Trace.WriteLine($"[Alchitex] SetTitleBar failed (window likely closing): {ex.Message}"); }
+            SetTitleBar(TitleBarDragArea);
 
-        PopulateAlchitexAnnouncements();
+            PopulateAlchitexAnnouncements();
 
-        await InitializeAsync();
-        if (_isClosing) return;
+            await InitializeAsync();
+            if (_isClosing) return;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Alchitex] The _Loaded Event Crashed: {ex.Message}");
+            return;
+        }
     }
 
     private void Alchitex_Closed(object sender, WindowEventArgs e)

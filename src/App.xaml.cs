@@ -101,7 +101,7 @@ public partial class App : Application
         _window.Activate();
     }
 
-    private static void WriteCrashLog(string source, string message, string detail)
+    public static void WriteCrashLog(string source, string message, string detail)
     {
         try
         {
@@ -116,7 +116,7 @@ public partial class App : Application
                 $"Time:      {DateTime.Now}\n" +
                 $"Message:   {message}\n" +
                 $"Detail:\n{detail}\n\n" +
-                $"--- Recent Trace Log ---\n{TraceManager.GetAllTraceLogs()}\n\n");
+                $"{TraceManager.GetAllTraceLogs()}\n\n");
         }
         catch { /* we're truly fucked then */ }
     }

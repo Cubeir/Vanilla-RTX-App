@@ -152,27 +152,34 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
     private async void BetterRTXManagerWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (Content is FrameworkElement root)
-            root.Loaded -= BetterRTXManagerWindow_Loaded;
-
-        if (_isClosing) return;
-
-        try { SetTitleBar(TitleBarArea); }
-        catch (Exception ex) { Trace.WriteLine($"[BetterRTXManager] SetTitleBar failed (window likely closing): {ex.Message}"); }
-
-        if (Persistent.IsTargetingPreview)
+        try
         {
-            StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview, the API only provides files intended for stable Minecraft releases that may not work on the latest Preview.";
-            this.Close();
+            if (Content is FrameworkElement root)
+                root.Loaded -= BetterRTXManagerWindow_Loaded;
+
+            if (_isClosing) return;
+
+            SetTitleBar(TitleBarArea);
+
+            if (Persistent.IsTargetingPreview)
+            {
+                StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview, the API only provides files intended for stable Minecraft releases that may not work on the latest Preview.";
+                this.Close();
+                return;
+            }
+
+            WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
+
+            await InitializeAsync();
+            if (_isClosing) return;
+
+            InitializeRefreshButton();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTXManager] The _Loaded Event Crashed: {ex.Message}");
             return;
         }
-
-        WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
-
-        await InitializeAsync();
-        if (_isClosing) return;
-
-        InitializeRefreshButton();
     }
 
     private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e)

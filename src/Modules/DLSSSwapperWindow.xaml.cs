@@ -67,19 +67,26 @@ public sealed partial class DLSSSwapperWindow : Window
     }
     private async void DLSSSwapperWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (Content is FrameworkElement root)
-            root.Loaded -= DLSSSwapperWindow_Loaded;
+        try
+        {
+            if (Content is FrameworkElement root)
+                root.Loaded -= DLSSSwapperWindow_Loaded;
 
-        if (_isClosing) return;
+            if (_isClosing) return;
 
-        try { SetTitleBar(TitleBarArea); }
-        catch (Exception ex) { Trace.WriteLine($"[DLSSSwapper] SetTitleBar failed (window likely closing): {ex.Message}"); }
+            SetTitleBar(TitleBarArea);
 
-        var text = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
-        WindowTitle.Text = $"Swap DLSS version for {text}";
+            var text = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
+            WindowTitle.Text = $"Swap DLSS version for {text}";
 
-        await InitializeAsync();
-        if (_isClosing) return;
+            await InitializeAsync();
+            if (_isClosing) return;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[DLSSSwapper] The _Loaded Event Crashed: {ex.Message}");
+            return;
+        }
     }
 
     private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e)

@@ -77,22 +77,29 @@ public sealed partial class PackUpdateWindow : Window
     }
     private async void PackUpdateWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (Content is FrameworkElement root)
-            root.Loaded -= PackUpdateWindow_Loaded;
+        try
+        {
+            if (Content is FrameworkElement root)
+                root.Loaded -= PackUpdateWindow_Loaded;
 
-        if (_isClosing) return;
+            if (_isClosing) return;
 
-        try { SetTitleBar(TitleBarArea); }
-        catch (Exception ex) { Trace.WriteLine($"[PackUpdateWindow] SetTitleBar failed (window likely closing): {ex.Message}"); }
+            SetTitleBar(TitleBarArea);
 
-        var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-        WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
+            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+            WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
-        await InitializePackInformation();
-        if (_isClosing) return;
+            await InitializePackInformation();
+            if (_isClosing) return;
 
-        SetupButtonHandlers();
-        CheckAndHandleOngoingInstallation();
+            SetupButtonHandlers();
+            CheckAndHandleOngoingInstallation();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[PackUpdateWindow] The _Loaded Event Crashed: {ex.Message}");
+            return;
+        }
     }
 
     private void PackUpdateWindow_Closed(object sender, WindowEventArgs e)

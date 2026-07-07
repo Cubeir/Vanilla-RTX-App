@@ -89,19 +89,26 @@ public sealed partial class LUTManagerWindow : Window
 
     private async void LUTManagerWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (Content is FrameworkElement root)
-            root.Loaded -= LUTManagerWindow_Loaded;
+        try
+        {
+            if (Content is FrameworkElement root)
+                root.Loaded -= LUTManagerWindow_Loaded;
 
-        if (_isClosing) return;
+            if (_isClosing) return;
 
-        try { SetTitleBar(TitleBarArea); }
-        catch (Exception ex) { Trace.WriteLine($"[LUTManager] SetTitleBar failed (window likely closing): {ex.Message}"); }
+            SetTitleBar(TitleBarArea);
 
-        var target = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
-        WindowTitle.Text = $"RTX LUT manager - {target}";
+            var target = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
+            WindowTitle.Text = $"RTX LUT manager - {target}";
 
-        await InitializeAsync();
-        if (_isClosing) return;
+            await InitializeAsync();
+            if (_isClosing) return;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[LUTManager] The _Loaded Event Crashed: {ex.Message}");
+            return;
+        }
     }
 
     private void LUTManagerWindow_Closed(object sender, WindowEventArgs e)

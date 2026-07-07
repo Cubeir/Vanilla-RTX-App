@@ -74,29 +74,36 @@ public sealed partial class PackBrowserWindow : Window
     }
     private async void PackBrowserWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (Content is FrameworkElement root)
-            root.Loaded -= PackBrowserWindow_Loaded;
-
-        if (_isClosing) return;
-
-        try { SetTitleBar(TitleBarArea); }
-        catch (Exception ex) { Trace.WriteLine($"[PackBrowser] SetTitleBar failed (window likely closing): {ex.Message}"); }
-
-        WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
-        AddPackDescriptionText.Text =
-            $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip)";
-
-        PopulatePackBrowserAnnouncements();
-
-        if (this.Content is UIElement contentRoot)
+        try
         {
-            contentRoot.AllowDrop = true;
-            contentRoot.DragOver += ContentRoot_DragOver;
-            contentRoot.Drop += ContentRoot_Drop;
-        }
+            if (Content is FrameworkElement root)
+                root.Loaded -= PackBrowserWindow_Loaded;
 
-        await LoadPacksAsync();
-        if (_isClosing) return;
+            if (_isClosing) return;
+
+            SetTitleBar(TitleBarArea);
+
+            WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
+            AddPackDescriptionText.Text =
+                $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip)";
+
+            PopulatePackBrowserAnnouncements();
+
+            if (this.Content is UIElement contentRoot)
+            {
+                contentRoot.AllowDrop = true;
+                contentRoot.DragOver += ContentRoot_DragOver;
+                contentRoot.Drop += ContentRoot_Drop;
+            }
+
+            await LoadPacksAsync();
+            if (_isClosing) return;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[PackBrowser] The _Loaded Event Crashed: {ex.Message}");
+            return;
+        }
     }
 
     private void PackBrowserWindow_Closed(object sender, WindowEventArgs e)
@@ -559,7 +566,7 @@ public sealed partial class PackBrowserWindow : Window
         {
             Text = pack.PackName,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(6,0,0,0),
+            Margin = new Thickness(6, 0, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
@@ -568,7 +575,7 @@ public sealed partial class PackBrowserWindow : Window
             Text = pack.PackDescription,
             FontSize = 12,
             Opacity = 0.75,
-            Margin = new Thickness(6,4,0,0),
+            Margin = new Thickness(6, 4, 0, 0),
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
@@ -801,7 +808,7 @@ public sealed partial class PackBrowserWindow : Window
                      TunerVariables.Persistent.IsTargetingPreview))
         {
             // Pass 1: modern manifest.json
-            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "manifest.json", minDepth:1, maxDepth:2))
+            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "manifest.json", minDepth: 1, maxDepth: 2))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
                 if (packDir == null || !seenDirs.Add(packDir)) continue;
