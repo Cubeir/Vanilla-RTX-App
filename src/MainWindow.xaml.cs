@@ -408,6 +408,8 @@ public sealed partial class MainWindow : Window
 
             SaveSettings();
 
+            _typewriterTimer?.Stop();
+
             // Cascade closure of all windows
             foreach (var child in _childWindows.ToList())
             {
@@ -2650,8 +2652,6 @@ TEST EVERTHING! EVERY. LITTLE. THING.
 random block renders thrown in there
 iconns/logos of features of app thrown in there too, one for each would be enough
 
-- Do the TODOs scattered in the code
-
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
 
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
@@ -2661,6 +2661,8 @@ RTX Reactor, pixelated rain like its tiles
 RTX glow
 VV... blobl colors moving around maybe
 Incompatible, switch between VV-like orange, and red, to indicate vv packs are in-between being compatible and not being compatible with tuner, its true.
+
+- Do the TODOs scattered in the code
 
 */
 // ============================================================================================================
