@@ -4,10 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Windows.Storage;
 using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are stored there for locating packs
 
@@ -588,14 +587,12 @@ public class PackUpdater
 
     private async Task<(JObject? rtx, JObject? normals, JObject? opus)?> FetchRemoteManifests()
     {
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app_updater/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)");
-
         async Task<JObject?> TryFetchManifest(string url)
         {
             try
             {
-                var response = await client.GetStringAsync(url);
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var response = await Helpers.UpdaterHttpClient.GetStringAsync(url, cts.Token);
                 return JObject.Parse(response);
             }
             catch

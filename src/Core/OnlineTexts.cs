@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 
 namespace Vanilla_RTX_App.Core;
@@ -157,7 +157,7 @@ public static class OnlineTexts
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
-    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(1); // Cooldown of re-fetching the new .md file.
+    private static readonly TimeSpan COOLDOWN = TimeSpan.FromHours(1); // Cooldown of re-fetching the new .md file.
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning PSAs
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
@@ -568,12 +568,9 @@ public static class OnlineTexts
         try
         {
             Trace.WriteLine($"[OnlineTexts] Fetching {URL}");
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
-            client.DefaultRequestHeaders.Add("User-Agent",
-                $"vanilla_rtx_app_updater/{TunerVariables.appVersion} " +
-                "(https://github.com/Cubeir/Vanilla-RTX-App)");
 
-            var response = await client.GetAsync(URL);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            var response = await Helpers.UpdaterHttpClient.GetAsync(URL, cts.Token);
             Trace.WriteLine($"[OnlineTexts] HTTP {(int)response.StatusCode} {response.StatusCode}");
             return response.IsSuccessStatusCode
                 ? await response.Content.ReadAsStringAsync()

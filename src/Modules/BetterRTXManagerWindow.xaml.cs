@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -96,7 +95,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     private Dictionary<string, DownloadStatus> _downloadStatuses;
     private readonly Queue<DownloadQueueItem> _downloadQueue;
     private bool _isProcessingQueue;
-    private readonly HttpClient _betterRtxHttpClient;
+    private readonly CancellationTokenSource _closingCts = new();
     private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
@@ -126,9 +125,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         _downloadStatuses = new Dictionary<string, DownloadStatus>();
         _downloadQueue = new Queue<DownloadQueueItem>();
         _isProcessingQueue = false;
-
-        _betterRtxHttpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
-        _betterRtxHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
 
         var manager = WinUIEx.WindowManager.Get(this);
         manager.MinWidth = WindowMinSizeX;
@@ -193,7 +189,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         _downloadQueue.Clear();
         lock (_downloadStatusLock) { _downloadStatuses.Clear(); }
 
-        _betterRtxHttpClient?.Dispose();
+        _closingCts.Cancel();
 
         _cooldownTimer?.Stop();
         _cooldownTimer = null;
@@ -1599,11 +1595,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             var url = $"https://bedrock.graphics/pack/{uuid}/release";
             Trace.WriteLine($"[BetterRTX] Downloading from: {url}");
 
-            var (success, downloadedPath) = await Helpers.Download(
-                url,
-                cancellationToken: CancellationToken.None,
-                httpClient: _betterRtxHttpClient
-            );
+            var (success, downloadedPath) = await Helpers.Download(url, cancellationToken: _closingCts.Token, timeout: TimeSpan.FromMinutes(3));
 
             if (!success || string.IsNullOrEmpty(downloadedPath))
             {
