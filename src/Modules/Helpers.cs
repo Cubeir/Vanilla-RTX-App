@@ -195,34 +195,57 @@ public static class Helpers
     }
 
 
-    public static readonly HttpClient SharedHttpClient = new()
-    {
-        Timeout = TimeSpan.FromSeconds(30)
-    };
+    #region NETWORK
+
+    public static readonly HttpClient SharedHttpClient = CreateClient();
+    public static readonly HttpClient UpdaterHttpClient = CreateClient("updater");
+
     static Helpers()
     {
-        SharedHttpClient.DefaultRequestHeaders.Add("User-Agent", $"vanilla_rtx_app/{TunerVariables.appVersion}");
-        Trace.WriteLine("[HttpsHelper] SharedHttpClient configured");
+        Trace.WriteLine("[HttpsHelper] SharedHttpClient and UpdaterHttpClient configured");
     }
+
+    private static HttpClient CreateClient(string? component = null)
+    {
+        var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        client.DefaultRequestHeaders.Add("User-Agent", BuildUserAgent(component));
+        return client;
+    }
+
+    /// <summary>
+    /// Builds the app's User-Agent string. Pass a component name (e.g. "updater")
+    /// to tag requests from a specific feature; omit it for the default app-wide UA.
+    /// </summary>
+    public static string BuildUserAgent(string? component = null) =>
+        component is null
+            ? $"vanilla_rtx_app/{TunerVariables.appVersion}"
+            : $"vanilla_rtx_app_{component}/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)";
     /// <summary>
     /// Downloads a file with progress tracking and retry logic.
     /// Uses the shared HttpClient which is pre-configured.
     /// For custom timeout/headers, pass a custom HttpClient.
     /// </summary>
     public static async Task<(bool, string?)> Download(
-        string url,
-        CancellationToken cancellationToken = default,
-        HttpClient? httpClient = null)
+            string url,
+            CancellationToken cancellationToken = default,
+            HttpClient? httpClient = null,
+            TimeSpan? timeout = null)
     {
         var client = httpClient ?? SharedHttpClient;
         var retries = 3;
 
         while (retries-- > 0)
         {
+            using var timeoutCts = timeout.HasValue
+                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+                : null;
+            timeoutCts?.CancelAfter(timeout!.Value);
+            var token = timeoutCts?.Token ?? cancellationToken;
+
             try
             {
                 // === DOWNLOAD ===
-                using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
                 response.EnsureSuccessStatusCode();
                 Log("Starting Download.", LogLevel.Lengthy);
 
@@ -300,9 +323,9 @@ public static class Helpers
                 double lastLoggedProgress = 0;
                 var lastLoggedMB = 0;
 
-                while ((read = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)) > 0)
+                while ((read = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token)) > 0)
                 {
-                    await fileStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read), token);
                     totalRead += read;
 
                     if (totalBytes.HasValue)
@@ -328,9 +351,9 @@ public static class Helpers
                 Log("Download finished successfully.", LogLevel.Success);
                 return (true, savingLocation);
             }
-            catch (OperationCanceledException ex) when (!(ex is TaskCanceledException) || ex.InnerException is not TimeoutException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                Log("Download cancelled by user.", LogLevel.Informational);
+                Log("Download cancelled by caller.", LogLevel.Informational);
                 return (false, null);
             }
             catch (HttpRequestException ex) when (retries > 0)
@@ -338,10 +361,15 @@ public static class Helpers
                 Log($"Transient error: {ex.Message}. Retrying...", LogLevel.Warning);
                 await Task.Delay(1000, cancellationToken);
             }
-            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException && retries > 0)
+            catch (OperationCanceledException) when (retries > 0)
             {
                 Log("Request timed out. Retrying...", LogLevel.Warning);
                 await Task.Delay(1000, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Log("Request timed out after all retries.", LogLevel.Error);
+                return (false, null);
             }
             catch (Exception ex)
             {
@@ -354,6 +382,7 @@ public static class Helpers
         return (false, null);
     }
 
+    #endregion NETWORK
 
     /// <summary>
     /// Copies a set of files using a single elevated batch script (one UAC prompt for all files).
@@ -432,6 +461,50 @@ public static class Helpers
         }
     }
 
+
+    /// <summary>
+    /// A filesystem helper that recursively finds files matching <paramref name="searchPattern"/> whose directory
+    /// depth relative to <paramref name="rootDirectory"/> falls within [minDepth, maxDepth].
+    /// Depth 0 = rootDirectory itself, depth 1 = its immediate subfolders, etc.
+    /// Stops descending once maxDepth is reached (won't walk deeper subtrees unnecessarily).
+    /// Silently skips directories it can't access.
+    /// </summary>
+    public static IEnumerable<string> FindFilesAtDepth(
+        string rootDirectory, string searchPattern, int minDepth, int maxDepth)
+    {
+        if (minDepth < 0)
+            throw new ArgumentOutOfRangeException(nameof(minDepth));
+        if (maxDepth < minDepth)
+            throw new ArgumentOutOfRangeException(nameof(maxDepth));
+
+        return Traverse(rootDirectory, 0);
+
+        IEnumerable<string> Traverse(string dir, int depth)
+        {
+            if (depth >= minDepth)
+            {
+                string[] files = Array.Empty<string>();
+                try { files = Directory.GetFiles(dir, searchPattern); }
+                catch (UnauthorizedAccessException) { }
+                catch (DirectoryNotFoundException) { }
+
+                foreach (var f in files)
+                    yield return f;
+            }
+
+            if (depth < maxDepth)
+            {
+                string[] subdirs = Array.Empty<string>();
+                try { subdirs = Directory.GetDirectories(dir); }
+                catch (UnauthorizedAccessException) { }
+                catch (DirectoryNotFoundException) { }
+
+                foreach (var sub in subdirs)
+                    foreach (var f in Traverse(sub, depth + 1))
+                        yield return f;
+            }
+        }
+    }
 
 
     /// <summary>
@@ -1042,7 +1115,7 @@ public static class MinecraftGDKLocator
         {
             Trace.WriteLine($"[GDKLocator] Found {versionName} via a blind try at hardcoded Junction/Symlink resolution: {packagePath}");
             updateCache(junctionPath);
-            return; 
+            return;
         }
 
         // STAGE 1: Common locations across all drives (friendly names + known GUIDs)

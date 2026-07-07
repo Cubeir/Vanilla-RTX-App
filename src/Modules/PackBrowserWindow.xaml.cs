@@ -801,7 +801,7 @@ public sealed partial class PackBrowserWindow : Window
                      TunerVariables.Persistent.IsTargetingPreview))
         {
             // Pass 1: modern manifest.json
-            foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "manifest.json", SearchOption.AllDirectories))
+            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "manifest.json", minDepth:1, maxDepth:2))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
                 if (packDir == null || !seenDirs.Add(packDir)) continue;
@@ -816,7 +816,7 @@ public sealed partial class PackBrowserWindow : Window
             }
 
             // Pass 2: legacy pack_manifest.json (seenDirs skips dirs already handled above)
-            foreach (var manifestPath in Directory.EnumerateFiles(scanPath, "pack_manifest.json", SearchOption.AllDirectories))
+            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "pack_manifest.json", minDepth: 1, maxDepth: 2))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
                 if (packDir == null || !seenDirs.Add(packDir)) continue;

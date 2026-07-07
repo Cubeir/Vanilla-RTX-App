@@ -45,7 +45,7 @@ public class PackLocator
             foreach (var scanPath in GetOrderedScanPaths(isTargetingPreview))
             {
                 allManifestFiles.AddRange(
-                    Directory.GetFiles(scanPath, "manifest.json", SearchOption.AllDirectories)
+                    Helpers.FindFilesAtDepth(scanPath, "manifest.json", minDepth: 1, maxDepth: 2)
                 );
             }
 
