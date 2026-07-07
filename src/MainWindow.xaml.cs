@@ -892,7 +892,9 @@ public sealed partial class MainWindow : Window
                 var sb = new StringBuilder();
                 // Original sidebar log (important status messages)
                 sb.AppendLine("===== Sidebar Log");
-                sb.AppendLine(LogText);
+                string logSnapshot;
+                lock (_logGate) logSnapshot = LogText;
+                sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
                 sb.AppendLine();
                 // Tuner variables
                 sb.AppendLine("===== Tuner Variables");
@@ -1551,7 +1553,7 @@ public sealed partial class MainWindow : Window
         // Lamp single off flash
         _ = BlinkingLamp(true, true, 0.0);
 
-        if (5 < Random.Shared.Next(1, 10 +1))
+        if (5 < Random.Shared.Next(1, 10 + 1))
         {
             RuntimeFlags.Unset("Wrote_Supporter_Shoutout");
         }
@@ -2206,7 +2208,7 @@ public sealed partial class MainWindow : Window
             {
                 Log("RTX Reactor generates proper RTX support only for non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
             }
-            Log("You must select at least one resource pack tagged as a 'Potential Candidate' to be use this feature.", LogLevel.Warning);
+            Log($"You must select at least one '{PackBrowser.PackBrowserWindow.AlchitexCandidateTag}' from your resource packs to use this feature on.", LogLevel.Warning);
             return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
             // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
             // have a higher chance of breaking, not working, or not seeing any benefit from this feature.
@@ -2417,8 +2419,7 @@ public sealed partial class MainWindow : Window
 
     private const double BaselineCharsPerTick = 2.0; // relaxed pace for small/no backlog
     private const double CatchUpFraction = 0.10;      // reveal % of the backlog each tick
-    private static readonly int TickIntervalMs = ComputeTickInterval();
-    private static int ComputeTickInterval()
+    private static readonly int TickIntervalMs = ((Func<int>)(() =>
     {
         try
         {
@@ -2431,21 +2432,15 @@ public sealed partial class MainWindow : Window
                 >= 16 => 8,
                 >= 8 => 16,
                 >= 5 => 32,
-                _ => 64, // 4 cores or fewer
+                _ => 64,
             };
         }
-        catch
-        {
-            return 16; // safe default if anything above misbehaves
-        }
-    }
+        catch { return 16; }
+    }))();
+
 
     // Structural marker ONLY — never rendered, never typed character-by-character, never
-    // confused with a real "\n\n" the user's own message text might contain. Two Private-Use-Area
-    // maybe use \uE000\uE001 which are reserved by the Unicode standard for exactly this kind of internal use, so no
-    // real message can ever accidentally contain them
-    // but this be human-readable in a debugger same mechanism either way, swap it out for whatever
-    private const string EntrySentinel = "———";
+    private const string EntrySentinel = "\uE000\uE001";
 
     // Idle/typing cursor — sits at the current write-head
     private const bool ShowTypingCursor = true;
