@@ -2413,13 +2413,15 @@ public sealed partial class MainWindow : Window
     // AND each message types start-to-finish instead of finish-to-start.
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _typewriterTimer;
     private ScrollViewer? _logScrollViewer;
-
     private int _settledLength = 0;   // trailing chars of LogText already fully shown & final
     private int _activeRevealed = 0;  // chars revealed so far of the current (oldest-pending) entry
+    private string? _lastRenderedText;
+
+    private const int MaxLogChars = 4000;
 
     private const double BaselineCharsPerTick = 2.0; // relaxed pace for small/no backlog
     private const double CatchUpFraction = 0.10;      // reveal % of the backlog each tick
-    private static readonly int TickIntervalMs = ((Func<int>)(() =>
+    private static readonly int TickIntervalMs = ((Func<int>)(() => // speed based on corecount, since this really does affect cpu usage! it's the main lever
     {
         try
         {
@@ -2494,7 +2496,36 @@ public sealed partial class MainWindow : Window
     private void TypewriterTick()
     {
         string current;
-        lock (_logGate) current = LogText;
+        lock (_logGate)
+        {
+            current = LogText;
+
+            if (current.Length > MaxLogChars)
+            {
+                // Cut on a sentinel boundary so we drop whole oldest entries, never mid-message.
+                int cut = current.LastIndexOf(EntrySentinel, MaxLogChars - 1, MaxLogChars, StringComparison.Ordinal);
+                if (cut > 0)
+                {
+                    int trimmedAmount = current.Length - cut;
+                    current = current[..cut];
+                    LogText = current;
+
+                    // Trimmed content came off the tail — exactly where _settledLength measures
+                    // from — so shrink it by the same amount. If the cut reached into content that
+                    // wasn't fully settled yet (only possible under an extreme backlog like a stress
+                    // test), just reset both — the next tick starts clean against the trimmed text.
+                    if (trimmedAmount > _settledLength)
+                    {
+                        _settledLength = 0;
+                        _activeRevealed = 0;
+                    }
+                    else
+                    {
+                        _settledLength -= trimmedAmount;
+                    }
+                }
+            }
+        }
 
         int unshownLength = current.Length - _settledLength;
 
@@ -2563,7 +2594,11 @@ public sealed partial class MainWindow : Window
             ? ((Environment.TickCount64 / CursorBlinkMs) % 2 == 0 ? CursorOnGlyph : CursorOffGlyph)
             : "";
 
-        SidebarLog.Text = headText + cursor + tailText;
+        string newText = headText + cursor + tailText;
+        if (newText == _lastRenderedText) return; // nothing visually changed, skip the relayout entirely
+
+        _lastRenderedText = newText;
+        SidebarLog.Text = newText;
     }
 
     // Never reveal a cut that splits a surrogate pair or strands an emoji's
