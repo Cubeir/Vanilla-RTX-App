@@ -535,8 +535,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             var agreed = await ShowDisclaimerDialogAsync();
             if (!agreed)
             {
-                StatusMessage = "Dismissed third-party API usage notice. You should understand the risks before you can use BetterRTX Manager.\n" +
-                    $"If you wish to change up the look of RTX without BetterRTX, try out RTX LUT Manager instead.";
+                StatusMessage = "Dismissed third-party API usage notice. You should understand the risks before you can use this feature.\n" +
+                    $"If you wish to change up the look of RTX without BetterRTX, try out \"RTX LUT manager\" instead.";
                 this.Close();
                 return;
             }

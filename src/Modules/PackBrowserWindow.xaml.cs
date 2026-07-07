@@ -398,24 +398,24 @@ public sealed partial class PackBrowserWindow : Window
             flyout.Items.Add(new MenuFlyoutSeparator());
         }
 
+        var selectAll = new MenuFlyoutItem
+        {
+            Text = "Select all",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            FontWeight = FontWeights.Medium
+        };
+        selectAll.Click += (_, _) => SetAllPacksSelected(true);
+        flyout.Items.Add(selectAll);
+
         var deselectAll = new MenuFlyoutItem
         {
             Text = "Deselect all",
             HorizontalAlignment =
             HorizontalAlignment.Stretch,
-            FontWeight = FontWeights.SemiBold
+            FontWeight = FontWeights.Medium
         };
         deselectAll.Click += (_, _) => SetAllPacksSelected(false);
         flyout.Items.Add(deselectAll);
-
-        var selectAll = new MenuFlyoutItem
-        {
-            Text = "Select all",
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            FontWeight = FontWeights.SemiBold
-        };
-        selectAll.Click += (_, _) => SetAllPacksSelected(true);
-        flyout.Items.Add(selectAll);
 
         SelectAll_Button.Flyout = flyout;
     }
