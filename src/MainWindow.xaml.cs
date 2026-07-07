@@ -560,14 +560,14 @@ public sealed partial class MainWindow : Window
             // we deal with cache, for showing things, another task deals with updating sometimes it at App start
             _ = Task.Run(async () =>
             {
+                await Task.Delay(800);
                 var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
-                await Task.Delay(1000);
                 if (psa is { Length: > 0 })
                 {
                     for (int i = psa.Length - 1; i >= 0; i--)
                     {
                         Log(psa[i].Text);
-                        await Task.Delay(500);
+                        await Task.Delay(700);
                     }
                 }
             });
