@@ -731,16 +731,13 @@ public sealed partial class PackBrowserWindow : Window
 
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedPaths.Count > 0)
-        {
-            TunerVariables.SelectedPacks.Clear();
+        TunerVariables.SelectedPacks.Clear();
 
-            foreach (var path in _selectedPaths.Where(p => _packButtonMap.ContainsKey(p)))
-            {
-                var pack = (PackData)_packButtonMap[path].Tag;
-                TunerVariables.SelectedPacks.Add(
-                    (pack.PackPath, pack.PackName, pack.PackType, pack.PotentiallySuitableForPBRGen));
-            }
+        foreach (var path in _selectedPaths.Where(p => _packButtonMap.ContainsKey(p)))
+        {
+            var pack = (PackData)_packButtonMap[path].Tag;
+            TunerVariables.SelectedPacks.Add(
+                (pack.PackPath, pack.PackName, pack.PackType, pack.PotentiallySuitableForPBRGen));
         }
 
         this.Close();
