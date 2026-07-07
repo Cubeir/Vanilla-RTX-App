@@ -157,12 +157,12 @@ public static class OnlineTexts
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
-    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(3); // Cooldown of re-fetching the new .md file.
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Cooldown of dismissable-but-returning PSAs
+    private static readonly TimeSpan COOLDOWN       = TimeSpan.FromHours(1); // Cooldown of re-fetching the new .md file.
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning PSAs
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
-    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
-    private const int MAX_RETRIES = 2;
+    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(6);
+    private const int MAX_RETRIES = 3;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
 

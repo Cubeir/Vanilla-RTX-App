@@ -973,7 +973,7 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 1.0, 0.1);
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
-                Log("Hold shift and click the lamp again to copy stack trace. Attach these if making an issue report.", LogLevel.Debug);
+                Log("Holding shift while clicking the lamp will copy app's stack trace. Attach these if reporting issues or debugging.", LogLevel.Debug);
             }
             else
             {
@@ -2631,7 +2631,11 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
+- Unfortunately, crashdumps still generate if user closes the app too early after startup
+i.e. during the startup sequence, create more guards.
+
 - Do a review of all cooldowns and retry times, as well usage of a shared http header... IS IT?! huah!?
+
 - Audit your github call patterns (caching, and cooldowns) -- especially updater, maximize up-to-dateness with as few requests as possible
 All settled there? ensure there isn't a way the app can ddos github AND at the same time there are no unintended Blind spots in doing what it must
 
