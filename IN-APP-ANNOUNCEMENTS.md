@@ -5,7 +5,7 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PSA
 ### app update announcement
-📯 Welcome to the 3.1 update! As you explore each feature, you'll come across dynamic/fresh info panels to help you stay informed and up-to-date, like changelogs for Vanilla RTX updates, and much, much more...
+📯 Welcome to the 3.1 update! As you explore each feature, you'll come across dynamic/fresh info panels to help you stay informed and up-to-date, like changelogs for Vanilla RTX updates, and much, much more... The app now also works for all kinds of MCBE installations, including the unusual ones!
 
 ### reactor temp announcement
 🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App! It's window currently hosts development progress news.
