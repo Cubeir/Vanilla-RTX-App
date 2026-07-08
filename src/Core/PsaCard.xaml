@@ -56,7 +56,7 @@
                     Background="{ThemeResource ButtonBackgroundThemeBrush}"
                     BorderThickness="1"
                     Click="DismissButton_Click"
-                    ToolTipService.ToolTip="Dismiss">
+                    ToolTipService.ToolTip="Dismiss forever">
                 <FontIcon Glyph="&#xE8BB;"
                           VerticalAlignment="Center"
                           HorizontalAlignment="Center"

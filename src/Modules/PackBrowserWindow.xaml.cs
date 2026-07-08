@@ -1088,7 +1088,9 @@ public sealed partial class PackBrowserWindow : Window
     {
         try
         {
-            return string.Empty;
+            return string.Empty; // INTENTIONALLY CRIPPLED
+            // REMOVE THIS LINE TO RENABLE PACK SIZE BADGE
+            // REMOVED BECAUSE, IT SLOWS DOWN THE WINDOW TOO MUCH, NOT WORTH IT! QUERYING ALL FILES
 
             var totalBytes = await Task.Run(() =>
                 Directory.EnumerateFiles(packDir, "*", SearchOption.AllDirectories)

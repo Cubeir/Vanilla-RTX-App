@@ -74,7 +74,7 @@ public sealed partial class PsaCard : UserControl
         var minutes = cooldownMinutes ?? (int)OnlineTexts.TimedDuration.TotalMinutes;
 
         if (minutes == 0)
-            return "Dismiss temporarily";
+            return "Dismiss for now";
 
         if (minutes < 60)
             return $"Dismiss for {minutes} minute{(minutes == 1 ? "" : "s")}";

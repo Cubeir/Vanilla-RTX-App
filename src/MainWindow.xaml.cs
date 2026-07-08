@@ -2710,7 +2710,9 @@ talk to json about it some time, It's a cool idea for the long run
 
 It's what RTX Reactor was initially supposed to be, before the idea mutated.
 
-
+- Add something to actively resolve junctions/symlinks everywhere
+apparently some third party launchers use them for other things, like userdata, as well -- but wait for at least
+a single report of failure before touching anything
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
