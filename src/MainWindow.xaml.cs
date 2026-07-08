@@ -1332,7 +1332,7 @@ public sealed partial class MainWindow : Window
             }
             else if (SelectedPacks.Count == 0)
             {
-                Log($"Selected:\nNothing{(Random.Shared.Next(1,3) > 1 ? ", literally!" : ".")}", LogLevel.Selected);
+                Log($"Selected:\nNothing{(Random.Shared.Next(10) == 5 ? ", literally!" : ".")}", LogLevel.Selected);
             }
             else
             {
