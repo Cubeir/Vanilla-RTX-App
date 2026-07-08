@@ -120,8 +120,8 @@ internal static class PackBrowserBadgeVFX
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyRtxGlow(Border badge)
     {
-        var current = ColorHelper.FromArgb(255, 105, 155, 32);
-        var nvidia = ColorHelper.FromArgb(144, 174, 230, 80);
+        var current = ColorHelper.FromArgb(144, 174, 230, 80);
+        var nvidia = ColorHelper.FromArgb(255, 105, 155, 32);
 
         var brush = new RadialGradientBrush
         {
@@ -188,8 +188,8 @@ internal static class PackBrowserBadgeVFX
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyVibrantVisualsBlobs(Border badge)
     {
-        var golden = ColorHelper.FromArgb(225, 164, 132, 52);
-        var burnt = ColorHelper.FromArgb(225, 99, 66, 9);
+        var golden = ColorHelper.FromArgb(225, 155, 120, 80);
+        var burnt = ColorHelper.FromArgb(225, 92, 62, 28);
 
         var brush = new RadialGradientBrush
         {

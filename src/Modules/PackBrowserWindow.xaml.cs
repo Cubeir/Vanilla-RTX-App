@@ -690,7 +690,7 @@ public sealed partial class PackBrowserWindow : Window
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 192, 33, 0));
                 break;
             case "RTX":
-                text.Text = "Ray Tracing (RTX)";
+                text.Text = "Ray Tracing [RTX]";
                 text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 111, 177, 0));
                 break;

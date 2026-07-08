@@ -2660,12 +2660,6 @@ maybe you should do it more often, in more places
 
 - Do the TODOs scattered in the code
 
-- PackBrowser pack badge Effects, possibly with win2d, for tags/badges:
-RTX Reactor, pixelated rain like its tiles
-RTX glow
-VV... blobl colors moving around maybe
-Incompatible, switch between VV-like orange, and red, to indicate vv packs are in-between being compatible and not being compatible with tuner, its true.
-
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
 
 - More previewer asset ideas:
@@ -2675,9 +2669,6 @@ Idea, of a render of a Tuner block, but each side features one of the feature-un
 Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
 Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
 
-*/
-// ============================================================================================================
-/* THE GULAG 
 
 - Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
@@ -2700,14 +2691,16 @@ is just... NOPE!
 That said, it's a cool feature for those who might want it.
 >> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
 
-// json says he might unify the output of /creator with what the /api gives.
-good news!
+*/
+// ============================================================================================================
+/* THE GULAG 
 
+-> json says he might unify the output of /creator with what the /api gives.
+good news!
 // IDEA: RTX Creator can become a reality, powerd by bedrock.graphics if it lasts
 use webview, direct, while building aclhitex, route a pipeline through there:
 manually creating each block by twiddling knobs, pretty cool, manual edits possible
 talk to json about it some time, It's a cool idea for the long run
-
 It's what RTX Reactor was initially supposed to be, before the idea mutated.
 
 - Add something to actively resolve junctions/symlinks everywhere
