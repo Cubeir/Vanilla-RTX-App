@@ -116,56 +116,68 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  RTX — a soft halo that breathes between its current green and NVIDIA green
+    //  RTX — Swapped breathing glow effect for a VV-like one cause that one looks cooler
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyRtxGlow(Border badge)
     {
-        var current = ColorHelper.FromArgb(244, 111, 177, 0);
-        var nvidia = ColorHelper.FromArgb(244, 255, 255, 255); // NVIDIA green, #76B900
+        var current = ColorHelper.FromArgb(255, 105, 155, 32);
+        var nvidia = ColorHelper.FromArgb(144, 174, 230, 80);
 
-        var glowBrush = new RadialGradientBrush
+        var brush = new RadialGradientBrush
         {
-            Center = new Point(0.5, 0.5),
-            GradientOrigin = new Point(0.5, 0.5),
             RadiusX = 0.75,
-            RadiusY = 0.75
+            RadiusY = 0.75,
+            Center = new Point(0.5, 0.5),
+            GradientOrigin = new Point(0.35, 0.4)
         };
-        var hot = new GradientStop { Offset = 0.0, Color = nvidia };
-        var edge = new GradientStop { Offset = 1.0, Color = ColorHelper.FromArgb(0, nvidia.R, nvidia.G, nvidia.B) };
-        glowBrush.GradientStops.Add(hot);
-        glowBrush.GradientStops.Add(edge);
+        var stopA = new GradientStop { Offset = 0.0, Color = current };
+        var stopB = new GradientStop { Offset = 1.0, Color = nvidia };
+        brush.GradientStops.Add(stopA);
+        brush.GradientStops.Add(stopB);
 
-        var overlay = new Border { Background = glowBrush, CornerRadius = badge.CornerRadius, Opacity = 0.3 };
+        var overlay = new Border { Background = brush, CornerRadius = badge.CornerRadius };
 
-        var breathe = new DoubleAnimation
+        // The gradient's focal points slowly loop around the badge on two different
+        // periods, so the current/nvidia boundary keeps sliding — no hard edges, just
+        // a shifting blend, like blobs moving into one another.
+        var drift = new PointAnimationUsingKeyFrames
         {
-            From = 0.20,
-            To = 0.55,
-            Duration = TimeSpan.FromSeconds(Jitter(3.5, 5.5)),
+            Duration = TimeSpan.FromSeconds(Jitter(4, 17)),
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 9))
+        };
+        AddLoop(drift, new Point(0.30, 0.35), new Point(0.68, 0.30), new Point(0.65, 0.72), new Point(0.28, 0.68));
+        Storyboard.SetTarget(drift, brush);
+        Storyboard.SetTargetProperty(drift, "Center");
+
+        var origin = new PointAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromSeconds(Jitter(11, 15)),
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3))
+        };
+        AddLoop(origin, new Point(0.40, 0.55), new Point(0.62, 0.62), new Point(0.35, 0.30));
+        Storyboard.SetTarget(origin, brush);
+        Storyboard.SetTargetProperty(origin, "GradientOrigin");
+
+        // A slower, independently-phased hue breathe on top of the drift.
+        var hueShift = new ColorAnimation
+        {
+            From = current,
+            To = ColorHelper.FromArgb(127, 0, 255, 0),
+            Duration = TimeSpan.FromSeconds(Jitter(3, 9)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.5))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 4))
         };
-        Storyboard.SetTarget(breathe, overlay);
-        Storyboard.SetTargetProperty(breathe, "Opacity");
-
-        var colorShift = new ColorAnimation
-        {
-            From = nvidia,
-            To = current,
-            Duration = TimeSpan.FromSeconds(Jitter(4.5, 6.5)),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.5))
-        };
-        Storyboard.SetTarget(colorShift, hot);
-        Storyboard.SetTargetProperty(colorShift, "Color");
+        Storyboard.SetTarget(hueShift, stopA);
+        Storyboard.SetTargetProperty(hueShift, "Color");
 
         var sb = new Storyboard();
-        sb.Children.Add(breathe);
-        sb.Children.Add(colorShift);
+        sb.Children.Add(drift);
+        sb.Children.Add(origin);
+        sb.Children.Add(hueShift);
 
         LayerOverlay(badge, overlay);
         BeginOnLoaded(overlay, sb);
@@ -176,8 +188,8 @@ internal static class PackBrowserBadgeVFX
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyVibrantVisualsBlobs(Border badge)
     {
-        var golden = ColorHelper.FromArgb(230, 255, 196, 64);
-        var burnt = ColorHelper.FromArgb(230, 138, 62, 0);
+        var golden = ColorHelper.FromArgb(225, 164, 132, 52);
+        var burnt = ColorHelper.FromArgb(225, 99, 66, 9);
 
         var brush = new RadialGradientBrush
         {
@@ -195,7 +207,7 @@ internal static class PackBrowserBadgeVFX
 
         // The gradient's focal points slowly loop around the badge on two different
         // periods, so the golden/burnt boundary keeps sliding — no hard edges, just
-        // a shifting blend, which reads as blobs moving into one another.
+        // a shifting blend, like blobs moving into one another.
         var drift = new PointAnimationUsingKeyFrames
         {
             Duration = TimeSpan.FromSeconds(Jitter(9, 13)),
@@ -271,7 +283,7 @@ internal static class PackBrowserBadgeVFX
     private static void ApplyIncompatiblePulse(Border badge)
     {
         var red = ColorHelper.FromArgb(244, 192, 33, 0);
-        var gold = ColorHelper.FromArgb(244, 214, 120, 20); // partway toward VV's orange/gold, stays clearly somewhat "red/incompatible family"
+        var gold = ColorHelper.FromArgb(225, 99, 66, 9);
 
         var pulseBrush = new SolidColorBrush(red);
         var overlay = new Border { Background = pulseBrush, CornerRadius = badge.CornerRadius };
@@ -280,11 +292,11 @@ internal static class PackBrowserBadgeVFX
         {
             From = red,
             To = gold,
-            Duration = TimeSpan.FromSeconds(Jitter(4.5, 7)),
+            Duration = TimeSpan.FromSeconds(Jitter(5, 14)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 5))
         };
         Storyboard.SetTarget(pulse, pulseBrush);
         Storyboard.SetTargetProperty(pulse, "Color");

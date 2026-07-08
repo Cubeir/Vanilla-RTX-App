@@ -680,8 +680,6 @@ public sealed partial class PackBrowserWindow : Window
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         };
 
-        // TODO: Could Animate the tags here later... It'd be fun, alchitex having its colors moving around
-        // Glowing on and off for red one, RTX glowing constantly, glow effects would be nice, overall, but forget it if it comes to needing Win2D
         switch (tag)
         {
             case "Incompatible":
@@ -690,6 +688,7 @@ public sealed partial class PackBrowserWindow : Window
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 192, 33, 0));
                 break;
             case "RTX":
+                text.Text = "Ray Tracing (RTX)";
                 text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 111, 177, 0));
                 break;
@@ -708,6 +707,7 @@ public sealed partial class PackBrowserWindow : Window
         }
 
         badge.Child = text;
+        PackBrowserBadgeVFX.Apply(badge, tag);
         return badge;
     }
 
@@ -927,12 +927,14 @@ public sealed partial class PackBrowserWindow : Window
                 if (capLower == "raytraced") hasRaytraced = true;
                 else if (capLower == "pbr") hasPbr = true;
             }
-
-            if (hasRaytraced) { capabilityTags.Add("RTX"); packType = "RTX"; }
             if (hasPbr)
             {
                 capabilityTags.Add("Vibrant Visuals");
                 if (packType == "Incompatible") packType = "Vibrant Visuals";
+            }
+            if (hasRaytraced)
+            {
+                capabilityTags.Add("RTX"); packType = "RTX";
             }
         }
 
