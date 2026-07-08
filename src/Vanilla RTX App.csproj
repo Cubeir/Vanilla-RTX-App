@@ -55,6 +55,7 @@
     <TrimmerRootAssembly Include="Magick.NET.SystemDrawing" />
     <TrimmerRootAssembly Include="Microsoft.Win32.SystemEvents" />
     <TrimmerRootAssembly Include="System.Drawing.Common" />
+    <TrimmerRootAssembly Include="System.Text.Json" />
     <TrimmerRootAssembly Include="WinUIEx" />
   </ItemGroup>
   <ItemGroup>
