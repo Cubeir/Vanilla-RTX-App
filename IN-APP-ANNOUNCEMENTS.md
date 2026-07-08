@@ -5,10 +5,10 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PSA
 ### app update announcement
-📯 This update brings dynamic info panels throughout the app to help you stay informed, including Changelogs for Vanilla RTX updates, and much, much more...
+📯 Welcome to 3.1 update! As you explore each feature, you'll come across new and dynamic info panels to help you stay informed, including changelogs for Vanilla RTX updates, and much, much more...
 
 ### reactor temp announcement
-🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App!
+🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App! Currently it only hosts development progress news.
 
 # PackUpdateAnnouncements
 ### Update [glyph:"E789"]
@@ -16,14 +16,17 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 Fog and atmosphere of many biomes has been overhauled across all three packs!
 Find detailed changelogs by clicking name of a pack to go to its CurseForge page.
 
+NOTE: The update may not be out yet as of writing this, but it will be very soon.
+The app update and these PSAs were released a bit prematurely, since I've just resumed working on Vanilla RTX updates as we speak.
+Everything will be back on track soon!
+
 ## Chaos Cubes [cd:"120"] [glyph:"F158"]
-Support for Chaos Cubed game drop will be arriving soon.
-Check back every now and then!
+Support for Chaos Cubed game drop will be arriving later this month! Check back later.
 
 ### Tip [glyph:"E95B"]
 Hint: It is always preferred to activate RTX resource packs in your Global Resource Pack settings instead of per-World or Realm.
 
-### Tip
+### Tip [glyph:"E95B"]
 Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts!
 Reinstalls happen quicker from a cached version, unless a new version happens to be available.
 
