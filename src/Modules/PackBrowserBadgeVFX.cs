@@ -76,8 +76,16 @@ internal static class PackBrowserBadgeVFX
         void OnLoaded(object sender, RoutedEventArgs e)
         {
             element.Loaded -= OnLoaded;
+            element.Unloaded += OnUnloaded;
             storyboard.Begin();
         }
+
+        void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            element.Unloaded -= OnUnloaded;
+            storyboard.Stop(); // break animation reference cycle
+        }
+
         element.Loaded += OnLoaded;
     }
 
@@ -86,10 +94,19 @@ internal static class PackBrowserBadgeVFX
         void OnLoaded(object sender, RoutedEventArgs e)
         {
             element.Loaded -= OnLoaded;
+            element.Unloaded += OnUnloaded;
             foreach (var sb in storyboards) sb.Begin();
         }
+
+        void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            element.Unloaded -= OnUnloaded;
+            foreach (var sb in storyboards) sb.Stop(); // stop all cell storyboards
+        }
+
         element.Loaded += OnLoaded;
     }
+
 
     /// <summary>
     /// Lays an animated visual over the badge's existing content, behind the text,
