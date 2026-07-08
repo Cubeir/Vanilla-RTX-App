@@ -896,7 +896,7 @@ public sealed partial class MainWindow : Window
             try
             {
                 var sb = new StringBuilder();
-                // Original sidebar log (important status messages)
+                AppendSystemInfo(sb);
                 sb.AppendLine($"===== Sidebar Log (Last {MaxLogChars.ToString()} Chars)");
                 string logSnapshot;
                 lock (_logGate) logSnapshot = LogText;
@@ -974,6 +974,114 @@ public sealed partial class MainWindow : Window
                 Log("Copied stack trace to clipboard.", LogLevel.Success);
                 _ = BlinkingLamp(true, true, 0.0, 1.0);
 
+                // ============================================
+                void CollectUIControlsState(StringBuilder sb)
+                {
+                    var fields = this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+                    foreach (var field in fields)
+                    {
+                        var value = field.GetValue(this);
+                        if (value == null) continue;
+
+                        var type = value.GetType();
+                        var name = field.Name;
+
+                        // Toggle-type controls
+                        if (value is ToggleButton toggleBtn)
+                        {
+                            sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
+                        }
+                        else if (value is CheckBox checkBox)
+                        {
+                            sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
+                        }
+                        else if (value is ToggleSwitch toggleSwitch)
+                        {
+                            sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
+                        }
+                        else if (value is RadioButton radioBtn)
+                        {
+                            sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
+                        }
+                        // Value controls
+                        else if (value is Slider slider)
+                        {
+                            sb.AppendLine($"{name} (Slider): {slider.Value}");
+                        }
+                        else if (value is NumberBox numberBox)
+                        {
+                            sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
+                        }
+                        else if (value is ComboBox comboBox)
+                        {
+                            sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
+                        }
+                        else if (value is TextBox textBox)
+                        {
+                            var text = textBox.Text;
+                            if (!string.IsNullOrEmpty(text) && text.Length > 50)
+                                text = text.Substring(0, 50) + "...";
+                            sb.AppendLine($"{name} (TextBox): \"{text}\"");
+                        }
+                        else if (value is RatingControl rating)
+                        {
+                            sb.AppendLine($"{name} (RatingControl): {rating.Value}");
+                        }
+                        else if (value is ColorPicker colorPicker)
+                        {
+                            sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
+                        }
+                        else if (value is DatePicker datePicker)
+                        {
+                            sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
+                        }
+                        else if (value is TimePicker timePicker)
+                        {
+                            sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
+                        }
+                    }
+                }
+                void AppendSystemInfo(StringBuilder sb)
+                {
+                    sb.AppendLine("===== System Info");
+
+                    // Process architecture = what's actually executing right now
+                    sb.AppendLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
+                    // OS architecture = the machine's native architecture (differs from above if running under emulation)
+                    sb.AppendLine($"OS Architecture: {RuntimeInformation.OSArchitecture}");
+                    sb.AppendLine($"Is Emulated (x64-on-ARM64): {(RuntimeInformation.ProcessArchitecture != RuntimeInformation.OSArchitecture)}");
+
+                    sb.AppendLine($"OS Version: {RuntimeInformation.OSDescription}");
+                    sb.AppendLine($".NET Runtime: {RuntimeInformation.FrameworkDescription}");
+
+                    sb.AppendLine($"Processor Count: {Environment.ProcessorCount}");
+                    sb.AppendLine($"Working Set: {Environment.WorkingSet / 1024 / 1024} MB");
+                    sb.AppendLine($"64-bit OS: {Environment.Is64BitOperatingSystem}");
+                    sb.AppendLine($"64-bit Process: {Environment.Is64BitProcess}");
+
+                    try
+                    {
+                        var package = Windows.ApplicationModel.Package.Current;
+                        var v = package.Id.Version;
+                        sb.AppendLine($"Package Version: {v.Major}.{v.Minor}.{v.Build}.{v.Revision}");
+                        sb.AppendLine($"Package Architecture: {package.Id.Architecture}");
+                        sb.AppendLine($"Package Full Name: {package.Id.FullName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine($"Package Info: unavailable ({ex.Message})");
+                    }
+
+                    try
+                    {
+                        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+                        sb.AppendLine($"UI Culture: {culture.Name}");
+                    }
+                    catch { /* non-critical */ }
+
+                    sb.AppendLine();
+                }
             }
             catch (Exception ex)
             {
@@ -1054,74 +1162,6 @@ public sealed partial class MainWindow : Window
                             }
                         });
                     }
-                }
-            }
-        }
-
-        void CollectUIControlsState(StringBuilder sb)
-        {
-            var fields = this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (var field in fields)
-            {
-                var value = field.GetValue(this);
-                if (value == null) continue;
-
-                var type = value.GetType();
-                var name = field.Name;
-
-                // Toggle-type controls
-                if (value is ToggleButton toggleBtn)
-                {
-                    sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
-                }
-                else if (value is CheckBox checkBox)
-                {
-                    sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
-                }
-                else if (value is ToggleSwitch toggleSwitch)
-                {
-                    sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
-                }
-                else if (value is RadioButton radioBtn)
-                {
-                    sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
-                }
-                // Value controls
-                else if (value is Slider slider)
-                {
-                    sb.AppendLine($"{name} (Slider): {slider.Value}");
-                }
-                else if (value is NumberBox numberBox)
-                {
-                    sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
-                }
-                else if (value is ComboBox comboBox)
-                {
-                    sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
-                }
-                else if (value is TextBox textBox)
-                {
-                    var text = textBox.Text;
-                    if (!string.IsNullOrEmpty(text) && text.Length > 50)
-                        text = text.Substring(0, 50) + "...";
-                    sb.AppendLine($"{name} (TextBox): \"{text}\"");
-                }
-                else if (value is RatingControl rating)
-                {
-                    sb.AppendLine($"{name} (RatingControl): {rating.Value}");
-                }
-                else if (value is ColorPicker colorPicker)
-                {
-                    sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
-                }
-                else if (value is DatePicker datePicker)
-                {
-                    sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
-                }
-                else if (value is TimePicker timePicker)
-                {
-                    sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
                 }
             }
         }
