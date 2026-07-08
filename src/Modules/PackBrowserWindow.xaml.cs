@@ -37,6 +37,9 @@ public sealed partial class PackBrowserWindow : Window
     public const string AlchitexCandidateTag = "Potential Reactor Candidate";
     private const bool AlchitexLegacyPacksEligible = false;
 
+    private static readonly string VibrantVisualsPoopJoke =
+        $"Vibrant Visuals{(Random.Shared.Next(100) == 49 ? " 💩" : "")}";
+
     private static readonly Regex MinecraftFormattingCodeRegex = new(@"§\S", RegexOptions.Compiled);
     private static readonly Regex StrictSemVerRegex = new(@"^\d+\.\d+\.\d+$", RegexOptions.Compiled);
 
@@ -542,8 +545,7 @@ public sealed partial class PackBrowserWindow : Window
             Width = 96,
             Height = 96,
             CornerRadius = new CornerRadius(3),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(192, 0, 0, 0)),
-            Translation = new System.Numerics.Vector3(0, 0, 128),
+            Background = new SolidColorBrush(ColorHelper.FromArgb(200, 0, 0, 0)),
             Visibility = Visibility.Collapsed,
             Tag = "SelectionOverlay"
         };
@@ -693,6 +695,7 @@ public sealed partial class PackBrowserWindow : Window
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 111, 177, 0));
                 break;
             case "Vibrant Visuals":
+                text.Text = VibrantVisualsPoopJoke;
                 text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 200, 132, 0));
                 break;
