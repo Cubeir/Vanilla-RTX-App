@@ -137,13 +137,13 @@ internal static class PackBrowserBadgeVFX
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyRtxGlow(Border badge)
     {
-        var current = ColorHelper.FromArgb(144, 174, 230, 80);
-        var nvidia = ColorHelper.FromArgb(255, 105, 155, 32);
+        var current = ColorHelper.FromArgb(255, 177, 255, 44);
+        var nvidia = ColorHelper.FromArgb(244, 111, 177, 0);
 
         var brush = new RadialGradientBrush
         {
-            RadiusX = 0.75,
-            RadiusY = 0.75,
+            RadiusX = 0.6,
+            RadiusY = 0.6,
             Center = new Point(0.5, 0.5),
             GradientOrigin = new Point(0.35, 0.4)
         };
@@ -154,14 +154,11 @@ internal static class PackBrowserBadgeVFX
 
         var overlay = new Border { Background = brush, CornerRadius = badge.CornerRadius };
 
-        // The gradient's focal points slowly loop around the badge on two different
-        // periods, so the current/nvidia boundary keeps sliding — no hard edges, just
-        // a shifting blend, like blobs moving into one another.
         var drift = new PointAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromSeconds(Jitter(4, 17)),
+            Duration = TimeSpan.FromSeconds(Jitter(1.0, 4.0)),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 9))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.5))
         };
         AddLoop(drift, new Point(0.30, 0.35), new Point(0.68, 0.30), new Point(0.65, 0.72), new Point(0.28, 0.68));
         Storyboard.SetTarget(drift, brush);
@@ -169,36 +166,46 @@ internal static class PackBrowserBadgeVFX
 
         var origin = new PointAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromSeconds(Jitter(11, 15)),
+            Duration = TimeSpan.FromSeconds(Jitter(1.0, 4.0)),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 1.8))
         };
         AddLoop(origin, new Point(0.40, 0.55), new Point(0.62, 0.62), new Point(0.35, 0.30));
         Storyboard.SetTarget(origin, brush);
         Storyboard.SetTargetProperty(origin, "GradientOrigin");
 
-        // A slower, independently-phased hue breathe on top of the drift.
         var hueShift = new ColorAnimation
         {
             From = current,
             To = ColorHelper.FromArgb(127, 0, 255, 0),
-            Duration = TimeSpan.FromSeconds(Jitter(3, 9)),
+            Duration = TimeSpan.FromSeconds(Jitter(0.2, 3.2)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 4))
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 0.5))
         };
         Storyboard.SetTarget(hueShift, stopA);
         Storyboard.SetTargetProperty(hueShift, "Color");
 
+        var opacityPulse = new DoubleAnimation
+        {
+            From = 0.2,
+            To = 1.0,
+            Duration = TimeSpan.FromSeconds(Jitter(0.5, 3.5)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        Storyboard.SetTarget(opacityPulse, overlay);
+        Storyboard.SetTargetProperty(opacityPulse, "Opacity");
+
         var sb = new Storyboard();
-        sb.Children.Add(drift);
-        sb.Children.Add(origin);
-        sb.Children.Add(hueShift);
+        sb.Children.Add(drift); sb.Children.Add(origin); sb.Children.Add(hueShift); sb.Children.Add(opacityPulse);
 
         LayerOverlay(badge, overlay);
         BeginOnLoaded(overlay, sb);
     }
+
 
     // ════════════════════════════════════════════════════════════════════
     //  Vibrant Visuals — golden / burnt-orange blobs drifting into one another
@@ -210,8 +217,8 @@ internal static class PackBrowserBadgeVFX
 
         var brush = new RadialGradientBrush
         {
-            RadiusX = 0.9,
-            RadiusY = 0.9,
+            RadiusX = 0.8,
+            RadiusY = 0.8,
             Center = new Point(0.35, 0.4),
             GradientOrigin = new Point(0.35, 0.4)
         };
@@ -222,14 +229,11 @@ internal static class PackBrowserBadgeVFX
 
         var overlay = new Border { Background = brush, CornerRadius = badge.CornerRadius };
 
-        // The gradient's focal points slowly loop around the badge on two different
-        // periods, so the golden/burnt boundary keeps sliding — no hard edges, just
-        // a shifting blend, like blobs moving into one another.
         var drift = new PointAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromSeconds(Jitter(9, 13)),
+            Duration = TimeSpan.FromSeconds(Jitter(1.0, 3.5)),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.0))
         };
         AddLoop(drift, new Point(0.30, 0.35), new Point(0.68, 0.30), new Point(0.65, 0.72), new Point(0.28, 0.68));
         Storyboard.SetTarget(drift, brush);
@@ -237,36 +241,46 @@ internal static class PackBrowserBadgeVFX
 
         var origin = new PointAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromSeconds(Jitter(11, 15)),
+            Duration = TimeSpan.FromSeconds(Jitter(2.0, 4.0)),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 1.8))
         };
         AddLoop(origin, new Point(0.40, 0.55), new Point(0.62, 0.62), new Point(0.35, 0.30));
         Storyboard.SetTarget(origin, brush);
         Storyboard.SetTargetProperty(origin, "GradientOrigin");
 
-        // A slower, independently-phased hue breathe on top of the drift.
         var hueShift = new ColorAnimation
         {
             From = golden,
-            To = ColorHelper.FromArgb(230, 255, 168, 40),
-            Duration = TimeSpan.FromSeconds(Jitter(6, 9)),
+            To = ColorHelper.FromArgb(244, 255, 168, 40),
+            Duration = TimeSpan.FromSeconds(Jitter(1.0, 2.0)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 4))
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 1.5))
         };
         Storyboard.SetTarget(hueShift, stopA);
         Storyboard.SetTargetProperty(hueShift, "Color");
 
+        var opacityPulse = new DoubleAnimation
+        {
+            From = 0.5,
+            To = 1.0,
+            Duration = TimeSpan.FromSeconds(Jitter(1.8, 3.0)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        Storyboard.SetTarget(opacityPulse, overlay);
+        Storyboard.SetTargetProperty(opacityPulse, "Opacity");
+
         var sb = new Storyboard();
-        sb.Children.Add(drift);
-        sb.Children.Add(origin);
-        sb.Children.Add(hueShift);
+        sb.Children.Add(drift); sb.Children.Add(origin); sb.Children.Add(hueShift); sb.Children.Add(opacityPulse);
 
         LayerOverlay(badge, overlay);
         BeginOnLoaded(overlay, sb);
     }
+
 
     /// <summary>
     /// Traces the given points evenly across the animation's Duration (which must

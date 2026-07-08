@@ -686,21 +686,21 @@ public sealed partial class PackBrowserWindow : Window
         {
             case "Incompatible":
                 text.Text = "Incompatible with Tuner";
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 192, 33, 0));
                 break;
             case "RTX":
-                text.Text = "Ray Tracing [RTX]";
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                text.Text = "RTX (Ray Tracing)";
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 111, 177, 0));
                 break;
             case "Vibrant Visuals":
                 text.Text = VibrantVisualsPoopJoke;
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 200, 132, 0));
                 break;
             case AlchitexCandidateTag:
-                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(244, 255, 255, 255));
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 0, 72, 138));
                 break;
             default:
