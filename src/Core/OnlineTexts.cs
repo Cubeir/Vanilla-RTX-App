@@ -162,7 +162,7 @@ public static class OnlineTexts
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
     private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
-    private const int MAX_RETRIES = 3;
+    private const int MAX_RETRIES = 2;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
 
