@@ -470,7 +470,7 @@ public sealed partial class MainWindow : Window
             CycleThemeButton_Click(null, null);
 
             // Give the window time to render
-            await Task.Delay(100);
+            await Task.Delay(175);
 
             // Apply some colors, then continue to watch theme changes and adjust based on theme
             if (root != null)
@@ -902,7 +902,6 @@ public sealed partial class MainWindow : Window
                 lock (_logGate) logSnapshot = LogText;
                 sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
                 sb.AppendLine();
-                // Tuner variables
                 sb.AppendLine("===== Tuner Variables");
                 var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
 
@@ -2714,6 +2713,8 @@ Leave references to iconic Vanilla RTX worlds as well, from its previous updates
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
 publicly maintained apis to do this too.
 WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
+
+- Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of 
 
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
