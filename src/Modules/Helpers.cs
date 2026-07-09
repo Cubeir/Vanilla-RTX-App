@@ -1695,7 +1695,7 @@ public static class MinecraftUserDataLocator
                                  ? MinecraftUserDataLocator.PreviewRootFolderName
                                  : MinecraftUserDataLocator.StableRootFolderName;
 
-        MainWindow.Log($"You can't use this feature without first locating where your {versionName} user data folder is located. " +
+        MainWindow.Log($"You can't use this feature without first telling the app where your {versionName} user data folder is located. " +
                        $"Click \"Locate {editionLabel} user data\" above, find and select the folder named \"{expectedFolderName}\" " +
                        $"- It's the one with a \"Users\" subfolder inside it.", LogLevel.Warning);
 
