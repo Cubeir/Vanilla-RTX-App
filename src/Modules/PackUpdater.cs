@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Windows.Storage;
 using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are stored there for locating packs
 
@@ -153,7 +153,7 @@ public class PackUpdater
             }
         }
 
-        (JObject? rtx, JObject? normals, JObject? opus)? remote = null;
+        (JsonObject? rtx, JsonObject? normals, JsonObject? opus)? remote = null;
 
         try
         {
@@ -187,13 +187,13 @@ public class PackUpdater
         return false;
     }
 
-    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JObject? rtx, JObject? normals, JObject? opus) remoteManifests)
+    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JsonObject? rtx, JsonObject? normals, JsonObject? opus) remoteManifests)
     {
         try
         {
             using var archive = ZipFile.OpenRead(cachedPath);
 
-            async Task<JObject?> TryReadManifest(string partialPath)
+            async Task<JsonObject?> TryReadManifest(string partialPath)
             {
                 var entry = archive.Entries.FirstOrDefault(e =>
                     e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
@@ -202,7 +202,7 @@ public class PackUpdater
                 using var stream = entry.Open();
                 using var reader = new StreamReader(stream);
                 var json = await reader.ReadToEndAsync();
-                return JObject.Parse(json);
+                return ParseJsonObject(json);
             }
 
             var rtxManifest = await TryReadManifest("Vanilla-RTX/manifest.json");
@@ -364,18 +364,20 @@ public class PackUpdater
             {
                 try
                 {
-                    var cached = JObject.Parse(cachedJson);
+                    var cached = ParseJsonObject(cachedJson)
+                        ?? throw new JsonException("Cached remote versions payload was not a JSON object.");
+
                     var rtxCached = cached["rtx"];
                     var normalsCached = cached["normals"];
                     var opusCached = cached["opus"];
 
                     return (
-                        (rtxCached?["version"]?.ToString(),
-                         ParseVersionSource(rtxCached?["source"]?.ToString())),
-                        (normalsCached?["version"]?.ToString(),
-                         ParseVersionSource(normalsCached?["source"]?.ToString())),
-                        (opusCached?["version"]?.ToString(),
-                         ParseVersionSource(opusCached?["source"]?.ToString()))
+                        (rtxCached?["version"]?.GetValue<string>(),
+                         ParseVersionSource(rtxCached?["source"]?.GetValue<string>())),
+                        (normalsCached?["version"]?.GetValue<string>(),
+                         ParseVersionSource(normalsCached?["source"]?.GetValue<string>())),
+                        (opusCached?["version"]?.GetValue<string>(),
+                         ParseVersionSource(opusCached?["source"]?.GetValue<string>()))
                     );
                 }
                 catch { /* Fall through */ }
@@ -463,11 +465,11 @@ public class PackUpdater
 
         if (anyRemoteSuccess)
         {
-            var cacheObj = new JObject();
+            var cacheObj = new JsonObject();
 
             if (rtxVersion != null)
             {
-                cacheObj["rtx"] = new JObject
+                cacheObj["rtx"] = new JsonObject
                 {
                     ["version"] = rtxVersion,
                     ["source"] = rtxSource.ToString()
@@ -476,7 +478,7 @@ public class PackUpdater
 
             if (normalsVersion != null)
             {
-                cacheObj["normals"] = new JObject
+                cacheObj["normals"] = new JsonObject
                 {
                     ["version"] = normalsVersion,
                     ["source"] = normalsSource.ToString()
@@ -485,14 +487,14 @@ public class PackUpdater
 
             if (opusVersion != null)
             {
-                cacheObj["opus"] = new JObject
+                cacheObj["opus"] = new JsonObject
                 {
                     ["version"] = opusVersion,
                     ["source"] = opusSource.ToString()
                 };
             }
 
-            localSettings.Values[cacheKey] = cacheObj.ToString();
+            localSettings.Values[cacheKey] = cacheObj.ToJsonString();
             localSettings.Values[timeKey] = now.ToString("o");
         }
 
@@ -530,7 +532,7 @@ public class PackUpdater
                     using var stream = entry.Open();
                     using var reader = new StreamReader(stream);
                     var json = await reader.ReadToEndAsync();
-                    var manifest = JObject.Parse(json);
+                    var manifest = ParseJsonObject(json);
                     return ExtractVersionFromManifest(manifest);
                 }
                 catch
@@ -568,12 +570,64 @@ public class PackUpdater
 
     // ======================= Helper Methods =======================
 
-    private bool IsRemoteVersionNewer(JObject cachedManifest, JObject remoteManifest)
+    // System.Text.Json parses strictly (RFC 8259) by default: comments and trailing commas throw.
+    // Newtonsoft.Json tolerated both silently. Every manifest/JSON read in this class goes through
+    // ParseJsonObject below so parsing leniency matches what this class relied on before the
+    // Newtonsoft.Json → System.Text.Json conversion, rather than only covering one call site.
+    private static readonly JsonDocumentOptions ManifestParseOptions = new()
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
+    /// <summary>
+    /// Parses a JSON string into a JsonObject, tolerating comments and trailing commas the way
+    /// Newtonsoft.Json's JObject.Parse did. Returns null (never throws) on malformed JSON or if
+    /// the root element isn't an object — callers treat null as "couldn't read this".
+    /// </summary>
+    private static JsonObject? ParseJsonObject(string json)
     {
         try
         {
-            var cachedVersion = cachedManifest["header"]?["version"]?.ToObject<int[]>();
-            var remoteVersion = remoteManifest["header"]?["version"]?.ToObject<int[]>();
+            return JsonNode.Parse(json, documentOptions: ManifestParseOptions)?.AsObject();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Reads a JSON array of integers (e.g. a manifest's "version": [1,2,3]) by walking the parsed
+    /// nodes directly instead of going through JsonSerializer/reflection-based conversion, so it
+    /// stays trim/AOT-safe (GetValue&lt;int&gt;() on an element-backed JsonValue never reflects).
+    /// </summary>
+    private static int[]? ExtractIntArray(JsonNode? node)
+    {
+        if (node is not JsonArray array) return null;
+
+        try
+        {
+            var result = new int[array.Count];
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (array[i] is not JsonValue value) return null;
+                result[i] = value.GetValue<int>();
+            }
+            return result;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private bool IsRemoteVersionNewer(JsonObject cachedManifest, JsonObject remoteManifest)
+    {
+        try
+        {
+            var cachedVersion = ExtractIntArray(cachedManifest["header"]?["version"]);
+            var remoteVersion = ExtractIntArray(remoteManifest["header"]?["version"]);
 
             if (cachedVersion == null || remoteVersion == null) return true;
 
@@ -585,15 +639,15 @@ public class PackUpdater
         }
     }
 
-    private async Task<(JObject? rtx, JObject? normals, JObject? opus)?> FetchRemoteManifests()
+    private async Task<(JsonObject? rtx, JsonObject? normals, JsonObject? opus)?> FetchRemoteManifests()
     {
-        async Task<JObject?> TryFetchManifest(string url)
+        async Task<JsonObject?> TryFetchManifest(string url)
         {
             try
             {
                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
                 var response = await Helpers.UpdaterHttpClient.GetStringAsync(url, cts.Token);
-                return JObject.Parse(response);
+                return ParseJsonObject(response);
             }
             catch
             {
@@ -993,16 +1047,16 @@ public class PackUpdater
         };
     }
 
-    private string? ExtractVersionFromManifest(JObject? manifest)
+    private string? ExtractVersionFromManifest(JsonObject? manifest)
     {
         try
         {
             if (manifest == null) return null;
 
-            var versionArray = manifest["header"]?["version"]?.ToObject<int[]>();
+            var versionArray = ExtractIntArray(manifest["header"]?["version"]);
             if (versionArray == null || versionArray.Length == 0) return null;
 
-            return $"{string.Join(".", versionArray)}";
+            return string.Join(".", versionArray);
         }
         catch
         {
@@ -1158,31 +1212,16 @@ public class PackUpdater
         }
     }
 
-    private static JObject? ParseManifestJson(string json)
-    {
-        try
-        {
-            using var sr = new StringReader(json);
-            using var reader = new JsonTextReader(sr) { DateParseHandling = DateParseHandling.None };
-            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
-            return JObject.Load(reader, loadSettings);
-        }
-        catch
-        {
-            try { return JObject.Parse(json); }
-            catch { return null; }
-        }
-    }
     private async Task<(string headerUUID, string moduleUUID)?> ReadManifestUUIDs(string manifestPath)
     {
         try
         {
             var json = await File.ReadAllTextAsync(manifestPath);
-            var data = ParseManifestJson(json);
+            var data = ParseJsonObject(json);
             if (data == null) return null;
 
-            string? headerUUID = data["header"]?["uuid"]?.ToString();
-            string? moduleUUID = data["modules"]?[0]?["uuid"]?.ToString();
+            string? headerUUID = data["header"]?["uuid"]?.GetValue<string>();
+            string? moduleUUID = data["modules"]?[0]?["uuid"]?.GetValue<string>();
 
             if (headerUUID == null || moduleUUID == null)
                 return null;
