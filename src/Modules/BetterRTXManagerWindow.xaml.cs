@@ -1409,7 +1409,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             bool showDownloadGlyph = !isDefault && !isDownloaded;
             iconBorder.Child = new FontIcon
             {
-                Glyph = showDownloadGlyph ? "\uE896" : "\uE794",
+                Glyph = showDownloadGlyph ? "\uE896" : "\uEABC",
                 FontSize = 44, // scaled up to match larger icon container
                 FontWeight = FontWeights.ExtraLight,
                 HorizontalAlignment = HorizontalAlignment.Center,
