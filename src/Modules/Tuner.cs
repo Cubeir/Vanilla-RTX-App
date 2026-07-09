@@ -1119,7 +1119,7 @@ public class Tuner
         stopwatch.Stop();
 
         if (wasCancelled)
-            return $"Tuning was cancelled after {FormatDuration(stopwatch.Elapsed)}.";
+            return $"Tuning was aborted after {FormatDuration(stopwatch.Elapsed)}.";
 
         return BuildTuningCompletionMessage(packs.Length, stopwatch.Elapsed);
     }
@@ -1133,7 +1133,7 @@ public class Tuner
         var duration = FormatDuration(elapsed);
         return packCount == 1
             ? $"{verb} tuning in {duration}."
-            : $"{verb} tuning {packCount} packs - took {duration}!)";
+            : $"{verb} tuning {packCount} packs - took {duration}!";
     }
 
     private static string FormatDuration(TimeSpan elapsed)
