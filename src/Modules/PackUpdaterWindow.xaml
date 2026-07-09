@@ -184,7 +184,7 @@
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
                                               MinHeight="60"
-                                              Translation="0,0,24">
+                                              Translation="0,0,12">
                                             <Button x:Name="VanillaRTXNormals_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -324,7 +324,7 @@
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
                                               MinHeight="60"
-                                              Translation="0,0,32">
+                                              Translation="0,0,12">
                                             <Button x:Name="VanillaRTX_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
@@ -464,7 +464,7 @@
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
                                               MinHeight="60"
-                                              Translation="0,0,24">
+                                              Translation="0,0,12">
                                             <Button x:Name="VanillaRTXOpus_InstallButton"
                                                     Content="Install"
                                                     FontWeight="SemiBold"
