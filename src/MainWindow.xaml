@@ -539,6 +539,7 @@
                          AllowFocusOnInteraction="True"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          Padding="12,12,12,12"
+                         CornerRadius="6,6,6,6"
                          Translation="0,0,64"
                          IsTextScaleFactorEnabled="False"
                          ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn you as you interact with the app.">
@@ -1268,7 +1269,7 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="RTX Reactor ">
+                            ToolTipService.ToolTip="RTX Reactor is coming to the Vanilla RTX App later this year! (hopefully)">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xF4A5;"
