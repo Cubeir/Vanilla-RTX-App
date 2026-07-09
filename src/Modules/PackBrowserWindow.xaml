@@ -1,7 +1,7 @@
 <Window x:Class="Vanilla_RTX_App.Modules.PackBrowserWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.PackBrowser"
+        xmlns:local="using:Vanilla_RTX_App.Modules"
         Title="Browse Packs">
 
     <Window.SystemBackdrop>
@@ -72,26 +72,32 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- PSA / announcement cards -->
-                <StackPanel x:Name="PackBrowserAnnouncementsPanel"
-                            Grid.Row="0"
-                            Spacing="12"
-                            Margin="20,8,24,8" />
-
                 <!-- Shadow receiver sits behind everything -->
                 <Grid x:Name="ShadowReceiverGrid"
                       Grid.Row="1" />
 
                 <!-- PACK LIST (scrollable) -->
                 <ScrollViewer Grid.Row="1"
-                              Padding="20,0,25,0"
+                              Padding="16,0,16,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Margin="-20,0,-20,0">
-                    <StackPanel x:Name="PackListContainer"
-                                Spacing="4"
-                                Padding="20,0,20,8" />
+                              Margin="5,0,5,0">
+
+                    <!-- Wrap both panels in a single parent StackPanel -->
+                    <StackPanel>
+
+                        <!-- PSA / announcement cards -->
+                        <StackPanel x:Name="PackBrowserAnnouncementsPanel"
+                                    Spacing="12"
+                                    Margin="0,8,0,8" />
+
+                        <!-- Pack list -->
+                        <StackPanel x:Name="PackListContainer"
+                                    Spacing="4"
+                                    Padding="0,0,0,8" />
+
+                    </StackPanel>
                 </ScrollViewer>
 
                 <!-- Empty state overlays the scroll area -->

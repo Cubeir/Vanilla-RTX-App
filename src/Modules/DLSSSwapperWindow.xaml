@@ -87,26 +87,24 @@
 
             <!-- DLL List -->
             <Grid Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+                <Grid x:Name="ShadowReceiverGrid" />
 
-                <StackPanel x:Name="DLSSAnnouncementsPanel"
-                            Grid.Row="0"
-                            Spacing="12"
-                            Margin="20,0,24,0" />
-
-                <Grid x:Name="ShadowReceiverGrid"
-                      Grid.Row="1" />
-                <ScrollViewer Grid.Row="1"
-                              Padding="20,20,24,0"
+                <ScrollViewer Padding="20,20,24,0"
                               Margin="0,-8,0,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="DllListContainer"
-                                Spacing="8" />
+
+                    <StackPanel>
+
+                        <StackPanel x:Name="DLSSAnnouncementsPanel"
+                                    Spacing="12"
+                                    Margin="0,0,0,0" />
+
+                        <StackPanel x:Name="DllListContainer"
+                                    Spacing="8" />
+
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
 

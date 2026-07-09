@@ -85,28 +85,24 @@
 
             <!-- Preset List -->
             <Grid Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <!-- PSA cards — above the scrollable preset list -->
-                <StackPanel x:Name="BetterRTXAnnouncementsPanel"
-                            Grid.Row="0"
-                            Spacing="10"
-                            Margin="20,12,24,14" />
-
                 <!-- Shadow receiver sits behind the scroll content -->
-                <Grid x:Name="ShadowReceiverGrid"
-                      Grid.Row="1" />
-                <ScrollViewer Grid.Row="1"
-                              Padding="20,0,24,0"
+                <Grid x:Name="ShadowReceiverGrid" />
+
+                <ScrollViewer Padding="20,16,24,0"
                               Margin="0,-4,0,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="PresetListContainer"
-                                Spacing="8" />
+                    <!-- Wrapped both panels in a single parent StackPanel -->
+                    <StackPanel>
+                        <!-- PSA cards (Horizontal margins removed to avoid duplicating ScrollViewer padding) -->
+                        <StackPanel x:Name="BetterRTXAnnouncementsPanel"
+                                    Spacing="10"
+                                    Margin="0,12,0,14" />
+                        <!-- Preset list -->
+                        <StackPanel x:Name="PresetListContainer"
+                                    Spacing="8" />
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
 
