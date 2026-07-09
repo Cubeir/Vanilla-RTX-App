@@ -792,7 +792,7 @@ public sealed partial class MainWindow : Window
     }
 
 
-    public async void UpdateUI(double animationDurationSeconds = 0.15)
+    public async void UpdateUI(double animationDurationSeconds = 0.1)
     {
         // Suppress Previewer Updates
         Previewer.Instance.Freeze();
@@ -838,8 +838,7 @@ public sealed partial class MainWindow : Window
                     var currentValue = Lerp(startValues[i], targetValue, easedProgress);
                     SetSliderValue(slider, textBox, currentValue, isInteger);
                 }
-
-                await Task.Delay(4);
+                await Task.Delay(2);
             }
 
             for (int i = 0; i < configs.Length; i++)
@@ -847,16 +846,15 @@ public sealed partial class MainWindow : Window
                 var (slider, textBox, targetValue, isInteger) = configs[i];
                 SetSliderValue(slider, textBox, targetValue, isInteger);
             }
-        }
+            void SetSliderValue(Slider slider, TextBox textBox, double value, bool isInteger)
+            {
+                var rounded = isInteger ? Math.Round(value) : Math.Round(value, 2);
+                slider.Value = rounded;
+                textBox.Text = isInteger ? rounded.ToString() : rounded.ToString("0.00");
+            }
 
-        void SetSliderValue(Slider slider, TextBox textBox, double value, bool isInteger)
-        {
-            var rounded = isInteger ? Math.Round(value) : Math.Round(value, 2);
-            slider.Value = rounded;
-            textBox.Text = isInteger ? rounded.ToString() : rounded.ToString("0.00");
+            double Lerp(double start, double end, double t) => start + (end - start) * t;
         }
-
-        double Lerp(double start, double end, double t) => start + (end - start) * t;
     }
 
 
