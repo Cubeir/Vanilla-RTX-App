@@ -456,8 +456,18 @@ public sealed partial class DLSSSwapperWindow : Window
                 VerticalAlignment = VerticalAlignment.Center,
                 Padding = new Thickness(0),
                 Margin = new Thickness(16, 0, 0, 0),
+                Translation = new System.Numerics.Vector3(0,0,8),
+                CornerRadius = new CornerRadius(6),
                 IsTextScaleFactorEnabled = false,
                 Tag = dll,
+            };
+
+            var deleteButtonShadow = new ThemeShadow();
+            deleteButton.Shadow = deleteButtonShadow;
+            deleteButton.Loaded += (s, e) =>
+            {
+                if (ShadowReceiverGrid != null)
+                    deleteButtonShadow.Receivers.Add(ShadowReceiverGrid);
             };
 
             var deleteIcon = new FontIcon
@@ -590,14 +600,16 @@ public sealed partial class DLSSSwapperWindow : Window
 
         var hyperlinkButton = new HyperlinkButton
         {
-            Content = "Download More DLLs",
+            Content = "Download DLSS files from here",
             NavigateUri = new Uri("https://www.techpowerup.com/download/nvidia-dlss-dll/"),
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.Medium,
             FontSize = 14,
-            Padding = new Thickness(18, 8, 16, 8),
-            Translation = new System.Numerics.Vector3(0, 0, 24),
-            IsTextScaleFactorEnabled = false
+            Padding = new Thickness(16, 8, 16, 8),
+            Translation = new System.Numerics.Vector3(0, 0, 8), 
+            IsTextScaleFactorEnabled = false,
+            Background = Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] as Brush,
+            CornerRadius = new CornerRadius(6)
         };
 
         var hyperLinkShadow = new ThemeShadow();
