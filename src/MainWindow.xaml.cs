@@ -1508,7 +1508,7 @@ public sealed partial class MainWindow : Window
                 $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
                 $"- It's the one with a \"Users\" subfolder inside it.\n" +
                 $"If you don't have {versionName} installed, you can ignore this warning. Also make sure you've played the game at least once if you've installed or reinstalled recently.\n" +
-                $"If you select a wrong location, you will need to wipe app's data to be able to select any other location. To do that, hold shift in the main menu and press the Wipe button.",
+                $"If you select a wrong location, you will need to wipe app's data to be able to select any other location. To do that, hold shift while in app's main window and press the Wipe button.",
                 LogLevel.Error);
         }
     }
@@ -2105,7 +2105,7 @@ public sealed partial class MainWindow : Window
             TuneSelectionButtonIcon.Glyph = "\uE9F5";
             TuneSelectionButtonText.Text = "Tune selection";
             ToolTipService.SetToolTip(TuneSelectionButton,
-                "Begins permanently modifying the select packs using the current set parameters.\n\nMake sure Minecraft is closed while packs are being tuned.");
+                "Begins permanently modifying the select packs using the current set parameters.\n\nMake sure Minecraft is closed while packs are being tuned, or at the very least reload into your world in order to see the changes take effect.");
             TuneSelectionButton.IsEnabled = true;
 
             _tuningCts?.Dispose();

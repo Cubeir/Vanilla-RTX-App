@@ -551,7 +551,7 @@
 
             <!-- Progress Bar -->
             <ProgressBar x:Name="ProgressBar"
-                         Margin="16,108,8,0"
+                         Margin="15,108,8,0"
                          VerticalAlignment="Top"
                          HorizontalAlignment="Stretch"
                          IsIndeterminate="False"
@@ -1294,8 +1294,7 @@
                             CornerRadius="0, 0, 0, 0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Manage and install BetterRTX presets.
-                            &#x0a;&#x0a;WARNING: It is your responsibility to make sure your game and BetterRTX are up-to-date, before you inject presets into your game, otherwise it could cause issues, in such cases, revert back to Default RTX preset which is backed up from YOUR latest game installation files upon installing your first preset.">
+                            ToolTipService.ToolTip="Manage and install BetterRTX presets.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xEABC;"
