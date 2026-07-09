@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Vanilla_RTX_App.Modules;
+using System.Text.Json.Serialization;
 using Windows.Storage;
 
 namespace Vanilla_RTX_App.Core;
@@ -73,6 +74,16 @@ public enum PsaKind
     Permanent
 }
 
+// =====================================================================================================================
+// OnlineTextsJsonContext — Source-generated JSON metadata for trim-safe (de)serialization.
+// Only the two shapes OnlineTexts actually persists: a string[] and a Dictionary<string,string>.
+// =====================================================================================================================
+
+[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(Dictionary<string, string>))]
+internal partial class OnlineTextsJsonContext : JsonSerializerContext
+{
+}
 
 // =====================================================================================================================
 // OnlineTexts — Online text retrieval, caching, and per-user dismiss tracking.
@@ -403,7 +414,7 @@ public static class OnlineTexts
             var raw = ApplicationData.Current.LocalSettings.Values[KEY_DISMISSED] as string;
             if (!string.IsNullOrEmpty(raw))
             {
-                var arr = JsonSerializer.Deserialize<string[]>(raw);
+                var arr = JsonSerializer.Deserialize(raw, OnlineTextsJsonContext.Default.StringArray);
                 if (arr is not null)
                     return new HashSet<string>(arr, StringComparer.Ordinal);
             }
@@ -420,7 +431,7 @@ public static class OnlineTexts
         try
         {
             ApplicationData.Current.LocalSettings.Values[KEY_DISMISSED] =
-                JsonSerializer.Serialize(dismissed.ToArray());
+                JsonSerializer.Serialize(dismissed.ToArray(), OnlineTextsJsonContext.Default.StringArray);
         }
         catch (Exception ex)
         {
@@ -449,7 +460,7 @@ public static class OnlineTexts
             var raw = ApplicationData.Current.LocalSettings.Values[KEY_TIMED_DISMISSED] as string;
             if (!string.IsNullOrEmpty(raw))
             {
-                var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(raw);
+                var dict = JsonSerializer.Deserialize(raw, OnlineTextsJsonContext.Default.DictionaryStringString);
                 if (dict is not null)
                 {
                     var now = DateTime.UtcNow;
@@ -474,7 +485,7 @@ public static class OnlineTexts
         {
             var toStore = dismissed.ToDictionary(k => k.Key, v => v.Value.ToString("O"));
             ApplicationData.Current.LocalSettings.Values[KEY_TIMED_DISMISSED] =
-                JsonSerializer.Serialize(toStore);
+                JsonSerializer.Serialize(toStore, OnlineTextsJsonContext.Default.DictionaryStringString);
         }
         catch (Exception ex)
         {
