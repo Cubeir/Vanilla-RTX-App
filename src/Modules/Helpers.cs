@@ -1655,7 +1655,7 @@ public static class MinecraftUserDataLocator
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
         if (!Directory.Exists(path)) return false;
-        if (!Directory.Exists(Path.Combine(path, UsersFolderName))) return false;
+        if (!Directory.Exists(Path.Combine(path, UsersFolderName, SharedComMojangSubPath))) return false;
 
         // Reject if the folder name is explicitly the wrong edition.
         // Unknown/custom names (third-party launchers) pass through unchecked.

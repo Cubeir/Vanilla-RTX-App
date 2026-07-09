@@ -1467,7 +1467,8 @@ public sealed partial class MainWindow : Window
         }
 
         Log($"{versionName} data folder set: {acceptedPath}\n\n" +
-            $"ℹ️ The app is going to remember this location, you can now continue to use features that relied on user data. Enjoy!", LogLevel.Success);
+            $"ℹ️ The app is going to remember this location, you can now continue to use features that relied on user data.\n" +
+            $"But if you've selected a wrong location, features might not work properly, to reselect another path, you will need to Wipe app's data by holding shift, which changes Reset button to Wipe, click and try again.", LogLevel.Success);
 
         // Update button state and kick off pack detection now that the path is known
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -1506,7 +1507,8 @@ public sealed partial class MainWindow : Window
             Log($"Couldn't find {versionName} user data folder automatically. Here's what to do:\n" +
                 $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
                 $"- It's the one with a \"Users\" subfolder inside it.\n" +
-                $"If you don't have {versionName} installed, you can ignore this warning. Also make sure you've played the game at least once if you've installed or reinstalled recently.",
+                $"If you don't have {versionName} installed, you can ignore this warning. Also make sure you've played the game at least once if you've installed or reinstalled recently.\n" +
+                $"If you select a wrong location, you will need to wipe app's data to be able to select any other location. To do that, hold shift in the main menu and press the Wipe button.",
                 LogLevel.Error);
         }
     }
