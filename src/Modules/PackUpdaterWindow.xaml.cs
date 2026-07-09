@@ -6,12 +6,11 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables; // For Public Pack version variables, if null or empty = not installed
 
-namespace Vanilla_RTX_App.PackUpdate;
+namespace Vanilla_RTX_App.Modules;
 
 public sealed partial class PackUpdateWindow : Window
 {

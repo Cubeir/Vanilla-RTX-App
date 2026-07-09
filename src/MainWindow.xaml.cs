@@ -1349,7 +1349,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var packBrowserWindow = new PackBrowser.PackBrowserWindow();
+        var packBrowserWindow = new Modules.PackBrowserWindow();
         var mainAppWindow = this.AppWindow;
 
         packBrowserWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2095,7 +2095,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var packUpdaterWindow = new PackUpdate.PackUpdateWindow(this);
+        var packUpdaterWindow = new Modules.PackUpdateWindow(this);
         var mainAppWindow = this.AppWindow;
 
         packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2132,7 +2132,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var betterRTXWindow = new BetterRTXManager.BetterRTXManagerWindow();
+        var betterRTXWindow = new Modules.BetterRTXManagerWindow();
 
         var mainAppWindow = this.AppWindow;
         betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2172,7 +2172,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var DLSSSwapperWindow = new DLSSBrowser.DLSSSwapperWindow();
+        var DLSSSwapperWindow = new Modules.DLSSSwapperWindow();
         var mainAppWindow = this.AppWindow;
 
         DLSSSwapperWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2212,7 +2212,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var LutManagerWindow = new LUTManager.LUTManagerWindow();
+        var LutManagerWindow = new Modules.LUTManagerWindow();
         var mainAppWindow = this.AppWindow;
 
         LutManagerWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2255,7 +2255,7 @@ public sealed partial class MainWindow : Window
             {
                 Log("RTX Reactor generates proper RTX support only for non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
             }
-            Log($"You must select at least one '{PackBrowser.PackBrowserWindow.AlchitexCandidateTag}' from your resource packs to use this feature on.", LogLevel.Warning);
+            Log($"You must select at least one '{PackBrowserWindow.AlchitexCandidateTag}' from your resource packs to use this feature on.", LogLevel.Warning);
             return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
             // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
             // have a higher chance of breaking, not working, or not seeing any benefit from this feature.
@@ -2451,8 +2451,8 @@ public sealed partial class MainWindow : Window
     }
 
     // The single source of truth, Log() only ever writes here
-    public static string LogText = "";
-    private static readonly object _logGate = new();
+    internal static string LogText = "";
+    private static readonly Lock _logGate = new();
 
     // Typewriter state, only ever touched on the UI thread, inside TypewriterTick()
     // Logger writes fast; typewriter reveals it to the UI on its own schedule — always the

@@ -13,14 +13,13 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
-namespace Vanilla_RTX_App.DLSSBrowser;
+namespace Vanilla_RTX_App.Modules;
 
 // TODO: Upgrade DLSS Swapper to pull dlls from a third party API like BetterRTX Manager.
 // Keep the current manual import pipeline, just add a new potential Source, list dlls, etc...

@@ -19,7 +19,7 @@ using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
-namespace Vanilla_RTX_App.LUTManager;
+namespace Vanilla_RTX_App.Modules;
 
 public sealed partial class LUTManagerWindow : Window
 {
