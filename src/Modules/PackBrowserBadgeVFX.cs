@@ -156,7 +156,7 @@ internal static class PackBrowserBadgeVFX
 
         var drift = new PointAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromSeconds(Jitter(1.0, 4.0)),
+            Duration = TimeSpan.FromSeconds(Jitter(2.0, 4.0)),
             RepeatBehavior = RepeatBehavior.Forever,
             BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.5))
         };
@@ -166,7 +166,7 @@ internal static class PackBrowserBadgeVFX
 
         var origin = new PointAnimationUsingKeyFrames
         {
-            Duration = TimeSpan.FromSeconds(Jitter(1.0, 4.0)),
+            Duration = TimeSpan.FromSeconds(Jitter(2.0, 4.0)),
             RepeatBehavior = RepeatBehavior.Forever,
             BeginTime = TimeSpan.FromSeconds(Jitter(0, 1.8))
         };
@@ -178,7 +178,7 @@ internal static class PackBrowserBadgeVFX
         {
             From = current,
             To = ColorHelper.FromArgb(127, 0, 255, 0),
-            Duration = TimeSpan.FromSeconds(Jitter(0.2, 3.2)),
+            Duration = TimeSpan.FromSeconds(Jitter(0.6, 3.2)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
@@ -191,7 +191,7 @@ internal static class PackBrowserBadgeVFX
         {
             From = 0.2,
             To = 1.0,
-            Duration = TimeSpan.FromSeconds(Jitter(0.5, 3.5)),
+            Duration = TimeSpan.FromSeconds(Jitter(0.8, 3.5)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
