@@ -77,7 +77,7 @@
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                     <TextBlock Text=""
-                               Margin="0,4,0,0"
+                               Margin="0,0,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"
@@ -89,21 +89,17 @@
             <Grid Grid.Row="1">
                 <Grid x:Name="ShadowReceiverGrid" />
 
-                <ScrollViewer Padding="20,20,24,0"
-                              Margin="0,-8,0,0"
+                <ScrollViewer Padding="20,0,20,0"
+                              Margin="0,0,0,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
-
                     <StackPanel>
-
                         <StackPanel x:Name="DLSSAnnouncementsPanel"
                                     Spacing="12"
                                     Margin="0,0,0,0" />
-
                         <StackPanel x:Name="DllListContainer"
                                     Spacing="8" />
-
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

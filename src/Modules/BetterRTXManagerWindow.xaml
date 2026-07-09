@@ -75,7 +75,7 @@
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                     <TextBlock Text=""
-                               Margin="0,4,0,0"
+                               Margin="0,2,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"

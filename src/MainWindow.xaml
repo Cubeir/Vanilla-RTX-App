@@ -672,7 +672,7 @@
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Default Function: Resets tuning options back to their default values.
-                                &#x0a;&#x0a;Hidden Function: Hold shit while pressing to perform a hard reset that wipes all of app's data everywhere, making it as if it was freshly installed.
+                                &#x0a;&#x0a;FOR ADVANCED USERS: Hold shit while pressing to perform a hard reset that wipes all of app's data everywhere, making it as if it was freshly installed.
                                 Might also prompt you for reverting back to Default RTX/Default LUT files if needed, so your defaults aren't lost the next time you use the app.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
@@ -1038,7 +1038,7 @@
                             CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Begins permanently modifying the select packs using the current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
+                            ToolTipService.ToolTip="Begins permanently modifying all selected packs using the current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon x:Name="TuneSelectionButtonIcon"
@@ -1186,7 +1186,7 @@
                             CornerRadius="6, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="See installation information, update availability and news of Vanilla RTX resource packs, install, update, or simply reinstall each pack.">
+                            ToolTipService.ToolTip="See installation information, update availability &amp; news of Vanilla RTX resource packs. Get updates faster, install or simply reinstall each pack.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xEBD3;"

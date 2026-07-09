@@ -76,7 +76,7 @@
                       VerticalAlignment="Center">
                     <TextBlock x:Name="WindowTitle"
                                Text="RTX Look-Up Table manager"
-                               Margin="0,4,0,0"
+                               Margin="0,2,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False" />

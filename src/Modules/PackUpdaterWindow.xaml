@@ -35,7 +35,7 @@
                 <Grid HorizontalAlignment="Center"
                       VerticalAlignment="Center">
                     <TextBlock Text="Install or update Vanilla RTX resource packs"
-                               Margin="0,4,0,0"
+                               Margin="0,0,0,0"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
                                IsHitTestVisible="False"

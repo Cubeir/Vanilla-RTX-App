@@ -93,7 +93,7 @@ public static class TunerVariables
 
     // Window size defaults for all windows
     public const int WindowSizeX = 1150;
-    public const int WindowSizeY = 630;
+    public const int WindowSizeY = 620;
     public const int WindowMinSizeX = 950;
     public const int WindowMinSizeY = 615;
 
@@ -2715,6 +2715,7 @@ publicly maintained apis to do this too.
 WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
 - Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of 
+- Slowly ditch Newtonsoft.JSON for System.Text.JSON, it satisfies all your needs tbh + one less package
 
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
@@ -2731,6 +2732,9 @@ The flow of going to a site, twiddling ALL those knobs, coming back, and having 
 is just... NOPE!
 That said, it's a cool feature for those who might want it.
 >> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
+
+- Think up a way to make CUSTOM BRTX preset and DLSS flows more seamless
+> How? Open the page directly in webview, take the files back directly into the app -- make the flow SIMPLER! than the ideas above.
 
 */
 // ============================================================================================================
@@ -2774,13 +2778,6 @@ both arrays must select the same image/same rng etc..
 gets clicked, if the above is implemented, things can look really nice
 
 > This whole thing would've worked a lot easier if you weren't trying to be a smartass and minimize the number of vessels used for lampanimator/previewer
-
-
-- Idea: when other windows launch, recieve clicks on the main window, and just log something that tells user, finish your work in the current
-open module before returning to main window.
-just.. it'd be nice QoL.
-Btw random thought
-indeed, button functionalities hidden under shift have Debug/Development related purposes, but they're exposed to user nontheless, useful
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line
@@ -2839,6 +2836,6 @@ you're still taking the extreme measures needed to keep as many users away from 
 but that's just better, think about it
 
 its not too late
-
+But it is worse. less user friendly than, handling all automatically, and exposing only as needed, as a one-time thing setup, it's just better ux
 
 */
