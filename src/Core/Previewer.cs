@@ -11,7 +11,6 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Vanilla_RTX_App.Core;
 
-
 public class Previewer
 {
     private readonly HashSet<string> _registeredPaths = new();

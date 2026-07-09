@@ -105,7 +105,7 @@
 
             <!-- Transparent drag area: covers whole titlebar except left 200px so your buttons keep receiving clicks -->
             <Border x:Name="TitleBarDragArea"
-                    Margin="196,-1,0,0"
+                    Margin="236,-1,0,0"
                     Height="32"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
@@ -220,6 +220,10 @@
                     <ColumnDefinition Width="Auto" />
                     <!-- Button -->
                     <ColumnDefinition Width="Auto" />
+                    <!-- Separator -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Button -->
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Chat Button -->
@@ -228,7 +232,7 @@
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xE8F2;"
-                        Width="42"
+                        Width="40"
                         Height="35"
                         CornerRadius="0"
                         FontSize="14"
@@ -250,7 +254,7 @@
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xE946;"
-                        Width="43"
+                        Width="40"
                         Height="35"
                         CornerRadius="0"
                         FontSize="16"
@@ -272,7 +276,7 @@
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEB51;"
-                        Width="42"
+                        Width="40"
                         Height="35"
                         CornerRadius="0"
                         FontSize="14"
@@ -296,14 +300,38 @@
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEC46;"
-                        Width="42"
+                        Width="40"
                         Height="35"
                         CornerRadius="0"
                         FontSize="16"
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="CycleThemeButton_Click"
-                        ToolTipService.ToolTip="Switches theme."
+                        ToolTipService.ToolTip="Cycle through theme options:
+                        &#x0a;Dark, Light, System (Auto)
+                        &#x0a;Default: Dark"
+                        IsTextScaleFactorEnabled="False" />
+
+                <!-- Separator -->
+                <Border Grid.Column="7"
+                        Width="1"
+                        Margin="4,6,4,6"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- Suspend Previewer Button -->
+                <Button x:Name="SuspendPreviewerToggle"
+                        Grid.Column="8"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Content="&#xEC12;"
+                        Width="40"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="16"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="SuspendPreviewerToggle_Click"
+                        ToolTipService.ToolTip="Hides the art area."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>
@@ -510,7 +538,7 @@
                          IsReadOnly="True"
                          AllowFocusOnInteraction="True"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                         Padding="12,12,12,138"
+                         Padding="12,12,12,12"
                          Translation="0,0,64"
                          IsTextScaleFactorEnabled="False"
                          ToolTipService.ToolTip="Relevant logs appear here to inform, guide, or warn you as you interact with the app.">

@@ -77,6 +77,7 @@ public static class TunerVariables
         public static bool AddEmissivityAmbientLight = Defaults.AddEmissivityAmbientLight;
 
         public static string AppThemeMode = "Dark";
+        public static bool SuspendPreviewer = false;
     }
 
     public static class Defaults // These are backed up to be used as a compass by other classes
@@ -448,6 +449,7 @@ public sealed partial class MainWindow : Window
             HelpButton.Opacity = opacity;
             DonateButton.Opacity = opacity;
             CycleThemeButton.Opacity = opacity;
+            SuspendPreviewerToggle.Opacity = opacity;
         };
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)
@@ -525,7 +527,7 @@ public sealed partial class MainWindow : Window
             }
 
             // Update UI to reflect loaded settings
-            UpdateUI(0.01);
+            UpdateUI(0.001);
 
             // Calling it last since it might add a bit of delay as it searches a few dirs and files
             MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -536,6 +538,9 @@ public sealed partial class MainWindow : Window
             // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
             await Task.Delay(700);
             // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
+
+            // Apply Suspend Previewr, but won't toggle it (only button invokes can)
+            SuspendPreviewerToggle_Click(null, null);
 
             Log($"App Version: {appVersion}" + new string('\n', 2) +
                 $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
@@ -1265,6 +1270,40 @@ public sealed partial class MainWindow : Window
             };
 
         ToolTipService.SetToolTip(btn, "Theme: " + mode);
+    }
+
+
+    private void SuspendPreviewerToggle_Click(object? sender, RoutedEventArgs? e)
+    {
+        bool invokedByClick = sender is Button;
+
+        if (invokedByClick)
+        {
+            SuspendPreviewer = !SuspendPreviewer;
+        }
+
+        if (SuspendPreviewer == true)
+        {
+            SuspendPreviewerToggle.Content = "\uEC11";
+            PreviewVesselBackground.Visibility = Visibility.Collapsed;
+            PreviewVesselBottom.Visibility = Visibility.Collapsed;
+            PreviewVesselTop.Visibility = Visibility.Collapsed;
+            Previewer.Instance.Freeze();
+
+        }
+        else if (SuspendPreviewer == false)
+        {
+            SuspendPreviewerToggle.Content = "\uEC12";
+            PreviewVesselBackground.Visibility = Visibility.Visible;
+            PreviewVesselBottom.Visibility = Visibility.Visible;
+            PreviewVesselTop.Visibility = Visibility.Visible;
+            if (invokedByClick)
+            {
+                Previewer.Instance.Unfreeze(); // As to avoid prematurely unfreezing at startup
+                // If it is supposed to be unfrozen, well, it is, UpdateUI takes care of it, but this could ruin things by
+                // prematurely unfreezing
+            }
+        }
     }
 
 
@@ -2707,7 +2746,6 @@ iconns/logos of features of app thrown in there too, one for each would be enoug
 Idea, of a render of a Tuner block, but each side features one of the feature-unique icons you've made!
 Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
 Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
-
 
 - Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
