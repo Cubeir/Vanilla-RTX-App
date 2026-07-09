@@ -331,7 +331,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="SuspendPreviewerToggle_Click"
-                        ToolTipService.ToolTip="Hides the art area."
+                        ToolTipService.ToolTip="Toggle the visual control previews inside the logs area; Don't like 'em? disable 'em."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>
