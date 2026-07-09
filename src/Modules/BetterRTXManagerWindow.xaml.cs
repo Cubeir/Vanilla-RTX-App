@@ -242,7 +242,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             Content = "Dismiss",
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 12, 0, 4),
+            Margin = new Thickness(0, 12, 0, 0),
             IsTextScaleFactorEnabled = false,
             Padding = new Thickness(16, 8, 16, 8),
             Shadow = new ThemeShadow(),
@@ -256,7 +256,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
             new TextBlock
                  {
-                Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The files for this feature are provided by the following third-party: https://bedrock.graphics/\n" +
+                Text = "BetterRTX is an unofficial mod to Minecraft RTX's shader code. The files for this feature are provided by the following third-party: https://bedrock.graphics/api\n" +
                     "BetterRTX can also potentially break with Minecraft updates. Vanilla RTX App takes extensive measures to mitigate any issues that may arise, such as giving a way to quickly revert to your defaults." +
                     "\n\nPlease pay attention to the info panels to keep updated and help steer yourself away from potential issues.",
                 TextWrapping = TextWrapping.Wrap,
