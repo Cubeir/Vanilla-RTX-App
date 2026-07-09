@@ -11,6 +11,7 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App! It's window currently hosts development progress news.
 
 # PackUpdateAnnouncements
+DELETE ME LATER!
 ### Update [glyph:"E789"]
 1.26.15 Update Summary:
 Fog and atmosphere of many biomes has been overhauled across all three packs!
@@ -28,12 +29,13 @@ Hint: It is always preferred to activate RTX resource packs in your Global Resou
 ### Tip [glyph:"E95B"]
 Tip: You can come back here to quickly reinstall packs to restore them to their original state in case you want to reverse your tuning attempts!
 Reinstalls happen quicker from a cached version, unless a new version happens to be available.
-
-
-
+## DELETE ME LATER!
+DELETE ME LATER
+## DELETE ME LATER!
+DELETE ME LATER
 
 # BetterRTXAnnouncements
-
+DELETE ME LATER!
 ## [cd:"0"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will also change. CHECK BACK LATER!
 It is currnetly safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets. (This text may update and change later).
 
@@ -44,28 +46,33 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 1. Revert to Default RTX for now
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to re-fetch the latest files.
-
+## DELETE ME LATER!
+DELETE ME LATER
 
 # LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
 
 ### [glyph:"E7BA"]
 This feature will not work if you're using a BetterRTX Preset. Use Default RTX if you want to use this feature.
-
-
+## DELETE ME LATER!
+DELETE ME LATER
 
 # DLSSAnnouncements
+DELETE ME LATER!
 ### A friendly note
 Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most other versions in-between tend to be a bit blurry!
-
+## DELETE ME LATER!
+DELETE ME LATER
 
 
 
 # ResourcePackSelectionAnnouncements
+DELETE ME LATER!
 ### Text below is a one time tutorial type of thing! [glyph:"E95B"]
 Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
 Use the clear selection button in the main window to clear your selections.
-
+## DELETE ME LATER!
+DELETE ME LATER
 
 
 
