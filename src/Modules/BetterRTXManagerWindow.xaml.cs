@@ -17,7 +17,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
@@ -536,6 +535,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
+        // Initialize PSAs
+        PopulateBetterRTXAnnouncements();
+
         // Show disclaimer -- background work is done, but try to gate the UI
         try
         {
@@ -552,9 +554,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             Trace.WriteLine("[BetterRTX]  Something went wrong while trying to show the BetterRTX disclaimer dialogue:\n" + ex.ToString());
         }
-
-        // Initialize PSAs
-        PopulateBetterRTXAnnouncements();
     }
 
     private string? EstablishCacheFolder()

@@ -193,9 +193,9 @@ public sealed partial class PackUpdateWindow : Window
 
     private async Task InitializePackInformation()
     {
+        PopulatePackUpdateAnnouncements();
         UpdateInstalledVersionDisplays();
         await FetchAndDisplayRemoteVersions();
-        PopulatePackUpdateAnnouncements();
     }
 
     private void UpdateInstalledVersionDisplays()
