@@ -15,7 +15,6 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.Modules;
 using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
@@ -31,10 +30,10 @@ public sealed partial class PackBrowserWindow : Window
     private readonly HashSet<string> _selectedPaths = new();
     private readonly List<string> _knownTags = new();
 
-    public static string gameTitleText => TunerVariables.Persistent.IsTargetingPreview
+    public static string gameTitleText => Persistent.IsTargetingPreview
         ? "Minecraft Preview" : "Minecraft";
 
-    public const string AlchitexCandidateTag = "Potential Reactor Candidate";
+    public const string AlchitexCandidateTag = "RTX Reactor Candidate";
     private const bool AlchitexLegacyPacksEligible = false;
 
     private static readonly string VibrantVisualsPoopJoke =
@@ -690,7 +689,7 @@ public sealed partial class PackBrowserWindow : Window
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 192, 33, 0));
                 break;
             case "RTX":
-                text.Text = "RTX (Ray Tracing)";
+                text.Text = "Ray Traced";
                 text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 111, 177, 0));
                 break;
@@ -930,14 +929,14 @@ public sealed partial class PackBrowserWindow : Window
                 if (capLower == "raytraced") hasRaytraced = true;
                 else if (capLower == "pbr") hasPbr = true;
             }
+            if (hasRaytraced)
+            {
+                capabilityTags.Add("RTX"); packType = "RTX";
+            }
             if (hasPbr)
             {
                 capabilityTags.Add("Vibrant Visuals");
                 if (packType == "Incompatible") packType = "Vibrant Visuals";
-            }
-            if (hasRaytraced)
-            {
-                capabilityTags.Add("RTX"); packType = "RTX";
             }
         }
 
