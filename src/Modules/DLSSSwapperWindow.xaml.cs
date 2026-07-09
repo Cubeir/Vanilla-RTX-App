@@ -694,14 +694,17 @@ public sealed partial class DLSSSwapperWindow : Window
             var hWnd = WindowNative.GetWindowHandle(this);
             InitializeWithWindow.Initialize(picker, hWnd);
 
-            var file = await picker.PickSingleFileAsync();
-            if (file != null)
-            {
-                if (file.FileType.Equals(".zip", StringComparison.OrdinalIgnoreCase))
-                    await ProcessZipFileAsync(file.Path);
-                else if (file.FileType.Equals(".dll", StringComparison.OrdinalIgnoreCase))
-                    await ProcessDllFileAsync(file.Path);
+            var files = await picker.PickMultipleFilesAsync();
 
+            if (files != null && files.Count > 0)
+            {
+                foreach (var file in files)
+                {
+                    if (file.FileType.Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                        await ProcessZipFileAsync(file.Path);
+                    else if (file.FileType.Equals(".dll", StringComparison.OrdinalIgnoreCase))
+                        await ProcessDllFileAsync(file.Path);
+                }
                 await LoadDllsAsync(true);
             }
         }
