@@ -16,9 +16,8 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 Fog and atmosphere of many biomes has been overhauled across all three packs!
 Find detailed changelogs by clicking name of a pack to go to its CurseForge page.
 
-NOTE: The update may not be out yet as of writing this, but it will be very soon.
-The app update and these PSAs were released a bit prematurely, since I've just resumed working on Vanilla RTX updates as we speak.
-Everything will be back on track soon!
+NOTE: The update may not be out yet as of writing this, but it will be very soon, the app update and these PSAs were released a bit prematurely.
+I've just managed to resume working on Vanilla RTX updates as we speak following app's 3.1 update. Things will be back on track soon!
 
 ## Chaos Cubes [cd:"120"] [glyph:"F158"]
 Support for Chaos Cubed game drop will be arriving later this month! Check back later.
