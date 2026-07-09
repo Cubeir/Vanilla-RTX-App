@@ -2736,6 +2736,23 @@ Update them to reflect the latest features/changes
 like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
 maybe you should do it more often, in more places
 
+/// 3.2's development should begin here, doing the sensitive stuff, so ongoing testing during development surfaces issues it may cause, hopefully
+
+- Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of
+// Done for now, but still, do this:
+- Slowly ditch Newtonsoft.JSON for System.Text.JSON, it satisfies all your needs tbh + one less package
+And see why some packages have trim warnings within themselves, solve if possible
+and solve NU1900 too, wtf is going on?!
+
+>> OnlineTexts and PackUpdater no longer use Newtonsoft.
+But maybe, you should think of something, unifying reusable methods, e.g. for parsing manifest versions
+packlocator uses it, pack updater uses it, pack browser uses it, expimpdel uses it, but each more targeted, with unique implementations
+Make it broader.
+The following classes must be migrated away from newtonsoft:
+Tuner, PackLocator, PackBrowserWindow, ExpImpDel, BetterRTXManager
+
+Then you can delete the package!
+
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
 
 - Do the TODOs scattered in the code
@@ -2754,9 +2771,6 @@ Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe th
 publicly maintained apis to do this too.
 WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-- Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of 
-- Slowly ditch Newtonsoft.JSON for System.Text.JSON, it satisfies all your needs tbh + one less package
-
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
 they appear at the bottom
@@ -2773,8 +2787,8 @@ is just... NOPE!
 That said, it's a cool feature for those who might want it.
 >> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
 
-- Think up a way to make CUSTOM BRTX preset and DLSS flows more seamless
-> How? Open the page directly in webview, take the files back directly into the app -- make the flow SIMPLER! than the ideas above.
+>>> Think up a way to make CUSTOM BRTX preset and DLSS flows more seamless
+> How? Open the page directly in webview, take the files back directly into the app -- make the flow SIMPLER! than the ideas above or in classes themselves
 
 */
 // ============================================================================================================
