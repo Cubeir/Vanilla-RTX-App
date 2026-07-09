@@ -344,6 +344,10 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/theme.png"
         );
 
+        Previewer.Instance.InitializeButton(SuspendPreviewerToggle,
+             "ms-appx:///Assets/previews/suspend.png"
+        );
+
         Previewer.Instance.InitializeButton(DonateButton,
             "ms-appx:///Assets/previews/cubeir.thankyou.png"
         );
