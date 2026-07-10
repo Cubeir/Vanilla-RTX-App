@@ -1065,7 +1065,7 @@
                             CornerRadius="6,0,0,6"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Begins permanently modifying all selected packs using the current set parameters.&#x0a;&#x0a;Make sure Minecraft is closed while packs are being tuned.">
+                            ToolTipService.ToolTip="Begins permanently modifying all of the selected packs using the current set of parameters above.&#x0a;&#x0a;Ensure Minecraft is closed while packs are being tuned to avoid issues; Or at the very least reload your world to see the changes take effect.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon x:Name="TuneSelectionButtonIcon"

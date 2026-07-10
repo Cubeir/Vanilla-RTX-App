@@ -2062,6 +2062,8 @@ public sealed partial class MainWindow : Window
         if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
 
+        string OriginalTooltip = (string)ToolTipService.GetToolTip(TuneSelectionButton);
+
         try
         {
             bool hasVanillaPacks = IsVanillaRTXEnabled || IsNormalsEnabled || IsOpusEnabled;
@@ -2089,7 +2091,7 @@ public sealed partial class MainWindow : Window
             TuneSelectionButtonIcon.Glyph = "\uE733";
             TuneSelectionButtonText.Text = "Abort tuning operation";
             ToolTipService.SetToolTip(TuneSelectionButton,
-                "Stops the tuning operation. Textures already finished keep their changes; anything not yet reached is left untouched.");
+                "Stops the tuning operation. Textures already finished keep their changes; anything not yet reached by the Tuner is left untouched.");
 
             var tuningMessage = await Task.Run(() => Tuner.TuneSelectedPacks(progress, _tuningCts.Token));
             Log(tuningMessage, LogLevel.Success);
@@ -2112,8 +2114,7 @@ public sealed partial class MainWindow : Window
 
             TuneSelectionButtonIcon.Glyph = "\uE9F5";
             TuneSelectionButtonText.Text = "Tune selection";
-            ToolTipService.SetToolTip(TuneSelectionButton,
-                "Begins permanently modifying the select packs using the current set parameters.\n\nMake sure Minecraft is closed while packs are being tuned, or at the very least reload into your world in order to see the changes take effect.");
+            ToolTipService.SetToolTip(TuneSelectionButton, OriginalTooltip);
             TuneSelectionButton.IsEnabled = true;
 
             _tuningCts?.Dispose();
