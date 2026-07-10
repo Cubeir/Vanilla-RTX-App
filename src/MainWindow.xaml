@@ -307,9 +307,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="CycleThemeButton_Click"
-                        ToolTipService.ToolTip="Cycle through theme options:
-                        &#x0a;Dark, Light, System (Auto)
-                        &#x0a;Default: Dark"
+                        ToolTipService.ToolTip="Theme: Unknown"
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
@@ -331,7 +329,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="SuspendUIAnimationsToggle_Click"
-                        ToolTipService.ToolTip="Suspend all of custom UI animations throughout the app."
+                        ToolTipService.ToolTip="Suspend all custom UI animations throughout the app."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>

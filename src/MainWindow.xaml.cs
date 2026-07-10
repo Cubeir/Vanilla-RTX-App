@@ -475,8 +475,10 @@ public sealed partial class MainWindow : Window
             // APPLY THEME, passing nulls means it isn't a button, instead of cycling, it applies the loaded setting
             CycleThemeButton_Click(null, null);
 
+            double speedMultiplier = Persistent.SuspendUIAnimations ? 0.64 : 1.0;
+
             // Give the window time to render
-            await Task.Delay(175);
+            await Task.Delay((int)(175 * speedMultiplier));
 
             // Apply some colors, then continue to watch theme changes and adjust based on theme
             if (root != null)
@@ -512,7 +514,7 @@ public sealed partial class MainWindow : Window
             await CheckForCrashLog();
 
             // Splash Blinking Animation
-            _ = AnimateSplash(100);
+            _ = AnimateSplash(100 * speedMultiplier);
 
             // Attach previewer/art vessels
             Previewer.Initialize(PreviewVesselTop, PreviewVesselBottom, PreviewVesselBackground);
@@ -540,7 +542,7 @@ public sealed partial class MainWindow : Window
             InitializePreviewerImages();
 
             // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
-            await Task.Delay(700);
+            await Task.Delay((int)(700 * speedMultiplier));
             // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
             // Apply Suspend Previewr, but won't toggle it (only button invokes can)
@@ -569,14 +571,14 @@ public sealed partial class MainWindow : Window
             // we deal with cache, for showing things, another task deals with updating sometimes it at App start
             _ = Task.Run(async () =>
             {
-                await Task.Delay(800);
+                await Task.Delay((int)(750 * speedMultiplier));
                 var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
                 if (psa is { Length: > 0 })
                 {
                     for (int i = psa.Length - 1; i >= 0; i--)
                     {
                         Log(psa[i].Text);
-                        await Task.Delay(700);
+                        await Task.Delay((int)(700 * speedMultiplier));
                     }
                 }
             });
@@ -607,7 +609,7 @@ public sealed partial class MainWindow : Window
                 {
                     From = 1.0,
                     To = 0.0,
-                    Duration = new Duration(TimeSpan.FromMilliseconds(100)),
+                    Duration = new Duration(TimeSpan.FromMilliseconds(100 * speedMultiplier)),
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
                 };
 
