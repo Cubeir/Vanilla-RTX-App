@@ -53,8 +53,7 @@
                     <Run Text="&#x0a;" />
                     <Run Text="&#x0a;I just ask anyone who believes this is a good thing to help me continue it." />
                     <Run Text="&#x0a;The Vanilla RTX App is dedicated to everyone." />
-                    <Run Text="&#x0a;- Cubeir"
-                         FontWeight="Normal" />
+                    <Run Text="&#x0a;- Cubeir" FontWeight="Normal" />
                 </TextBlock>
 
                 <!-- Button Row -->
