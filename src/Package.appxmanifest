@@ -10,7 +10,7 @@
   <Identity
     Name="Cubeir.VanillaRTXApp"
     Publisher="CN=7F2D29F8-D1F9-46A7-9DFB-595D98E11214"
-    Version="3.1.0.0" />
+    Version="3.1.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="14d771a9-af30-450d-a688-01bb3e8bc3bc" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -35,7 +35,7 @@
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
         DisplayName="Vanilla RTX App"
-        Description="The ultimate companion app for playing Minecraft with RTX! Automatically update Vanilla RTX packages, tune them to your preferences, and launch Minecraft with RTX in one go, and much more!"
+        Description="The ultimate companion app for playing Minecraft with RTX at its best! Automatically update Vanilla RTX packages, tune them to your preferences, and launch Minecraft with RTX in one go, plus so much more!"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\icons\Square150x150Logo.png"
         Square44x44Logo="Assets\icons\Square44x44Logo.png">
@@ -48,6 +48,8 @@
         </uap:DefaultTile >
         <uap:SplashScreen Image="Assets\icons\SplashScreen.png"  BackgroundColor="transparent"/>
         <uap:LockScreen BadgeLogo="Assets\icons\BadgeLogo.png"  Notification="badge"/>
+        <uap:InitialRotationPreference>
+          <uap:Rotation Preference="landscape"/></uap:InitialRotationPreference>
       </uap:VisualElements>
     </Application>
   </Applications>
