@@ -163,6 +163,8 @@ public class MinecraftLauncher
 
             // Backup is purely defensive — never read back by the app, just a
             // safety net so the user has somewhere to go if something looks wrong.
+            // TODO: Maybe make it so it restores the backup if anything goes wrong, and make the backup be the
+            // version that is made once and never overriden, this idea is rough, think it through later.
             var backupPath = optionsFilePath + ".backup";
             File.Copy(optionsFilePath, backupPath, true);
 

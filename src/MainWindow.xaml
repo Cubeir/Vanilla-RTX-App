@@ -231,7 +231,7 @@
                         Grid.Column="0"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xE8F2;"
+                        Content="&#xE8BD;"
                         Width="40"
                         Height="35"
                         CornerRadius="0"

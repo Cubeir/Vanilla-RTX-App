@@ -1186,7 +1186,7 @@ public sealed partial class MainWindow : Window
 
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
-        Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.Informational);
+        Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.VanillaRTX);
         _ = OpenUrl("https://discord.gg/A4wv4wwYud");
     }
 
@@ -2804,6 +2804,8 @@ The following classes must be migrated away from newtonsoft:
 Tuner, PackLocator, PackBrowserWindow, ExpImpDel, BetterRTXManager
 
 Then you can delete the package!
+
+A unification of 
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
 
