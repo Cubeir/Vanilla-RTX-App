@@ -19,8 +19,9 @@ public sealed partial class PackUpdateWindow : Window
     private readonly PackUpdater _updater;
     private bool _isClosing;
 
-    private readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
-    private readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
+    private double animationSpeedMultiplier => Persistent.SuspendUIAnimations ? 0.01 : 1.0; 
+    private TimeSpan _fadeInDuration => TimeSpan.FromMilliseconds(150 * animationSpeedMultiplier);
+    private TimeSpan _fadeOutDuration => TimeSpan.FromMilliseconds(125 * animationSpeedMultiplier);
 
     // How frequently differences of Installed version versus Cached version (versus offline or online) can invalidate the cache
     // Only once every few mins, so user can't get a way to spam github by changing pack versions constantly. while also allowing INSTALLED versions to invalidate

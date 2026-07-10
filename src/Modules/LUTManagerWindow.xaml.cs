@@ -13,7 +13,6 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
-using Vanilla_RTX_App.Modules;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
@@ -570,10 +569,12 @@ public sealed partial class LUTManagerWindow : Window
 
         var storyboard = new Storyboard();
 
+        double duration = Persistent.SuspendUIAnimations ? 0.02 : 0.2;
+
         if (bottomIsEmpty)
         {
-            var fadeInBottom = MakeOpacityAnimation(PresetImageBottom, from: 0, to: 1, duration: 0.2);
-            var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: 0.2);
+            var fadeInBottom = MakeOpacityAnimation(PresetImageBottom, from: 0, to: 1, duration: duration);
+            var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: duration);
             storyboard.Children.Add(fadeInBottom);
             storyboard.Children.Add(fadeInTop);
 
@@ -582,7 +583,7 @@ public sealed partial class LUTManagerWindow : Window
         }
         else
         {
-            var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: 0.2);
+            var fadeInTop = MakeOpacityAnimation(PresetImageTop, from: 0, to: 1, duration: duration);
             storyboard.Children.Add(fadeInTop);
         }
 

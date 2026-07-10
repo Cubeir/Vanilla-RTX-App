@@ -13,8 +13,9 @@ public sealed partial class PsaCard : UserControl
     private readonly PsaKind _kind;
     private readonly int? _cooldownMinutes;
 
-    private const double FADE_IN_MS = 50;
-    private const double FADE_OUT_MS = 50;
+    private double AnimationSpeedMultiplier => TunerVariables.Persistent.SuspendUIAnimations ? 0.01 : 1.0;
+    private double FADE_IN_MS => 50 * AnimationSpeedMultiplier;
+    private double FADE_OUT_MS => 50 * AnimationSpeedMultiplier;
 
     public double CardFontSize
     {
@@ -125,7 +126,7 @@ public sealed partial class PsaCard : UserControl
         {
             From = 1,
             To = 0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(160)),
+            Duration = new Duration(TimeSpan.FromMilliseconds(160 * AnimationSpeedMultiplier)),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
         };
         Storyboard.SetTarget(fade, this);

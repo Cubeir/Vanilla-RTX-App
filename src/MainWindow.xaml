@@ -318,8 +318,8 @@
                         Margin="4,6,4,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                <!-- Suspend Previewer Button -->
-                <Button x:Name="SuspendPreviewerToggle"
+                <!-- Suspend UI Animations Button -->
+                <Button x:Name="SuspendUIAnimationsToggle"
                         Grid.Column="8"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
@@ -330,8 +330,8 @@
                         FontSize="16"
                         Background="Transparent"
                         BorderBrush="Transparent"
-                        Click="SuspendPreviewerToggle_Click"
-                        ToolTipService.ToolTip="Toggle the visual control previews inside the logs area; Don't like 'em? disable 'em."
+                        Click="SuspendUIAnimationsToggle_Click"
+                        ToolTipService.ToolTip="Suspend all of custom UI animations throughout the app."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>

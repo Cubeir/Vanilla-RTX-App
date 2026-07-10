@@ -77,7 +77,7 @@ public static class TunerVariables
         public static bool AddEmissivityAmbientLight = Defaults.AddEmissivityAmbientLight;
 
         public static string AppThemeMode = "Dark";
-        public static bool SuspendPreviewer = false;
+        public static bool SuspendUIAnimations = false;
     }
 
     public static class Defaults // These are backed up to be used as a compass by other classes
@@ -344,7 +344,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/theme.png"
         );
 
-        Previewer.Instance.InitializeButton(SuspendPreviewerToggle,
+        Previewer.Instance.InitializeButton(SuspendUIAnimationsToggle,
              "ms-appx:///Assets/previews/suspend.png"
         );
 
@@ -453,7 +453,7 @@ public sealed partial class MainWindow : Window
             HelpButton.Opacity = opacity;
             DonateButton.Opacity = opacity;
             CycleThemeButton.Opacity = opacity;
-            SuspendPreviewerToggle.Opacity = opacity;
+            SuspendUIAnimationsToggle.Opacity = opacity;
         };
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)
@@ -544,7 +544,7 @@ public sealed partial class MainWindow : Window
             // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
             // Apply Suspend Previewr, but won't toggle it (only button invokes can)
-            SuspendPreviewerToggle_Click(null, null);
+            SuspendUIAnimationsToggle_Click(null, null);
 
             Log($"App Version: {appVersion}" + new string('\n', 2) +
                 $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
@@ -784,18 +784,24 @@ public sealed partial class MainWindow : Window
 
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.05)
     {
-        await _titlebarLampAnimator!.Animate(enable, singleFlash, singleFlashOnChance, rotate: GetSpecialOccasionName() != null, rapidFlashChance: rapidFlashChance);
+        if (!SuspendUIAnimations || !enable) // If the intention is to disable, allow it to pass in
+        {   
+            await _titlebarLampAnimator!.Animate(enable, singleFlash, singleFlashOnChance, rotate: GetSpecialOccasionName() != null, rapidFlashChance: rapidFlashChance);
+        }
     }
     private async Task AnimateSplash(double splashDurationMs)
     {
-        await _splashLampAnimator!.Animate(false, true, 0.9, duration: splashDurationMs, rotate: GetSpecialOccasionName() != null, rapidFlashChance: 0.01);
+        if (!SuspendUIAnimations)
+        {
+            await _splashLampAnimator!.Animate(false, true, 0.9, duration: splashDurationMs, rotate: GetSpecialOccasionName() != null, rapidFlashChance: 0.01);
+        }
     }
 
 
     public async void UpdateUI(double animationDurationSeconds = 0.1)
     {
-        // Suppress Previewer Updates
-        Previewer.Instance.Freeze();
+        // Only freeze/unfreeze if we aren't already being handled by SuspendUIAnimations
+        if (!SuspendUIAnimations) Previewer.Instance.Freeze();
 
         // 1. Match bool-based UI elements to their current bools
         TargetPreviewToggle.IsChecked = Persistent.IsTargetingPreview;
@@ -819,13 +825,14 @@ public sealed partial class MainWindow : Window
         await AnimateSliders(sliderConfigs, animationDurationSeconds);
 
         // Resume Previewer Updates
-        Previewer.Instance.Unfreeze();
+        if (!SuspendUIAnimations) Previewer.Instance.Unfreeze();
 
         async Task AnimateSliders((Slider slider, TextBox textBox, double targetValue, bool isInteger)[] configs, double durationSeconds)
         {
             var startValues = configs.Select(c => c.slider.Value).ToArray();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var totalMs = durationSeconds * 1000;
+            double animationSpeedMultiplier = Persistent.SuspendUIAnimations ? 0.01 : 1.0;
+            var totalMs = durationSeconds * 1000 * animationSpeedMultiplier;
 
             while (stopwatch.ElapsedMilliseconds < totalMs)
             {
@@ -1275,38 +1282,39 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private void SuspendPreviewerToggle_Click(object? sender, RoutedEventArgs? e)
+    private void SuspendUIAnimationsToggle_Click(object? sender, RoutedEventArgs? e)
     {
         bool invokedByClick = sender is Button;
 
+        // Flip the book only if user click, don't flip on startup
         if (invokedByClick)
         {
-            SuspendPreviewer = !SuspendPreviewer;
+            SuspendUIAnimations = !SuspendUIAnimations; // This bool is accessed throughout many modules to decide what to do with animations
         }
-
-        if (SuspendPreviewer == true)
+        // Then do whatever depending on the state of the bool
+        if (SuspendUIAnimations == true)
         {
-            SuspendPreviewerToggle.Content = "\uEC11";
+            SuspendUIAnimationsToggle.Content = "\uEC11";
             PreviewVesselBackground.Visibility = Visibility.Collapsed;
             PreviewVesselBottom.Visibility = Visibility.Collapsed;
             PreviewVesselTop.Visibility = Visibility.Collapsed;
+
             ShowTypingCursor = false;
             Previewer.Instance.Freeze();
-
         }
-        else if (SuspendPreviewer == false)
+        // Continue with the defaults and avoid redundant opertions if not a button click
+        // (aka on startup, defaults already apply, no need to re-apply here)
+        // No need to perform everything again, it CAN cause issues (especially with premature Previewer Unfreeze)
+        else if (SuspendUIAnimations == false && invokedByClick)
         {
-            SuspendPreviewerToggle.Content = "\uEC12";
+
+            SuspendUIAnimationsToggle.Content = "\uEC12";
             PreviewVesselBackground.Visibility = Visibility.Visible;
             PreviewVesselBottom.Visibility = Visibility.Visible;
             PreviewVesselTop.Visibility = Visibility.Visible;
+
             ShowTypingCursor = true;
-            if (invokedByClick)
-            {
-                Previewer.Instance.Unfreeze(); // As to avoid prematurely unfreezing at startup
-                // If it is supposed to be unfrozen, well, it is, UpdateUI takes care of it, but this could ruin things by
-                // prematurely unfreezing
-            }
+            Previewer.Instance.Unfreeze();
         }
     }
 
@@ -2617,6 +2625,15 @@ public sealed partial class MainWindow : Window
                     }
                 }
             }
+        }
+
+        // Short circ the animation
+        if (SuspendUIAnimations)
+        {
+            _settledLength = current.Length; // Mark everything as already "typed"
+            _activeRevealed = 0;
+            RenderFrame(current, 0, 0);      // Render instantly
+            return;
         }
 
         int unshownLength = current.Length - _settledLength;

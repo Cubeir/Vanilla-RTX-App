@@ -709,7 +709,10 @@ public sealed partial class PackBrowserWindow : Window
         }
 
         badge.Child = text;
-        PackBrowserBadgeVFX.Apply(badge, tag);
+        if (!Persistent.SuspendUIAnimations)
+        {
+            PackBrowserBadgeVFX.Apply(badge, tag);
+        }
         return badge;
     }
 
