@@ -533,7 +533,7 @@ public sealed partial class MainWindow : Window
             }
 
             // Update UI to reflect loaded settings
-            UpdateUI(0.001);
+            UpdateUI(1);
 
             // Calling it last since it might add a bit of delay as it searches a few dirs and files
             MinecraftGDKLocator.ValidateAndUpdateCachedLocations();
@@ -800,7 +800,7 @@ public sealed partial class MainWindow : Window
     }
 
 
-    public async void UpdateUI(double animationDurationSeconds = 0.1)
+    public async void UpdateUI(double animationDurationMilisecs = 100)
     {
         // Only freeze/unfreeze if we aren't already being handled by SuspendUIAnimations
         if (!SuspendUIAnimations) Previewer.Instance.Freeze();
@@ -824,17 +824,17 @@ public sealed partial class MainWindow : Window
         };
 
         // 2. Animate sliders (intentionally put here, don't move up or down)
-        await AnimateSliders(sliderConfigs, animationDurationSeconds);
+        await AnimateSliders(sliderConfigs, animationDurationMilisecs);
 
         // Resume Previewer Updates
         if (!SuspendUIAnimations) Previewer.Instance.Unfreeze();
 
-        async Task AnimateSliders((Slider slider, TextBox textBox, double targetValue, bool isInteger)[] configs, double durationSeconds)
+        async Task AnimateSliders((Slider slider, TextBox textBox, double targetValue, bool isInteger)[] configs, double durationMiliSecs)
         {
             var startValues = configs.Select(c => c.slider.Value).ToArray();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             double animationSpeedMultiplier = Persistent.SuspendUIAnimations ? 0.01 : 1.0;
-            var totalMs = durationSeconds * 1000 * animationSpeedMultiplier;
+            var totalMs = durationMiliSecs * animationSpeedMultiplier;
 
             while (stopwatch.ElapsedMilliseconds < totalMs)
             {
