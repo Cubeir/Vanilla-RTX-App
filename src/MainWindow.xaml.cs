@@ -1613,7 +1613,7 @@ public sealed partial class MainWindow : Window
 
 
 
-    private void ResetButton_Click(object sender, RoutedEventArgs e)
+    private async void ResetButton_Click(object sender, RoutedEventArgs e)
     {
         // ----- HARD RESET 
         var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
@@ -1621,6 +1621,21 @@ public sealed partial class MainWindow : Window
         {
             if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
             {
+                // Confirm with the user before nuking anything from disk.
+                var dialog = new ContentDialog
+                {
+                    Title = "You're about to completely wipe all of app's data.",
+                    Content = $"This will delete all of application's data across your device, including Default RTX & LUT files which the app obtained from your actual game files!" +
+                    $"\nAs such, you may be prompted to accept multiple admin privilege requests in order to let the app restore your game's default files before they're gone from app's data.",
+                    PrimaryButtonText = "Confirm",
+                    CloseButtonText = "Cancel", 
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot,
+                    RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+                };
+                var result = await dialog.ShowAsync();
+                if (result != ContentDialogResult.Primary) return;
+
                 WindowControlsManagerExtensions.DisableAllControls(this);
                 _progressManager.ShowProgress();
                 _ = BlinkingLamp(true);
