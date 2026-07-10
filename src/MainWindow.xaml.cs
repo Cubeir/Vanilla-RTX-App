@@ -1290,6 +1290,7 @@ public sealed partial class MainWindow : Window
             PreviewVesselBackground.Visibility = Visibility.Collapsed;
             PreviewVesselBottom.Visibility = Visibility.Collapsed;
             PreviewVesselTop.Visibility = Visibility.Collapsed;
+            ShowTypingCursor = false;
             Previewer.Instance.Freeze();
 
         }
@@ -1299,6 +1300,7 @@ public sealed partial class MainWindow : Window
             PreviewVesselBackground.Visibility = Visibility.Visible;
             PreviewVesselBottom.Visibility = Visibility.Visible;
             PreviewVesselTop.Visibility = Visibility.Visible;
+            ShowTypingCursor = true;
             if (invokedByClick)
             {
                 Previewer.Instance.Unfreeze(); // As to avoid prematurely unfreezing at startup
@@ -2535,7 +2537,7 @@ public sealed partial class MainWindow : Window
     private const string EntrySentinel = "\uE000\uE001";
 
     // Idle/typing cursor — sits at the current write-head
-    private const bool ShowTypingCursor = true;
+    private bool ShowTypingCursor = true;
     private const int CursorBlinkMs = 750;
     private const string CursorOnGlyph = " |";
     private const string CursorOffGlyph = "  ";
@@ -2795,6 +2797,13 @@ That said, it's a cool feature for those who might want it.
 */
 // ============================================================================================================
 /* THE GULAG 
+
+Just an idea to keep on the sidelines:
+make other windows have their logo/icons similar to main window and alchitex
+potentially add the titlebar to all of them as well... maybe that's too far, dunno rn...
+but it can look good?! unique icons for each module, awesome titlebars
+etc..
+you could rice each feature more, pretty backgrounds, whatnot!
 
 -> json says he might unify the output of /creator with what the /api gives.
 good news!
