@@ -35,10 +35,6 @@ public enum RTXDefaultsGuard
 /// </summary>
 public static class DefaultsGuard
 {
-    private const string LutFile_LookUpTables = "look_up_tables.png";
-    private const string LutFile_Sky = "sky.png";
-    private const string LutFile_Water = "water_n.tga";
-
     public static async Task<RTXDefaultsGuard> RestoreBetterRTXDefaultIfNeededAsync(Action<string>? log = null)
     {
         try
@@ -107,6 +103,9 @@ public static class DefaultsGuard
         }
     }
 
+    private const string LutFile_LookUpTables = "look_up_tables.png";
+    private const string LutFile_Sky = "sky.png";
+    private const string LutFile_Water = "water_n.tga";
     public static async Task<RTXDefaultsGuard> RestoreLutDefaultIfNeededAsync(bool targetPreview, Action<string>? log = null)
     {
         try
