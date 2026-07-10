@@ -1183,7 +1183,10 @@ public sealed partial class MainWindow : Window
     }
 
 
-
+    // TODO: make this place more interesting to interact with
+    // This is the only button that hasn't got much going on with it
+    // iirc winui had a thing to compositing and filling up glyphs, do that here?
+    // explain more what the link leads to, not everyone knows what discord is, or why they'd join
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
         Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.VanillaRTX);
@@ -2805,7 +2808,9 @@ Tuner, PackLocator, PackBrowserWindow, ExpImpDel, BetterRTXManager
 
 Then you can delete the package!
 
-A unification of 
+A unification of HOW manifests are parsed across PackLocator, PackUpdater, ExpImpDel, etc.. will be due.
+all while moving away from newtonsoft.json
+a versatile parser that satisfies the needs of all three or more.
 
 - Create a BetterRTX-like lut preset, gets the looks 80% there!
 
