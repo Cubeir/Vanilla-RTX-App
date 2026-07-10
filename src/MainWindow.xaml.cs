@@ -1562,7 +1562,7 @@ public sealed partial class MainWindow : Window
         if (_isInitializing) return; // same as Checked
 
         SelectedPacks.Clear();
-        Log("Targeting stable Minecraft release.", LogLevel.MCRelease);
+        Log("Targeting stable Minecraft Release.", LogLevel.MCRelease);
 
         MinecraftUserDataLocator.ValidateAndUpdateCachedLocations();
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -2581,7 +2581,18 @@ public sealed partial class MainWindow : Window
         string entry = $"{prefix}{message}";
 
         lock (_logGate)
+        {
+            if (!string.IsNullOrEmpty(LogText))
+            {
+                int firstSentinel = LogText.IndexOf(EntrySentinel, StringComparison.Ordinal);
+                string lastEntry = firstSentinel >= 0 ? LogText[..firstSentinel] : LogText;
+
+                if (lastEntry == entry) // identical to previous entry? drop it
+                    return; 
+            }
+
             LogText = string.IsNullOrEmpty(LogText) ? entry : $"{entry}{EntrySentinel}{LogText}";
+        }
     }
 
     private void InitializeLogTypewriter()
