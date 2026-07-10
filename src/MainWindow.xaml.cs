@@ -1300,8 +1300,6 @@ public sealed partial class MainWindow : Window
             PreviewVesselBackground.Visibility = Visibility.Collapsed;
             PreviewVesselBottom.Visibility = Visibility.Collapsed;
             PreviewVesselTop.Visibility = Visibility.Collapsed;
-
-            ShowTypingCursor = false;
             Previewer.Instance.Freeze();
         }
         // Continue with the defaults and avoid redundant opertions if not a button click
@@ -1314,8 +1312,6 @@ public sealed partial class MainWindow : Window
             PreviewVesselBackground.Visibility = Visibility.Visible;
             PreviewVesselBottom.Visibility = Visibility.Visible;
             PreviewVesselTop.Visibility = Visibility.Visible;
-
-            ShowTypingCursor = true;
             Previewer.Instance.Unfreeze();
         }
     }
@@ -2518,6 +2514,7 @@ public sealed partial class MainWindow : Window
     private int _settledLength = 0;   // trailing chars of LogText already fully shown & final
     private int _activeRevealed = 0;  // chars revealed so far of the current (oldest-pending) entry
     private string? _lastRenderedText;
+    private static string? _lastSeenLogText;
 
     private const int MaxLogChars = 4000;
 
@@ -2547,7 +2544,7 @@ public sealed partial class MainWindow : Window
     private const string EntrySentinel = "\uE000\uE001";
 
     // Idle/typing cursor — sits at the current write-head
-    private bool ShowTypingCursor = true;
+    private const bool ShowTypingCursor = true;
     private const int CursorBlinkMs = 750;
     private const string CursorOnGlyph = " |";
     private const string CursorOffGlyph = "  ";
@@ -2608,6 +2605,9 @@ public sealed partial class MainWindow : Window
 
     private void TypewriterTick()
     {
+        if (SuspendUIAnimations && ReferenceEquals(LogText, _lastSeenLogText))
+            return;
+
         string current;
         lock (_logGate)
         {
@@ -2640,7 +2640,9 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        // Short circ the animation
+        _lastSeenLogText = current;
+
+        // Short circuit the animation
         if (SuspendUIAnimations)
         {
             _settledLength = current.Length; // Mark everything as already "typed"
@@ -2712,7 +2714,7 @@ public sealed partial class MainWindow : Window
             tailText = firstBoundary >= 0 ? settledDisplay[firstBoundary..] : "";
         }
 
-        string cursor = ShowTypingCursor
+        string cursor = (ShowTypingCursor && !SuspendUIAnimations)
             ? ((Environment.TickCount64 / CursorBlinkMs) % 2 == 0 ? CursorOnGlyph : CursorOffGlyph)
             : "";
 
