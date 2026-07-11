@@ -12,7 +12,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 <!-- Cover image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/b24ba844-f752-42a9-9e01-08d3ad376ce0" alt="vanilla-rtx-app-cover-render"/>
+  <img width="1920" height="1080" alt="vanilla-rtx-app-cover-render" src="https://github.com/user-attachments/assets/2af758a4-e047-4b74-8c6e-c9a72177decf" alt="vanilla-rtx-app-cover-render" />
 </p>
 
 # Overview
