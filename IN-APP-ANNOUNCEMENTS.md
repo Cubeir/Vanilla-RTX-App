@@ -1,5 +1,5 @@
 # Credits
-Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Spaceowl, Willström, Bastha, Jayssizle, Drackae, PotatoHour, Kittygamer123, Lanaismymommy, Joseph, James Kelly, Aaerox, jessehall(Maneating-Zebras), OmarVillegas, Isttret, Nash Knowlden, Superluminal, Travis Bishop, Dylan, Commander Grub, Kyo Don, The_Asa_Games, Charles D Powell, jamesyoung, Nogi Keita, Koiboi, DomoTurbulence, Rory, Nick Da Fox, Richard Anderson (Rich), Jacob, Luxalios, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Leo Montenero, Bryan Tepox, 67, Ryan S Beers — and to everyone who has supported this project in any way along the way.
+Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Spaceowl, Willström, Bastha, Joseph, PotatoHour, Kittygamer123, Lanaismymommy, James Kelly, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, OmarVillegas, Isttret, Superluminal, Travis Bishop, Dylan, Commander Grub, Kyo Don, The_Asa_Games, Charles D Powell, jamesyoung, Koiboi, DomoTurbulence, Rory, Nick Da Fox, Richard Anderson (Rich), Jacob, Luxalios, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, 67, Ryan S Beers — and to everyone who has supported this project in any way along the way.
 
 Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
 
@@ -8,7 +8,7 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 📯 Welcome to the 3.1 update! As you explore each feature, you'll come across dynamic/fresh info panels to help you stay informed and up-to-date, like changelogs for Vanilla RTX updates, and much, much more... The app now also works for all kinds of MCBE installations, including the unusual ones!
 
 ### reactor temp announcement
-🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App! It's window currently hosts development progress news.
+🟦 RTX Reactor is set to become free as a part of the Vanilla RTX App! Its currently only hosts development news.
 
 # PackUpdateAnnouncements
 ### Update [glyph:"E789"]
@@ -16,7 +16,7 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 Fog and atmosphere of many biomes has been overhauled across all three packs!
 Find detailed changelogs by clicking name of a pack to go to its CurseForge page.
 
-NOTE: The update may not be out yet as of writing this, but it will be very soon, the app update and these PSAs were released a bit prematurely.
+Note: The update may not be out yet if you're seeing this, but it will be very soon, the app update and these PSAs were released a bit prematurely.
 I've just managed to resume working on Vanilla RTX updates as we speak following app's 3.1 update. Things will be back on track soon!
 
 ## Chaos Cubes [cd:"120"] [glyph:"F158"]
@@ -64,7 +64,7 @@ Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3
 # ResourcePackSelectionAnnouncements
 ### Text below is a one time tutorial type of thing! [glyph:"E95B"]
 Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
-Use the clear selection button in the main window to clear your selections.
+Use the clear selection button in the main window to clear your selections or by hitting confirm without selecting any packs.
 
 
 
