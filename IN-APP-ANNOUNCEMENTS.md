@@ -34,9 +34,6 @@ Reinstalls happen quicker from a cached version, unless a new version happens to
 
 # BetterRTXAnnouncements
 
-## [cd:"0"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will also change. CHECK BACK LATER!
-It is currnetly safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets. (This text may update and change later).
-
 ## Warning 1 [glyph:"E730"] [cd:"10000"]
 Reminder: If your preset list has been auto-reset since your last visit, or this is your first visit:
 It is a good idea to wait and check from the BetterRTX Discord whether it has been updated for the latest game version before installing a preset. Installing presets while it serves outdated files could result in crashes and visual glitches. In this scenario, revert to Default RTX, and once BetterRTX is updated, use the refresh button in the top left corner. 
@@ -45,6 +42,8 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to re-fetch the latest files.
 
+## [cd:"120"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will also change. CHECK BACK LATER!
+It is currnetly safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets.
 
 # LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
