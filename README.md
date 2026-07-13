@@ -46,20 +46,18 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 Now ray tracing is enabled properly, you have the latest version of [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX), which is kept up-to-date for the recent version of Minecraft, with [bug fixes](https://minecraftrtx.net/enhancements) for as many issues as possible. This was a bare-bones guide for users who don't want any technical details and just want to get RTX working quickly. Below you'll find the full documentation of functionalities included in the app if you wish to take things further.
 
-## Documentation
+# Documentation
 
-This is your detailed guidebook on what each feature within the app does.
+This is your detailed guidebook on what each feature within the app does.  
 
-### How the App Is Organized
-
-The app's features generally split into two groups, based on what they touch:
+Features you interact with generally split into two groups, based on what they touch:
 
 - **Game Modification Tools** — work directly with your Minecraft installation: BetterRTX, RTX LUT manager and DLSS swapper.
 - **Resource Pack & User Data Tools** — work with the resource packs living in your Minecraft user data folder: installing and updating Vanilla RTX, tuning packs, RTX Reactor (soon), and launching the game itself with ray tracing enabled.
 
 Both your game installations and your user data locations for Minecraft and Minecraft Preview (if installed) are detected automatically by the app — you will never need to think about this if using official Minecraft installations; However, if detection ever fails for you, see [Troubleshooting](#troubleshooting) for how to point the app in the right direction manually.
 
-## User Data & Resource Pack Tools
+## Resource Pack & User Data Tools
 - `Launch Minecraft RTX`  
   Launches Minecraft with ray tracing pre-enabled, additionally disables VSync for fixing performance issues and enables in-game graphics mode switching, this circumvents issues that make enabling ray tracing difficult, such as:  
   [MCPE-191513](https://bugs.mojang.com/browse/MCPE/issues/MCPE-191513): Ray tracing can no longer be enabled while in the main menu.  
@@ -73,7 +71,8 @@ Both your game installations and your user data locations for Minecraft and Mine
   Opens a window from which you can download and install, reinstall, or update Vanilla RTX resource packs (delivered from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)).
   > Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and are constantly improving — in short, this is the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. This window lets you know if updates are available, shares update news, and is the most convenient way to stay current.
 
-  Downloaded files remain cached for faster reinstalls until a new update becomes available, giving you a quick way to reset packs back to their original state for rapid experimentation with the tuning options covered below.
+  > Downloaded files remain cached for faster reinstalls until a new update becomes available, giving you a quick way to reset packs back to their original state for rapid experimentation with the tuning options covered [later in this document](#resource-pack-tuner).  
+  
   > Note: updates delivered by the app will automatically replace your older installations of Vanilla RTX resource packs (per-pack).
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/faa01f9f-98bc-447f-8bde-cdfe7f152311" />
@@ -87,7 +86,7 @@ Both your game installations and your user data locations for Minecraft and Mine
 - `Delete selection`  
   Deletes your selected packs from your Minecraft user data directory. Worth noting: it walks up to the parent directory of where a pack's `manifest.json` resides and deletes the entire folder from the root of the `resource_packs` or `development_resource_packs` directory — something to be aware of if you happen to store other important files within your resource pack folders.
 
-## Resource Pack Tuner
+## PBR Resource Pack Tuner
 The Vanilla RTX App includes tools to tune Vanilla RTX, or any other Ray-Traced or Vibrant Visuals resource pack, to your preferences. Each tuning option uses an algorithm designed to preserve a PBR texture's original composition, making it hard to derail a pack's intended look while still nudging it in your preferred direction. Changes made to a resource pack's files are permanent.
 
 Tuning is built to work alongside the app's other resource pack management features, so the whole process stays safe and easy to reverse: export a pack to back it up before tuning it, then, if you're not happy with the result, reimport the backup through the app. For Vanilla RTX specifically, it's even simpler — just hit Reinstall from the `Get latest RTX packs` menu.
