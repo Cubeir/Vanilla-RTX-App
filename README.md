@@ -75,7 +75,7 @@ Both your game installations and your user data locations for Minecraft and Mine
   
   > Note: updates delivered by the app will automatically replace your older installations of Vanilla RTX resource packs (per-pack).
 
-<img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/faa01f9f-98bc-447f-8bde-cdfe7f152311" />
+<img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/a5aa871a-468e-4bfc-9c58-d7283e25b58e" />
 
 - `Preview (Toggle)`  
   While `Preview` is active, all of the app's functionality targets the Preview/Beta version of Minecraft instead of the main release. All features except `BetterRTX manager` support Minecraft Preview.
@@ -91,7 +91,7 @@ The Vanilla RTX App includes tools to tune Vanilla RTX, or any other Ray-Traced 
 
 Tuning is built to work alongside the app's other resource pack management features, so the whole process stays safe and easy to reverse: export a pack to back it up before tuning it, then, if you're not happy with the result, reimport the backup through the app. For Vanilla RTX specifically, it's even simpler — just hit Reinstall from the `Get latest RTX packs` menu.
 
-![vanilla-rtx-app-pack-selection-menu](https://github.com/user-attachments/assets/0b2dadce-a7ac-4d08-b44c-5c93618bcd02)
+<img alt="Vanilla RTX UI Screenshots" src="https://github.com/user-attachments/assets/3daab14b-12f5-4a14-8a5a-34c8dc8d2aad" />
 
 The app keeps track of your installed Vanilla RTX resource packs, and their checkboxes become enabled for each one that is installed. For selecting resource packs other than Vanilla RTX, use the `Select other packs` menu, from which you may also `Import` more resource packs.
 
@@ -195,8 +195,6 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune �
 
 ## Miscellaneous
 
-![in-app-image](https://github.com/user-attachments/assets/2a37b0b5-cbfb-42a2-976d-03f309fa3b1d)
-
 - Holding shift while clicking the lamp icon next to the app's title will copy app's logs to your clipboard for debugging. It's helpful to attach this when reporting issues — see [Troubleshooting](#troubleshooting).
 > The lamp is called the Tuner Lamp; it dynamically reacts to the actions you take within the app. It may also occasionally display erratic behavior. All intended! Nothing's bugging out!
 
@@ -242,6 +240,7 @@ Roll back to the Default RTX preset from the `BetterRTX manager`. BetterRTX pres
   https://aka.ms/SegoeFluentIcons (or http://aka.ms/SegoeMDL2 for Windows 10)
 - Non-English languages are not supported; there may be issues with other system languages. (untested, non-critical)
 - The app's appearance is not properly accounted for with Windows accessibility features. (untested, non-critical)
+- Working with the app if the main window is always-on-top mode is bothersome, modules that launch as child-windows over main window inevitably appear beneath the main window (design-flaw, non-critical)
 
 ### Still Stuck? For assistance and reporting issues, or suggestions
 Open an issue [here](https://github.com/Cubeir/Vanilla-RTX-App/issues), ask your questions, or post suggestions/issues to the forum channel of [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud) — you can also alert @cubeir on the [Minecraft RTX Community Discord](https://discord.gg/eKVKD3c). Anything works!
