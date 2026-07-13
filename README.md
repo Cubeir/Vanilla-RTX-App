@@ -34,10 +34,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 ## Ray Tracing Quick Setup Guide (For Beginners)
 
-1. Install the Vanilla RTX App through [Microsoft Store](https://apps.microsoft.com/detail/9N6PCRZ5V9DJ) (or alternatively via a [winget](https://github.com/microsoft/winget-cli) command):
-   ```powershell
-   winget install "Vanilla RTX App"
-   ```
+1. Install the Vanilla RTX App through the [Microsoft Store](https://apps.microsoft.com/detail/9N6PCRZ5V9DJ).
 3. Launch the app, click **`Get latest RTX packs`**
    - This opens a menu which allows you to install (or update) Vanilla RTX resource packs required for enabling ray tracing.
 4. After installing a Vanilla RTX resource pack finishes, click **`Launch Minecraft RTX`**
