@@ -154,7 +154,7 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune �
   The noise has a subtle checkerboard pattern that mimics the same noise seen on the PBR textures of default Vibrant Visuals, while still giving the pack a slightly fresh look each time the noise is applied.
 
 - `Tune selection`
-  Begins applying your chosen parameters to every resource pack you've selected. Changes are permanent, and each tuning pass stacks on top of the previous one, until the pack is updated or its original files are freshly reinstalled.
+  Begins modifying the resource packs you've selected with your chosen parameters to every resource pack you've selected. Changes are permanent, and each tuning pass stacks on top of the previous one. You can reset Vanilla RTX packs back to their original state by reinstalling them from `Get latest RTX packs` menu, and other packs by re-importing the unmodified version prior to tuning.
 
 > While tuning, the button turns into `Abort tuning operation`, which can be used to stop the operation — textures already finished keep their changes, and anything not yet reached by the Tuner is left untouched. This also acts as a safety net for accidental clicks: the app takes a few seconds to collect the resources it needs before tuning actually starts, so if you abort quickly enough, likely nothing will have been modified.  
 
@@ -248,6 +248,6 @@ Open an issue [here](https://github.com/Cubeir/Vanilla-RTX-App/issues), ask your
 
 When reporting a bug, it helps a lot to attach application logs *after* you've performed the steps to produce an issue — shift-click the lamp icon next to the app's title to copy them to your clipboard (see [Miscellaneous](#miscellaneous)).
 
-### Disclaimer
+## Disclaimer
 
 Vanilla RTX App (formerly known as Vanilla RTX Tuner) is not associated or affiliated with Mojang Studios or Nvidia.
