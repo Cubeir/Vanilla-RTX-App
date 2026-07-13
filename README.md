@@ -1,7 +1,7 @@
 # Vanilla-RTX-App
 Everything you'll ever need to easily acesss Minecraft RTX and unlock its full potential brought together in one place.  
 
-All-in-one Vanilla RTX app lets you automatically update the ray tracing packages for the latest Minecraft releases, tune various aspects of Vanilla RTX resource packs to your preferences, easily enable Minecraft's ray tracing, manage and install BetterRTX shader mods, swap or upgrade DLSS, and more...   
+All-in-one Vanilla RTX App lets you automatically update the ray tracing packages for the latest Minecraft releases, tune various aspects of Vanilla RTX resource packs to your preferences, easily enable Minecraft's ray tracing, manage and install BetterRTX shader mods, swap or upgrade DLSS, and more...   
 Ensuring ray tracing is accessible to new players, and frictionless for existing users—despite years of neglect from Mojang.
 <!-- Microsoft Store badge -->
 <p align="center">
@@ -164,7 +164,7 @@ This option is scaled by the Emissivity Multiplier — a higher multiplier means
 
 > While tuning, the button turns into `Abort tuning operation`, which can be used to stop the tuning operation, textures already finished keep their changes, anything not yet reached by the Tuner is left untouched. This is more of a safety net in case you accidentally press the Tune button, since the app takes a few seconds to collect the resources it needs before tuning, if you're quick enough, likely nothing will have been modified.
 
-- `Clear Selection` 
+- `Clear selection` 
   Clears the Vanilla RTX and custom pack selections.
 
 - `Reset`  
@@ -179,19 +179,15 @@ This option is scaled by the Emissivity Multiplier — a higher multiplier means
 
 ![in-app-image](https://github.com/user-attachments/assets/2a37b0b5-cbfb-42a2-976d-03f309fa3b1d)
 
-- Dynamic PSAs: Every feature in the app can display any number of "info" cards, as defined [here](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/IN-APP-ANNOUNCEMENTS.md) They may also contain warnings, announcements, tutorials, or even brief you on Vanilla RTX's changelogs in its install menu. The PSAs are cached and automatically updated every few hours.
+- Holding shift while clicking the lamp icon next to app's title will copy the app's stack trace to your clipboard for debugging, it may be helpful to attach these when reporting issues.
+> The lamp is called Tuner Lamp, it dynamically reacts to to the actions you take within the app. It may also occasionally display erratic behavior. All intended! Nothing's bugging out!
+
+- Dynamic PSAs: Every feature in the app can display any number of "info" cards as defined [here](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/IN-APP-ANNOUNCEMENTS.md). These may warnings, announcements, tutorials, or even brief you on Vanilla RTX's changelogs in its install menu. The PSAs are cached and can update themselves once every few hours. You may also dismiss some of them for varying time periods (as decided by the app).
 
 - Hovering any control in the app displays a unique pixel art communicating its function in the bottom left side of the app, for instance, sliders show how they should impact the visuals seen in-game as you change them, toggles show before/after, and buttons/other controls display a mildly artistic interpretation of what the they do!
 > In combination with descriptive tooltips and non-static PSAs, this is meant to help make the app less intimidating and more beginner-friendly by presenting you with every resource you may need directly in the app.  
-  
-- Holding shift while clicking the lamp icon next to app's title will copy the app's stack trace to your clipboard for debugging, it may be helpful to attach these when reporting issues.
 
-> The lamp is called Tuner Lamp, and it dynamically reacts to to the actions you take with the app. It can also occasionally display erratic behavior. All intended! Nothing's bugging out!
-
-- The following settings persist between sessions: tuning options/slider values, Preview toggle, theme choice, and game install locations.
-  Allowing you to keep your personal favorite values and quickly re-tune newer versions without having to remember everything, or come back to the app and swap DLSS again or reinstall your BetterRTX preset quickly in case of a Minecraft update.
-
-- Top-left titlebar buttons in order:
+- Other titlebar buttons:
   - Suspend UI Animations: Disables all custom UI animations, e.g. Tuner Lamp's reactivity (including the startup blink) as well as the typewriter animations and pixel art in the log area, fade effects, etc... 
      > Recommended to enable if you're sensitive to flashing images, bonus point: it makes the app open faster.
   - Cycle themes: Change between dark, light, or system theme.  
