@@ -12,13 +12,13 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 
 <!-- Cover image -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/2af758a4-e047-4b74-8c6e-c9a72177decf" alt="vanilla-rtx-app-cover-render" />
+  <img alt="vanilla-rtx-app-cover-render" src="https://github.com/user-attachments/assets/2af758a4-e047-4b74-8c6e-c9a72177decf"/>
 </p>
 
 # Overview
 <!-- Second Cover Image -->
 <p align="center">
-   <img src="https://github.com/user-attachments/assets/8a7a07b3-f241-4e20-9cfb-c5355c310b80" alt="vanilla-rtx-app-cover"/>
+   <img alt="vanilla-rtx-app-cover" src="https://github.com/user-attachments/assets/8a7a07b3-f241-4e20-9cfb-c5355c310b80"/>
 </p>
 <!-- Badges -->
 <p align="center">
@@ -51,21 +51,22 @@ Now ray tracing is enabled properly, you have the latest version of [Vanilla RTX
 This is your detailed guidebook on what each feature within the app does.
 
 - `Launch Minecraft RTX`  
-  Launches Minecraft with ray tracing pre-enabled, additionally disables VSync for fixing performance issues and enables in-game graphics mode switching, this circumvents issues such as these that make enabling ray tracing difficult:    
+  Launches Minecraft with ray tracing pre-enabled, additionally disables VSync for fixing performance issues and enables in-game graphics mode switching, this circumvents issues that make enabling ray tracing difficult, such as:    
   [MCPE-191513](https://bugs.mojang.com/browse/MCPE/issues/MCPE-191513): Ray tracing can no longer be enabled while in the main menu.  
   [MCPE-152158](https://bugs.mojang.com/browse/MCPE/issues/MCPE-152158): PBR textures don't load properly upon enabling ray tracing after the game is freshly launched.  
-  [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850): Ray Tracing performance starvation when VSync is enabled.
-> Even if the game doesn't launch, it's okay, this can happen if the protocol to launch Minecraft isn't assigned on your computer. Just continue to launch the game manually as the app has already done its main job at correcting the options for ray tracing.  
-> Holding shift while pressing this button will enable VSync instead of disabling it (not recommended).
+  [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850): Ray Tracing performance starvation when game's VSync is enabled.
+> Even if the game doesn't launch, it's okay! This can happen if the protocol to launch Minecraft isn't assigned on your computer. Just continue to launch the game manually as the app has already done its main job at correcting the options for ray tracing.  
+> Holding shift while pressing this button will enable VSync instead of disabling it (not recommended, you should manually enable VSync from your GPU's Control Panel instead if you don't want screen tearing).
 
-![vanilla-rtx-app-ui-screenshots](https://github.com/user-attachments/assets/09563ec6-0099-4afd-b2e5-73a3af930b02)
+<img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/fe39284b-4275-4fb6-9339-26dec8057e5b" />
 
 - `Get latest RTX packs`  
-  Opens a window from which you can download and install/resintall, or update to the latest Vanilla RTX resource packs directly from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)  
->   Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and are constantly improving, in short, it is the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. This window lets you know if there are updates available + update news, and provides the most convenient way to stay updated. 
+  Opens a window from which you can download and install/resintall, or update Vanilla RTX resource packs (delivered from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)).  
+  > Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and are constantly improving, in short, it is the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. This window lets you know if there are updates available + update news, and provides the   most convenient way to stay updated. 
   Downloaded files remain cached for faster reinstalls until a new update becomes available to you, giving a speedy way reset the packs back to original state for rapid experimentation with the tuning options explored later in this document.
+  > Note: updates delievered by the app will replace your existing installation automatically.
   
-  ![vanilla-rtx-app-ui-image](https://github.com/user-attachments/assets/65affd06-3396-4302-aca5-07952d593942)
+<img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/faa01f9f-98bc-447f-8bde-cdfe7f152311" />
 
 - `DLSS version swapper`
 Allows you to import and manage a catalogue of DLSS dll files for easy version switching. The currently-installed version is automatically catalogued, so you won't lose the original dll when replacing it, allowing you to revert easily. Accepts `.dll` files and `.zip` archives containing any number of dlls. You can also remove dll files from your catalogue that you no longer need. Your currently-installed version of DLSS is always highlighted.
@@ -73,8 +74,10 @@ Allows you to import and manage a catalogue of DLSS dll files for easy version s
 - `BetterRTX manager`
 Displays an up-to-date list of all available [BetterRTX](https://bedrock.graphics/) presets, which you can click to download and then install (Once a preset is finished downloading it is moved to the top for convenience)
 > Upon installing your first ever preset, a Default RTX preset is created from your local game files that sticks the top, allowing you to rollback/uninstall BetterRTX.
-The app watches for game updates on your system, upon detecting updates all of your presets are wiped and the list is refreshed automatically, this automatically guarantees you aren't installing outdated RTX files by accident, and keeps your Default RTX preset up-to-date.
+The app watches for game updates on your system, upon detecting updates all of your presets are wiped and the list is refreshed automatically, this guarantees you aren't installing outdated RTX files by accident, and keeps your Default RTX preset up-to-date.
 You will also have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app does its best to make sure you're always getting the latest, however, this depends entirely on BetterRTX updating itself just in time, sometimes it takes a while for BetterRTX updates to arrive, if you experience crashes after installing a BetterRTX preset, rollback to the default preset. The app also periodically watches for potential changes in the API and automatically resets your presets to ensure you won't be installing stale files. A manual refresh button is also provided which clears BetterRTX API and preset cache, but not your Default RTX preset (cleared exclusively by game update detection).
+
+<img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/022acfe7-6b5e-4135-a11d-acfaea4d9f11" />  
 
 - `RTX LUT  manager`  
 A simpler way to modify and improve Minecraft RTX's appearance that works reliably across all game versions and Minecraft Preview, you can select from a growing list of pre-bundled presets. Currently, 4 distinct LUT presets are provided:
@@ -84,8 +87,8 @@ A simpler way to modify and improve Minecraft RTX's appearance that works reliab
 >  - Whimsical Bright: opposite of Night Night, whimsically colorful and bright!  
 With more coming soon. Have an idea for one? Create a suggestion!
 
-- `Preview (Togglable)`  
-All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active. All app features and modules (with the exception of `BetterRTX manager`) fully support Minecraft Preview.
+- `Preview (Toggle)`  
+All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active. All featuress with the exception of `BetterRTX manager` support Minecraft Preview.
   
 - `Export selection`  
   Exports selected packs. Useful for backing up your snapshot of the pack before making further changes, or to share your tuned version of Vanilla RTX (or another PBR resource pack) with friends! Since the app doesn't come with any quick way to reset PBR resource packs other than Vanilla RTX, it is recommended that you save them using this feature before tuning.
@@ -96,9 +99,10 @@ Deletes your selected packs from your Minecraft user data directory. Worth notin
 - `RTX Reactor`  
 [RTX Reactor](http://minecraftrtx.net/reactor) is joining the Vanilla RTX App down the road, the window currently hosts its development news.
   
-## Resource Pack Tuner & Management Tools
+## Tuner + Resource Pack Management Tools
+The Vanilla RTX App includes tools to tune Vanilla RTX, or any other RTX or Vibrant Visuals resource pack, to your preferences. Each tuning option uses an algorithm designed to preserve a PBR texture's original composition, making it hard to derail a pack's intended look while still nudging it in your preferred direction. Changes made to a resource pack's files are permanent.
 
-The Vanilla RTX App includes tools to tune Vanilla RTX or any other RTX or Vibrant Visuals resource pack according to your preferences. Tuning options each use algorithms designed to preserve the PBR textures' composition, making it difficult to derail a pack's intended look while nudging it in your preferred direction. Changes are made to a resource pack's files are permanent, however, the whole tuning process works together with the app's other resource pack management features to keep the experience streamlined/quickly reversible, for instance, you can quickly export your resource packs to keep a backup before tuning them, and if you aren't satisfied with the results, reimport them through the app. Or in case of Vanilla RTX resource packs, simply hit their Reinstall button from `Get latest RTX packs` menu.
+Tuning is built to work alongside the app's other resource pack management features, so the whole process stays safe and easy to reverse: export a pack to back it up before tuning it, then, if you're not happy with the result, reimport the backup through the app. For Vanilla RTX specifically, it's even simpler — just hit Reinstall from the `Get latest RTX packs` menu.
 
 ![vanilla-rtx-app-pack-selection-menu](https://github.com/user-attachments/assets/0b2dadce-a7ac-4d08-b44c-5c93618bcd02)
 
