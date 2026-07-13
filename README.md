@@ -76,9 +76,13 @@ Displays an up-to-date list of all available [BetterRTX](https://bedrock.graphic
 The app watches for game updates on your system, upon detecting updates all of your presets are wiped and the list is refreshed automatically, this automatically guarantees you aren't installing outdated RTX files by accident, and keeps your Default RTX preset up-to-date.
 You will also have to redownload the presets as they may have likely been updated on [bedrock.graphics/api](https://bedrock.graphics/api), the app does its best to make sure you're always getting the latest, however, this depends entirely on BetterRTX updating itself just in time, sometimes it takes a while for BetterRTX updates to arrive, if you experience crashes after installing a BetterRTX preset, rollback to the default preset. The app also periodically watches for potential changes in the API and automatically resets your presets to ensure you won't be installing stale files. A manual refresh button is also provided which clears BetterRTX API and preset cache, but not your Default RTX preset (cleared exclusively by game update detection).
 
-- `RTX lut manager`  
-A simpler way to modify and improve Minecraft RTX's appearance that works reliably across all game versions and Minecraft Preview, you can select from the list of pre-bundled presets, you can also [learn to create and submit your own lut preset](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LUT-CREATION-GUIDE.md) to see it included with future versions of the app.
-> Currently, 4 LUT presets are provided: Gamescom 2019 Demo V2, Matrix Fever, Night Night, Whimsical Bright
+- `RTX LUT  manager`  
+A simpler way to modify and improve Minecraft RTX's appearance that works reliably across all game versions and Minecraft Preview, you can select from a growing list of pre-bundled presets. Currently, 4 distinct LUT presets are provided:
+>  - Gamescom 2019 Demo V2: attempts to restore Minecraft RTX's graphics from its early demos shown to the public, viable alternative to the default preset.
+>  - Matrix Fever: based on [Matrix Fever](https://www.curseforge.com/minecraft-bedrock/texture-packs/matrix)
+>  - Night Night: features extremely dark nights, great for a horror vibe.  
+>  - Whimsical Bright: opposite of Night Night, whimsically colorful and bright!  
+With more coming soon. Have an idea for one? Create a suggestion!
 
 - `Preview (Togglable)`  
 All of the app's functionalities are targeted at Preview/Beta version of Minecraft instead of main release while  `Preview` is active. All app features and modules (with the exception of `BetterRTX manager`) fully support Minecraft Preview.
