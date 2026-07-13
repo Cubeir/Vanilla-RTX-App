@@ -71,7 +71,7 @@ Both your game installations and your user data locations for Minecraft and Mine
   Opens a window from which you can download and install, reinstall, or update Vanilla RTX resource packs (delivered from the [Vanilla RTX GitHub repository](https://github.com/cubeir/Vanilla-RTX)).
   > Vanilla RTX resource packs are up-to-date for the latest version of Minecraft and are constantly improving — in short, this is the ongoing effort to bring together a cohesive art direction for ray-traced Minecraft. This window lets you know if updates are available, shares update news, and is the most convenient way to stay current.
 
-  > Downloaded files remain cached for faster reinstalls until a new update becomes available, giving you a quick way to reset packs back to their original state for rapid experimentation with the tuning options covered [later in this document](#resource-pack-tuner).  
+  > Downloaded files remain cached for faster reinstalls until a new update becomes available, giving you a quick way to reset packs back to their original state for rapid experimentation with the tuning options covered [later in this document](#pbr-resource-pack-tuner).  
   
   > Note: updates delivered by the app will automatically replace your older installations of Vanilla RTX resource packs (per-pack).
 
@@ -171,7 +171,7 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune �
 
   > This will also attempt to restore your game's files to their defaults (e.g. if you've installed BetterRTX or LUT presets, you'll see several UAC prompts to restore those files). This is a guardrail, not an accident: the app's "Default" presets are generated from *your* game files the first time it runs. If you wipe the app's cache while your game no longer has its own defaults intact, those defaults are gone for good. **Press Yes on every UAC prompt.** If you don't, you risk losing your game's defaults — recovering from that means reinstalling the game and running Hard Wipe again, since otherwise the app may mistake your non-default files for defaults and carry that mistake forward.
 
-### Game Modification Tools
+## Game Modification Tools
 
 - `BetterRTX manager`
   Displays an up-to-date list of all available [BetterRTX](https://bedrock.graphics/) presets, which you can click to download and then install (once a preset finishes downloading, it's moved to the top for convenience).
