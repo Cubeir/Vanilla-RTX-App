@@ -1273,11 +1273,9 @@
                             <FontIcon Glyph="&#xF4A5;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
-                                      VerticalAlignment="Center"
-                                      Opacity="0.75" />
+                                      VerticalAlignment="Center" />
                             <TextBlock Text="RTX Reactor"
-                                       VerticalAlignment="Center"
-                                       Opacity="0.75" />
+                                       VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 

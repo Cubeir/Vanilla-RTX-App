@@ -500,7 +500,7 @@ public sealed partial class PackBrowserWindow : Window
             Height = 96,
             CornerRadius = new CornerRadius(5),
             Background = new SolidColorBrush(Microsoft.UI.Colors.Gray),
-            Translation = new System.Numerics.Vector3(0, 0, 32)
+            Translation = new System.Numerics.Vector3(0, 0, 12)
         };
 
         var iconShadow = new ThemeShadow();
