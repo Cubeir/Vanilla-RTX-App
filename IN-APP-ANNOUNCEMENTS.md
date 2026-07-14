@@ -75,6 +75,6 @@ That said, you can come back here anytime to check on the development news.
 
 ## [cd:"10000"] [glyph:"E823"]
 July News:
-Since I announced RTX Reactor's merger with the app earlier this year, I've mostly ended up working on app's core features instead, which included foundational changes and features that would've been vital if RTX Reactor is to integerate with the existing features smoothly.
+Since I announced earlier this year that RTX Reactor is joining the app, I've mostly ended up working on app's core features instead, which included foundational changes and features that would've been vital if RTX Reactor is to integerate with the existing features smoothly.
 
-No ETA for when it will be available, given I also maintain Vanilla RTX resource packs for Minecraft, I'm being stretched thin at the moment. All I can say is, hopefully things will be different before 2027.
+No ETA, given I also maintain Vanilla RTX resource packs for Minecraft, I'm being stretched thin at the moment. All I can say is, hopefully things will be different before 2027.
