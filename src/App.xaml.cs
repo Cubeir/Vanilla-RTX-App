@@ -139,7 +139,16 @@ public partial class App : Application
     }
     public static string GetAppVersion()
     {
-        var version = Windows.ApplicationModel.Package.Current.Id.Version; return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        try
+        {
+            var version = Windows.ApplicationModel.Package.Current.Id.Version;
+            return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        }
+        catch
+        {
+            Trace.WriteLine("[GetAppVersion] Failed.");
+            return "0.0.0.0";
+        }
     }
 }
 

@@ -384,6 +384,8 @@ public static class Helpers
 
     #endregion NETWORK
 
+    // TODO: Re-examine the approach, could it be improved? or is it reliable enough?
+    // maybe not saving a file and directly launching the command? -- AVs are the most concerning thing about this, possibly?
     /// <summary>
     /// Copies a set of files using a single elevated batch script (one UAC prompt for all files).
     /// Returns true only if the elevated process exits with code 0.

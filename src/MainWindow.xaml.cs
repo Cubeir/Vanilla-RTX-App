@@ -40,7 +40,7 @@ namespace Vanilla_RTX_App;
 /// </summary>
 public static class TunerVariables
 {
-    public static string? appVersion = App.GetAppVersion();
+    public static string appVersion = App.GetAppVersion();
 
     public static string VanillaRTXLocation = string.Empty;
     public static string VanillaRTXNormalsLocation = string.Empty;
@@ -548,6 +548,8 @@ public sealed partial class MainWindow : Window
             // Apply Suspend Previewr, but won't toggle it (only button invokes can)
             SuspendUIAnimationsToggle_Click(null, null);
 
+            // TODO: Append with a text saying its debug when it is, sometimes you forget, good for your QoL
+            // App Version: [Version] (DEBUG BUILD)
             Log($"App Version: {appVersion}" + new string('\n', 2) +
                 $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
             ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
@@ -595,10 +597,10 @@ public sealed partial class MainWindow : Window
             int rng = Random.Shared.Next(1, count + 1);
             Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
 
-            await FadeOutSplashScreen();
-
             // Show Leave a Review prompt
             _ = ReviewPromptManager.InitializeAsync(MainGrid);
+
+            await FadeOutSplashScreen();
 
             // ============= End
             async Task FadeOutSplashScreen()
@@ -983,10 +985,13 @@ public sealed partial class MainWindow : Window
                 sb.AppendLine("===== UI Controls State");
                 CollectUIControlsState(sb);
 
+                // TODO: Stack trace
+                // Append later, could be useful
+
                 var dataPackage = new DataPackage();
                 dataPackage.SetText(sb.ToString());
                 Clipboard.SetContent(dataPackage);
-                Log("Copied stack trace to clipboard.", LogLevel.Success);
+                Log("Copied stack trace logs to clipboard.", LogLevel.Success);
                 _ = BlinkingLamp(true, true, 0.0, 1.0);
 
                 // ============================================
@@ -1705,7 +1710,7 @@ public sealed partial class MainWindow : Window
         else if (hadVanillaRTX)
             Log("Deselected all Vanilla RTX packs.", LogLevel.Cleaning);
         else
-            Log("You haven't selected any packs to clear.", LogLevel.Informational);
+            Log("You haven't selected any resource pack to clear.", LogLevel.Cleaning);
     }
 
     private async Task WipeAllStorageData()
@@ -1918,7 +1923,7 @@ public sealed partial class MainWindow : Window
 
                 if (!seenPaths.Add(normalised))
                 {
-                    Log($"{displayName} was found in the list more than once - skipped duplicate selection.", LogLevel.Warning);
+                    Log($"{displayName} was found in the deletion queue more than once, skipped duplicate selection.", LogLevel.Warning);
                     continue;
                 }
 
@@ -2778,20 +2783,49 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
-- BEFORE RELEASE:
-Test thoroughly, ensure no latent trimming bugs, on a FRESH release build
-// fresh as in, ensure all assets that should be copied, are copied, not just on your system from older builds.
+increase the delay at the end of wipe, so it gives a chance to copy logs! maybe 2-3 seconds.
+and 
+make the Cancel buttons of content dialogues pf Delete and Wipe log something informative too.
+for hardwipe, explicitly mention it is shift+reset that was cancelled, so if user preses and cancels by accident, they know what they've done
+e.g. Wiping app's data (Shift + Reset) was cancelled by user.
 
-Release it asap, then begin updating images and readmes and such while the update rolls out, efficient.
+Ensure unfocusing the app restores texts/glyphs of buttons with shiftkey thingy, good polish
+maybe there is an Unfocused event of sorts to trigger the same thing as Not holding down shift/unholding shift
 
-- Update the readme to be less verbose, more accurate and helpful instead, cut off unneeded details.
-Update them to reflect the latest features/changes
+========
+📁 - Replace the current Helper ReplaceFilesWithElevation helper with something more friendly and native?!?
+Use IFileOperation COM API, it automatically handles UAC with a professional native UI
+Avoid cmd.exe entirely, DON'T risk AV flags.
+A more reliable, native way to replace files by requesting UAC, when app itself doesn't have admin perms...
 
->> Be more explicit about the right channels to give feedback, report issues, etc...
-like the new content dialogue for crashes, its literally the only place people are easily directed to the right place
-maybe you should do it more often, in more places
+OR AT THE VERY LEAST, refactor the code to launch the commands directly in CMD via command line arguments,
+Bypass the IO operation entirely?!
 
-/// 3.2's development should begin here, doing the sensitive stuff, so ongoing testing during development surfaces issues it may cause, hopefully
+Useful ideas came out those notes you got on MSTODO, revisit it
+
+But pause for a moment:
+The whole idea is to, without having to restart the app, do the opeartion
+but if app is already elevated, a native way should let the app perform the operation without issues.
+the whole cmd approach's deal was to make sure user gives uac perm PER operation request, not NEEDING THE APP TO RESTART
+maybe passing command directly to cmd.exe needs app to be admin! and thus restart! that's why you did it the way you did it.
+but still, if there are more native, better ways, opt for them, teast.
+==========
+
+- Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
+> Tick the app as supporting regular English and British English as well .. no reason not to.
+
+-> For example, declare file picker?
+Allow the app to be registered as the opener of .mcpack files next to Minecraft itself? that'd be pretty good!
+allows the app to, depending on what it targets, import to both MC, and MC Preview
+
+This is a really cool idea honestly, Definitely do it, implement it the right way.
+
+>> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX
+>> Add a LUT preset that INVERTS DAY AND NIGHT! simple as that! Invert daylight cycle, cursed.
+>> Add a "Gaming" LUT preset, whole day all day colors rapidly changing, greyscale skies, colorful directional lights
+
+- Adopt the ProgressBar manager to properly update for:D
+Deletion and Exports, its pretty cool it gradually filling up with each export.
 
 - Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of
 // Done for now, but still, do this:
@@ -2811,12 +2845,20 @@ Then you can delete the package!
 A unification of HOW manifests are parsed across PackLocator, PackUpdater, ExpImpDel, etc.. will be due.
 all while moving away from newtonsoft.json
 a versatile parser that satisfies the needs of all three or more.
+Also,
+About pack updater
+It's whole deal is "Find UUIDs" "find version fields" lkke. we're only looking to extract those in the json. also, what vets compared? only header uuid/version, right?
+also we have packLocator, who's job elsewhere is literally to find existing packs, but with some details,
+only returns one/latest with particular rules, if it cojld be expanded on, to serve updater's needs without changing how it behaves
+existing use, that'd be great too, it's also another place to migrate from newtonsoft to system.text.json, its job is to find our packs  we look for our packs,
+if a manifest is malformed, it def isn't ours, that's the semantic there... in pack locator
 
-- Create a BetterRTX-like lut preset, gets the looks 80% there!
+
 
 - Do the TODOs scattered in the code
 
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
+
 
 - More previewer asset ideas:
 random block renders thrown in there
@@ -2825,10 +2867,12 @@ Idea, of a render of a Tuner block, but each side features one of the feature-un
 Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
 Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
 
+
 - Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
 publicly maintained apis to do this too.
 WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
+
 
 - Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
 Give it special treatment same as default preset and avoid changing existing logic
@@ -2849,9 +2893,40 @@ That said, it's a cool feature for those who might want it.
 >>> Think up a way to make CUSTOM BRTX preset and DLSS flows more seamless
 > How? Open the page directly in webview, take the files back directly into the app -- make the flow SIMPLER! than the ideas above or in classes themselves
 
+For DLSS Swapper
+You MIGHT BE able to first, in isolation, write something to parse the HTML and pick DLSS versions
+if that succeeds
+You can move on to implementing it into the app... just parsing and retrieving dlls in isolation first
+if that succeeds, can move on.
+
 */
 // ============================================================================================================
 /* THE GULAG 
+
+- IDEA:
+Update the documentation, be more throughm, make ### sections for each button/feature name
+make alt-clicking a feature in the app, take the user to the readme.md in THAT section! aka a quick way to read on features
+with detailed tooltips in the app, this is so unneeded, but y'know? ideas are ideas
+
+
+-----
+
+🌟 A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
+In there, allow LOTS OF things
+- functionality of existing titlebar buttons
+allowing register/de-registering of of the app as a .mcpack opener (which directs packs through packbrowser's import)
+Allow selection of a custom paths for game's install paths, etc.. what gdk/userdata locators already find are the defaults there
+but still, allow the user to select any other path they want
+
+A class winui 3.0 app settings menu is what you should go for.
+Even the shift+clicking lamp to copy logs can be offloaded there...
+
+you could even let user construct what the Launch button does/changes! let them disable/enable vsync, rtx, and in-game graphics mode switching changes
+e.g. the constructor
+
+then you can eliminate the whole messy codepath related to Holding shift to perform elevated actions!
+
+-----------
 
 Just an idea to keep on the sidelines:
 make other windows have their logo/icons similar to main window and alchitex
@@ -2874,6 +2949,11 @@ a single report of failure before touching anything
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
+- IDEA: A section in PSAs, and a page in the app, dedicated to KEEP A LIST OF THE BUGS!
+So users can go vote on them, and check if a bug is relaetd to the game or not
+A FULLY COMPILED LIST!
+This is very good, as people get to discover Minecraft RTX bugs instead of being confused about them.
+
 - Begin embedding most visual assets into the .resx, fewer IO operations, good optimization
 very low prio though, not too many assets, things are good
 
@@ -2887,7 +2967,6 @@ be used as the parser
 DISABEL the button when betterrtx is broken, manually enable it again when not.
 
 > Prolly not a good idea warnings are enough.
-
 
 - Make a  secondary image fade in and out briefly over lampinteraction when clicked
 same as bottom vessel

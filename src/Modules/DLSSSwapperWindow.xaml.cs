@@ -432,7 +432,7 @@ public sealed partial class DLSSSwapperWindow : Window
             Text = isCurrentVersion
                 ? Helpers.SanitizePathForDisplay(dll.FilePath)
                 : isTooOld
-                    ? "Incompatible DLSS version. Only import 2.0.0.0 or higher!\nThis version will be auto removed."
+                    ? "Incompatible DLSS version. Only import 2.0.0.0 or higher!\nThis version will be removed automatically."
                     : "Click to swap to this version",
             FontSize = 12,
             Opacity = 0.75,
