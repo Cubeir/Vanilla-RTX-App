@@ -1956,6 +1956,9 @@ public sealed partial class BetterRTXManagerWindow : Window
 
 
 
+
+
+
 /// <summary>
 /// Smart preset sorter: A-Z alphabetically, but version numbers in descending order (9-1)
 /// </summary>
@@ -1964,9 +1967,48 @@ public static class SmartPresetSorter
     /// <summary>
     /// Compares two preset names with smart version sorting.
     /// Examples:
-    ///   "BetterRTX 1.4.4" comes before "BetterRTX 1.2.0"
+    ///   "BetterRTX 1.4.4" comes before "BetterRTX 1.4.0" (and before "BetterRTX 1.4")
+    ///   "BetterRTX 1.4.40" comes before "BetterRTX 1.4.4"
     ///   "Pack 10" comes before "Pack 2"
     ///   "Alpha Test" comes before "Beta Test" (normal A-Z)
+    ///   "BetterRTX 1.4.4: BetterRTX Default" comes before
+    ///   "BetterRTX 1.4.4: BetterRTX — Gilded Graphics" (punctuation doesn't skew ordering)
+    ///
+    /// COMPARISON STRATEGY: purely positional / segment-by-segment. Names are split
+    /// into alternating text and (possibly dotted) numeric segments, and compared
+    /// segment by segment left to right - text vs. text alphabetically, number vs.
+    /// number by value, dotted version components compared with any missing
+    /// trailing part treated as 0.
+    ///
+    /// This means version numbers are only compared once the surrounding text has
+    /// already matched (or once positions line up) - i.e. names are effectively
+    /// grouped by their shared leading text first, and ordered by version within
+    /// that group. This is a deliberate choice, not an oversight: an earlier
+    /// revision of this method tried to be "smarter" by scanning the whole name for
+    /// a version number and comparing that first, globally, before anything else.
+    /// That broke completely unrelated names - e.g. "Strawberry RT Build 2.0"
+    /// jumped above every "BetterRTX 1.4.4: ..." entry purely because 2 > 1,
+    /// even though they're different products with no meaningful relationship
+    /// between their version numbers. A version number is only meaningfully
+    /// comparable between two items that are actually the same thing, and the only
+    /// generally reliable signal for "the same thing" in a bare name string is its
+    /// shared text - which is exactly what positional comparison already uses.
+    /// Trying to bypass that requires guessing at identity in a way that can't be
+    /// done safely without hardcoding specific product/brand names.
+    ///
+    /// Known accepted limitation: if a product fully renames its naming scheme
+    /// (e.g. "BetterRTX 1.4.4: Foo" becomes "BetterRTX Preset Pack (v1.5.0): Foo"),
+    /// the new-scheme entries won't automatically thread into the old version
+    /// timeline - they'll sort based on their own leading text instead. This is
+    /// intentional: reliably bridging that case in general isn't possible without
+    /// hardcoding names, which would only cover known cases and stay fragile to
+    /// anything new.
+    ///
+    /// Text segments are normalized before comparison: separator punctuation
+    /// (":", "-", "–", "—", "_", etc.) is collapsed into plain spaces, so symbols
+    /// like an em dash don't get compared as if they were letters (which is what
+    /// caused an undecorated name like "...Default" to previously sort below
+    /// dash-prefixed variants purely due to punctuation, not wording).
     /// </summary>
     public static int ComparePresetNames(string? name1, string? name2)
     {
@@ -1977,7 +2019,8 @@ public static class SmartPresetSorter
 
         try
         {
-            // Split both names into segments (alternating text and numbers)
+            // Split both names into segments: each segment is either a text run,
+            // or a full dotted numeric run (e.g. "1.4.4") captured as one segment.
             var segments1 = SplitIntoSegments(name1);
             var segments2 = SplitIntoSegments(name2);
 
@@ -1989,11 +2032,15 @@ public static class SmartPresetSorter
                 var seg1 = segments1[i];
                 var seg2 = segments2[i];
 
-                // If both segments are numeric, compare numerically IN REVERSE (9→1)
+                // If both segments are numeric (version-like), compare component by
+                // component (major, minor, patch, ...), missing trailing components
+                // are treated as 0. Higher version wins and sorts first (descending).
                 if (seg1.IsNumeric && seg2.IsNumeric)
                 {
-                    int result = seg2.NumericValue.CompareTo(seg1.NumericValue); // Reversed!
+                    int result = CompareVersionComponents(seg1.Components, seg2.Components);
                     if (result != 0) return result;
+                    // If every component matched (e.g. "1.4" vs "1.4.0"), fall
+                    // through and let the next segment decide.
                 }
                 // If one is numeric and one is text, text comes first
                 else if (seg1.IsNumeric && !seg2.IsNumeric)
@@ -2004,16 +2051,26 @@ public static class SmartPresetSorter
                 {
                     return -1;
                 }
-                // Both are text - compare with culture-aware comparison for non-ASCII
+                // Both are text - compare normalized text (punctuation collapsed to
+                // spaces) with culture-aware comparison for non-ASCII correctness.
                 else
                 {
-                    int result = string.Compare(seg1.Text, seg2.Text, StringComparison.CurrentCultureIgnoreCase);
+                    int result = string.Compare(seg1.NormalizedText, seg2.NormalizedText, StringComparison.CurrentCultureIgnoreCase);
                     if (result != 0) return result;
                 }
             }
 
-            // If all segments matched, shorter name comes first
-            return segments1.Count.CompareTo(segments2.Count);
+            // If all shared segments matched, shorter name comes first
+            // (e.g. no version number vs. has a version number, or identical prefixes)
+            int lengthResult = segments1.Count.CompareTo(segments2.Count);
+            if (lengthResult != 0) return lengthResult;
+
+            // Fully tied after everything above (e.g. two names that normalize
+            // identically). Fall back to a raw ordinal comparison of the original
+            // strings purely for a deterministic, stable result - most sort
+            // implementations aren't guaranteed stable, so unresolved ties can
+            // otherwise shuffle unpredictably between runs.
+            return string.CompareOrdinal(name1, name2);
         }
         catch (Exception ex)
         {
@@ -2023,89 +2080,177 @@ public static class SmartPresetSorter
         }
     }
 
+    /// <summary>
+    /// Compares two version component lists (e.g. [1,4,4] vs [1,4,0]) part by
+    /// part, treating any missing trailing component as 0. Higher version sorts
+    /// first (returns negative), matching the descending version-number ordering.
+    /// </summary>
+    private static int CompareVersionComponents(List<decimal> components1, List<decimal> components2)
+    {
+        int maxParts = Math.Max(components1.Count, components2.Count);
+
+        for (int p = 0; p < maxParts; p++)
+        {
+            decimal v1 = p < components1.Count ? components1[p] : 0m;
+            decimal v2 = p < components2.Count ? components2[p] : 0m;
+
+            int cmp = v2.CompareTo(v1); // Reversed! Higher version comes first
+            if (cmp != 0) return cmp;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Splits a name into alternating text and numeric segments.
+    /// Unlike a naive char-by-char split, a numeric run followed by ".digits"
+    /// (e.g. "1.4.4") is captured as ONE numeric segment with multiple components,
+    /// so version numbers of differing lengths still line up for comparison.
+    /// </summary>
     private static List<Segment> SplitIntoSegments(string name)
     {
         var segments = new List<Segment>();
-        var currentText = new System.Text.StringBuilder();
-        var currentNumber = new System.Text.StringBuilder();
-        bool inNumber = false;
+        var text = new System.Text.StringBuilder();
+        int i = 0;
 
-        foreach (char c in name)
+        while (i < name.Length)
         {
-            if (char.IsDigit(c))
+            if (char.IsDigit(name[i]))
             {
-                if (!inNumber && currentText.Length > 0)
+                // Flush any pending text segment before starting a numeric one
+                if (text.Length > 0)
                 {
-                    // Switching from text to number - save text segment
-                    segments.Add(new Segment { Text = currentText.ToString(), IsNumeric = false });
-                    currentText.Clear();
+                    segments.Add(new Segment { Text = text.ToString(), IsNumeric = false });
+                    text.Clear();
                 }
-                currentNumber.Append(c);
-                inNumber = true;
+
+                var components = new List<decimal>();
+
+                // Read the first numeric component
+                int start = i;
+                while (i < name.Length && char.IsDigit(name[i])) i++;
+                components.Add(ParseComponent(name.Substring(start, i - start)));
+
+                // Keep consuming ".digits" as additional components of the SAME
+                // version segment (e.g. turns "1.4.4" into components [1, 4, 4])
+                while (i < name.Length && name[i] == '.' && i + 1 < name.Length && char.IsDigit(name[i + 1]))
+                {
+                    i++; // skip '.'
+                    int partStart = i;
+                    while (i < name.Length && char.IsDigit(name[i])) i++;
+                    components.Add(ParseComponent(name.Substring(partStart, i - partStart)));
+                }
+
+                segments.Add(new Segment { IsNumeric = true, Components = components });
             }
             else
             {
-                if (inNumber && currentNumber.Length > 0)
-                {
-                    // Switching from number to text - save number segment
-                    segments.Add(CreateNumericSegment(currentNumber.ToString()));
-                    currentNumber.Clear();
-                }
-                currentText.Append(c);
-                inNumber = false;
+                text.Append(name[i]);
+                i++;
             }
         }
 
-        // Add final remaining segment
-        if (currentNumber.Length > 0)
+        // Add final remaining text segment, if any
+        if (text.Length > 0)
         {
-            segments.Add(CreateNumericSegment(currentNumber.ToString()));
-        }
-        else if (currentText.Length > 0)
-        {
-            segments.Add(new Segment { Text = currentText.ToString(), IsNumeric = false });
+            segments.Add(new Segment { Text = text.ToString(), IsNumeric = false });
         }
 
         return segments;
     }
 
-    private static Segment CreateNumericSegment(string numberText)
+    /// <summary>
+    /// Parses a single numeric component (e.g. the "4" in "1.4.4") as a decimal,
+    /// so unusually long numbers don't overflow like they might with long/int.
+    /// </summary>
+    private static decimal ParseComponent(string numberText)
     {
-        // Try parsing as decimal (handles very long numbers better than long)
-        // If it overflows decimal (unlikely for version numbers), treat as text
         if (decimal.TryParse(numberText, out decimal value))
         {
-            return new Segment
-            {
-                Text = numberText,
-                IsNumeric = true,
-                NumericValue = value
-            };
+            return value;
         }
-        else
+
+        // Number too large to parse - treat as 0 (rare edge case)
+        Trace.WriteLine($"[BetterRTX] ⚠ Number too large to parse, treating as 0: {numberText}");
+        return 0m;
+    }
+
+    /// <summary>
+    /// Collapses any run of non-alphanumeric characters (punctuation, symbols,
+    /// whitespace - ":", "-", "–", "—", "_", etc.) into a single space, and trims
+    /// the ends. This is deliberately generic rather than targeting specific
+    /// separator characters, since preset names can use any mix of them
+    /// inconsistently. Letters and digits from any script/language are preserved
+    /// as-is (char.IsLetterOrDigit is Unicode-aware).
+    /// </summary>
+    private static string NormalizeForComparison(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        bool lastWasSpace = false;
+
+        foreach (char c in text)
         {
-            // Number too large to parse - treat as text (rare edge case)
-            Trace.WriteLine($"[BetterRTX] ⚠ Number too large to parse, treating as text: {numberText}");
-            return new Segment
+            if (char.IsLetterOrDigit(c))
             {
-                Text = numberText,
-                IsNumeric = false
-            };
+                sb.Append(c);
+                lastWasSpace = false;
+            }
+            else if (!lastWasSpace)
+            {
+                sb.Append(' ');
+                lastWasSpace = true;
+            }
         }
+
+        return sb.ToString().Trim();
     }
 
     private class Segment
     {
-        public string Text { get; set; } = string.Empty;
+        private string _text = string.Empty;
+        private string? _normalizedText;
+
+        /// <summary>Raw text for non-numeric segments.</summary>
+        public string Text
+        {
+            get => _text;
+            set
+            {
+                _text = value;
+                _normalizedText = null; // invalidate cache
+            }
+        }
+
+        /// <summary>
+        /// Normalized (punctuation-collapsed) version of Text, computed lazily and
+        /// cached. Used for actual comparisons so separator characters don't
+        /// introduce culture-specific ordering artifacts.
+        /// </summary>
+        public string NormalizedText => _normalizedText ??= NormalizeForComparison(_text);
+
+        /// <summary>Whether this segment represents a (possibly dotted) number.</summary>
         public bool IsNumeric { get; set; }
-        public decimal NumericValue { get; set; }
+
+        /// <summary>
+        /// For numeric segments: the dotted components in order, e.g. "1.4.4" -> [1, 4, 4].
+        /// Missing trailing components are treated as 0 when compared against a
+        /// segment with more components.
+        /// </summary>
+        public List<decimal> Components { get; set; } = new();
     }
 }
 
 
+
+
+
+
+
+
+
 public static class GameVersionDetector
 {
-    // Release only
+    // Stable release only
     private const string CONFIG_HASH_KEY = "MinecraftConfigHash";
 
     /// <summary>
