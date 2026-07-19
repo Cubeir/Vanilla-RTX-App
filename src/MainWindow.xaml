@@ -699,7 +699,7 @@
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Default Function: Resets tuning options back to their default values.
-                                &#x0a;&#x0a;FOR ADVANCED USERS: Hold shit while pressing to perform a hard reset that wipes all of app's data everywhere, making it as if it was freshly installed.
+                                &#x0a;&#x0a;FOR ADVANCED USERS: Hold shift while pressing to perform a hard reset that wipes all of app's data everywhere, making it as if it was freshly installed.
                                 Might also prompt you for reverting back to Default RTX/Default LUT files if needed, so your defaults aren't lost the next time you use the app.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
