@@ -1191,13 +1191,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
 
             // Sort each list alphabetically
-            downloadedPresets = downloadedPresets
-                .OrderBy(p => p.Name, Comparer<string?>.Create(SmartPresetSorter.ComparePresetNames))
-                .ToList();
-
-            notDownloadedPresets = notDownloadedPresets
-                .OrderBy(p => p.Name, Comparer<string?>.Create(SmartPresetSorter.ComparePresetNames))
-                .ToList();
+            downloadedPresets = SmartPresetSorter.SafeOrderByName(downloadedPresets, p => p.Name);
+            notDownloadedPresets = SmartPresetSorter.SafeOrderByName(notDownloadedPresets, p => p.Name);
 
             // Display downloaded first, then not downloaded
             foreach (var preset in downloadedPresets)
@@ -1306,7 +1301,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             description = isCurrent
                 ? Helpers.SanitizePathForDisplay(localPreset.PresetPath ?? "")
                 : isDefault
-                    ? "Click to rollback" + (Helpers.RuntimeFlags.Set("Already_Informed_About_How_Default_RTX_Preset_Is_Made") ? ": this preset was automatically made by backing up from your latest game files upon your first attempt at installing a preset" : "")
+                    ? "Click to rollback" + (Helpers.RuntimeFlags.Set("Already_Informed_About_How_Default_RTX_Preset_Is_Made") ? ": this preset was automatically created from your latest game files upon your first attempt at installing a preset" : "")
                     : "Click to install";
         }
         else if (presetData is DisplayPresetData displayPreset)
@@ -1964,6 +1959,36 @@ public sealed partial class BetterRTXManagerWindow : Window
 /// </summary>
 public static class SmartPresetSorter
 {
+    /// <summary>
+    /// Orders a sequence by name using <see cref="ComparePresetNames"/>, with a
+    /// safety net around the ordering call itself.
+    ///
+    /// ComparePresetNames already catches its own internal exceptions and falls
+    /// back to a simple comparison. But .NET's OrderBy/Sort don't just trust a
+    /// comparer blindly - they verify the comparisons are internally consistent
+    /// (transitive) across the whole sequence, and throw
+    /// InvalidOperationException if they ever contradict each other. That
+    /// exception is thrown by OrderBy itself, not by ComparePresetNames, so no
+    /// try/catch inside ComparePresetNames can ever catch it. This wrapper
+    /// catches it at the one place it can actually be caught, and falls back to
+    /// a plain ordinal ordering so a pathological/contradictory input can't take
+    /// down the whole list.
+    /// </summary>
+    public static List<T> SafeOrderByName<T>(IEnumerable<T> source, Func<T, string?> nameSelector)
+    {
+        var list = source as List<T> ?? source.ToList();
+
+        try
+        {
+            return list.OrderBy(nameSelector, Comparer<string?>.Create(ComparePresetNames)).ToList();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Trace.WriteLine($"[BetterRTX] ⚠ SmartPresetSorter ordering failed, falling back to simple alphabetical order: {ex.Message}");
+            return list.OrderBy(nameSelector, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+    }
+
     /// <summary>
     /// Compares two preset names with smart version sorting.
     /// Examples:
