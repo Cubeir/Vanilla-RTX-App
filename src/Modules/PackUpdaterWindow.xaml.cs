@@ -277,8 +277,8 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
     private string GetAvailabilityText(string? availableVersion, string? installedVersion, VersionSource source)
     {
         if (string.IsNullOrEmpty(availableVersion))
-        {
-            return "Not available";
+        {           
+            return "Failed to check";
         }
 
         bool isUpToDate = !string.IsNullOrEmpty(installedVersion) && availableVersion == installedVersion;
@@ -288,11 +288,11 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
         {
             // does the case where installed version is older than an offline cache really ever happen? NAH! offline cache would only be there if user has updated recently
             // But we're ready! lovely overengineered bullshit
-            suffix = isUpToDate ? "(Up-to-date, from offline cache)" : "(from offline cache)";
+            suffix = isUpToDate ? "(Up-to-date, from offline cache)" : "(From offline cache)";
         }
         else if (source == VersionSource.CachedRemote)
         {
-            suffix = isUpToDate ? "(You're up-to-date)*" : "";
+            suffix = isUpToDate ? "(You're up-to-date)" : "";
         }
         else
         {
