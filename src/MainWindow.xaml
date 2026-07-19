@@ -329,7 +329,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="SuspendUIAnimationsToggle_Click"
-                        ToolTipService.ToolTip="Suspend all custom UI animations throughout the app."
+                        ToolTipService.ToolTip="Disables unique UI animations throughout the app while active."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>

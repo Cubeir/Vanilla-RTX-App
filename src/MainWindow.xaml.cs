@@ -40,7 +40,11 @@ namespace Vanilla_RTX_App;
 /// </summary>
 public static class TunerVariables
 {
-    public static string appVersion = App.GetAppVersion();
+    private static readonly Windows.ApplicationModel.PackageVersion _version = App.GetPackageVersion();
+    public static readonly string appVersion = $"{_version.Major}.{_version.Minor}.{_version.Build}.{_version.Revision}";
+    public static readonly string appVersionMajor = $"{_version.Major}";
+    public static readonly string appVersionMajorMinor = $"{_version.Major}.{_version.Minor}";
+    public static readonly string appVersionMajorMinorBuild = $"{_version.Major}.{_version.Minor}.{_version.Build}";
 
     public static string VanillaRTXLocation = string.Empty;
     public static string VanillaRTXNormalsLocation = string.Empty;
@@ -50,13 +54,12 @@ public static class TunerVariables
     public static string VanillaRTXNormalsVersion = string.Empty;
     public static string VanillaRTXOpusVersion = string.Empty;
 
-    public static ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> SelectedPacks = new();
-
     // Tied to checkboxes
     public static bool IsVanillaRTXEnabled = false;
     public static bool IsNormalsEnabled = false;
     public static bool IsOpusEnabled = false;
 
+    public static ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> SelectedPacks = new();
 
     public static class Persistent // These are saved and reloaded on app launch
     {
@@ -991,7 +994,7 @@ public sealed partial class MainWindow : Window
                 var dataPackage = new DataPackage();
                 dataPackage.SetText(sb.ToString());
                 Clipboard.SetContent(dataPackage);
-                Log("Copied stack trace logs to clipboard.", LogLevel.Success);
+                Log("Copied app logs to clipboard.", LogLevel.Success);
                 _ = BlinkingLamp(true, true, 0.0, 1.0);
 
                 // ============================================
@@ -1305,6 +1308,7 @@ public sealed partial class MainWindow : Window
         if (SuspendUIAnimations == true)
         {
             SuspendUIAnimationsToggle.Content = "\uEC11";
+            ToolTipService.SetToolTip(SuspendUIAnimationsToggle, "All unique UI animations are currently suspended, click again to enable them.");
             PreviewVesselBackground.Visibility = Visibility.Collapsed;
             PreviewVesselBottom.Visibility = Visibility.Collapsed;
             PreviewVesselTop.Visibility = Visibility.Collapsed;
@@ -1317,6 +1321,7 @@ public sealed partial class MainWindow : Window
         {
 
             SuspendUIAnimationsToggle.Content = "\uEC12";
+            ToolTipService.SetToolTip(SuspendUIAnimationsToggle, "Disables unique UI animations throughout the app while active.");
             PreviewVesselBackground.Visibility = Visibility.Visible;
             PreviewVesselBottom.Visibility = Visibility.Visible;
             PreviewVesselTop.Visibility = Visibility.Visible;
@@ -2790,7 +2795,7 @@ for hardwipe, explicitly mention it is shift+reset that was cancelled, so if use
 e.g. Wiping app's data (Shift + Reset) was cancelled by user.
 
 Ensure unfocusing the app restores texts/glyphs of buttons with shiftkey thingy, good polish
-maybe there is an Unfocused event of sorts to trigger the same thing as Not holding down shift/unholding shift
+maybe there is an Unfocused event of sorts to trigger the same thing as Not holding down shift/unholding shift event
 
 ========
 📁 - Replace the current Helper ReplaceFilesWithElevation helper with something more friendly and native?!?

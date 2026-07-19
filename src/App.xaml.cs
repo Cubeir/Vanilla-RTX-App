@@ -137,17 +137,16 @@ public partial class App : Application
             return "vanilla_rtx_app";
         }
     }
-    public static string GetAppVersion()
+    public static Windows.ApplicationModel.PackageVersion GetPackageVersion()
     {
         try
         {
-            var version = Windows.ApplicationModel.Package.Current.Id.Version;
-            return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+            return Windows.ApplicationModel.Package.Current.Id.Version;
         }
         catch
         {
             Trace.WriteLine("[GetAppVersion] Failed.");
-            return "0.0.0.0";
+            return new Windows.ApplicationModel.PackageVersion { Major = 0, Minor = 0, Build = 0, Revision = 0 };
         }
     }
 }

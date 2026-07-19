@@ -73,7 +73,8 @@ public sealed partial class ReviewPromptControl : UserControl
 public static class ReviewPromptManager
 {
     private static readonly string FIRST_LAUNCH_KEY = "ReviewPromptFirstLaunchTime";
-    private static readonly string DONT_SHOW_KEY = $"ReviewPromptDontShow_{TunerVariables.appVersion}"; // Ask again with app updates
+    private static readonly string DONT_SHOW_KEY = $"ReviewPromptDontShow_{TunerVariables.appVersionMajorMinor}"; // Ask again only with Major or Minor updates (not new builds/revisions)
+
     private static readonly string LAST_PROMPT_KEY = "ReviewPromptLastPromptTime";
     private const double MINUTES_BEFORE_PROMPT = 4444; // how many hours to wait before showing for the first time, or showing again if deferred
     private const int SHOW_DELAY_Milisecs = 0; // delay to show it after being called
