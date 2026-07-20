@@ -1514,7 +1514,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var titleText = new TextBlock
         {
-            Text = "Add custom preset",
+            Text = "Add customized preset (.rtpack)",
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -1523,7 +1523,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var descText = new TextBlock
         {
-            Text = "Drag and drop or browse for a BetterRTX preset .rtpack file to add to the preset list.",
+            Text = "Drag and drop or browse for a BetterRTX preset file to add to the preset list (.rtpack, .zip, .mcpack)",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
