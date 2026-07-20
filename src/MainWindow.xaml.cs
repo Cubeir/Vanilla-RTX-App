@@ -2834,7 +2834,6 @@ allows the app to, depending on what it targets, import to both MC, and MC Previ
 This is a really cool idea honestly, Definitely do it, implement it the right way.
 
 >> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX
->> Add a LUT preset that INVERTS DAY AND NIGHT! simple as that! Invert daylight cycle, cursed.
 >> Add a "Gaming" LUT preset, whole day all day colors rapidly changing, greyscale skies, colorful directional lights
 
 - Adopt the ProgressBar manager to properly update for:D

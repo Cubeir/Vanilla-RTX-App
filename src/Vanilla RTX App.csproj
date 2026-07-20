@@ -363,6 +363,30 @@
     <Content Update="Assets\lut\Gamescom 2019 Demo\water_n.tga">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="Assets\lut\Inverted Day-Night Cycle\image.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Day-Night Cycle\look_up_tables.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Day-Night Cycle\sky.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Day-Night Cycle\water_n.tga">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Daylight Cycle\image.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Daylight Cycle\look_up_tables.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Daylight Cycle\sky.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\lut\Inverted Daylight Cycle\water_n.tga">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Update="Assets\lut\Matrix Fever\image.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -1398,7 +1422,7 @@
 
   <!-- Publish Properties -->
   <PropertyGroup>
-    <VersionPrefix>3.1.1.0</VersionPrefix>  <!-- SET ASSEMBLY VERSION HERE -->
+    <VersionPrefix>3.1.2.0</VersionPrefix>  <!-- SET ASSEMBLY VERSION HERE -->
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
