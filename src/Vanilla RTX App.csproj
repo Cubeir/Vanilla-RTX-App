@@ -933,6 +933,9 @@
     <Content Update="Assets\vrtx.lamp.off.small.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Update="Assets\vrtx.lamp.on.128x.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
 	<Content Update="Assets\vrtx.lamp.on.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -1103,6 +1106,10 @@
     </None>
     <None Update="Assets\StoreLogo.scale-400.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\vrtx.lamp.on.128x.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
     </None>
     <None Update="Assets\vrtx.lamp.on.png">
       <Pack>True</Pack>
@@ -1427,7 +1434,7 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-    <PackageIcon>vrtx.lamp.on.png</PackageIcon>
+    <PackageIcon>vrtx.lamp.on.128x.png</PackageIcon>
     <ApplicationIcon>Assets\vrtx.lamp.on.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
