@@ -35,7 +35,7 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 It is currnetly safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets.
 
 ### P.S.
-P.S. BetterRTX 1.4.4 presets are available (they are newer than 1.4, with the lines-on-water visual glitch resolved) - you just neeed to scroll down a bit to find them.
+P.S. BetterRTX 1.4.4 presets are available (they are newer than 1.4, with the lines-on-water visual glitch resolved) - you just need to scroll down a bit to find them.
 
 # LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
