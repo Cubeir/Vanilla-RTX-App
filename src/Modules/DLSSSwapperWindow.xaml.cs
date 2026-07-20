@@ -437,7 +437,7 @@ public sealed partial class DLSSSwapperWindow : Window
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsTextScaleFactorEnabled = false
         };
@@ -588,7 +588,7 @@ public sealed partial class DLSSSwapperWindow : Window
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.NoWrap,
+            TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsTextScaleFactorEnabled = false
         };
