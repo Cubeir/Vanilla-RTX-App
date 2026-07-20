@@ -800,7 +800,7 @@ public sealed partial class MainWindow : Window
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.05)
     {
         if (!SuspendUIAnimations || !enable) // If the intention is to disable, allow it to pass in
-        {   
+        {
             await _titlebarLampAnimator!.Animate(enable, singleFlash, singleFlashOnChance, rotate: GetSpecialOccasionName() != null, rapidFlashChance: rapidFlashChance);
         }
     }
@@ -1649,7 +1649,7 @@ public sealed partial class MainWindow : Window
                     Content = $"This will delete all of application's data across your device, including Default RTX & LUT files which the app obtained from your actual game files!" +
                     $"\nAs such, you may be prompted to accept multiple admin privilege requests in order to let the app restore your game's default files before they're gone from app's data.",
                     PrimaryButtonText = "Confirm",
-                    CloseButtonText = "Cancel", 
+                    CloseButtonText = "Cancel",
                     DefaultButton = ContentDialogButton.Close,
                     XamlRoot = this.Content.XamlRoot,
                     RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
@@ -2631,7 +2631,7 @@ public sealed partial class MainWindow : Window
                 string lastEntry = firstSentinel >= 0 ? LogText[..firstSentinel] : LogText;
 
                 if (lastEntry == entry) // identical to previous entry? drop it
-                    return; 
+                    return;
             }
 
             LogText = string.IsNullOrEmpty(LogText) ? entry : $"{entry}{EntrySentinel}{LogText}";
