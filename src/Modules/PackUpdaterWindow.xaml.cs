@@ -277,7 +277,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
     private string GetAvailabilityText(string? availableVersion, string? installedVersion, VersionSource source)
     {
         if (string.IsNullOrEmpty(availableVersion))
-        {           
+        {
             return "Failed to check";
         }
 
@@ -292,11 +292,11 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
         }
         else if (source == VersionSource.CachedRemote)
         {
-            suffix = isUpToDate ? "(You're up-to-date)" : "";
+            suffix = isUpToDate ? "(You seem up-to-date)" : "";
         }
         else
         {
-            suffix = isUpToDate ? "(You're up-to-date!)" : "";
+            suffix = isUpToDate ? "(You are up-to-date!)" : "";
         }
 
         return $"{availableVersion} {suffix}";
