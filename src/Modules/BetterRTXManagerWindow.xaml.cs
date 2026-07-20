@@ -117,7 +117,7 @@ public sealed partial class BetterRTXManagerWindow : Window
        "RTXPostFX.Tonemapping.material.bin",
        "RTXStub.material.bin"
     ];
-    internal static readonly string[] SupportedCustomPresetExtensions = [".rtpack", ".mcpack", ".zip"];
+    internal static readonly string[] SupportedCustomPresetExtensions = [".rtpack"];
 
 
     public BetterRTXManagerWindow()
@@ -1523,7 +1523,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var descText = new TextBlock
         {
-            Text = "Drag and drop or browse for a BetterRTX preset file to add to the preset list (.rtpack, .zip, .mcpack)",
+            Text = "Drag and drop or browse for a BetterRTX preset file to add to the preset list (.rtpack only)",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
