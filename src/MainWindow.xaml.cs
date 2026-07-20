@@ -1124,7 +1124,7 @@ public sealed partial class MainWindow : Window
             _ = BlinkingLamp(true, true, 1.0, 0.1);
             if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
             {
-                Log("Holding shift while clicking the lamp will copy app's stack trace. Attach these if reporting issues or debugging.", LogLevel.Debug);
+                Log(ToolTipService.GetToolTip(LampInteractionButton).ToString()!, LogLevel.Debug);
             }
             else
             {
@@ -2805,10 +2805,6 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
-
-Ensure unfocusing the app restores texts/glyphs of buttons with shiftkey thingy, good polish
-maybe there is an Unfocused event of sorts to trigger the same thing as Not holding down shift/unholding shift event
-
 ========
 📁 - Replace the current Helper ReplaceFilesWithElevation helper with something more friendly and native?!?
 Use IFileOperation COM API, it automatically handles UAC with a professional native UI
@@ -2890,23 +2886,6 @@ Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe th
 publicly maintained apis to do this too.
 WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
 
-
-- Add a way to add custom presets to BetterRTX Manager (e.g. user made presets)
-Give it special treatment same as default preset and avoid changing existing logic
-they appear at the bottom
-expects zips, rtpacks, or .tar.gz, in any of the 3
-look for the .bin files, call the presets custom1, 2, etc.. don't convolute it
-since their structure can vary, have something robust for all kinds of custom presets.
-to be passed in, extracts bins and makes a custom preset, name em custom_preset_[increment]
-basically, instead of changing the current pipeline, integerate this/build it on top of it
-that way it'll surely work without fucking things up
-> This is probably not so useful
-And it goes against your design philosphies
-The flow of going to a site, twiddling ALL those knobs, coming back, and having to do it again with mc updates
-is just... NOPE!
-That said, it's a cool feature for those who might want it.
->> DO IT ONLY IF you actually end up separating the presenter and service logic for BetterRTX manager... it'd be a LOT easier then!
-
 >>> Think up a way to make CUSTOM BRTX preset and DLSS flows more seamless
 > How? Open the page directly in webview, take the files back directly into the app -- make the flow SIMPLER! than the ideas above or in classes themselves
 
@@ -2921,7 +2900,7 @@ if that succeeds, can move on.
 /* THE GULAG 
 
 - IDEA:
-Update the documentation, be more throughm, make ### sections for each button/feature name
+Update the documentation, be more through, make ### sections for each button/feature name
 make alt-clicking a feature in the app, take the user to the readme.md in THAT section! aka a quick way to read on features
 with detailed tooltips in the app, this is so unneeded, but y'know? ideas are ideas
 

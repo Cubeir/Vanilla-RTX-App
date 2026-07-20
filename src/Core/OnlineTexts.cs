@@ -16,6 +16,9 @@ using Windows.Storage;
 namespace Vanilla_RTX_App.Core;
 
 // IDEA: could be expanded on, have a field at the end, to disable/enable features/buttons/controls on a whim
+// TODO: Add a feature [minver:"x.x.x.x"] to GATE the display of a PSA based on the current app version.
+// This would allow us to show PSAs only to users who are on a certain version or higher, which could be useful for announcing
+// new features or changes that only apply to newer versions of the app. (this whole thing was written by Intellisense by the way)
 
 // =====================================================================================================================
 // PsaItem — A single announcement entry.

@@ -178,7 +178,7 @@
                         Width="24"
                         Canvas.ZIndex="5"
                         CornerRadius="0"
-                        ToolTipService.ToolTip="Hold shift and click the lamp to copy the stack trace for debugging."
+                        ToolTipService.ToolTip="Hold shift and click the lamp to copy app's logs for debugging."
                         Click="LampInteraction_Click" />
             </Canvas>
 
