@@ -40,8 +40,8 @@ P.S. BetterRTX 1.4.4 presets are available (they are newer than 1.4, with the li
 # LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
 
-### [glyph:"E7BA"]
-This feature will not work if you're using a BetterRTX Preset. Use Default RTX if you want to use this feature.
+## [glyph:"E7BA"] [cd:"40000"] 
+This feature will not work if you're using a BetterRTX Preset. Use Default/Unmodified RTX if you want to use LUT presets.
 
 
 
