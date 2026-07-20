@@ -1240,7 +1240,7 @@ public sealed partial class MainWindow : Window
     private void RollCredits()
     {
         var credits = OnlineTextsContent.Credits?[0].Text;
-        if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Wrote_Supporter_Shoutout"))
+        if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Has_Rolled_Credits"))
             Log(credits);
     }
 
@@ -1647,7 +1647,11 @@ public sealed partial class MainWindow : Window
                     RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
                 };
                 var result = await dialog.ShowAsync();
-                if (result != ContentDialogResult.Primary) return;
+                if (result != ContentDialogResult.Primary)
+                {
+                    Log("Wiping app's data (Shift + Reset) was cancelled by user.", LogLevel.Warning);
+                    return;
+                }
 
                 WindowControlsManagerExtensions.DisableAllControls(this);
                 _progressManager.ShowProgress();
@@ -1808,8 +1812,8 @@ public sealed partial class MainWindow : Window
 
             Log($"Deleted {totalItemsDeleted} file/folder item(s) total.", LogLevel.Success);
             await Task.Delay(500);
-            Log("Hard reset complete! Restarting in a moment...", LogLevel.Success);
-            await Task.Delay(3000);
+            Log("Hard reset complete! The app will restart in a moment...", LogLevel.Lengthy);
+            await Task.Delay(4444);
 
             Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
         }
@@ -1907,7 +1911,12 @@ public sealed partial class MainWindow : Window
         };
 
         var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary) return;
+        if (result != ContentDialogResult.Primary)
+        {
+            Log($"Deleting selected pack{(toDelete.Count > 1 ? "s" : string.Empty)} was cancelled by user.", LogLevel.Warning);
+            return;
+        }
+
 
         _progressManager.ShowProgress();
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
@@ -2521,7 +2530,7 @@ public sealed partial class MainWindow : Window
     #endregion
 
 
-    #region Logger
+    #region =============== UI LOGGER ===============
 
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
@@ -2788,11 +2797,6 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
-increase the delay at the end of wipe, so it gives a chance to copy logs! maybe 2-3 seconds.
-and 
-make the Cancel buttons of content dialogues pf Delete and Wipe log something informative too.
-for hardwipe, explicitly mention it is shift+reset that was cancelled, so if user preses and cancels by accident, they know what they've done
-e.g. Wiping app's data (Shift + Reset) was cancelled by user.
 
 Ensure unfocusing the app restores texts/glyphs of buttons with shiftkey thingy, good polish
 maybe there is an Unfocused event of sorts to trigger the same thing as Not holding down shift/unholding shift event
