@@ -1639,13 +1639,9 @@ public sealed partial class BetterRTXManagerWindow : Window
             bool hasSupportedFile = items.OfType<StorageFile>()
                 .Any(f => SupportedCustomPresetExtensions.Contains(Path.GetExtension(f.Path), StringComparer.OrdinalIgnoreCase));
 
-            // Only show the "accepting drop" highlight if at least one file actually qualifies —
-            // dragging over a random text file shouldn't light the button up.
             if (hasSupportedFile)
             {
-                button.Background = Application.Current.Resources["AccentFillColorDefaultBrush"] as Brush;
-                button.BorderBrush = Application.Current.Resources["AccentFillColorDefaultBrush"] as Brush;
-                button.BorderThickness = new Thickness(2);
+                button.Opacity = 0.7;
             }
         }
         catch (Exception ex)
