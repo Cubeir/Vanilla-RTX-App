@@ -19,7 +19,7 @@ public sealed partial class PackUpdateWindow : Window
     private readonly PackUpdater _updater;
     private bool _isClosing;
 
-    private double animationSpeedMultiplier => Persistent.SuspendUIAnimations ? 0.01 : 1.0; 
+    private double animationSpeedMultiplier => Persistent.SuspendUIAnimations ? 0.01 : 1.0;
     private TimeSpan _fadeInDuration => TimeSpan.FromMilliseconds(150 * animationSpeedMultiplier);
     private TimeSpan _fadeOutDuration => TimeSpan.FromMilliseconds(125 * animationSpeedMultiplier);
 
