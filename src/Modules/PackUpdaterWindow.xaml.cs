@@ -296,7 +296,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
         }
         else
         {
-            suffix = isUpToDate ? "(You are up-to-date!)" : "";
+            suffix = isUpToDate ? "(You're up-to-date!)" : "";
         }
 
         return $"{availableVersion} {suffix}";
