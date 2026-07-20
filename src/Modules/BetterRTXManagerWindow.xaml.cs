@@ -1197,13 +1197,14 @@ public sealed partial class BetterRTXManagerWindow : Window
                     if (apiCacheExists)
                     {
                         // Cache exists but is empty/corrupt
-                        EmptyStateText.Text = "No presets available. The preset list may be corrupted - try clicking the Refresh button in the top left corner.";
+                        EmptyStateText.Text = "No presets available. The preset list may be corrupted, try clicking the Refresh button in the top left corner.";
                         Trace.WriteLine("[BetterRTX] ⚠ Empty state: Cache exists but no presets loaded (possible corruption)");
                     }
                     else
                     {
                         // No cache, probably offline
-                        EmptyStateText.Text = "No presets available. An internet connection is required to fetch BetterRTX preset information.";
+                        EmptyStateText.Text = "No presets available. An internet connection is required to fetch BetterRTX preset information.\n" +
+                            "You may still import and install custom presets (.rtpack) even without an internet connection.";
                         Trace.WriteLine("[BetterRTX] ⚠ Empty state: No cache and no presets (offline?)");
                     }
                 }
@@ -1568,7 +1569,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var descText = new TextBlock
         {
-            Text = "Drag and drop or browse for a BetterRTX preset file to add to the preset list (.rtpack only)",
+            Text = "Drag and drop or browse for BetterRTX preset '.rtpack' file to add it to the list.",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -2674,10 +2675,22 @@ public static class SmartPresetSorter
 }
 
 /// <summary>
-/// Detects hash changes in game's config file which contains a version number and changes upon updates
-/// We use this to wipe user's cache entirely in case of game updates, primarily to ensure default is freshly reconstructed.
-/// But also to force the user into downloading new presets.
-/// If it can't determine the game has updated or not, it fallsback to saying yeah it has updated, just to be safe...
+/// Detects Minecraft version changes by hashing <c>MicrosoftGame.Config</c> — the game's install manifest —
+/// and comparing it to the hash stored from the previous run. This is a raw content hash, not a parsed version
+/// field: the class never reads an actual version number out of the file, it just assumes the manifest's bytes
+/// change whenever the game updates, and treats "the hash differs" as a proxy for "the game version changed."
+///
+/// Elsewhere, a detected change drives a full cache wipe (see <c>WipeEntireCache</c>, as opposed to the soft/non-default
+/// wipe used elsewhere), which both forces __DEFAULT to be freshly reconstructed from the post-update game files
+/// next time a preset is applied, and forces every BetterRTX preset to be treated as not-downloaded so stale,
+/// possibly update-incompatible files get re-fetched rather than reused. It also clears the stored BetterRTX
+/// disclaimer acknowledgement, so the user is re-prompted after an update.
+///
+/// Uncertainty generally resolves in favor of invalidating the cache: an invalid/missing install path, a config
+/// file that's gone missing after previously being found, a failed hash computation, or any unexpected exception
+/// all report a change occurred. The one exception is the very first run — no stored hash yet means there's
+/// nothing to invalidate against, so that case is treated as "unchanged" and simply establishes the baseline
+/// hash for future comparisons.
 /// </summary>
 public static class GameVersionDetector
 {

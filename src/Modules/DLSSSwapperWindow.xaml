@@ -99,7 +99,8 @@
                                     Spacing="12"
                                     Margin="0,0,0,0" />
                         <StackPanel x:Name="DllListContainer"
-                                    Spacing="8" />
+                                    Spacing="8"
+                                    Padding="0,0,0,8"/>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
