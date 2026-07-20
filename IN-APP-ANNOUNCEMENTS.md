@@ -29,7 +29,7 @@ It is a good idea to wait and check from the BetterRTX Discord whether it has be
 In other words: Minecraft updates can break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly. If installing BetterRTX causes issues for you, follow these steps:
 1. Revert to Default RTX for now
 2. Wait until BetterRTX developers confirm they've updated the mod.
-3. Use the refresh button in the top left corner to re-fetch the latest files & continue installing your presets.
+3. Use the refresh button in the top left corner to refetch the latest files & continue installing your presets.
 
 ## [cd:"120"] [glyph:"F78C"] // check:F78C // warning: E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will also change. CHECK BACK LATER!
 It is currnetly safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets.
