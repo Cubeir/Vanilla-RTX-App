@@ -194,7 +194,7 @@ public class InMemoryTraceListener : TraceListener
     public string GetAllEntries()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("===== Stack Trace Logs");
+        sb.AppendLine("===== Trace Logs");
 
         foreach (var entry in _entries)
         {
