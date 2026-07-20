@@ -137,7 +137,7 @@
                 Click="RefreshButton_Click"
                 Translation="0,0,16"
                 IsTextScaleFactorEnabled="False"
-                ToolTipService.ToolTip="Resets cache, clearing all downloaded files from BetterRTX API and forcing a new re-fetch.
+                ToolTipService.ToolTip="Resets cache, clearing all downloaded files from BetterRTX API and forcing a new re-fetch, as well as all imported presets (.rtpacks).
                 &#x0a;&#x0a;Note: This happens automatically whenever Minecraft is updated (always) or periodically whenever changes in the API are detected (possibly, but not guranteed), hence this button exists for you to trigger a manual refresh in case BetterRTX delievers its updates with a delay or the API pretends to remain the same after rolling out updates.
                 &#x0a;&#x0a;Note 2: This button won't clear your Default RTX preset, which is backed up upon your first attempt at installing a preset. Only game updates can trigger a reset of Default preset, so that the app can ultimately pick up the new defaults fresh from the new version of your game.">
             <Button.Shadow>
