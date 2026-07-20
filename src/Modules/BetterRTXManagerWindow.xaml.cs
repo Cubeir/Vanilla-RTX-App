@@ -71,6 +71,7 @@ internal class DisplayPresetData
     public string? Uuid { get; set; }
     public string? Name { get; set; }
     public bool IsDownloaded { get; set; }
+    public bool IsCustomImport { get; set; }
     public BitmapImage? Icon { get; set; }
     public string? PresetPath { get; set; }
     public List<string>? BinFiles { get; set; }
@@ -1109,6 +1110,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                             Uuid = apiPreset.Uuid,
                             Name = localPreset.Name,
                             IsDownloaded = true,
+                            IsCustomImport = false,
                             Icon = localPreset.Icon,
                             PresetPath = localPreset.PresetPath,
                             BinFiles = localPreset.BinFiles,
@@ -1146,6 +1148,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                             Uuid = localPreset.Uuid,
                             Name = localPreset.Name,
                             IsDownloaded = true,
+                            IsCustomImport = true,
                             Icon = localPreset.Icon,
                             PresetPath = localPreset.PresetPath,
                             BinFiles = localPreset.BinFiles,
@@ -1250,6 +1253,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         bool isDownloaded = true;
         bool isCurrent = false;
+        bool isCustomImport = false;
         string name = "";
         string description = "";
         string uuid = "";
@@ -1276,6 +1280,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         else if (presetData is DisplayPresetData displayPreset)
         {
             isDownloaded = displayPreset.IsDownloaded;
+            isCustomImport = displayPreset.IsCustomImport;
             name = displayPreset.Name ?? "";
             uuid = displayPreset.Uuid ?? "";
             icon = displayPreset.Icon;
@@ -1441,6 +1446,46 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
         }
 
+
+        // Delete button: only for custom-imported presets that aren't __DEFAULT
+        // and aren't the one currently installed.
+        if (!isDefault && !isCurrent && isCustomImport && presetData is DisplayPresetData deletablePreset)
+        {
+            var deleteButton = new Button
+            {
+                Width = 40,
+                Height = 40,
+                VerticalAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(0),
+                Margin = new Thickness(16, 0, 0, 0),
+                Translation = new System.Numerics.Vector3(0, 0, 8),
+                CornerRadius = new CornerRadius(6),
+                IsTextScaleFactorEnabled = false,
+                Tag = deletablePreset,
+            };
+
+            var deleteButtonShadow = new ThemeShadow();
+            deleteButton.Shadow = deleteButtonShadow;
+            deleteButton.Loaded += (s, e) =>
+            {
+                if (ShadowReceiverGrid != null)
+                    deleteButtonShadow.Receivers.Add(ShadowReceiverGrid);
+            };
+
+            var deleteIcon = new FontIcon
+            {
+                Glyph = "\uE74D",
+                FontSize = 18,
+                IsTextScaleFactorEnabled = false,
+            };
+
+            deleteButton.Content = deleteIcon;
+            deleteButton.Click += DeletePresetButton_Click;
+
+            Grid.SetColumn(deleteButton, 4);
+            grid.Children.Add(deleteButton);
+        }
+
         button.Content = grid;
 
         // Only attach if it isn't current
@@ -1453,7 +1498,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
 
 
-    #region custom preset imports
+    #region custom preset handlers
     private Button CreateAddPresetButton()
     {
         var button = new Button
@@ -1703,6 +1748,37 @@ public sealed partial class BetterRTXManagerWindow : Window
         finally
         {
             deferral.Complete();
+        }
+    }
+    private async void DeletePresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: DisplayPresetData preset }) return;
+
+        if (string.IsNullOrEmpty(preset.PresetPath) || !Directory.Exists(preset.PresetPath))
+        {
+            Trace.WriteLine($"[BetterRTX] [Delete] ✗ Preset path missing or already gone: {preset.PresetPath}");
+            return;
+        }
+
+        try
+        {
+            Trace.WriteLine($"[BetterRTX] [Delete] Deleting custom preset \"{preset.Name}\" at: {preset.PresetPath}");
+            await Task.Run(() => Directory.Delete(preset.PresetPath!, true));
+
+            lock (_downloadStatusLock)
+            {
+                if (!string.IsNullOrEmpty(preset.Uuid))
+                    _downloadStatuses.Remove(preset.Uuid);
+            }
+
+            await LoadLocalPresetsAsync();
+            await DisplayPresetsAsync();
+
+            Trace.WriteLine($"[BetterRTX] [Delete] ✓ Deleted \"{preset.Name}\"");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [Delete] ✗ Error deleting \"{preset.Name}\": {ex.Message}");
         }
     }
     #endregion
@@ -1965,7 +2041,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    // Bulk operation wrapper
+
+    // Bulk operation wrapper for custom preset imports
     private async Task ImportCustomPresetsAsync(IEnumerable<string> filePaths)
     {
         var candidates = filePaths
@@ -1996,7 +2073,6 @@ public sealed partial class BetterRTXManagerWindow : Window
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
     }
-
     private async void PresetButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.Tag != null)
@@ -2047,6 +2123,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
         }
     }
+
 
     private async Task<bool> ApplyPresetAsync(LocalPresetData preset)
     {
@@ -2114,7 +2191,6 @@ public sealed partial class BetterRTXManagerWindow : Window
             return false;
         }
     }
-
 
     internal static string? ComputeFileHash(string filePath)
     {
