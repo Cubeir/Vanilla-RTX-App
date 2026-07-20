@@ -117,6 +117,8 @@ public sealed partial class BetterRTXManagerWindow : Window
        "RTXPostFX.Tonemapping.material.bin",
        "RTXStub.material.bin"
     ];
+    internal static readonly string[] SupportedCustomPresetExtensions = [".rtpack", ".mcpack", ".zip"];
+
 
     public BetterRTXManagerWindow()
     {
@@ -436,7 +438,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             PresetSelectionPanel.Visibility = Visibility.Collapsed;
             await Task.Delay(100);
 
-            await WipeDownloadedPresetsCacheAsync();
+            await WipeNonDefaultPresetsCacheAsync();
 
             _apiPresets = null;
             _localPresets = null;
@@ -654,7 +656,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             {
                 // No prior cache to compare against — undetermined, wipe to be safe
                 Trace.WriteLine("[BetterRTX] [StalenessCheck] No prior cache hash — undetermined, soft wipe (safe default)");
-                await WipeDownloadedPresetsCacheAsync();
+                await WipeNonDefaultPresetsCacheAsync();
                 return;
             }
 
@@ -666,12 +668,12 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             // Content changed — wipe downloaded presets so stale files don't linger
             Trace.WriteLine("[BetterRTX] [StalenessCheck] ⚠ API changed — soft wiping downloaded presets");
-            await WipeDownloadedPresetsCacheAsync();
+            await WipeNonDefaultPresetsCacheAsync();
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[BetterRTX] [StalenessCheck] ✗ Unexpected error: {ex.Message} — soft wipe (safe default)");
-            try { await WipeDownloadedPresetsCacheAsync(); } catch { }
+            try { await WipeNonDefaultPresetsCacheAsync(); } catch { }
         }
     }
 
@@ -695,74 +697,37 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
     /// <summary>
-    /// Soft wipe: deletes all downloaded preset folders and the API cache JSON.
+    /// Soft wipe: deletes all downloaded and custom imported preset folders and the API cache JSON.
     /// __DEFAULT is intentionally preserved — only a game version change warrants clearing that.
     /// </summary>
-    private async Task WipeDownloadedPresetsCacheAsync()
+    private async Task WipeNonDefaultPresetsCacheAsync()
     {
         Trace.WriteLine("[BetterRTX] [SoftWipe] Starting soft cache wipe...");
 
-        // Read UUIDs to delete from existing API cache before we blow it away
-        var uuidsToDelete = new List<string>();
-
-        if (File.Exists(_apiCachePath))
-        {
-            try
-            {
-                var jsonData = await File.ReadAllTextAsync(_apiCachePath);
-                var parsed = ParseApiData(jsonData);
-                if (parsed?.Count > 0)
-                {
-                    uuidsToDelete = parsed.Where(p => p.Uuid != null).Select(p => p.Uuid!).ToList();
-                    Trace.WriteLine($"[BetterRTX] [SoftWipe] {uuidsToDelete.Count} preset(s) to delete");
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[BetterRTX] [SoftWipe] Error reading API cache: {ex.Message}");
-            }
-        }
-
-        // Delete matching preset folders (skip __DEFAULT)
         int deletedCount = 0;
-        foreach (var uuid in uuidsToDelete)
+
+        if (Directory.Exists(_cacheFolder))
         {
-            try
-            {
-                var allFolders = Directory.GetDirectories(_cacheFolder)
-                    .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase));
+            var allFolders = Directory.GetDirectories(_cacheFolder)
+                .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-                foreach (var folder in allFolders)
+            foreach (var folder in allFolders)
+            {
+                try
                 {
-                    var manifests = Directory.GetFiles(folder, "manifest.json", SearchOption.AllDirectories);
-                    if (manifests.Length == 0) continue;
-
-                    try
-                    {
-                        var mJson = await File.ReadAllTextAsync(manifests[0]);
-                        var folderUuid = JObject.Parse(mJson)["header"]?["uuid"]?.Value<string>();
-
-                        if (string.Equals(folderUuid, uuid, StringComparison.OrdinalIgnoreCase))
-                        {
-                            Directory.Delete(folder, true);
-                            deletedCount++;
-                            Trace.WriteLine($"[BetterRTX] [SoftWipe] Deleted: {Path.GetFileName(folder)}");
-                            break;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[BetterRTX] [SoftWipe] Error checking folder: {ex.Message}");
-                    }
+                    Directory.Delete(folder, true);
+                    deletedCount++;
+                    Trace.WriteLine($"[BetterRTX] [SoftWipe] Deleted: {Path.GetFileName(folder)}");
                 }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[BetterRTX] [SoftWipe] Error deleting {uuid}: {ex.Message}");
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"[BetterRTX] [SoftWipe] Error deleting {Path.GetFileName(folder)}: {ex.Message}");
+                }
             }
         }
 
-        Trace.WriteLine($"[BetterRTX] [SoftWipe] Deleted {deletedCount}/{uuidsToDelete.Count} preset folder(s)");
+        Trace.WriteLine($"[BetterRTX] [SoftWipe] Deleted {deletedCount} preset folder(s) (downloaded + custom-imported alike)");
 
         // Delete API cache JSON itself
         if (File.Exists(_apiCachePath))
@@ -1207,6 +1172,10 @@ public sealed partial class BetterRTXManagerWindow : Window
                 PresetListContainer.Children.Add(button);
             }
 
+            // Always last in the list, regardless of what else is (or isn't) displayed
+            var addPresetButton = CreateAddPresetButton();
+            PresetListContainer.Children.Add(addPresetButton);
+
             // Handle empty state
             if (downloadedPresets.Count == 0 && notDownloadedPresets.Count == 0 && defaultPreset == null)
             {
@@ -1483,6 +1452,267 @@ public sealed partial class BetterRTXManagerWindow : Window
         return button;
     }
 
+
+    #region custom preset imports
+    private Button CreateAddPresetButton()
+    {
+        var button = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(0, 0, 40, 0),
+            Margin = new Thickness(0, 0, 0, 4),
+            MinHeight = 96,
+            CornerRadius = new CornerRadius(5),
+            IsTextScaleFactorEnabled = false,
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            AllowDrop = true
+        };
+
+        button.DragOver += AddPresetButton_DragOver;
+        button.Drop += AddPresetButton_Drop;
+        button.DragEnter += AddPresetButton_DragEnter;
+        button.DragLeave += AddPresetButton_DragLeave;
+
+        var buttonShadow = new ThemeShadow();
+        button.Shadow = buttonShadow;
+        button.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                buttonShadow.Receivers.Add(ShadowReceiverGrid);
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var iconBorder = new Border
+        {
+            Width = 96,
+            Height = 96,
+            CornerRadius = new CornerRadius(5, 0, 0, 5),
+            Background = new SolidColorBrush(Colors.Transparent)
+        };
+
+        iconBorder.Child = new FontIcon
+        {
+            Glyph = "\uE710",
+            FontSize = 44,
+            FontWeight = FontWeights.ExtraLight,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTextScaleFactorEnabled = false
+        };
+
+        Grid.SetColumn(iconBorder, 0);
+        grid.Children.Add(iconBorder);
+
+        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
+        var titleText = new TextBlock
+        {
+            Text = "Add custom preset",
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.NoWrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            IsTextScaleFactorEnabled = false
+        };
+
+        var descText = new TextBlock
+        {
+            Text = "Drag and drop or browse for a BetterRTX preset .rtpack file to add to the preset list.",
+            FontSize = 12,
+            Opacity = 0.75,
+            Margin = new Thickness(0, 2, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            IsTextScaleFactorEnabled = false
+        };
+
+        infoPanel.Children.Add(titleText);
+        infoPanel.Children.Add(descText);
+        Grid.SetColumn(infoPanel, 2);
+        grid.Children.Add(infoPanel);
+
+        var hyperlinkButton = new HyperlinkButton
+        {
+            Content = "Create your own BetterRTX Preset",
+            NavigateUri = new Uri("https://bedrock.graphics/creator"),
+            VerticalAlignment = VerticalAlignment.Center,
+            FontWeight = FontWeights.Medium,
+            FontSize = 14,
+            Padding = new Thickness(16, 8, 16, 8),
+            Translation = new System.Numerics.Vector3(0, 0, 8),
+            IsTextScaleFactorEnabled = false,
+            Background = Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] as Brush,
+            CornerRadius = new CornerRadius(6)
+        };
+
+        var hyperLinkShadow = new ThemeShadow();
+        hyperlinkButton.Shadow = hyperLinkShadow;
+        hyperlinkButton.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                hyperLinkShadow.Receivers.Add(ShadowReceiverGrid);
+        };
+
+        Grid.SetColumn(hyperlinkButton, 4);
+        grid.Children.Add(hyperlinkButton);
+
+        button.Content = grid;
+        button.Click += AddPresetButton_Click;
+
+        return button;
+    }
+    private async void AddPresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            var hWnd = WindowNative.GetWindowHandle(this);
+            InitializeWithWindow.Initialize(picker, hWnd);
+
+            picker.FileTypeFilter.Add(".rtpack");
+            picker.FileTypeFilter.Add(".mcpack");
+            picker.FileTypeFilter.Add(".zip");
+
+            var files = await picker.PickMultipleFilesAsync();
+            if (files == null || files.Count == 0) return;
+
+            await ImportCustomPresetsAsync(files.Select(f => f.Path));
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [CustomImport] Error browsing for preset file(s): {ex.Message}");
+        }
+    }
+    private async void AddPresetButton_DragOver(object sender, DragEventArgs e)
+    {
+        var deferral = e.GetDeferral();
+        try
+        {
+            if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+            {
+                e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+                return;
+            }
+
+            var items = await e.DataView.GetStorageItemsAsync();
+            bool hasSupportedFile = items.OfType<StorageFile>()
+                .Any(f => SupportedCustomPresetExtensions.Contains(Path.GetExtension(f.Path), StringComparer.OrdinalIgnoreCase));
+
+            if (hasSupportedFile)
+            {
+                e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+                e.DragUIOverride.Caption = "Add as BetterRTX preset(s)";
+                e.DragUIOverride.IsGlyphVisible = true;
+            }
+            else
+            {
+                // Something's being dragged, but none of it is a preset file we accept —
+                // explicitly refuse so the OS shows the "not allowed" cursor instead of a copy cursor.
+                e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [CustomImport] Error evaluating drag-over content: {ex.Message}");
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+    }
+    private async void AddPresetButton_DragEnter(object sender, DragEventArgs e)
+    {
+        if (sender is not Button button) return;
+        if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems)) return;
+
+        var deferral = e.GetDeferral();
+        try
+        {
+            var items = await e.DataView.GetStorageItemsAsync();
+            bool hasSupportedFile = items.OfType<StorageFile>()
+                .Any(f => SupportedCustomPresetExtensions.Contains(Path.GetExtension(f.Path), StringComparer.OrdinalIgnoreCase));
+
+            // Only show the "accepting drop" highlight if at least one file actually qualifies —
+            // dragging over a random text file shouldn't light the button up.
+            if (hasSupportedFile)
+            {
+                button.Background = Application.Current.Resources["AccentFillColorDefaultBrush"] as Brush;
+                button.BorderBrush = Application.Current.Resources["AccentFillColorDefaultBrush"] as Brush;
+                button.BorderThickness = new Thickness(2);
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [CustomImport] Error on drag enter: {ex.Message}");
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+    }
+    private void AddPresetButton_DragLeave(object sender, DragEventArgs e)
+    {
+        if (sender is not Button button) return;
+
+        // Revert to whatever the button's style would normally give it
+        button.ClearValue(Button.BackgroundProperty);
+        button.ClearValue(Button.BorderBrushProperty);
+        button.ClearValue(Button.BorderThicknessProperty);
+    }
+    private async void AddPresetButton_Drop(object sender, DragEventArgs e)
+    {
+        var deferral = e.GetDeferral();
+        try
+        {
+            // Reset the highlight regardless of what happens next
+            if (sender is Button button)
+            {
+                button.ClearValue(Button.BackgroundProperty);
+                button.ClearValue(Button.BorderBrushProperty);
+                button.ClearValue(Button.BorderThicknessProperty);
+            }
+
+            if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+            {
+                Trace.WriteLine("[BetterRTX] [CustomImport] Drop event carried no storage items");
+                return;
+            }
+
+            var items = await e.DataView.GetStorageItemsAsync();
+            var filePaths = items.OfType<StorageFile>()
+                .Select(f => f.Path)
+                .ToList();
+
+            if (filePaths.Count == 0)
+            {
+                Trace.WriteLine("[BetterRTX] [CustomImport] Drop contained no usable files");
+                return;
+            }
+
+            // ImportCustomPresetsAsync already filters down to supported extensions,
+            // toggles LoadingPanel/PresetSelectionPanel, and refreshes the list when done.
+            await ImportCustomPresetsAsync(filePaths);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [CustomImport] Error handling dropped file(s): {ex.Message}");
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+    }
+    #endregion
+
+
+
     private void EnqueueDownload(string uuid, string name)
     {
         // Check if already in queue or downloading
@@ -1663,6 +1893,112 @@ public sealed partial class BetterRTXManagerWindow : Window
             Trace.WriteLine($"[BetterRTX] ✗ Error downloading {uuid}: {ex.Message}");
             return false;
         }
+    }
+
+    private async Task<bool> ImportCustomPresetAsync(string archivePath)
+    {
+        string? stagingFolder = null;
+        try
+        {
+            if (!File.Exists(archivePath))
+            {
+                Trace.WriteLine($"[BetterRTX] [CustomImport] ✗ File not found: {archivePath}");
+                return false;
+            }
+
+            Trace.WriteLine($"[BetterRTX] [CustomImport] Importing: {archivePath}");
+
+            stagingFolder = Path.Combine(_cacheFolder, $"__staging_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(stagingFolder);
+
+            await Task.Run(() =>
+            {
+                using var archive = ZipFile.OpenRead(archivePath);
+                foreach (var entry in archive.Entries)
+                {
+                    try
+                    {
+                        if (string.IsNullOrEmpty(entry.Name)) continue;
+
+                        var destPath = Path.Combine(stagingFolder, entry.FullName);
+                        var destDir = Path.GetDirectoryName(destPath);
+
+                        if (!string.IsNullOrEmpty(destDir))
+                            Directory.CreateDirectory(destDir);
+
+                        entry.ExtractToFile(destPath, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine($"[BetterRTX] [CustomImport] Error extracting {entry.FullName}: {ex.Message}");
+                    }
+                }
+            });
+
+            var parsed = await ParseLocalPresetAsync(stagingFolder);
+            if (parsed == null || string.IsNullOrEmpty(parsed.Uuid))
+            {
+                Trace.WriteLine($"[BetterRTX] [CustomImport] ✗ Not a valid BetterRTX preset: {archivePath}");
+                return false;
+            }
+
+            // Same convention downloaded presets use: folder named after the pack's
+            // own UUID, so re-importing the same file just replaces it in place.
+            var destinationFolder = Path.Combine(_cacheFolder, SanitizePresetName(parsed.Uuid));
+
+            if (Directory.Exists(destinationFolder))
+                Directory.Delete(destinationFolder, true);
+
+            Directory.Move(stagingFolder, destinationFolder);
+            stagingFolder = null; // moved successfully, nothing left to clean up
+
+            Trace.WriteLine($"[BetterRTX] [CustomImport] ✓ Imported \"{parsed.Name}\" to: {destinationFolder}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [CustomImport] ✗ Error importing {archivePath}: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (stagingFolder != null && Directory.Exists(stagingFolder))
+            {
+                try { Directory.Delete(stagingFolder, true); } catch { }
+            }
+        }
+    }
+
+    // Bulk operation wrapper
+    private async Task ImportCustomPresetsAsync(IEnumerable<string> filePaths)
+    {
+        var candidates = filePaths
+            .Where(p => SupportedCustomPresetExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            Trace.WriteLine("[BetterRTX] [CustomImport] No supported preset files (.rtpack/.mcpack/.zip) in selection");
+            return;
+        }
+
+        LoadingPanel.Visibility = Visibility.Visible;
+        PresetSelectionPanel.Visibility = Visibility.Collapsed;
+
+        int successCount = 0;
+        foreach (var path in candidates)
+        {
+            if (await ImportCustomPresetAsync(path))
+                successCount++;
+        }
+
+        Trace.WriteLine($"[BetterRTX] [CustomImport] Imported {successCount}/{candidates.Count} preset(s) successfully");
+
+        await LoadLocalPresetsAsync();
+        await DisplayPresetsAsync();
+
+        LoadingPanel.Visibility = Visibility.Collapsed;
+        PresetSelectionPanel.Visibility = Visibility.Visible;
     }
 
     private async void PresetButton_Click(object sender, RoutedEventArgs e)
@@ -2265,14 +2601,12 @@ public static class SmartPresetSorter
     }
 }
 
-
-
-
-
-
-
-
-
+/// <summary>
+/// Detects hash changes in game's config file which contains a version number and changes upon updates
+/// We use this to wipe user's cache entirely in case of game updates, primarily to ensure default is freshly reconstructed.
+/// But also to force the user into downloading new presets.
+/// If it can't determine the game has updated or not, it fallsback to saying yeah it has updated, just to be safe...
+/// </summary>
 public static class GameVersionDetector
 {
     // Stable release only
