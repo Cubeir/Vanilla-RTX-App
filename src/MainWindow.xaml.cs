@@ -449,6 +449,14 @@ public sealed partial class MainWindow : Window
         // Tie in colors of these special fake titlebar buttons
         this.Activated += (s, e) =>
         {
+            if (e.WindowActivationState == WindowActivationState.Deactivated && _shiftPressed)
+            {
+                _shiftPressed = false;
+                RestoreShiftText(ResetButton_TextBlock, ResetButton_FontIcon);
+                RestoreShiftText(LaunchButtonText, LaunchButtonFontIcon);
+                // Mirror KeyUp, copy paste here, so buttons go back to normal if window is unfocused but shift is still held.
+            }
+
             var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
             var opacity = isFocused ? 1.0 : 0.5;
 
