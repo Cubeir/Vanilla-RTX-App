@@ -6,12 +6,39 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 # PSA
 
 ### Update
-📢 3.1.2.0 Update: You can now import customized BetterRTX presets, the preset list now sorts correctly, there's also a new LUT preset inverting day-night cycle (for fun!)
+📢 3.1.2.0 App Update:
+You can now import customized BetterRTX presets, the preset list now sorts correctly, there's also a new LUT preset inverting day-night cycle (for fun!)
 
+### Update 2
+🎉 Vanilla RTX 1.26.15 is now available!
 
 # PackUpdateAnnouncements
 
-### Chaos Cubes [cd:"120"] [glyph:"F158"]
+## 1.26.15 [cd:"9999999"] [glyph:"E70F"]
+1.26.15 Release Notes:
+
+Overhauled fog and atmosphere of the following biomes, they no longer feature generic fog.
+Every biome touched in this update now features its own unique water color, and underwater visibility now closely resembling fancy graphics.
+
+- Meadow:
+Now appears as a tiny bit colder variation of the plains biome
+
+- Beach: 
+Now appears similar to a significantly weakened desert!
+
+- Stony Beach:
+A lot like the plains biome, temperate, but now the water color now closely resembles the vanilla one
+
+- Birch Forest, Birch Forest Hills, Birch Forest Hills Mutated, Birch Forest Mutated:
+Birch forests now generally tend to look cooler, and brighter than regular forests
+
+- Roofed Forest, Roofed Forest Mutated:
+Dark oak forests, or roofed forests, now generally tend to have a slightly greener and darker atmosphere
+
+- Mushroom Island, Mushroom Island Shore:
+Mushroom islands now tend to have a purpler more blue atmosphere, especially during rain.
+
+### Chaos Cubes [glyph:"F158"]
 Coverage for Chaos Cubed game drop will arrive sometime next month, sorry for delays!
 
 ### Tip [glyph:"E95B"]
