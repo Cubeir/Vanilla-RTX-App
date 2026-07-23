@@ -2056,7 +2056,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         if (candidates.Count == 0)
         {
-            Trace.WriteLine("[BetterRTX] [CustomImport] No supported preset files (.rtpack/.mcpack/.zip) in selection");
+            Trace.WriteLine($"[BetterRTX] [CustomImport] No supported preset files ({string.Join("/", SupportedCustomPresetExtensions)}) in selection");
             return;
         }
 
