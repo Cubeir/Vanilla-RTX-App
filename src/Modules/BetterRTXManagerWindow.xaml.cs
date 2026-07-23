@@ -22,11 +22,6 @@ using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
-
-// TODO: Unify the name of __DEFAULT folder under a constant, here and possibly in other modules that have a similar structure, too
-// just for cleanliness, y'know? e.g. the preset wiper here hardcodes skipping __DEFAULT, spare yourself future mistakes
-
-
 namespace Vanilla_RTX_App.Modules;
 
 internal enum DownloadStatus
@@ -125,6 +120,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     ];
     internal static readonly string[] SupportedCustomPresetExtensions = [".rtpack"];
 
+    internal const string DEFAULT_PRESET_FOLDER_NAME = "__DEFAULT";
 
     public BetterRTXManagerWindow()
     {
@@ -456,7 +452,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
 
-            Trace.WriteLine("[BetterRTX] ✓ Refresh complete — __DEFAULT preserved");
+            Trace.WriteLine($"[BetterRTX] ✓ Refresh complete — {DEFAULT_PRESET_FOLDER_NAME} preserved");
         }
         catch (Exception ex)
         {
@@ -510,7 +506,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         _cacheFolder = cacheFolder;
 
-        _defaultFolder = Path.Combine(_cacheFolder, "__DEFAULT");
+        _defaultFolder = Path.Combine(_cacheFolder, DEFAULT_PRESET_FOLDER_NAME);
         _apiCachePath = Path.Combine(_cacheFolder, "betterrtx_api_cache.json");
 
         // CRITICAL: Check if game version changed
@@ -715,7 +711,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         if (Directory.Exists(_cacheFolder))
         {
             var allFolders = Directory.GetDirectories(_cacheFolder)
-                .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
+                .Where(d => !Path.GetFileName(d).Equals(DEFAULT_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             foreach (var folder in allFolders)
@@ -750,7 +746,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         _downloadQueue.Clear();
         _cachedApiHash = null;
 
-        Trace.WriteLine("[BetterRTX] [SoftWipe] ✓ Done — __DEFAULT preserved");
+        Trace.WriteLine($"[BetterRTX] [SoftWipe] ✓ Done — {DEFAULT_PRESET_FOLDER_NAME} preserved");
     }
 
     private async Task LoadApiDataAsync()
@@ -930,7 +926,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             // Get all folders except __DEFAULT
             var presetFolders = Directory.GetDirectories(_cacheFolder)
-                .Where(d => !Path.GetFileName(d).Equals("__DEFAULT", StringComparison.OrdinalIgnoreCase))
+                .Where(d => !Path.GetFileName(d).Equals(DEFAULT_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             foreach (var folder in presetFolders)
@@ -1246,7 +1242,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         return new LocalPresetData
         {
-            Uuid = "__DEFAULT",
+            Uuid = DEFAULT_PRESET_FOLDER_NAME,
             Name = "Default RTX",
             PresetPath = _defaultFolder,
             Icon = null,
