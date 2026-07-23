@@ -540,7 +540,10 @@ public sealed partial class BetterRTXManagerWindow : Window
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
         // Initialize PSAs
-        PopulateBetterRTXAnnouncements();
+        if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure psas dont clip into fallback background
+        {
+            PopulateBetterRTXAnnouncements();
+        }
 
         // Show disclaimer -- background work is done, but try to gate the UI
         try
