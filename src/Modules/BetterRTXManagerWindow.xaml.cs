@@ -22,6 +22,11 @@ using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.TunerVariables;
 
+
+// TODO: Unify the name of __DEFAULT folder under a constant, here and possibly in other modules that have a similar structure, too
+// just for cleanliness, y'know? e.g. the preset wiper here hardcodes skipping __DEFAULT, spare yourself future mistakes
+
+
 namespace Vanilla_RTX_App.Modules;
 
 internal enum DownloadStatus
@@ -1569,7 +1574,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var descText = new TextBlock
         {
-            Text = "Drag and drop or browse for BetterRTX preset '.rtpack' file to add it to the list.",
+            Text = "Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website",
             FontSize = 12,
             Opacity = 0.75,
             Margin = new Thickness(0, 2, 0, 0),
@@ -1585,7 +1590,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var hyperlinkButton = new HyperlinkButton
         {
-            Content = "Create your own BetterRTX Preset",
+            Content = "Create your own BetterRTX preset",
             NavigateUri = new Uri("https://bedrock.graphics/creator"),
             VerticalAlignment = VerticalAlignment.Center,
             FontWeight = FontWeights.Medium,
@@ -1621,9 +1626,8 @@ public sealed partial class BetterRTXManagerWindow : Window
             var hWnd = WindowNative.GetWindowHandle(this);
             InitializeWithWindow.Initialize(picker, hWnd);
 
-            picker.FileTypeFilter.Add(".rtpack");
-            picker.FileTypeFilter.Add(".mcpack");
-            picker.FileTypeFilter.Add(".zip");
+            foreach (var ext in SupportedCustomPresetExtensions)
+                picker.FileTypeFilter.Add(ext);
 
             var files = await picker.PickMultipleFilesAsync();
             if (files == null || files.Count == 0) return;
