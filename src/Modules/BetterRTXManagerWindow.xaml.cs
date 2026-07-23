@@ -2683,8 +2683,9 @@ public static class SmartPresetSorter
 /// field: the class never reads an actual version number out of the file, it just assumes the manifest's bytes
 /// change whenever the game updates, and treats "the hash differs" as a proxy for "the game version changed."
 ///
-/// Elsewhere, a detected change drives a full cache wipe (see <c>WipeEntireCache</c>, as opposed to the soft/non-default
-/// wipe used elsewhere), which both forces __DEFAULT to be freshly reconstructed from the post-update game files
+/// Elsewhere, a detected change drives a full cache wipe (see <see cref="BetterRTXManagerWindow.WipeEntireCache"/>,
+/// as opposed to the soft/non-default wipe used elsewhere, <see cref="BetterRTXManagerWindow.WipeNonDefaultPresetsCacheAsync"/>),
+/// which both forces __DEFAULT to be freshly reconstructed from the post-update game files
 /// next time a preset is applied, and forces every BetterRTX preset to be treated as not-downloaded so stale,
 /// possibly update-incompatible files get re-fetched rather than reused. It also clears the stored BetterRTX
 /// disclaimer acknowledgement, so the user is re-prompted after an update.
