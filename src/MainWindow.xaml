@@ -863,10 +863,10 @@
                                 Grid.Row="6"
                                 Spacing="2"
                                 VerticalAlignment="Bottom">
-                        <TextBlock Text="Surface normal intensity"
+                        <TextBlock Text="Surface 3D effect intensity"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adjust intensity of normal maps and heightmaps in percentage, if available.
+                                   ToolTipService.ToolTip="Adjust intensity of normal maps, heightmaps, and parralax occlusion mapping in percentage, if available.
                                    &#x0a;&#x0a;0% = flattens all textures
                                    &#x0a;100% = default (no change)
                                    &#x0a;Higher values = stronger 3D effects on surfaces."/>
