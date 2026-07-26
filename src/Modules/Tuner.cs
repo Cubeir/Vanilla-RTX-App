@@ -1559,43 +1559,68 @@ public class Tuner
                     var newR = Math.Clamp((int)Math.Round(128 + (orig.R - 128) * intensityPercent), 0, 255);
                     var newG = Math.Clamp((int)Math.Round(128 + (orig.G - 128) * intensityPercent), 0, 255);
 
-                    if (newR != orig.R || newG != orig.G)
+                    // Blue = POM depth, anchored at 255 (surface), one-directional.
+                    // Shrinking intensity pulls every pixel's distance-from-surface toward
+                    // zero -- at 0% every pixel sits flush at 255. This direction can never
+                    // overflow (recession only ever shrinks), so no compression pass needed.
+                    var recession = 255 - orig.B;
+                    var newB = Math.Clamp((int)Math.Round(255 - recession * intensityPercent), 0, 255);
+
+                    if (newR != orig.R || newG != orig.G || newB != orig.B)
                     {
                         wroteBack = true;
-                        fb[x, y] = Color.FromArgb(orig.A, newR, newG, orig.B);
+                        fb[x, y] = Color.FromArgb(orig.A, newR, newG, newB);
                     }
                 }
             }
         }
         else
         {
-            double maxIdealDeviation = 0;
+            double maxIdealDeviation = 0;  // worst-case R/G deviation from 128 (both directions)
+            double maxIdealRecession = 0;  // worst-case B distance from 255 (one direction only)
+
             for (var y = 0; y < height; y++)
+            {
                 for (var x = 0; x < width; x++)
                 {
                     var pixel = fb[x, y];
+
                     var maxDev = Math.Max(
                         Math.Abs((pixel.R - 128.0) * intensityPercent),
                         Math.Abs((pixel.G - 128.0) * intensityPercent));
                     if (maxDev > maxIdealDeviation) maxIdealDeviation = maxDev;
+
+                    var idealRecession = (255.0 - pixel.B) * intensityPercent;
+                    if (idealRecession > maxIdealRecession) maxIdealRecession = idealRecession;
                 }
+            }
 
-            if (maxIdealDeviation == 0) return false;
+            if (maxIdealDeviation == 0 && maxIdealRecession == 0) return false;
 
+            // R/G share one ratio -- they're the two components of one vector, compressing
+            // them unevenly would distort normal direction, not just its strength.
             var compressionRatio = maxIdealDeviation > 127.0 ? 127.0 / maxIdealDeviation : 1.0;
+
+            // B gets its own independent ratio -- unrelated axis, unrelated valid range
+            // (0-255 from the surface down, vs R/G's ±127 around center).
+            var recessionCompressionRatio = maxIdealRecession > 255.0 ? 255.0 / maxIdealRecession : 1.0;
 
             for (var y = 0; y < height; y++)
             {
                 for (var x = 0; x < width; x++)
                 {
                     var orig = fb[x, y];
+
                     var newR = Math.Clamp((int)Math.Round(128.0 + (orig.R - 128.0) * intensityPercent * compressionRatio), 0, 255);
                     var newG = Math.Clamp((int)Math.Round(128.0 + (orig.G - 128.0) * intensityPercent * compressionRatio), 0, 255);
 
-                    if (newR != orig.R || newG != orig.G)
+                    var recession = 255.0 - orig.B;
+                    var newB = Math.Clamp((int)Math.Round(255.0 - recession * intensityPercent * recessionCompressionRatio), 0, 255);
+
+                    if (newR != orig.R || newG != orig.G || newB != orig.B)
                     {
                         wroteBack = true;
-                        fb[x, y] = Color.FromArgb(orig.A, newR, newG, orig.B);
+                        fb[x, y] = Color.FromArgb(orig.A, newR, newG, newB);
                     }
                 }
             }

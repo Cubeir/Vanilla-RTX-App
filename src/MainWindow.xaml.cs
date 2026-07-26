@@ -2805,6 +2805,16 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
+- Inviestigate and fix the egdecase where previewer stops displaying toggle images,
+the one that'sb een happening with preview button for a while now... fix it 
+
+- Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
+a page, filled by Online Texts, reporting on all the bugs
+Rich textboxes as containers with clickable links as pasted in the onlinetexts hopefully?
+make something work with the existing system
+
+A hub for keeping a track of Minecraft RTX bugs...
+
 ========
 📁 - Replace the current Helper ReplaceFilesWithElevation helper with something more friendly and native?!?
 Use IFileOperation COM API, it automatically handles UAC with a professional native UI
@@ -2905,6 +2915,10 @@ with detailed tooltips in the app, this is so unneeded, but y'know? ideas are id
 
 
 -----
+
+- If BetterRTX Manager is ever to be reworked to separate Servicing from Presentation
+the whole code path related to backing up defaults can be pruned.
+instead, adapt another approach that redirects mat.bin files via materials.index.json in the materials folder.
 
 🌟 A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
 In there, allow LOTS OF things
