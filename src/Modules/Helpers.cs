@@ -353,7 +353,7 @@ public static class Helpers
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                Log("Download cancelled by caller.", LogLevel.Informational);
+                Log("Download cancelled by the caller.", LogLevel.Informational);
                 return (false, null);
             }
             catch (HttpRequestException ex) when (retries > 0)
