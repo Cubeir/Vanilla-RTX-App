@@ -217,9 +217,9 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune �
 ### Minecraft Not Found, or User Data Missing?
 
 Your user data is required for the following features: Selecting/importing other packs & managing them, detection of installed Vanilla RTX resource packs (for checkboxes to become tickable), `Get latest RTX packs`, `RTX Reactor`, `Launch Minecraft RTX` as well as pack selection and all Tuner features.  
-The right-hand tools (`RTX LUT manager`, `BetterRTX manager`, `DLSS swapper`) work with your game files directly and don't need user data to function, but the app needs to know your game's actual install path.  
+The right-hand tools (`RTX LUT manager`, `BetterRTX manager`, `DLSS swapper`) work with your game files directly and need to know your game's actual install path to work.  
 
-The app locates both automatically: your Minecraft installation (game files) and your Minecraft user data folder (where resource packs live). These are handled by two independent systems, and for the vast majority of users, they succeed silently.-
+The app locates both automatically: your Minecraft installation (game files) and your Minecraft user data folder (where resource packs live). These are handled by two independent systems, and for the vast majority of users, they succeed silently.
 
 **Finding your game:** the app queries the Windows Package Manager directly for your install path and resolves it down to the physical location of your game files, regardless of where you've installed Minecraft. If that doesn't work, it falls back to searching common install paths across all your drives, followed up by a system-wide search — this usually resolves within a few seconds. If the app is ever unable to find your game automatically, it will ask you to manually locate it — when prompted, find and select `Minecraft.Windows.exe` directly, not its folder (select the right executable for the right version of the game, i.e. if you try to select Minecraft Preview's exe for Minecraft, the app will not accept!)
 
