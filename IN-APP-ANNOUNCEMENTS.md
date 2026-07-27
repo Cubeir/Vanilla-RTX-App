@@ -9,9 +9,6 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 📢 3.1.2.0 App Update:
 You can now import customized BetterRTX presets, the preset list now sorts correctly, there's also a new LUT preset inverting day-night cycle (for fun!)
 
-### Update 2
-🎉 Vanilla RTX 1.26.15 is now available!
-
 # PackUpdateAnnouncements
 
 ## 1.26.15 [cd:"9999999"] [glyph:"E70F"]
