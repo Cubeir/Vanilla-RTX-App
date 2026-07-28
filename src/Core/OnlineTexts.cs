@@ -20,6 +20,9 @@ namespace Vanilla_RTX_App.Core;
 // This would allow us to show PSAs only to users who are on a certain version or higher, which could be useful for announcing
 // new features or changes that only apply to newer versions of the app. (this whole thing was written by Intellisense by the way)
 
+// IDEA: expand on it, explore extracting image links from texts, and actually displaying it in the app, via webview or something
+
+
 // =====================================================================================================================
 // PsaItem — A single announcement entry.
 // =====================================================================================================================
