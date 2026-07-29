@@ -1496,8 +1496,8 @@ public sealed partial class MainWindow : Window
         }
 
         Log($"{versionName} data folder set: {acceptedPath}\n\n" +
-            $"ℹ️ The app is going to remember this location, you can now continue to use features that relied on user data.\n" +
-            $"But if you've selected a wrong location, features might not work properly, to reselect another path, you will need to Wipe app's data by holding shift, which changes Reset button to Wipe, click and try again.", LogLevel.Success);
+            $"💾 The app is going to remember this location, you can now continue to use features that relied on user data.\n" +
+            $"But if you've selected a wrong location, features might not work properly, to reselect another path, you will need to Wipe app's data by holding shift, which changes Reset button to Wipe, click it and try again.", LogLevel.Success);
 
         // Update button state and kick off pack detection now that the path is known
         UpdateUserDataDependentUI(IsTargetingPreview);
@@ -1749,18 +1749,18 @@ public sealed partial class MainWindow : Window
                 foreach (var key in root.Values.Keys.ToList())
                 {
                     root.Values.Remove(key);
-                    Log($"Deleted key: {rootName}/{key}", LogLevel.Informational);
+                    Log($"Deleted key: {rootName}/{key}", LogLevel.Cache);
                     totalKeysWiped++;
                 }
 
                 foreach (var containerKey in root.Containers.Keys.ToList())
                 {
                     root.DeleteContainer(containerKey);
-                    Log($"Deleted container: {rootName}/{containerKey}", LogLevel.Informational);
+                    Log($"Deleted container: {rootName}/{containerKey}", LogLevel.Cache);
                 }
             }
 
-            Log($"Wiped {totalKeysWiped} setting key(s) across all containers.", LogLevel.Success);
+            Log($"Wiped {totalKeysWiped} setting key(s) across all containers.", LogLevel.Cache);
             await Task.Delay(100);
 
             // ── 2. Wipe all storage folders ───────────────────────────────────────
@@ -1775,12 +1775,12 @@ public sealed partial class MainWindow : Window
 
             foreach (var (path, label) in foldersToWipe)
             {
-                Log($"Wiping {label}: {path}", LogLevel.Informational);
+                Log($"Wiping {label}: {path}", LogLevel.Cache);
                 int deletedInFolder = 0;
 
                 if (!Directory.Exists(path))
                 {
-                    Log($"{label} not found, skipping.", LogLevel.Informational);
+                    Log($"{label} not found, skipping.", LogLevel.Cache);
                     continue;
                 }
 
@@ -1789,7 +1789,7 @@ public sealed partial class MainWindow : Window
                     try
                     {
                         File.Delete(file);
-                        Log($"Deleted file: {Path.GetFileName(file)}", LogLevel.Informational);
+                        Log($"Deleted file: {Path.GetFileName(file)}", LogLevel.Cache);
                         deletedInFolder++;
                         await Task.Delay(10);
                     }
@@ -1804,7 +1804,7 @@ public sealed partial class MainWindow : Window
                     try
                     {
                         Directory.Delete(dir, recursive: true);
-                        Log($"Deleted folder: {Path.GetFileName(dir)}", LogLevel.Informational);
+                        Log($"Deleted folder: {Path.GetFileName(dir)}", LogLevel.Cache);
                         deletedInFolder++;
                         await Task.Delay(15);
                     }
@@ -1814,11 +1814,11 @@ public sealed partial class MainWindow : Window
                     }
                 }
 
-                Log($"{label} wiped ({deletedInFolder} item(s)).", LogLevel.Success);
+                Log($"{label} wiped ({deletedInFolder} item(s)).", LogLevel.Cache);
                 totalItemsDeleted += deletedInFolder;
             }
 
-            Log($"Deleted {totalItemsDeleted} file/folder item(s) total.", LogLevel.Success);
+            Log($"Deleted {totalItemsDeleted} file/folder item(s) total.", LogLevel.Cache);
             await Task.Delay(500);
             Log("Hard reset complete! The app will restart in a moment...", LogLevel.Lengthy);
             await Task.Delay(4444);
@@ -1834,7 +1834,7 @@ public sealed partial class MainWindow : Window
 
         async Task GuardActivePresetsBeforeWipeAsync()
         {
-            Log("Checking for active custom presets that need to be reverted first...", LogLevel.Informational);
+            Log("Checking for active custom presets that need to be reverted first...", LogLevel.BetterRTX);
 
             await RunGuard("BetterRTX",
                 DefaultsGuard.RestoreBetterRTXDefaultIfNeededAsync(
@@ -2051,7 +2051,7 @@ public sealed partial class MainWindow : Window
                 if (exportedPath != null)
                 {
                     exportedCount++;
-                    Log($"Finished exporting {name} to {exportedPath}", LogLevel.Success);
+                    Log($"Finished exporting {name} to {exportedPath}", LogLevel.Cache);
                 }
 
                 _ = BlinkingLamp(true, true, 1.0);
@@ -2543,7 +2543,7 @@ public sealed partial class MainWindow : Window
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex,
+        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex, Cache
         DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset
     }
 
@@ -2613,6 +2613,7 @@ public sealed partial class MainWindow : Window
             LogLevel.Network => "🛜 ",
             LogLevel.Debug => "🛸 ",
             LogLevel.Alchitex => "🟦 ",
+            LogLevel.Cache => "💾 ",
             LogLevel.DLSS => "🫧 ",
             LogLevel.BetterRTX => "🧈 ",
             LogLevel.LUT => "🎨 ",

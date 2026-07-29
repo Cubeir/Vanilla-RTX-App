@@ -299,7 +299,7 @@ public static class Helpers
                     }
 
                     savingLocation = finalPath;
-                    Log($"Save location: {savingLocation}", LogLevel.Informational);
+                    Log($"Save location: {savingLocation}", LogLevel.Cache);
                 }
                 catch (Exception ex)
                 {
