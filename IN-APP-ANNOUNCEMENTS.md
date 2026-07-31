@@ -5,9 +5,7 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PSA
 
-### Update
-📢 3.1.2.0 App Update:
-You can now import customized BetterRTX presets, the preset list now sorts correctly, there's also a new LUT preset inverting day-night cycle (for fun!)
+
 
 # PackUpdateAnnouncements
 

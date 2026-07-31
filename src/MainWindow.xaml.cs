@@ -2816,6 +2816,10 @@ make something work with the existing system
 
 A hub for keeping a track of Minecraft RTX bugs...
 
+// Don't actually do it, not a bad idea idea but send it to gulag, because
+you should be maintaining this list PUBLICLY ON mcpedl.com/vanilla-rtx, there's already a section for it
+go update that instead and complete it, append it with bugs with no workarounds or ones pack doesn't cover.
+
 ========
 📁 - Replace the current Helper ReplaceFilesWithElevation helper with something more friendly and native?!?
 Use IFileOperation COM API, it automatically handles UAC with a professional native UI
