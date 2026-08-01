@@ -2806,6 +2806,18 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
+- Make it harder for increase ambient lighting in combination with a high initial emissive multiplier to mess things up
+apply maybe 1/3 of it, so initial mult of 16, ends up giving a additional like, 5, to the emissive mult, instead of 16
+normally it adds only 1, and make the logic lean towards rounding down...
+without anything (mult of 1) it should add 2 to green uniformly,
+with mult of say, 3, it should add 1 more, 3
+by default, 1 is the minimum
+3 mult -> 2
+6 mult -> 3
+etc...
+figure a good logic
+lower initial mults leave no impact on ambient lighting 
+
 - Inviestigate and fix the egdecase where previewer stops displaying toggle images,
 the one that'sb een happening with preview button for a while now... fix it 
 

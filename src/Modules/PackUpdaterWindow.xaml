@@ -785,7 +785,7 @@
                                        TextAlignment="Left"
                                        VerticalAlignment="Center"
                                        IsTextScaleFactorEnabled="False"
-                                       Text="Other optional Vanilla RTX Add-Ons and Extensions can be downloaded and imported manually, they must be activated above one of the three primary Vanilla RTX resource packs in-game, they are not automatically updated via the app since they rarely receive updated due their limited scope, making them perpetually forward-compatible." />
+                                       Text="Other optional Vanilla RTX Add-Ons and Extensions can be downloaded and imported manually, they must be activated above one of the three primary Vanilla RTX resource packs in-game, they are not automatically updated by the app, because they rarely receive updated due their limited scope, making them perpetually forward-compatible." />
                         </Grid>
                     </Border>
 
