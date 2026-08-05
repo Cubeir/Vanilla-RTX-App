@@ -72,7 +72,7 @@ Hint: You can come back here to quickly reinstall packs to restore them to their
 
 ## PSA [cd:"9999999"] [glyph:"ECC5"]
 All Vanilla RTX Add-Ons and Extensions have been refreshed for Vanilla RTX 1.26.20 (and higher.)
-It is time to update (if you haven't already!)
+It is time to update (if you haven't already!) Simply hover their images, and click their names to be taken to their respective CurseForge download pages.
 
 # BetterRTXAnnouncements
 
