@@ -11,6 +11,9 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 
 # PackUpdateAnnouncements
 
+### Knwon Issue
+Known issue: due to a game issue (MCPE-240950), animated textures have a minor visual glitch in Vanilla RTX, if that bothers you, stick to Vanilla RTX Normals/Opus, which aren't impacted by MCPE-240950
+
 ## 1.26.15 [cd:"9999999"] [glyph:"E70F"]
 1.26.20 Release Notes:
 
