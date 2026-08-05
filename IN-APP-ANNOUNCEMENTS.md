@@ -56,7 +56,7 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 3. Use the refresh button in the top left corner to refetch the latest files & continue installing your presets.
 
 ## [cd:"120"] [glyph:"F78C"] // check:F78C // warning:E814 // alt text: ATTENTION: DO NOT INSTALL PRESETS FOR NOW. BetterRTX is currently out of date for the latest Minecraft version. Once it is updated, the text here will also change. CHECK BACK LATER!
-It is currnetly safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets.
+It is currently safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the latest game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue downloading and installing your presets.
 
 # LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
