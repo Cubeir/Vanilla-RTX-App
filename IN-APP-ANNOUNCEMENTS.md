@@ -1,40 +1,68 @@
 # Credits
-Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Spaceowl, Willström, Bastha, Joseph, PotatoHour, Kittygamer123, Lanaismymommy, James Kelly, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, OmarVillegas, Isttret, Superluminal, Travis Bishop, Dylan, Commander Grub, Kyo Don, The_Asa_Games, Charles D Powell, jamesyoung, Koiboi, DomoTurbulence, Rory, Nick Da Fox, Richard Anderson (Rich), Jacob, Luxalios, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, 67, Ryan S Beers — and to everyone who has supported this project in any way along the way.
+Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Spaceowl, Joseph, Willström, Bastha, PotatoHour, Kittygamer123, Lanaismymommy, James Kelly, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, OmarVillegas, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, Commander Grub, The_Asa_Games, Koiboi, jamesyoung, Nick Da Fox, Richard Anderson (Rich), Jacob, DomoTurbulence, Rory, Luxalios, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, 67, Ryan S Beers, TyTGM, AgusRomero0501, IcyFer, Smiletrap, Justin Klaassen, Dogtag, Kudo Cyylentaar — and to everyone who has supported this project in any way along the way.
 
 Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
 
 # PSA
 
-
+###
+🧊 Vanilla RTX 1.26.20 with Chaos Cubed coverage (and a lot more...) is out!
+📯 Read the changelog for this release and get the update from "Get latest RTX packs" menu.
 
 # PackUpdateAnnouncements
 
 ## 1.26.15 [cd:"9999999"] [glyph:"E70F"]
-1.26.15 Release Notes:
+1.26.20 Release Notes:
 
-Overhauled fog and atmosphere of the following biomes, they no longer feature generic fog.
-Every biome touched in this update now features its own unique water color, and underwater visibility now closely resembling fancy graphics.
+Full support for Minecraft 1.26.40 and the Chaos Cubed game drop.
+BetterRTX 1.5+ is required for Subsurface Scattering and Parallax Occlusion Mapping features.
 
-- Meadow:
-Now appears as a tiny bit colder variation of the plains biome
+- Chaos Cubed Game Drop — New Blocks:
+Complete PBR support for all new Chaos Cubed blocks: sulfur blocks, potent sulfur, cinnabar block set, and sulfur spikes.
+Sulfur Caves biome now features a uniquely sulfuric atmosphere with deep cyan-green water colors matching the vanilla game.
 
-- Beach: 
-Now appears similar to a significantly weakened desert!
+- Sulfur Cube:
+Fixed ray tracing rendering issues, including the top texture rendering black and flickering/Z-fighting.
+Known issue: interior renders black when the block is submerged but the player camera isn't (or vice versa).
+Improved walking animation particles for sulfur cube and slime mobs.
 
-- Stony Beach:
-A lot like the plains biome, temperate, but now the water color now closely resembles the vanilla one
+- Cave Biomes — Fog & Atmosphere:
+Revamped fog for Deep Dark, Lush Caves, and Dripstone Caves. Water colors now closely match vanilla. Fog heights adjusted to account for surface-exposed generation.
+Fixed an issue where the air atmosphere would appear exposed when the camera was inside a small body of water in caves. Note: this is a workaround for a Minecraft bug; it slightly sacrifices vanilla faithfulness in exchange for resolving the issue.
 
-- Birch Forest, Birch Forest Hills, Birch Forest Hills Mutated, Birch Forest Mutated:
-Birch forests now generally tend to look cooler, and brighter than regular forests
+- Subsurface Scattering:
+Comprehensive SSS data added to all MER files, which are now migrated to MERS format.
+Primarily intended for BetterRTX 1.5+ presets, but can also appear in Vibrant Visuals graphics mode.
+All thin surfaces — leaves, foliage, paper parts (e.g. birch trapdoor), even the thin pixels on scaffolding — now properly support light scattering. Every block was individually reviewed.
 
-- Roofed Forest, Roofed Forest Mutated:
-Dark oak forests, or roofed forests, now generally tend to have a slightly greener and darker atmosphere
+- Emissive Entities:
+Emissive texture data added to all applicable entities. Requires a BetterRTX preset with Emissive Entities enabled.
+This is separate from the existing rasterized glowing eyes enhancement and has no impact without BetterRTX installed.
+Glow squids, ender chest eyes, ghast mouth and eyes during shooting, drowned, blaze, and many more now feature emissive textures.
 
-- Mushroom Island, Mushroom Island Shore:
-Mushroom islands now tend to have a purpler more blue atmosphere, especially during rain.
+- Parallax Occlusion Mapping (Normals & Opus only):
+POM data baked into normal maps for use with BetterRTX 1.5+ presets, derived from heightmaps at 1/5th intensity.
+Normal maps can be flattened via the Vanilla RTX App; POM data is retained when doing so (a future app update will allow you to reduce POM intensity)
+Animated normal map added to the Nether portal texture, creating subtle distortions when viewing anything behind it.
 
-### Chaos Cubes [glyph:"F158"]
-Coverage for Chaos Cubed game drop will arrive sometime next month, sorry for delays!
+- End Dimension:
+Sky overhauled to appear purple instead of black. Fixed lighting issues and addressed unplayability with BetterRTX enabled.
+End flash texture made less prominent rather than removed outright, due to it not being properly implemented with ray tracing.
+
+- Particles:
+Revamped particle enhancements updated to the latest format version.
+Sulfur biome geyser particles tuned for ray tracing. Older particles retuned for more consistent, better-blended opacities throughout.
+
+- Fixes & Minor Enhancements:
+Bee nest front: corrected a single misidentified honey pixel, PBR materials adjusted accordingly.
+Candle wicks now burn brighter.
+Sculk tendril: revised inactive state brightness and fixed heightmap seams in the animation.
+XP orb texture bug workaround added (MCPE-183629). Orbs now also glow with an appropriate BetterRTX preset.
+Hopper minecart glitchy texture workaround added (MCPE-241124). Model is an approximation until Mojang addresses the issue.
+Removed sun and moon enhancements — minimal visual benefit, and they looked off with BetterRTX applied.
+Removed unused padding property from terrain_texture.json.
+Sulfur cave biome properties updated to match vanilla game parity.
+Minimum required Minecraft version raised to 1.26.40, make sure your game is up-to-date.
 
 ### Tip [glyph:"E95B"]
 Hint: It is always preferred to activate RTX resource packs in your Global Resource Pack settings instead of per-World or Realm.
@@ -42,8 +70,9 @@ Hint: It is always preferred to activate RTX resource packs in your Global Resou
 ### Tip [glyph:"E95B"]
 Hint: You can come back here to quickly reinstall packs to restore them to their original state in case if you want to revert your tuning attempts. (Reinstalls happen quicker from a cached version, unless a new version happens to be available)
 
-
-
+## PSA [cd:"9999999"] [glyph:"ECC5"]
+All Vanilla RTX Add-Ons and Extensions have been refreshed for Vanilla RTX 1.26.20 (and higher.)
+It is time to update (if you haven't already!)
 
 # BetterRTXAnnouncements
 
