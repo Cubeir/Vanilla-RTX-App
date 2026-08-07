@@ -947,9 +947,9 @@
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
                                    ToolTipService.ToolTip="Adjusts overall balance of roughness and metalness of materials.
-                                   &#x0a;&#x0a;Higher values result in overall fewer glossy surfaces and metallic metals
+                                   &#x0a;&#x0a;Higher values result in overall fewer or weaker glossy surfaces and metallic metals
                                    &#x0a;Negative values strengthen glossy or metallic surfaces.
-                                   &#x0a;Uses a smart decaying curve to impact values that are relevant, keeping a resource pack's intended look intact." />
+                                   &#x0a;Uses a smart decaying curve to impact extreme values that are relevant, keeping each texture's composition intact." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"

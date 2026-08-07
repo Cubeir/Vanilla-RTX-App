@@ -2543,7 +2543,7 @@ public sealed partial class MainWindow : Window
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex, Cache
+        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex, Cache,
         DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset
     }
 
