@@ -34,6 +34,10 @@ using static Vanilla_RTX_App.TunerVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
+// EXPAND ON LAZIFY SURFACE NORMALS
+// It'll be simple, take the luminosity map of each texture
+// raise it all till highest hits the ceiling (255), apply that to blue channel of each normal (linear/simple blending, 0-255)
+
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
