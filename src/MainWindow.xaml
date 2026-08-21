@@ -907,7 +907,7 @@
                         <TextBlock Text="Material grain offset"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False"
-                                   ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise in a manner that keeps the pack's intended look intact.
+                                   ToolTipService.ToolTip="Adds additional detail to PBR textures and reduces uniformity by adding a layer of noise to PBR textures, impacts mid-range values harder and extreme values less. Impacts emissives less than roughness and metalness properties.
                                    &#x0a;Your input determines the maximum possible deviation from the original values." />
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -949,7 +949,7 @@
                                    ToolTipService.ToolTip="Adjusts overall balance of roughness and metalness of materials.
                                    &#x0a;&#x0a;Higher values result in overall fewer or weaker glossy surfaces and metallic metals
                                    &#x0a;Negative values strengthen glossy or metallic surfaces.
-                                   &#x0a;Uses a smart decaying curve to impact extreme values that are relevant, keeping each texture's composition intact." />
+                                   &#x0a;Uses a smart decaying curve to impact extreme values that are relevant. Keeps each texture's composition/relative values intact." />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"

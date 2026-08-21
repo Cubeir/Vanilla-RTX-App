@@ -11,7 +11,39 @@ Consider supporting development of Vanilla RTX — maybe you'll find your name h
 ### Known Issue
 Known issue: due to a game issue (MCPE-240950), animated textures have a minor visual glitch in Vanilla RTX, if that bothers you, stick to Vanilla RTX Normals/Opus, which aren't impacted by MCPE-240950
 
-## 1.26.15 [cd:"9999999"] [glyph:"E70F"]
+## 1.26.21 [cd:"9999999"] [glyph:"E70F"]
+1.26.21 Release Notes:
+
+This is a quality update, continuing atmospheric overhaul across more biomes, alongside major PBR material improvements for several blocks.
+
+- Ocean Atmosphere & Water Colors:
+Regular Ocean now uses a Plains-like atmosphere with default fog, but features significantly deeper blue water, the thermocline darkens much faster with depth.
+Lukewarm Ocean, Warm Ocean, and their Deep variants now feature a hotter Desert-inspired atmosphere, tuned to remain significantly milder and more beach-like.
+Water colors now derived using a more consistent mathematical formula/model for representing vanilla colors with ray tracing.
+
+- End-related blocks:
+Revamped PBR materials for End Stone, End Bricks, and End Portal Frame.
+End Portal Frame green parts are now treated as and appear to be made out of Dark Prismarine.
+End Stone parts are now consistent with End Stone and feature more detailed materials.
+End Stone and End Portal Frame now feature new, more detailed hand-drawn normal maps. End Stone sections are now consistent.
+End Stone and End Portal Frame heightmaps revamped.
+Removed the subtle noise from End Bricks.
+Purpur materials are now slightly glossier by default. Revised Purpur block heightmaps
+
+- Bedrock:
+Complete Bedrock block overhaul with improved normal maps and heightmaps.
+Heightmaps and normals now follow a style similar to Stone.
+MERS now use semi-ultra-rough materials with extremely subtle metalness visible on the brightest parts of Bedrock. This is primarily noticeable under sunlight and other strong lights, while Bedrock remains an ultra-rough yet slightly metallic, extremely tough-looking material.
+
+- Coral:
+Revamped all Coral blocks, Coral Fans, and Coral Plants across all colors. New normal maps and heightmaps.
+New MERS add more detailed surface roughness. Living Coral Plants now appear noticeably wetter than dead Coral. All Coral variants feature more detailed and consistent materials.
+
+- Particles & Emissives:
+Blaze Rods in Brewing Stands now appear more strongly emissive.
+Campfire smoke and sulfur cave geyser particle opacities reduced further.
+
+## 1.26.20 [cd:"9999999"] [glyph:"E70F"]
 1.26.20 Release Notes:
 
 Full support for Minecraft 1.26.40 and the Chaos Cubed game drop.
