@@ -31,9 +31,8 @@ Removed the subtle noise from End Bricks.
 Purpur materials are now slightly glossier by default. Revised Purpur block heightmaps
 
 - Bedrock:
-Complete Bedrock block overhaul with improved normal map and heightmap.
-Heightmaps and normals now follow a style similar to Stone.
-MERS now use semi-ultra-rough materials with extremely subtle metalness visible on the brightest parts of Bedrock. This is primarily noticeable under sunlight and other strong lights, while Bedrock remains an ultra-rough yet slightly metallic, extremely tough-looking material.
+Complete Bedrock block overhaul with improved normal map and heightmap. They now follow a style similar to Stone.
+MERS now use semi-ultra-rough materials with extremely subtle metalness visible on the brightest parts of Bedrock. This is primarily noticeable under sunlight and other strong lights, it still remains an ultra-rough yet slightly metallic, extremely tough-looking material.
 
 - Coral:
 Revamped all Coral blocks, Coral Fans, and Coral Plants across all colors. New normal maps and heightmaps.
