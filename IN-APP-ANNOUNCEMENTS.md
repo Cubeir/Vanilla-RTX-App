@@ -148,4 +148,4 @@ That said, you can come back here anytime to check on the development news.
 
 ## [cd:"10000"] [glyph:"E823"]
 September News:
-Still diligently working on it! Expect its initial arrival later next month. I'm trying to make sure the implementation of RTX Reactor into the app is complete as to not require too many updates afterwards. Also as mentioned in the past, this won't be a simple codebase migration, but also a large rewrite, deploying more modern, advanced approaches to per-block procedurall PBR texture generation for Minecraft RTX.
+Diligently working on it! Expect its initial arrival later next month. I'm trying to make sure the implementation of RTX Reactor into the app is complete as to not require too many updates afterwards. Also as mentioned in the past, this won't be a simple codebase migration, but also a large rewrite, deploying more modern, advanced approaches to per-block procedural PBR texture generation for Minecraft RTX.
