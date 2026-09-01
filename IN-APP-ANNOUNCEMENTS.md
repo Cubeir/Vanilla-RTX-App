@@ -147,7 +147,5 @@ The redstone circuits for this feature are still being laid down.
 That said, you can come back here anytime to check on the development news.
 
 ## [cd:"10000"] [glyph:"E823"]
-July News:
-Since I announced earlier this year that RTX Reactor is joining the app, I've mostly ended up working on app's core features instead, which included foundational changes and features that would've been vital if RTX Reactor is to integerate with the existing features smoothly.
-
-No ETA, given I also maintain Vanilla RTX resource packs for Minecraft, I'm being stretched thin at the moment. All I can say is, hopefully things will be different before 2027.
+September News:
+Still diligently working on it! Expect its initial arrival later next month. I'm trying to make sure the implementation of RTX Reactor into the app is complete as to not require too many updates afterwards. Also as mentioned in the past, this won't be a simple codebase migration, but also a large rewrite, deploying more modern, advanced approaches to per-block procedurall PBR texture generation for Minecraft RTX.
