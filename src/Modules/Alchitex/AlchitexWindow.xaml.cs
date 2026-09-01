@@ -185,7 +185,7 @@ public sealed partial class Alchitex : Window
     {
         try
         {
-            var uri = new Uri("ms-appx:///Modules/Alchitex/LICENSE.txt");
+            var uri = new Uri("ms-appx:///Modules/Alchitex/Assets/LICENSE.txt");
             var file = await StorageFile.GetFileFromApplicationUriAsync(uri);
             var body = await FileIO.ReadTextAsync(file);
 
