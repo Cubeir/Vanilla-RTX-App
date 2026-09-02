@@ -1077,15 +1077,15 @@ public static class HeightmapGenerator
     private const int SpatialRadius = 2;
     private const double SpatialSigma = 1.5;
 
-    // TODO(tuning): how far apart two values can be and still get pulled together. This is
-    // the constant that decides whether a feature survives, so it errs deliberately narrow:
-    // a bandwidth wider than a real feature's separation swallows that feature, and once
-    // swallowed nothing downstream can recover it - the merged region resolves to a single
-    // averaged level, gap gone. Measured on a plank texture whose mortar line sat 21 levels
-    // below the plank face: at 24 the line was bridged and came out at the same height as
-    // the wood; at 12 it separated cleanly. Erring narrow is the safe direction now that
-    // the merge pass below collapses whatever over-segmentation that causes.
-    private const double RangeBandwidth = 12.0;
+    // TODO(tuning): how far apart two values can be and still get pulled together.
+    //
+    // This was briefly narrowed to 12 to stop mean-shift bridging a shallow mortar line
+    // into the plank above it. It did fix that in isolation, but on real packs the extra
+    // modes it produced - combined with the value-based placement tried alongside it -
+    // turned output into little more than a posterized greyscale: far too many distinct
+    // elevations, which is the defining trait of a heightmap that reads as a mess in game.
+    // Back at 24 the clustering stays coarse enough to produce real plateaus.
+    private const double RangeBandwidth = 24.0;
 
     // Above this pixel count, ComputeClusteredHeights skips the spatial neighbor search
     // (which scales with W*H*R^2*iterations) and falls back to range-only clustering off
@@ -1102,13 +1102,6 @@ public static class HeightmapGenerator
     // texture that would otherwise land on many clusters gets merged down harder to reach
     // this; a calm texture that already converged to fewer is untouched. TODO(tuning).
     private const int MaxClusters = 6;
-
-    // TODO(tuning): ceiling on how far the placed cluster levels get stretched back out to
-    // fill 0-255. Clusters are placed at their real mean brightness, so a texture whose
-    // bands genuinely span the range barely gets stretched at all; this caps what happens
-    // at the other extreme, where a nearly-flat texture's few barely-separated bands would
-    // otherwise be blown out into a full-depth staircase they never earned.
-    private const double MaxHeightStretch = 3.0;
 
     // Pairing mean-shift with a fixed-step quantization of the same values, and keeping
     // only regions the two agree on, was tried here as a guard against mean-shift bridging
@@ -1378,35 +1371,26 @@ public static class HeightmapGenerator
             foreach (var originalId in bucketMembers[bucket])
                 bucketOf[originalId] = bucket;
 
-        // Each surviving bucket sits at its own real mean brightness, NOT at an evenly
-        // spaced slot for its rank. That distinction is the whole point: rank spacing
-        // throws away how far apart the clusters actually were, so on a plank texture the
-        // handful of near-identical wood-grain bands (means maybe 8 levels apart) would
-        // get pushed the same distance apart as the genuinely deep mortar gap 90 levels
-        // below them - manufacturing several big height steps out of grain noise while
-        // under-selling the one step that mattered. Placing buckets by value keeps the gap
-        // low, keeps the grain bands nearly coincident, and still hands back flat
-        // plateaus, because every pixel in a bucket resolves to the same single level.
-        var levels = new double[bucketMeans.Count];
+        // Buckets are placed at evenly spaced slots by brightness RANK, not at their own
+        // mean brightness.
+        //
+        // Placing by value is the more faithful of the two, and measurably so - on a plank
+        // texture it reproduced the real mortar-gap-to-grain ratio almost exactly where
+        // ranking inverted it. But faithful to brightness turns out to be the wrong target,
+        // because brightness isn't height: preserving true brightness relationships also
+        // preserves every bit of wood grain and surface mottling as real elevation, and the
+        // output stops being a heightmap and becomes a posterized greyscale of the colour
+        // texture. Ranking's "inaccuracy" is doing useful work - it collapses each cluster
+        // onto a discrete step and pushes the steps apart, which is what reads as distinct
+        // flat surfaces in game.
+        //
+        // The honest limitation underneath: brightness is only a proxy for height, so no
+        // placement rule can be right in general. Ranking just fails more gracefully.
+        var placed = new int[bucketMeans.Count];
         for (var i = 0; i < bucketMeans.Count; i++)
-            levels[i] = bucketMeans[i];
-
-        var lowest = levels.Min();
-        var highest = levels.Max();
-        var span = highest - lowest;
-
-        // Restore full range, but only up to MaxHeightStretch. A texture whose buckets
-        // already span most of the range barely moves; one whose buckets sit a few levels
-        // apart stays subtle instead of being blown out into a full-depth staircase it
-        // never earned. Linear either way, so the proportions between buckets survive.
-        var stretch = span > 0 ? Math.Min(255.0 / span, MaxHeightStretch) : 0.0;
-
-        var placed = new int[levels.Length];
-        for (var i = 0; i < levels.Length; i++)
-        {
-            var value = span > 0 ? (levels[i] - lowest) * stretch : LevelMid;
-            placed[i] = (int)Math.Clamp(Math.Round(value), 0, 255);
-        }
+            placed[i] = bucketMeans.Count > 1
+                ? (int)Math.Clamp(Math.Round(i / (double)(bucketMeans.Count - 1) * 255.0), 0, 255)
+                : LevelMid;
 
         var result = new int[w, h];
         for (var y = 0; y < h; y++)
