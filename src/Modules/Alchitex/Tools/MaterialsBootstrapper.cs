@@ -12,7 +12,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 
 /// <summary>
 /// Debug-only tool: reads every .texture_set.json in an already-fully-PBR'd pack (e.g.
-/// the developer's own Vanilla RTX) and reverse-derives materials.json entries from what's
+/// the Cubeir's own Vanilla RTX) and reverse-derives materials.json entries from what's
 /// actually baked into each MER/MERS texture, so tuning starts from real numbers instead
 /// of a blank sheet.
 ///

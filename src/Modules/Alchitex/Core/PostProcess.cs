@@ -96,14 +96,18 @@ public static class PostProcess
     }
 
     /// <summary>
-    /// Tries to make sure `blocksFolder` ends up with both water_still_grey.tga and
-    /// water_flow_grey.tga, per texture independently (not atomic across the pair - each
-    /// one can get there by a different means):
-    ///   1. Already present (any candidate extension) - left alone.
-    ///   2. Otherwise, a colored/inventory variant (water_still / water_flow, any
-    ///      candidate extension) exists - packs sometimes ship that but forget the
+    /// Tries to make sure `blocksFolder` ends up with both a water_still_grey and a
+    /// water_flow_grey texture, per texture independently (not atomic across the pair -
+    /// each one can get there by a different means):
+    ///   1. Already present, in whichever candidate extension the game itself would
+    ///      resolve first (TextureSetHelper.FindTextureFile - same .tga &gt; .png &gt; .jpg
+    ///      &gt; .jpeg priority order used everywhere else a texture name gets resolved to a
+    ///      file) - left alone as-is, whatever format it's already in.
+    ///   2. Otherwise, a colored/inventory variant (water_still / water_flow, same
+    ///      priority-resolved lookup) exists - packs sometimes ship that but forget the
     ///      in-world grey one the game actually tints per-biome, so it's greyscaled via
-    ///      ConvertWaterToGrey into a TGA _grey sibling.
+    ///      ConvertWaterToGrey into a TGA _grey sibling (always .tga, regardless of the
+    ///      source's extension - see ConvertWaterToGrey/Helpers.WriteImageAsTGA).
     /// Returns true only if this folder ends up with BOTH grey textures present by the
     /// time this returns, regardless of which of the two means produced each one - the
     /// caller (AlchitexPipeline.RunWaterGlassPass) uses this to decide whether the zip
@@ -114,26 +118,19 @@ public static class PostProcess
         EnsureOneGreyWaterTexture(blocksFolder, "water_still");
         EnsureOneGreyWaterTexture(blocksFolder, "water_flow");
 
-        return File.Exists(Path.Combine(blocksFolder, "water_still_grey.tga"))
-            && File.Exists(Path.Combine(blocksFolder, "water_flow_grey.tga"));
+        return TextureSetHelper.FindTextureFile(blocksFolder, "water_still_grey") != null
+            && TextureSetHelper.FindTextureFile(blocksFolder, "water_flow_grey") != null;
     }
 
     private static void EnsureOneGreyWaterTexture(string blocksFolder, string baseName)
     {
-        foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
-        {
-            if (File.Exists(Path.Combine(blocksFolder, baseName + "_grey" + ext))) return;
-        }
+        if (TextureSetHelper.FindTextureFile(blocksFolder, baseName + "_grey") != null) return;
 
-        foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
-        {
-            var coloredPath = Path.Combine(blocksFolder, baseName + ext);
-            if (!File.Exists(coloredPath)) continue;
+        var coloredPath = TextureSetHelper.FindTextureFile(blocksFolder, baseName);
+        if (coloredPath == null) return;
 
-            try { ConvertWaterToGrey(coloredPath); }
-            catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to derive '{baseName}_grey' from '{coloredPath}': {ex.Message}"); }
-            return;
-        }
+        try { ConvertWaterToGrey(coloredPath); }
+        catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to derive '{baseName}_grey' from '{coloredPath}': {ex.Message}"); }
     }
 
     /// <summary>
