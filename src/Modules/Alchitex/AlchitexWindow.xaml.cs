@@ -30,7 +30,6 @@ public static class AlchitexVariables
         // LocalSettings needs a WinRT-projectable type, and int is the simplest one that
         // round-trips cleanly through the existing reflection-based Save/LoadSettings.
         public static int SecondaryPbrModeIndex = (int)SecondaryPbrMode.Auto;
-        public static bool SubsurfaceScatteringEnabled = false;
         public static bool AddFogEnabled = false;
     }
     public static class Defaults
@@ -302,7 +301,6 @@ public sealed partial class Alchitex : Window
         MainGrid.Visibility = Visibility.Visible;
 
         SecondaryPbrModeComboBox.SelectedIndex = AlchitexVariables.Persistent.SecondaryPbrModeIndex;
-        SubsurfaceScatteringToggle.IsChecked = AlchitexVariables.Persistent.SubsurfaceScatteringEnabled;
         AddFogToggle.IsChecked = AlchitexVariables.Persistent.AddFogEnabled;
 
 #if DEBUG
@@ -321,7 +319,6 @@ public sealed partial class Alchitex : Window
         if (modeIndex < 0) modeIndex = (int)SecondaryPbrMode.Auto;
 
         AlchitexVariables.Persistent.SecondaryPbrModeIndex = modeIndex;
-        AlchitexVariables.Persistent.SubsurfaceScatteringEnabled = SubsurfaceScatteringToggle.IsChecked ?? false;
         AlchitexVariables.Persistent.AddFogEnabled = AddFogToggle.IsChecked ?? false;
     }
 
@@ -332,7 +329,6 @@ public sealed partial class Alchitex : Window
 
         return new AlchitexOptions(
             (SecondaryPbrMode)AlchitexVariables.Persistent.SecondaryPbrModeIndex,
-            AlchitexVariables.Persistent.SubsurfaceScatteringEnabled,
             AlchitexVariables.Persistent.AddFogEnabled);
     }
 
@@ -343,7 +339,6 @@ public sealed partial class Alchitex : Window
         AbortButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         AbortButton.IsEnabled = !enabled;
         SecondaryPbrModeComboBox.IsEnabled = enabled;
-        SubsurfaceScatteringToggle.IsEnabled = enabled;
         AddFogToggle.IsEnabled = enabled;
         GenerateMaterialsConfigButton.IsEnabled = enabled;
     }

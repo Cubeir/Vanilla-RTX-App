@@ -168,7 +168,7 @@ public static class AlchitexPipeline
 
         if (!File.Exists(target.MersPath))
         {
-            using var mers = MersGenerator.Generate(colorBitmap, material, sssEnabled: options.SubsurfaceScattering);
+            using var mers = MersGenerator.Generate(colorBitmap, material);
             Helpers.WriteImageAsTGA(mers, target.MersPath);
         }
 

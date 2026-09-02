@@ -250,11 +250,6 @@
                     <ComboBoxItem Content="Heightmap" />
                 </ComboBox>
 
-                <ToggleButton x:Name="SubsurfaceScatteringToggle"
-                              Content="Subsurface scattering"
-                              HorizontalAlignment="Stretch"
-                              IsTextScaleFactorEnabled="False" />
-
                 <ToggleButton x:Name="AddFogToggle"
                               Content="Add fog"
                               HorizontalAlignment="Stretch"

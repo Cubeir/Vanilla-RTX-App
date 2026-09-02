@@ -36,9 +36,9 @@ public sealed class MerParams
 /// <summary>
 /// Subsurface-scattering opacity range, written into the MERS alpha channel based on the
 /// *unaltered* luminosity of the color texture: darkest pixel of the block -> Min,
-/// brightest -> Max, everything else interpolated. Min == Max == 0 means "no SSS" (the
-/// correct default for the overwhelming majority of blocks, and also what every block
-/// effectively gets when the run's SSS toggle is off - see AlchitexOptions below).
+/// brightest -> Max, everything else interpolated. Min == Max == 0 means "no SSS" - the
+/// correct default for the overwhelming majority of blocks. Always applied - there's no
+/// run-time toggle for this; whether a shader chooses to read it is downstream of us.
 /// </summary>
 public sealed class SssParams
 {
@@ -202,15 +202,13 @@ public enum SecondaryPbrMode
 /// starts. Kept as a plain, immutable record so the pipeline never reaches back into UI
 /// state mid-run - once RunAsync is called, the run's behavior is fully pinned down.
 ///
-/// Note on SubsurfaceScattering: every texture set Alchitex writes is always MERS (never
-/// plain MER) - see PbrGeneration.TextureSetOrchestrator. This flag doesn't change the
-/// schema; it changes whether each block's materials.json-authored SSS min/max is honored
-/// (true) or overridden to (0, 0) - fully transparent alpha, i.e. zero subsurface
-/// scattering - for every block regardless of what materials.json says (false).
+/// Every texture set Alchitex writes is always MERS (never plain MER) and always gets its
+/// materials.json-authored SSS applied - there's no run-time toggle for this. A shader
+/// choosing not to read it downstream (same as POM) isn't something to clutter generation
+/// with.
 /// </summary>
 public sealed record AlchitexOptions(
     SecondaryPbrMode SecondaryPbr,
-    bool SubsurfaceScattering,
     bool AddFog)
 {
     /// <summary>
@@ -222,14 +220,12 @@ public sealed record AlchitexOptions(
 
     /// <summary>
     /// Ceiling for an *explicit* Heightmap selection (TextureSetOrchestrator.
-    /// ResolveSecondaryMode): above this width a normal map is generated instead, since
-    /// Minecraft RTX renders heightmap data via a Sobel outline baked into the normal
-    /// map's blue channel, and above ~64px the resulting lines become sub-pixel-thin and
-    /// can overflow the texture atlas.
+    /// ResolveSecondaryMode): above this width a normal map is generated instead - a
+    /// heightmap texture set above this size no longer manifests correctly in-game.
     /// </summary>
     public const int ExplicitHeightmapMaxWidth = 64;
 
-    public static readonly AlchitexOptions Default = new(SecondaryPbrMode.Auto, SubsurfaceScattering: false, AddFog: false);
+    public static readonly AlchitexOptions Default = new(SecondaryPbrMode.Auto, AddFog: false);
 }
 
 #endregion

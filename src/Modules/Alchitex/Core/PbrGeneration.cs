@@ -47,9 +47,8 @@ public sealed record GenerationTarget(
 /// false exclusion), and writes a fresh .texture_set.json for each remaining one.
 ///
 /// Every texture set Alchitex writes always uses metalness_emissive_roughness_subsurface -
-/// never plain metalness_emissive_roughness. Whether SSS actually does anything is a
-/// generation-time decision (AlchitexOptions.SubsurfaceScattering), not a schema decision -
-/// see MersGenerator below.
+/// never plain metalness_emissive_roughness - and always gets real SSS data, see
+/// MersGenerator below.
 ///
 /// Running this twice on an already-processed pack is a no-op for every texture that
 /// already got a texture set on the first run - which is exactly the "safe to re-run
@@ -180,10 +179,10 @@ public static class TextureSetOrchestrator
     /// Resolves Auto mode per-texture by probing just the image header (MagickImageInfo -
     /// no full decode) for width, per the agreed rule: width &lt;= 32 -> heightmap,
     /// otherwise -> normal map. Also overrides an *explicit* Heightmap request above
-    /// AlchitexOptions.ExplicitHeightmapMaxWidth - Minecraft RTX renders heightmap data via
-    /// a Sobel outline baked into the normal map's blue channel, and above that width the
-    /// resulting lines become sub-pixel-thin and can overflow the texture atlas, so a
-    /// heightmap simply doesn't work there regardless of what was picked.
+    /// AlchitexOptions.ExplicitHeightmapMaxWidth - the game manifests a heightmap texture
+    /// set in-game via its own internal Sobel-derived bump effect (unrelated to our own
+    /// generated normal maps), which thins out and stops reading as height at higher
+    /// resolutions, so a normal map is generated instead.
     /// </summary>
     private static SecondaryPbrMode ResolveSecondaryMode(SecondaryPbrMode requested, string colorPath)
     {
@@ -292,10 +291,9 @@ public static class TextureSetOrchestrator
 /// <summary>
 /// Generates a MERS (metalness/emissive/roughness/subsurface) bitmap from a color texture
 /// and a resolved MaterialEntry. Alchitex only ever produces MERS, never plain MER - see
-/// TextureSetOrchestrator above. `sssEnabled` is the run-wide toggle: when false, every
-/// block's SSS output is forced to (0, 0) - alpha always 0, i.e. no subsurface scattering
-/// anywhere - regardless of what materials.json specifies for that block; when true, each
-/// block's own materials.json SSS range is honored.
+/// TextureSetOrchestrator above - and always writes each block's own materials.json SSS
+/// range; there's no run-time toggle to suppress it (same reasoning as POM: a shader
+/// choosing not to read the data is downstream of us, not something to gate here).
 ///
 /// Base algorithm:
 ///   1. Greyscale the color texture with a flat channel average (NOT luminosity - a
@@ -319,7 +317,7 @@ public static class TextureSetOrchestrator
 /// </summary>
 public static class MersGenerator
 {
-    public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material, bool sssEnabled)
+    public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -352,9 +350,6 @@ public static class MersGenerator
             }
         }
 
-        // (0,0) when disabled, exactly what Stretch() below needs to always produce 0.
-        var effectiveSss = sssEnabled ? material.Sss : new SssParams();
-
         using (var outFb = new FastBitmap(output, writable: true))
         {
             for (var y = 0; y < h; y++)
@@ -365,7 +360,7 @@ public static class MersGenerator
                     var r = Stretch(g, greyMin, greyMax, material.Mer.MetalMin, material.Mer.MetalMax, material.Mer.InvertMetal);
                     var gr = Stretch(g, greyMin, greyMax, material.Mer.EmissiveMin, material.Mer.EmissiveMax, material.Mer.InvertEmissive);
                     var b = Stretch(g, greyMin, greyMax, material.Mer.RoughnessMin, material.Mer.RoughnessMax, material.Mer.InvertRoughness);
-                    var alpha = Stretch(luminosity[x, y], lumMin, lumMax, effectiveSss.Min, effectiveSss.Max, invert: false);
+                    var alpha = Stretch(luminosity[x, y], lumMin, lumMax, material.Sss.Min, material.Sss.Max, invert: false);
 
                     outFb[x, y] = Color.FromArgb(alpha, r, gr, b);
                 }
@@ -373,7 +368,7 @@ public static class MersGenerator
 
             foreach (var pass in material.Recursive)
             {
-                ApplyRecursivePass(colorBitmap, grey, greyMin, greyMax, luminosity, lumMin, lumMax, outFb, pass, sssEnabled);
+                ApplyRecursivePass(colorBitmap, grey, greyMin, greyMax, luminosity, lumMin, lumMax, outFb, pass);
             }
         }
 
@@ -385,8 +380,7 @@ public static class MersGenerator
         int[,] grey, int greyMin, int greyMax,
         int[,] luminosity, int lumMin, int lumMax,
         FastBitmap outFb,
-        RecursivePass pass,
-        bool sssEnabled)
+        RecursivePass pass)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -435,7 +429,7 @@ public static class MersGenerator
                 var newB = Lerp(baseColor.B, passB, t);
 
                 var newAlpha = baseColor.A;
-                if (sssEnabled && pass.Sss != null)
+                if (pass.Sss != null)
                 {
                     var passAlpha = Stretch(luminosity[x, y], lumMin, lumMax, pass.Sss.Min, pass.Sss.Max, invert: false);
                     newAlpha = Lerp(baseColor.A, passAlpha, t);

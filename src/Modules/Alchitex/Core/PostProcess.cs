@@ -35,13 +35,12 @@ public static class PostProcess
     //   Assets/badge_42x.png
     //     -> 42x42 watermark composited onto the bottom-left corner of every regenerated pack icon.
     //
-    //   Assets/Fog/vanilla_rtx_fog.zip
+    //   Assets/vanilla-rtx-fog.zip
     //     -> top-level "biomes/" and "fogs/" folders, deployed into the pack root and
     //        every subpack root when the (opt-in, off-by-default) fog toggle is enabled.
     private const string WaterFallbackSubfolder = "WaterFallback";
     private const string IconBadgeFileName = "badge_42x.png";
-    private const string FogSubfolder = "Fog";
-    private const string FogZipFileName = "vanilla_rtx_fog.zip";
+    private const string FogZipFileName = "vanilla-rtx-fog.zip";
 
     #endregion
 
@@ -150,12 +149,12 @@ public static class PostProcess
     /// textures/blocks, since fog files aren't block-texture-scoped the way water
     /// fallback is. Opt-in (AlchitexOptions.AddFog, off by default) and overwrites
     /// whatever's already at each destination path. Never invents content - if the
-    /// packaged zip isn't present under Assets/Fog/, this logs exactly what's missing and
+    /// packaged zip isn't present under Assets/, this logs exactly what's missing and
     /// leaves the pack without fog rather than pretending to have handled it.
     /// </summary>
     public static void DeployFog(string packRoot, string alchitexAssetsPath)
     {
-        var zipPath = Path.Combine(alchitexAssetsPath, FogSubfolder, FogZipFileName);
+        var zipPath = Path.Combine(alchitexAssetsPath, FogZipFileName);
         if (!File.Exists(zipPath))
         {
             Trace.WriteLine($"[ALCHITEX] Fog asset missing - expected '{zipPath}'. Copy the fog distribution zip (top-level 'biomes/' and 'fogs/' folders) there. Skipping fog deployment for '{packRoot}'.");
