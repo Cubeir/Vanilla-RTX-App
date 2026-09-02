@@ -305,6 +305,7 @@ public sealed partial class Alchitex : Window
 
 #if DEBUG
         GenerateMaterialsConfigButton.Visibility = Visibility.Visible;
+        TheSeparatorBehindDevOnlyTitleBarButton.Visibility = Visibility.Visible;
 #endif
     }
 

@@ -66,24 +66,66 @@
                     Background="Transparent"
                     IsHitTestVisible="False" />
 
-            <!-- Info button -->
-            <Button x:Name="InfoButton"
-                    Width="40"
-                    Height="31"
-                    HorizontalAlignment="Left"
+            <!-- Titlebar Buttons -->
+            <Border Margin="-1,-1,16,0"
                     VerticalAlignment="Top"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    CornerRadius="0"
-                    Padding="0"
-                    Visibility="Collapsed"
-                    ToolTipService.ToolTip="Learn more..."
-                    Click="InfoButton_Click">
-                <FontIcon Glyph="&#xE946;"
-                          FontSize="14"
-                          IsTextScaleFactorEnabled="False" />
-            </Button>
+                    HorizontalAlignment="Left"
+                    Height="34"
+                    Width="Auto">
+                <Grid Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Button -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Separator -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Button -->
+                    </Grid.ColumnDefinitions>
 
+                    <!-- Chat Button -->
+                    <Button x:Name="InfoButton"
+                            Grid.Column="0"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Content="&#xE946;"
+                            Width="40"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="16"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Click="InfoButton_Click"
+                            ToolTipService.ToolTip="Learn more..."
+                            IsTextScaleFactorEnabled="False" />
+
+                    <!-- Separator -->
+                    <Border Grid.Column="1"
+                            Width="1"
+                            Margin="4,6,4,6"
+                            Visibility="Collapsed"
+                            x:Name="TheSeparatorBehindDevOnlyTitleBarButton"
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- Appears in debug builds only: bootstrap materials.json from an already-PBR'd pack.
+                     Visibility is forced Visible in code-behind under #if DEBUG only. -->
+                    <Button x:Name="GenerateMaterialsConfigButton"
+                            Grid.Column="2"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Content="&#xEC7A;"
+                            Width="40"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="16"
+                            Visibility="Collapsed"
+                            Click="GenerateMaterialsConfigButton_Click"
+                            ToolTipService.ToolTip="DEVELOPER TOOL FOR APPENDING OR GENERATING A BOOTSTRAP FOR MATERIALS.JSON FILE FROM AN EXISTING PBR TEXTURE PACK."
+                            IsTextScaleFactorEnabled="False" />
+                </Grid>
+            </Border>
+            
             <!-- Titlebar Content -->
             <Grid x:Name="TitleBarCenterContent"
                   HorizontalAlignment="Center"
@@ -251,12 +293,12 @@
                 </ComboBox>
 
                 <ToggleButton x:Name="AddFogToggle"
-                              Content="Add fog"
+                              Content="Override with Vanilla RTX's per-biome fog and configurations"
                               HorizontalAlignment="Stretch"
                               IsTextScaleFactorEnabled="False" />
 
                 <Button x:Name="GenerateButton"
-                        Content="Generate RTX Textures"
+                        Content="Generate"
                         Style="{ThemeResource AccentButtonStyle}"
                         HorizontalAlignment="Stretch"
                         Padding="16,12,16,12"
@@ -287,16 +329,6 @@
                            Opacity="0.7"
                            FontSize="12"
                            IsTextScaleFactorEnabled="False" />
-
-                <!-- Debug-only: bootstrap materials.json from an already-PBR'd pack.
-                     Visibility is forced Visible in code-behind under #if DEBUG only. -->
-                <Button x:Name="GenerateMaterialsConfigButton"
-                        Content="Generate baseline materials.json..."
-                        HorizontalAlignment="Stretch"
-                        Margin="0,24,0,0"
-                        Visibility="Collapsed"
-                        IsTextScaleFactorEnabled="False"
-                        Click="GenerateMaterialsConfigButton_Click" />
             </StackPanel>
 
             <!-- ── Alchitex feature content area (announcements), docked bottom ── -->
