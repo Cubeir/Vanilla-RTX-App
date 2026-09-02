@@ -47,18 +47,54 @@ public static class PostProcess
 
     #region Water
 
+    // TODO(tuning): visual knobs for water-to-grey conversion.
+    // Floor opacity - Bedrock RTX has visible glitches if any water pixel's opacity drops
+    // below this after conversion. Ported unchanged from legacy RTX Reactor.
+    private const int MinWaterOpacity = 129;
+    // How many "votes" the single brightest pixel gets against the plain average when
+    // picking ConvertWaterToGrey's flat RGB fill color - higher leans the result more
+    // toward the brightest spot in the source texture, 0 would just be a plain average.
+    private const double BrightestPixelWeight = 2.0;
+
     /// <summary>
     /// Converts a color water texture into the flat-grey, brightness-as-opacity form
     /// Bedrock RTX expects (water_flow_grey / water_still_grey), and writes it as a
-    /// sibling "_grey"-suffixed TGA next to the original. Math ported unchanged from
-    /// legacy RTX Reactor's ConvertWater.
+    /// sibling "_grey"-suffixed TGA next to the original. Opacity math (brightness as
+    /// alpha, renormalized to a MinWaterOpacity floor) ported unchanged from legacy RTX
+    /// Reactor's ConvertWater; the flat RGB fill is no longer a fixed grey - see below.
     /// </summary>
     public static void ConvertWaterToGrey(string imagePath)
     {
         using var source = Helpers.ReadImage(imagePath, maxOpacity: false);
         using var output = new Bitmap(source.Width, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
+        var brightness = new int[source.Width, source.Height];
+        var maxBrightness = 0;
+        long brightnessSum = 0;
+
         using (var srcFb = new FastBitmap(source, writable: false))
+        {
+            for (var y = 0; y < source.Height; y++)
+            {
+                for (var x = 0; x < source.Width; x++)
+                {
+                    var p = srcFb[x, y];
+                    var b = (p.R + p.G + p.B) / 3;
+                    brightness[x, y] = b;
+                    if (b > maxBrightness) maxBrightness = b;
+                    brightnessSum += b;
+                }
+            }
+        }
+
+        var pixelCount = source.Width * source.Height;
+        var averageBrightness = pixelCount > 0 ? brightnessSum / (double)pixelCount : 0;
+        // Usually-bright result, nudged toward the texture's own brightest pixel rather
+        // than a fixed grey.
+        var greyChannel = (byte)Math.Clamp(
+            (int)Math.Round((maxBrightness * BrightestPixelWeight + averageBrightness) / (BrightestPixelWeight + 1.0)),
+            0, 255);
+
         using (var outFb = new FastBitmap(output, writable: true))
         {
             var minAlpha = 255;
@@ -66,15 +102,14 @@ public static class PostProcess
             {
                 for (var x = 0; x < source.Width; x++)
                 {
-                    var p = srcFb[x, y];
-                    var brightness = (p.R + p.G + p.B) / 3;
-                    outFb[x, y] = Color.FromArgb(brightness, 164, 164, 164);
-                    if (brightness < minAlpha) minAlpha = brightness;
+                    var b = brightness[x, y];
+                    outFb[x, y] = Color.FromArgb(b, greyChannel, greyChannel, greyChannel);
+                    if (b < minAlpha) minAlpha = b;
                 }
             }
 
-            // Renormalize opacity so the darkest pixel lands at 129, same floor legacy used.
-            var adjust = 129 - minAlpha;
+            // Renormalize opacity so the darkest pixel lands at MinWaterOpacity.
+            var adjust = MinWaterOpacity - minAlpha;
             for (var y = 0; y < source.Height; y++)
             {
                 for (var x = 0; x < source.Width; x++)
@@ -133,12 +168,46 @@ public static class PostProcess
         try
         {
             ConvertWaterToGrey(source);
+            // TextureSetOrchestrator's scan (Phase 2a) already ran and completed before
+            // this pass ever creates baseName + "_grey.tga" - if the pack didn't already
+            // ship one, nothing would otherwise ever give it a .texture_set.json at all
+            // (water_flow_grey/water_still_grey are always PBR-blacklisted anyway, so a
+            // color-only one is exactly what TextureSetOrchestrator would have written had
+            // it run after this file existed). Deliberately narrow fix scoped to this one
+            // gap rather than reordering the pipeline - the zip-fallback path doesn't need
+            // this, its .texture_set.json ships inside water-fallback.zip already.
+            EnsureColorOnlyTextureSet(blocksFolder, baseName + "_grey");
             return true;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[ALCHITEX] Failed to derive '{baseName}_grey' from '{source}': {ex.Message}");
             return false;
+        }
+    }
+
+    /// <summary>Writes a minimal color-only .texture_set.json ("color": textureName, no
+    /// PBR keys - water is always blacklisted) for `textureName` in `blocksFolder`, unless
+    /// one already exists (never clobbers a hand-authored/pack-provided file, same
+    /// convention as TextureSetOrchestrator).</summary>
+    private static void EnsureColorOnlyTextureSet(string blocksFolder, string textureName)
+    {
+        var jsonPath = Path.Combine(blocksFolder, textureName + ".texture_set.json");
+        if (File.Exists(jsonPath)) return;
+
+        var root = new JsonObject
+        {
+            ["format_version"] = "1.21.30",
+            ["minecraft:texture_set"] = new JsonObject { ["color"] = textureName },
+        };
+
+        try
+        {
+            File.WriteAllText(jsonPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed to write texture set for '{textureName}': {ex.Message}");
         }
     }
 
@@ -235,6 +304,14 @@ public static class PostProcess
 
     #region Glass
 
+    // TODO(tuning): visual knobs for RTX glass fixups, ported unchanged from legacy RTX
+    // Reactor.
+    private const byte GlassNearOpaqueThreshold = 248; // pixels this opaque or more are left untouched by ApplyGlassModifier
+    private const float GlassSaturationBoost = 0.1f;   // added to saturation so glass reads more vivid under RTX's refraction model
+    private const int GlassMidAlpha = 128;              // reference midpoint the opacity-reduction coefficient is derived from
+    private const int GlassMinOpacity = 64;             // floor - ApplyGlassModifier's reduced opacity never drops below this
+    private const byte BasicGlassOpacityThreshold = 64; // opacity at/below which ApplyBasicGlassModifier whites a pixel out entirely
+
     /// <summary>
     /// Dispatch for a single color texture: applies the right glass fixup based on its file
     /// name, same rules legacy RTX Reactor applied inline during its main loop. No-op for
@@ -265,21 +342,21 @@ public static class PostProcess
         using var bitmap = Helpers.ReadImage(imagePath, maxOpacity: false);
         using var fb = new FastBitmap(bitmap, writable: true);
 
-        var coefficient = ((128 - 64) * Math.Pow(255, 2)) / 128;
+        var coefficient = ((GlassMidAlpha - GlassMinOpacity) * Math.Pow(255, 2)) / GlassMidAlpha;
 
         for (var y = 0; y < fb.Height; y++)
         {
             for (var x = 0; x < fb.Width; x++)
             {
                 var c = fb[x, y];
-                if (c.A > 248) continue;
+                if (c.A > GlassNearOpaqueThreshold) continue;
 
                 var (hue, sat, val) = RgbToHsv(c.R, c.G, c.B);
                 val = 1.0f;
-                sat = Math.Min(1.0f, sat + 0.1f);
+                sat = Math.Min(1.0f, sat + GlassSaturationBoost);
                 var boosted = HsvToRgb(hue, sat, val);
 
-                var reduced = Math.Max(c.A - (int)(Math.Pow(c.A / 255.0, 2) * coefficient), 64);
+                var reduced = Math.Max(c.A - (int)(Math.Pow(c.A / 255.0, 2) * coefficient), GlassMinOpacity);
 
                 fb[x, y] = Color.FromArgb(reduced, boosted.R, boosted.G, boosted.B);
             }
@@ -289,9 +366,9 @@ public static class PostProcess
     }
 
     /// <summary>
-    /// Whites-out (fully transparent white) any pixel with opacity &lt;= 64 - required for
-    /// regular/tinted glass and copper grate to display correctly under RTX. Ported
-    /// unchanged from legacy BasicGlassModifier.
+    /// Whites-out (fully transparent white) any pixel with opacity &lt;= BasicGlassOpacityThreshold -
+    /// required for regular/tinted glass and copper grate to display correctly under RTX.
+    /// Ported unchanged from legacy BasicGlassModifier.
     /// </summary>
     public static void ApplyBasicGlassModifier(string imagePath)
     {
@@ -303,7 +380,7 @@ public static class PostProcess
             for (var x = 0; x < fb.Width; x++)
             {
                 var c = fb[x, y];
-                if (c.A <= 64)
+                if (c.A <= BasicGlassOpacityThreshold)
                     fb[x, y] = Color.FromArgb(0, 255, 255, 255);
             }
         }
@@ -678,8 +755,14 @@ public static class PostProcess
 
     #region Pack Icon
 
+    // TODO(tuning): visual knobs for regenerated pack icons.
+    private const int IconCanvasSize = 512;
+    private const int IconContentSize = 428; // original icon's size once centered on the canvas
+    private const string IconGradientBottomColor = "#00488A"; // brand blue - gradient target opposite the icon's own average color
+    private const int IconBadgeSize = 42; // must match badge_42x.png's actual pixel dimensions - also drives the accent frame's band width
+
     /// <summary>
-    /// Regenerates pack_icon.png: the original icon centered on a 512x512 canvas with a
+    /// Regenerates pack_icon.png: the original icon centered on a square canvas with a
     /// gradient background (average-icon-color -> brand blue) showing through any
     /// transparent area, a randomized-per-side accent frame, and Alchitex's badge in the
     /// bottom-left corner. Ported from legacy IconDesigner off GDI+ onto Magick.NET's
@@ -694,39 +777,37 @@ public static class PostProcess
             return;
         }
 
-        const int canvasSize = 512;
-        const int contentSize = 428;
-        var offset = (canvasSize - contentSize) / 2;
+        var offset = (IconCanvasSize - IconContentSize) / 2;
 
         try
         {
             using var original = new MagickImage(iconPath);
 
             var averageColor = ComputeAverageColor(original);
-            var bottomColor = new MagickColor("#00488A");
+            var bottomColor = new MagickColor(IconGradientBottomColor);
 
-            using var canvas = new MagickImage(MagickColors.Transparent, canvasSize, canvasSize);
+            using var canvas = new MagickImage(MagickColors.Transparent, IconCanvasSize, IconCanvasSize);
 
             using (var gradient = new MagickImage($"gradient:{ToHex(averageColor)}-{bottomColor}",
-                       new MagickReadSettings { Width = canvasSize, Height = canvasSize }))
+                       new MagickReadSettings { Width = IconCanvasSize, Height = IconCanvasSize }))
             {
                 canvas.Composite(gradient, 0, 0, CompositeOperator.Over);
             }
 
             using (var content = original.Clone())
             {
-                content.FilterType = original.Width < 512 && original.Height < 512 ? FilterType.Point : FilterType.Lanczos;
-                content.Resize(new MagickGeometry(contentSize, contentSize) { IgnoreAspectRatio = true });
+                content.FilterType = original.Width < IconCanvasSize && original.Height < IconCanvasSize ? FilterType.Point : FilterType.Lanczos;
+                content.Resize(new MagickGeometry(IconContentSize, IconContentSize) { IgnoreAspectRatio = true });
                 canvas.Composite(content, offset, offset, CompositeOperator.Over);
             }
 
-            DrawAccentFrame(canvas, canvasSize);
+            DrawAccentFrame(canvas, IconCanvasSize);
 
             var badgePath = Path.Combine(alchitexAssetsPath, IconBadgeFileName);
             if (File.Exists(badgePath))
             {
                 using var badge = new MagickImage(badgePath);
-                canvas.Composite(badge, 0, canvasSize - 42, CompositeOperator.Over);
+                canvas.Composite(badge, 0, IconCanvasSize - IconBadgeSize, CompositeOperator.Over);
             }
             else
             {
@@ -782,7 +863,7 @@ public static class PostProcess
         var rand = new Random();
         string Pick() => palette[rand.Next(palette.Count)];
 
-        const int band = 42;
+        const int band = IconBadgeSize; // frame band width matches the badge's own size, so the badge sits flush in the bottom-left corner
         var edge = canvasSize - band;
 
         var drawables = new Drawables()

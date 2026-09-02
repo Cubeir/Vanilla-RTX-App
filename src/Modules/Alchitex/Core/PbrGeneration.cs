@@ -327,6 +327,12 @@ public static class TextureSetOrchestrator
 /// </summary>
 public static class MersGenerator
 {
+    // TODO(tuning): how strongly a fully-white pixel contributes to a recursive pass's
+    // dominance mask - white can't locally "dominate" any single channel the way a
+    // saturated color can, so it's capped well below full (255/3) rather than 0 or 255.
+    // Kept from the legacy heuristic this was ported from.
+    private const int WhitePixelMaskOpacity = 85;
+
     /// <summary>
     /// A pixel counts toward the contrast-stretch domain if it's not fully transparent
     /// (opacity &gt;= 1), or - for the fully-transparent case - if its underlying color
@@ -516,7 +522,7 @@ public static class MersGenerator
 
         if (!accepted) return 0;
 
-        if (c.R == 255 && c.G == 255 && c.B == 255) return 85; // 255/3 - white doesn't max out the mask
+        if (c.R == 255 && c.G == 255 && c.B == 255) return WhitePixelMaskOpacity;
         if (target == secondHighest) return (target - thirdValue) / 2;
         return target - secondHighest;
     }
@@ -548,9 +554,14 @@ public static class MersGenerator
 /// HeightmapGenerator.ComputeClusteredHeights rather than raw color brightness - the
 /// mean-shift clustered heightmap is the shared height-field basis for both texture
 /// types now:
-///   1. The clustered heightmap is blended 50/50 (regular linear blend, not overlay) with
-///      a ceiling-maximized flat greyscale of the color texture, giving a clean height
-///      field that still carries some of the original texture's own shading.
+///   1. The clustered heightmap (raw, untouched) is blended with a ceiling-maximized flat
+///      greyscale of the color texture, weighted by HeightmapBlendRatio (default 75%
+///      clustered / 25% color), giving a clean height field that still carries some of
+///      the original texture's own shading. The ceiling-maximize here only ever applies
+///      to that color-texture greyscale, never to the clustered heightmap itself - a
+///      *second*, independent ceiling-maximize of the clustered heightmap happens later,
+///      purely for the POM blue channel (step 5) - the two are unrelated uses of the same
+///      source array, not the same operation.
 ///   2. That blended greyscale is sampled across a 3x3-tiled copy of itself (so pixels
 ///      near the texture's edges see their *real* neighbors instead of a hard cutoff -
 ///      this is what makes the result tile seamlessly in-game) and run through a Sobel
@@ -558,15 +569,16 @@ public static class MersGenerator
 ///   3. Blur is driven continuously by a per-texture noise index (local gradient/contrast
 ///      heuristic - see GetNoiseIndex), so a busy/noisy texture automatically gets a
 ///      calmer normal map.
-///   4. `intensity` (materials.json, default 0.5 - deliberately toned down from the old
+///   4. `intensity` (materials.json, default 0.25 - deliberately toned down from the old
 ///      always-near-maximum result) blends the computed normal toward flat-up
 ///      (128,128,255); this is now a direct artist knob, independent of the noise index.
 ///   5. The blue channel is always overwritten with parallax-occlusion-mapping height
-///      data sourced from the *raw* clustered heightmap (Bedrock RTX reads POM from the
-///      normal map's blue channel) - see ApplyPomBlueChannel. This is on for every
-///      texture unconditionally; there's no per-block opt-out at generation time.
-///      Downstream shader/renderer settings (e.g. BetterRTX) are the right place to let a
-///      *player* disable reading POM data - that's not something to gate here.
+///      data sourced from the *raw* clustered heightmap, separately ceiling-maximized and
+///      contrast-reduced (Bedrock RTX reads POM from the normal map's blue channel) - see
+///      ApplyPomBlueChannel. This is on for every texture unconditionally; there's no
+///      per-block opt-out at generation time. Downstream shader/renderer settings (e.g.
+///      BetterRTX) are the right place to let a *player* disable reading POM data - that's
+///      not something to gate here.
 /// </summary>
 public static class NormalMapGenerator
 {
@@ -574,6 +586,18 @@ public static class NormalMapGenerator
     // broad enough set of textures yet.
     private const double MinBlurSigma = 0.3;
     private const double MaxBlurSigma = 1.6;
+
+    // TODO(tuning): how much of the Sobel input's height field comes from the mean-shift
+    // clustered heightmap vs. a ceiling-maximized flat greyscale of the color texture
+    // itself. Higher favors the clean, banded clustered result; lower brings back more of
+    // the original texture's own shading detail. Untested against a broad enough set of
+    // textures yet.
+    private const double HeightmapBlendRatio = 0.75;
+
+    // TODO(tuning): calibration ceiling for GetNoiseIndex - what average per-pixel
+    // brightness delta counts as "maximally noisy" (index 100). Untested against a broad
+    // enough set of textures yet.
+    private const double NoiseCalibrationCeiling = 40.0;
 
     public static Bitmap Generate(Bitmap colorBitmap, NormalParams normalParams)
     {
@@ -633,10 +657,14 @@ public static class NormalMapGenerator
     }
 
     /// <summary>
-    /// Combines the mean-shift clustered heightmap with a ceiling-maximized flat
-    /// greyscale of the color texture via a regular 50% linear blend (not overlay) - this
-    /// is the "somewhat clean greyscale image" that becomes the Sobel input, giving
-    /// normal generation a proper height-field basis instead of raw color brightness.
+    /// Combines the mean-shift clustered heightmap (raw, untouched here) with a
+    /// ceiling-maximized flat greyscale of the color texture, weighted by
+    /// HeightmapBlendRatio (regular linear blend, not overlay) - this is the "somewhat
+    /// clean greyscale image" that becomes the Sobel input, giving normal generation a
+    /// proper height-field basis instead of raw color brightness. The ceiling-maximize
+    /// step here only ever touches the color-texture greyscale computed in this method -
+    /// the clustered heightmap's own separate ceiling-maximize, for the POM blue channel,
+    /// happens later in ApplyPomBlueChannel and has nothing to do with this blend.
     /// </summary>
     private static Bitmap BuildBlendedGreyBitmap(Bitmap colorBitmap, int[,] clustered)
     {
@@ -669,7 +697,9 @@ public static class NormalMapGenerator
             for (var x = 0; x < w; x++)
             {
                 var maximizedGrey = Math.Clamp((int)Math.Round(grey[x, y] * scale), 0, 255);
-                var blendedValue = (byte)Math.Clamp((int)Math.Round((maximizedGrey + clustered[x, y]) / 2.0), 0, 255);
+                var blendedValue = (byte)Math.Clamp(
+                    (int)Math.Round(clustered[x, y] * HeightmapBlendRatio + maximizedGrey * (1.0 - HeightmapBlendRatio)),
+                    0, 255);
                 outFb[x, y] = Color.FromArgb(255, blendedValue, blendedValue, blendedValue);
             }
         }
@@ -767,10 +797,6 @@ public static class NormalMapGenerator
     /// </summary>
     public static int GetNoiseIndex(Bitmap image)
     {
-        // TODO(tuning): calibration ceiling for what counts as "maximally noisy" -
-        // untested against a broad enough set of textures yet.
-        const double calibrationCeiling = 40.0;
-
         var w = image.Width;
         var h = image.Height;
         var grey = new int[w, h];
@@ -808,7 +834,7 @@ public static class NormalMapGenerator
         }
 
         var averageDelta = sampleCount > 0 ? totalDelta / sampleCount : 0;
-        return (int)Math.Clamp(averageDelta / calibrationCeiling * 100.0, 0, 100);
+        return (int)Math.Clamp(averageDelta / NoiseCalibrationCeiling * 100.0, 0, 100);
     }
 
     private static Bitmap BlurWithMagick(Bitmap bitmap, double sigma)
@@ -864,6 +890,11 @@ public static class HeightmapGenerator
 {
     private const byte LevelMid = 128;
 
+    // TODO(tuning): how strongly a fully-transparent color-texture pixel's darkening
+    // overlay applies (0 = no darkening, 1 = full overlay strength) - see class doc
+    // comment above for why this exists (grass_side-style "read as beneath" regions).
+    private const double TransparencyOverlayStrength = 0.5;
+
     // TODO(tuning): mean-shift filtering knobs - iteration count, spatial window radius,
     // range (value) bandwidth, and the spatial sigma that shapes how much nearby pixels
     // outweigh distant ones. Untested against a broad enough set of textures yet; wants
@@ -914,7 +945,7 @@ public static class HeightmapGenerator
                     var clusteredValue = (byte)clustered[x, y];
 
                     var transparencyAmount = 255 - alpha[x, y];
-                    var overlayStrength = transparencyAmount * 0.5 / 255.0;
+                    var overlayStrength = transparencyAmount * TransparencyOverlayStrength / 255.0;
 
                     var withOverlay = clusteredValue;
                     if (overlayStrength > 0)
