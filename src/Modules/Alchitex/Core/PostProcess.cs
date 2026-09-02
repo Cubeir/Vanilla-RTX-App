@@ -708,10 +708,14 @@ public static class PostProcess
         });
         if (!alreadyCredited)
         {
+            // JsonValue.Create(string) rather than the generic Add<T>/Insert<T>: those go
+            // through a reflection path the trimmer flags (IL2026), and this whole file
+            // ships in a PublishTrimmed Release build. Same reason the materials.json
+            // shapes go through AlchitexJsonContext.
             var wasEmpty = authors.Count == 0;
-            authors.Insert(0, AuthorName);
+            authors.Insert(0, JsonValue.Create(AuthorName));
             if (wasEmpty)
-                authors.Add("Original Authors of Resource Pack");
+                authors.Add((JsonNode?)JsonValue.Create("Original Authors of Resource Pack"));
         }
 
         if (metadata["generated_with"] is not JsonObject generatedWith)

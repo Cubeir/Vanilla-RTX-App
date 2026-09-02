@@ -107,17 +107,40 @@ public sealed class MaterialEntry
     [JsonPropertyName("normal")] public NormalParams Normal { get; set; } = new();
 }
 
+// =====================================================================================
+// AlchitexJsonContext - source-generated JSON metadata for trim-safe (de)serialization,
+// same approach as Core/OnlineTexts.cs's OnlineTextsJsonContext.
+//
+// This is NOT optional polish. Release builds set PublishTrimmed, and every one of these
+// shapes was previously (de)serialized reflectively, so the trimmer had no way to see
+// that MaterialEntry's property setters are ever called and stripped them. The failure
+// was silent and nasty: MaterialsConfig.Load and PbrBlacklist.Load both swallow their
+// exceptions and degrade to "neutral default for everything", so a trimmed Release build
+// quietly generated flat default PBR for every block and ignored the blacklist entirely,
+// while Debug worked perfectly. Anything new that (de)serializes a materials.json shape
+// needs a [JsonSerializable] line here and a Default.<Type> call site, not a bare
+// JsonSerializer.Deserialize<T>.
+//
+// Read options mirror what the hand-rolled JsonSerializerOptions used to set: hand-edited
+// pack files carry comments and trailing commas, and property names shouldn't be
+// case-sensitive.
+// =====================================================================================
+[JsonSourceGenerationOptions(
+    PropertyNameCaseInsensitive = true,
+    ReadCommentHandling = JsonCommentHandling.Skip,
+    AllowTrailingCommas = true,
+    WriteIndented = true)]
+[JsonSerializable(typeof(Dictionary<string, MaterialEntry>))]
+[JsonSerializable(typeof(MaterialEntry))]
+[JsonSerializable(typeof(List<string>))]
+internal partial class AlchitexJsonContext : JsonSerializerContext
+{
+}
+
 /// <summary>Loads materials.json and resolves exact-name-or-default.</summary>
 public sealed class MaterialsConfig
 {
     private const string DefaultKey = "default";
-
-    private static readonly JsonSerializerOptions ReadOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
 
     private readonly Dictionary<string, MaterialEntry> _entries;
     private readonly MaterialEntry _default;
@@ -151,7 +174,7 @@ public sealed class MaterialsConfig
             // simply become unused dictionary entries; they're never looked up so they're
             // harmless - this lets materials.json carry human-readable notes without a
             // custom parser, at the cost of "// comment" keys sitting in memory unused.
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, MaterialEntry>>(raw, ReadOptions);
+            var parsed = JsonSerializer.Deserialize(raw, AlchitexJsonContext.Default.DictionaryStringMaterialEntry);
 
             if (parsed == null || parsed.Count == 0)
             {
@@ -199,13 +222,6 @@ public sealed class MaterialsConfig
 /// </summary>
 public sealed class PbrBlacklist
 {
-    private static readonly JsonSerializerOptions ReadOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     private readonly List<string> _patterns;
 
     private PbrBlacklist(List<string> patterns) => _patterns = patterns;
@@ -220,7 +236,7 @@ public sealed class PbrBlacklist
         try
         {
             var raw = File.ReadAllText(blacklistJsonPath);
-            var parsed = JsonSerializer.Deserialize<List<string>>(raw, ReadOptions) ?? new List<string>();
+            var parsed = JsonSerializer.Deserialize(raw, AlchitexJsonContext.Default.ListString) ?? new List<string>();
             return new PbrBlacklist(parsed.Select(p => p.ToLowerInvariant()).ToList());
         }
         catch (Exception ex)

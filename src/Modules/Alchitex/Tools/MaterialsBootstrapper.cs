@@ -47,16 +47,13 @@ public static class MaterialsBootstrapper
 {
     public sealed record BootstrapResult(int EntriesWritten, int Skipped, int Failed, string OutputPath);
 
+    // Only used for JsonNode.ToJsonString, which walks an already-built node tree and so
+    // needs no reflection over MaterialEntry. Every call that actually (de)serializes a
+    // MaterialEntry goes through AlchitexJsonContext instead - see the comment on that
+    // class for why bypassing it silently breaks trimmed Release builds.
     private static readonly JsonSerializerOptions WriteOptions = new()
     {
         WriteIndented = true,
-    };
-
-    private static readonly JsonSerializerOptions ReadOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
     };
 
     /// <summary>
@@ -152,7 +149,7 @@ public static class MaterialsBootstrapper
         try
         {
             var raw = File.ReadAllText(outputPath);
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, MaterialEntry>>(raw, ReadOptions);
+            var parsed = JsonSerializer.Deserialize(raw, AlchitexJsonContext.Default.DictionaryStringMaterialEntry);
             return parsed != null
                 ? new Dictionary<string, MaterialEntry>(parsed, StringComparer.OrdinalIgnoreCase)
                 : new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
@@ -173,13 +170,13 @@ public static class MaterialsBootstrapper
         var ordered = new JsonObject();
 
         if (entries.TryGetValue("default", out var defaultEntry))
-            ordered["default"] = JsonSerializer.SerializeToNode(defaultEntry, WriteOptions);
+            ordered["default"] = JsonSerializer.SerializeToNode(defaultEntry, AlchitexJsonContext.Default.MaterialEntry);
 
         foreach (var key in entries.Keys
                      .Where(k => !string.Equals(k, "default", StringComparison.OrdinalIgnoreCase))
                      .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
         {
-            ordered[key] = JsonSerializer.SerializeToNode(entries[key], WriteOptions);
+            ordered[key] = JsonSerializer.SerializeToNode(entries[key], AlchitexJsonContext.Default.MaterialEntry);
         }
 
         File.WriteAllText(outputPath, ordered.ToJsonString(WriteOptions));
