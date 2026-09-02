@@ -274,7 +274,7 @@ public sealed partial class PackBrowserWindow : Window
     //  Minecraft formatting-code stripping
     // ════════════════════════════════════════════════════════════════════════
 
-    private static string StripMinecraftFormatting(string input)
+    public static string StripMinecraftFormatting(string input)
     {
         if (string.IsNullOrEmpty(input)) return input;
         return MinecraftFormattingCodeRegex.Replace(input, string.Empty).Trim();

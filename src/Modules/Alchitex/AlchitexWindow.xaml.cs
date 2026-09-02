@@ -496,25 +496,25 @@ public sealed partial class Alchitex : Window
 
         if (_succeededPackNames.Count > 0)
         {
-            sb.AppendLine("Successfully added RTX support to the following packs:");
-            sb.AppendLine();
+            sb.AppendLine($"Added the following RTX-capable pack{(_succeededPackNames.Count == 1 ? "" : "s")}:");
             foreach (var name in _succeededPackNames)
-                sb.AppendLine($"* {name}");
+                sb.AppendLine($"{PackBrowserWindow.StripMinecraftFormatting(name)}");
+        }
+        if (_succeededPackNames.Count > 0)
+        {
+            string irOrThem = _succeededPackNames.Count == 1 ? "it" : "them";
+            sb.AppendLine();
+            sb.Append($"ℹ️ You can now activate {irOrThem} in-game, you may also select {irOrThem} from the Select other packs menu for exporting or to Tuning from the main menu.");
         }
 
         if (_failedPackNames.Count > 0)
         {
             if (sb.Length > 0) sb.AppendLine();
-            sb.AppendLine("Partially or fully failed to add RTX support to the following:");
+            sb.AppendLine("⚠️ Partially (or fully) failed to add RTX support to the following:");
             sb.AppendLine();
             foreach (var name in _failedPackNames)
-                sb.AppendLine($"* {name}");
-        }
-
-        if (_succeededPackNames.Count > 0)
-        {
-            sb.AppendLine();
-            sb.Append("You can now access these packs in-game, you may also select them from the Select other packs menu for exporting or to further tune them according to your preferences.");
+                sb.AppendLine($"* {PackBrowserWindow.StripMinecraftFormatting(name)}");
+            sb.Append($"ℹ️ Better luck with another pack!");
         }
 
         StatusMessage = sb.ToString().TrimEnd();
