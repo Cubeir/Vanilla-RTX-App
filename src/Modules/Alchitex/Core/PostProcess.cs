@@ -441,6 +441,34 @@ public static class PostProcess
 
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
+    // Real-world manifest.json files - especially hand-edited v1 ones - routinely carry
+    // "//" comments or trailing commas even though that's not strictly valid JSON;
+    // Bedrock's own reader tolerates both, so ours needs to as well rather than throwing
+    // on the first one it meets.
+    private static readonly JsonDocumentOptions TolerantReadOptions = new()
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
+    /// <summary>
+    /// Updates manifest.json in place: new header/module uuids, an RTX tag appended to the
+    /// name/description, format_version bumped to at least 2 (capabilities are a v2+
+    /// concept - a v3 manifest is left at v3, untouched, same as every other field this
+    /// method doesn't specifically care about - subpacks/settings/etc. round-trip as-is),
+    /// min_engine_version raised if too low, and the "raytraced" capability + Alchitex
+    /// metadata added.
+    ///
+    /// Every field access below degrades gracefully instead of throwing on a missing or
+    /// unexpectedly-shaped value (a quoted "format_version": "2" instead of a number, a
+    /// missing/empty "modules" array, a "capabilities" that's some other JSON kind
+    /// entirely, etc.) - manifest.json in the wild comes from many different tools across
+    /// years of format evolution, so this can't assume any of it is well-formed beyond the
+    /// minimum needed to identify header/modules. Anything that can't be salvaged just
+    /// skips the update and logs why, same as a missing file - it never leaves a
+    /// half-written manifest.json behind (the write only happens once, at the very end,
+    /// after every field has already been resolved successfully).
+    /// </summary>
     public static void UpdateManifest(string packRoot, string appVersion)
     {
         var manifestPath = Path.Combine(packRoot, "manifest.json");
@@ -452,13 +480,28 @@ public static class PostProcess
 
         try
         {
-            var root = JsonNode.Parse(File.ReadAllText(manifestPath))!.AsObject();
+            var parsed = JsonNode.Parse(File.ReadAllText(manifestPath), documentOptions: TolerantReadOptions);
+            if (parsed is not JsonObject root)
+            {
+                Trace.WriteLine($"[ALCHITEX] '{manifestPath}' doesn't parse to a JSON object at its root - skipping manifest update.");
+                return;
+            }
+
+            if (root["header"] is not JsonObject header)
+            {
+                Trace.WriteLine($"[ALCHITEX] '{manifestPath}' has no valid \"header\" object - skipping manifest update.");
+                return;
+            }
+
+            if (root["modules"] is not JsonArray modulesArray
+                || modulesArray.FirstOrDefault(m => m is JsonObject) is not JsonObject module)
+            {
+                Trace.WriteLine($"[ALCHITEX] '{manifestPath}' has no valid \"modules\" entry - skipping manifest update.");
+                return;
+            }
 
             EnsureFormatVersion(root);
-            EnsureMinEngineVersion(root);
-
-            var header = root["header"]!.AsObject();
-            var module = root["modules"]!.AsArray()[0]!.AsObject();
+            EnsureMinEngineVersion(header);
 
             var (resolvedName, resolvedDescription, wasPlaceholder) = ResolvePackName(header, manifestPath);
 
@@ -492,39 +535,45 @@ public static class PostProcess
         }
     }
 
+    /// <summary>Best-effort int coercion for a JSON node that's supposed to be a number
+    /// but - in the wild - is sometimes a numeric string instead (e.g.
+    /// "format_version": "2"). Returns null if the node is missing, null, or genuinely
+    /// not coercible to an int.</summary>
+    private static int? TryGetInt(JsonNode? node)
+    {
+        if (node == null) return null;
+        try { return node.GetValue<int>(); }
+        catch { return int.TryParse(node.ToString(), out var parsed) ? parsed : null; }
+    }
+
     private static void EnsureFormatVersion(JsonObject root)
     {
-        var current = root["format_version"]?.GetValue<int>();
+        var current = TryGetInt(root["format_version"]);
         if (current is null or < 2)
             root["format_version"] = 2;
     }
 
-    private static void EnsureMinEngineVersion(JsonObject root)
+    private static void EnsureMinEngineVersion(JsonObject header)
     {
-        var header = root["header"]!.AsObject();
-        var fallback = new JsonArray(1, 21, 50);
-
-        try
+        if (header["min_engine_version"] is not JsonArray arr || arr.Count < 3)
         {
-            var arr = header["min_engine_version"]?.AsArray();
-            if (arr == null || arr.Count < 3)
-            {
-                header["min_engine_version"] = fallback;
-                return;
-            }
-
-            var v0 = arr[0]!.GetValue<int>();
-            var v1 = arr[1]!.GetValue<int>();
-            var v2 = arr[2]!.GetValue<int>();
-
-            var tooLow = v0 < 1 || (v0 == 1 && v1 < 21) || (v0 == 1 && v1 == 21 && v2 < 40);
-            if (tooLow)
-                header["min_engine_version"] = new JsonArray(1, 21, 50);
+            header["min_engine_version"] = new JsonArray(1, 21, 50);
+            return;
         }
-        catch
+
+        var v0 = TryGetInt(arr[0]);
+        var v1 = TryGetInt(arr[1]);
+        var v2 = TryGetInt(arr[2]);
+
+        if (v0 is null || v1 is null || v2 is null)
         {
-            header["min_engine_version"] = fallback;
+            header["min_engine_version"] = new JsonArray(1, 21, 50);
+            return;
         }
+
+        var tooLow = v0 < 1 || (v0 == 1 && v1 < 21) || (v0 == 1 && v1 == 21 && v2 < 40);
+        if (tooLow)
+            header["min_engine_version"] = new JsonArray(1, 21, 50);
     }
 
     /// <summary>
@@ -587,21 +636,26 @@ public static class PostProcess
 
     private static void EnsureMetadata(JsonObject root, string appVersion)
     {
-        var metadata = root["metadata"]?.AsObject();
-        if (metadata == null)
+        // `as` rather than `?.AsObject()`/`?.AsArray()` throughout this method - a
+        // present-but-wrong-JSON-kind value (e.g. a malformed pack's "metadata": "none")
+        // degrades to "treat as missing and replace" instead of throwing.
+        if (root["metadata"] is not JsonObject metadata)
         {
             metadata = new JsonObject();
             root["metadata"] = metadata;
         }
 
-        var authors = metadata["authors"]?.AsArray();
-        if (authors == null)
+        if (metadata["authors"] is not JsonArray authors)
         {
             authors = new JsonArray();
             metadata["authors"] = authors;
         }
 
-        var alreadyCredited = authors.Any(a => string.Equals((string?)a, AuthorName, StringComparison.OrdinalIgnoreCase));
+        var alreadyCredited = authors.Any(a =>
+        {
+            try { return string.Equals((string?)a, AuthorName, StringComparison.OrdinalIgnoreCase); }
+            catch { return false; } // a non-string entry in a malformed authors array
+        });
         if (!alreadyCredited)
         {
             var wasEmpty = authors.Count == 0;
@@ -610,8 +664,7 @@ public static class PostProcess
                 authors.Add("Original Authors of Resource Pack");
         }
 
-        var generatedWith = metadata["generated_with"]?.AsObject();
-        if (generatedWith == null)
+        if (metadata["generated_with"] is not JsonObject generatedWith)
         {
             generatedWith = new JsonObject();
             metadata["generated_with"] = generatedWith;
@@ -627,13 +680,19 @@ public static class PostProcess
     private static void EnsureCapability(JsonObject root, string capability)
     {
         // Preserves whatever the pack already declared (e.g. "chemistry") rather than
-        // overwriting the whole array, and only adds what's missing.
-        var existing = root["capabilities"]?.AsArray();
+        // overwriting the whole array, and only adds what's missing. `as`, not `?.AsArray()`
+        // - a present-but-wrong-kind "capabilities" degrades to "treat as missing".
+        var existing = root["capabilities"] as JsonArray;
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (existing != null)
+        {
             foreach (var v in existing)
-                if (v?.GetValue<string>() is string s) set.Add(s);
+            {
+                try { if (v?.GetValue<string>() is string s) set.Add(s); }
+                catch { /* a non-string entry in a malformed capabilities array - skip it */ }
+            }
+        }
 
         set.Add(capability);
 
