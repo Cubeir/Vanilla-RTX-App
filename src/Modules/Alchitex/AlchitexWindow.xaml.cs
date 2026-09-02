@@ -1,13 +1,20 @@
 using System;
 using System.Diagnostics;
+using System.Drawing.Printing;
+using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Modules.Alchitex.Core;
+using Vanilla_RTX_App.Modules.Alchitex.Tools;
 using Windows.Storage;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 using WinUIEx;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
@@ -17,7 +24,12 @@ public static class AlchitexVariables
 {
     public static class Persistent
     {
-
+        // Mirrors SecondaryPbrModeComboBox.SelectedIndex 1:1 (0=None, 1=Auto,
+        // 2=Normal, 3=Heightmap) rather than storing the enum directly - ApplicationData
+        // LocalSettings needs a WinRT-projectable type, and int is the simplest one that
+        // round-trips cleanly through the existing reflection-based Save/LoadSettings.
+        public static int SecondaryPbrModeIndex = (int)SecondaryPbrMode.Auto;
+        public static bool SubsurfaceScatteringEnabled = false;
     }
     public static class Defaults
     {
@@ -62,6 +74,16 @@ public sealed partial class Alchitex : Window
 {
     private readonly AppWindow _appWindow;
     private bool _isClosing; // just a secondary guard in case a future code ends up closing a window while already closing
+    private CancellationTokenSource? _generateCts;
+
+    /// <summary>
+    /// Set by MainWindow right after constructing this window (mirroring how it already
+    /// sets size/position in LaunchAlchitexButton_Click) so orphaned-temp-folder cleanup
+    /// scans the correct edition's resource-pack folders. Defaults to false (stable).
+    /// </summary>
+    public bool IsTargetingPreview { get; set; }
+
+    private string AlchitexAssetsPath => System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets");
 
     private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
 
@@ -104,6 +126,7 @@ public sealed partial class Alchitex : Window
 
             SetTitleBar(TitleBarDragArea);
 
+            AlchitexVariables.LoadSettings();
             PopulateAlchitexAnnouncements();
 
             await InitializeAsync();
@@ -118,6 +141,8 @@ public sealed partial class Alchitex : Window
 
     private void Alchitex_Closed(object sender, WindowEventArgs e)
     {
+        AlchitexVariables.SaveSettings();
+
         if (_isClosing) return;
         _isClosing = true;
 
@@ -142,7 +167,7 @@ public sealed partial class Alchitex : Window
             AlchitexAnnouncementsPanel.Children.Add(new PsaCard(item));
     }
 
-    // ── Init ─────────────────────────────────────────────────────────────────
+    // ── Init ────────────────────────────────────────────
     private async Task InitializeAsync()
     {
         try
@@ -257,12 +282,211 @@ public sealed partial class Alchitex : Window
 
     // ── Reveal main content ───────────────────────────────────────────────────
 
-    // Main content are hidden before license is accepted, i.e. redstone circuits and others
+    // Main content are hidden before license is accepted
     private async void ShowMainContent()
     {
         TitleBarText.Text = "RTX Reactor";
         InfoButton.Visibility = Visibility.Visible;
         MainGrid.Visibility = Visibility.Visible;
+
+        SecondaryPbrModeComboBox.SelectedIndex = AlchitexVariables.Persistent.SecondaryPbrModeIndex;
+        SubsurfaceScatteringToggle.IsChecked = AlchitexVariables.Persistent.SubsurfaceScatteringEnabled;
+
+#if DEBUG
+        GenerateMaterialsConfigButton.Visibility = Visibility.Visible;
+#endif
+    }
+
+    // ── PBR generation ───────────────────────────────────────────────────────
+
+    private AlchitexOptions ReadOptionsFromUI()
+    {
+        var modeIndex = SecondaryPbrModeComboBox.SelectedIndex;
+        if (modeIndex < 0) modeIndex = (int)SecondaryPbrMode.Auto;
+
+        var sss = SubsurfaceScatteringToggle.IsChecked ?? false;
+
+        AlchitexVariables.Persistent.SecondaryPbrModeIndex = modeIndex;
+        AlchitexVariables.Persistent.SubsurfaceScatteringEnabled = sss;
+        AlchitexVariables.SaveSettings();
+
+        return new AlchitexOptions((SecondaryPbrMode)modeIndex, sss);
+    }
+
+    private void SetGenerationControlsEnabled(bool enabled)
+    {
+        GenerateButton.IsEnabled = enabled;
+        GenerateButton.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        AbortButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+        AbortButton.IsEnabled = !enabled;
+        SecondaryPbrModeComboBox.IsEnabled = enabled;
+        SubsurfaceScatteringToggle.IsEnabled = enabled;
+        GenerateMaterialsConfigButton.IsEnabled = enabled;
+    }
+
+    private async void GenerateButton_Click(object sender, RoutedEventArgs e)
+    {
+        var candidates = TunerVariables.SelectedPacks.Where(p => p.IsAlchitexCandidate).ToList();
+        if (candidates.Count == 0)
+        {
+            GenerateStatusText.Text = "No candidate packs selected.";
+            GenerateStatusText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var options = ReadOptionsFromUI();
+
+        SetGenerationControlsEnabled(false);
+        GenerateProgressBar.Visibility = Visibility.Visible;
+        GenerateProgressBar.IsIndeterminate = true;
+        GenerateStatusText.Visibility = Visibility.Visible;
+        GenerateStatusText.Text = "Cleaning up leftovers from any previous run...";
+
+        // Every batch starts by sweeping any alchitex_temp_* folder left behind by a
+        // previous run that didn't finish (crash, force-close, a prior Abort). Cheap,
+        // and means debris never has a chance to accumulate across sessions.
+        await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
+
+        GenerateStatusText.Text = $"Preparing ({candidates.Count} pack{(candidates.Count == 1 ? "" : "s")})...";
+
+        _generateCts = new CancellationTokenSource();
+        var succeeded = 0;
+        var failedNames = new System.Collections.Generic.List<string>();
+        var aborted = false;
+
+        try
+        {
+            for (var i = 0; i < candidates.Count; i++)
+            {
+                if (_generateCts.IsCancellationRequested)
+                {
+                    aborted = true;
+                    break;
+                }
+
+                var pack = candidates[i];
+                var packIndex = i; // captured for the progress closure below
+
+                // Progress<T> captures this thread's SynchronizationContext at construction
+                // time (we're on the UI thread here), so every callback from inside
+                // AlchitexPipeline.RunAsync - which runs its heavy work via Task.Run/
+                // Parallel.ForEach on background threads - gets automatically marshalled
+                // back to the UI thread. Safe to touch controls directly below.
+                var progress = new Progress<AlchitexPipeline.AlchitexProgress>(p =>
+                {
+                    GenerateProgressBar.IsIndeterminate = p.Total == 0;
+                    if (p.Total > 0)
+                    {
+                        GenerateProgressBar.Maximum = p.Total;
+                        GenerateProgressBar.Value = p.Completed;
+                    }
+                    GenerateStatusText.Text = $"[{packIndex + 1}/{candidates.Count}] {pack.Name}: {p.StatusText}";
+                });
+
+                var result = await AlchitexPipeline.RunAsync(
+                    pack.Location,
+                    pack.Name,
+                    options,
+                    AlchitexAssetsPath,
+                    TunerVariables.appVersion,
+                    progress,
+                    _generateCts.Token);
+
+                if (result.Success) succeeded++;
+                else if (_generateCts.IsCancellationRequested) { aborted = true; break; }
+                else failedNames.Add(pack.Name);
+            }
+
+            if (aborted)
+            {
+                GenerateStatusText.Text = $"Aborted - {succeeded} pack(s) completed before stopping.";
+            }
+            else
+            {
+                GenerateStatusText.Text = failedNames.Count == 0
+                    ? $"Done - {succeeded}/{candidates.Count} pack(s) processed successfully."
+                    : $"Done - {succeeded}/{candidates.Count} succeeded. Failed: {string.Join(", ", failedNames)}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] GenerateButton_Click failed: {ex}");
+            GenerateStatusText.Text = $"Something went wrong: {ex.Message}";
+        }
+        finally
+        {
+            // Whatever just happened - success, a plain failure, or Abort - any temp
+            // copy that didn't make it to promotion is still sitting there. Sweep now
+            // rather than waiting for the next Generate click, so an aborted run's
+            // half-done pack doesn't linger in the resource_packs folder in the meantime.
+            await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
+
+            GenerateProgressBar.IsIndeterminate = false;
+            SetGenerationControlsEnabled(true);
+            _generateCts?.Dispose();
+            _generateCts = null;
+        }
+    }
+
+    private void AbortButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_generateCts == null || _generateCts.IsCancellationRequested) return;
+
+        GenerateStatusText.Text = "Aborting...";
+        AbortButton.IsEnabled = false; // avoid double-cancel; re-enabled by SetGenerationControlsEnabled once the run unwinds
+        _generateCts.Cancel();
+    }
+
+    // ── Debug: materials.json bootstrap ─────────────────────────────────────
+
+    private async void GenerateMaterialsConfigButton_Click(object sender, RoutedEventArgs e)
+    {
+        var sourceFolder = await PickFolderAsync();
+        if (sourceFolder == null) return;
+
+        var destinationFolder = await PickFolderAsync();
+        if (destinationFolder == null) return;
+
+        SetGenerationControlsEnabled(false);
+        GenerateProgressBar.Visibility = Visibility.Visible;
+        GenerateProgressBar.IsIndeterminate = true;
+        GenerateStatusText.Visibility = Visibility.Visible;
+        GenerateStatusText.Text = "Reading texture sets and deriving materials.json...";
+
+        try
+        {
+            var result = await Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, destinationFolder));
+            GenerateStatusText.Text = $"materials.json written: {result.EntriesWritten} entries " +
+                                       $"({result.Skipped} skipped, {result.Failed} failed) -> {result.OutputPath}";
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] GenerateMaterialsConfigButton_Click failed: {ex}");
+            GenerateStatusText.Text = $"Failed to generate materials.json: {ex.Message}";
+        }
+        finally
+        {
+            GenerateProgressBar.IsIndeterminate = false;
+            GenerateProgressBar.Visibility = Visibility.Collapsed;
+            SetGenerationControlsEnabled(true);
+        }
+    }
+
+    /// <summary>
+    /// Single-folder picker helper. Two sequential calls are used by the bootstrap
+    /// button (source pack, then destination) rather than a custom two-field dialog -
+    /// this is a debug-only tool, so the standard OS folder picker twice in a row is
+    /// simplest to build and least likely to need maintenance later.
+    /// </summary>
+    private async Task<string?> PickFolderAsync()
+    {
+        var picker = new FolderPicker();
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        picker.FileTypeFilter.Add("*");
+        picker.SuggestedStartLocation = PickerLocationId.Desktop;
+
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
     }
 }
 

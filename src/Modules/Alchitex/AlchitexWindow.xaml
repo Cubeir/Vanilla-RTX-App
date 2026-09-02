@@ -226,14 +226,88 @@
               Visibility="Collapsed"
               Background="Transparent"
               Margin="0,37,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <!-- ── Alchitex feature content area ── -->
+            <!-- ── Alchitex controls, centered ── -->
+            <StackPanel Grid.Row="0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="16"
+                        MinWidth="360"
+                        MaxWidth="420">
+
+                <ComboBox x:Name="SecondaryPbrModeComboBox"
+                          Header="Secondary PBR texture"
+                          HorizontalAlignment="Stretch"
+                          SelectedIndex="1"
+                          IsTextScaleFactorEnabled="False">
+                    <ComboBoxItem Content="None" />
+                    <ComboBoxItem Content="Auto" />
+                    <ComboBoxItem Content="Normal map" />
+                    <ComboBoxItem Content="Heightmap" />
+                </ComboBox>
+
+                <ToggleButton x:Name="SubsurfaceScatteringToggle"
+                              Content="Subsurface scattering"
+                              HorizontalAlignment="Stretch"
+                              IsTextScaleFactorEnabled="False" />
+
+                <Button x:Name="GenerateButton"
+                        Content="Generate RTX Textures"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        HorizontalAlignment="Stretch"
+                        Padding="16,12,16,12"
+                        IsTextScaleFactorEnabled="False"
+                        Click="GenerateButton_Click" />
+
+                <Button x:Name="AbortButton"
+                        Content="Abort generation"
+                        Background="#B91C1C"
+                        Foreground="White"
+                        HorizontalAlignment="Stretch"
+                        Padding="16,12,16,12"
+                        Visibility="Collapsed"
+                        IsTextScaleFactorEnabled="False"
+                        Click="AbortButton_Click" />
+
+                <ProgressBar x:Name="GenerateProgressBar"
+                             Visibility="Collapsed"
+                             IsIndeterminate="False"
+                             Minimum="0"
+                             Maximum="1" />
+
+                <TextBlock x:Name="GenerateStatusText"
+                           Visibility="Collapsed"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           Opacity="0.7"
+                           FontSize="12"
+                           IsTextScaleFactorEnabled="False" />
+
+                <!-- Debug-only: bootstrap materials.json from an already-PBR'd pack.
+                     Visibility is forced Visible in code-behind under #if DEBUG only. -->
+                <Button x:Name="GenerateMaterialsConfigButton"
+                        Content="Generate baseline materials.json..."
+                        HorizontalAlignment="Stretch"
+                        Margin="0,24,0,0"
+                        Visibility="Collapsed"
+                        IsTextScaleFactorEnabled="False"
+                        Click="GenerateMaterialsConfigButton_Click" />
+            </StackPanel>
+
+            <!-- ── Alchitex feature content area (announcements), docked bottom ── -->
             <Border x:Name="AnnouncementBackground"
+                    Grid.Row="1"
                     Padding="6"
                     CornerRadius="0"
                     Margin="0"
+                    MaxHeight="220"
                     HorizontalAlignment="Stretch"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Bottom">
                 <Border.Background>
                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                   TintOpacity="0.6"
@@ -241,9 +315,11 @@
                 </Border.Background>
 
                 <!-- PSA / announcement cards -->
-                <StackPanel x:Name="AlchitexAnnouncementsPanel"
-                            Spacing="12"
-                            Margin="24,12,24,12" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="AlchitexAnnouncementsPanel"
+                                Spacing="12"
+                                Margin="24,12,24,12" />
+                </ScrollViewer>
             </Border>
         </Grid>
 
