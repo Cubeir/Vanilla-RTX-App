@@ -509,14 +509,18 @@ public static class PostProcess
     /// skips the update and logs why, same as a missing file - it never leaves a
     /// half-written manifest.json behind (the write only happens once, at the very end,
     /// after every field has already been resolved successfully).
+    ///
+    /// Returns the pack's final header.name (post RTX-suffix) on success, so the caller
+    /// can report the pack's *actual* in-game display name rather than guessing from the
+    /// filesystem - null if the update was skipped or failed for any reason.
     /// </summary>
-    public static void UpdateManifest(string packRoot, string appVersion)
+    public static string? UpdateManifest(string packRoot, string appVersion)
     {
         var manifestPath = Path.Combine(packRoot, "manifest.json");
         if (!File.Exists(manifestPath))
         {
             Trace.WriteLine($"[ALCHITEX] No manifest.json found at '{packRoot}' - skipping manifest update.");
-            return;
+            return null;
         }
 
         try
@@ -525,20 +529,20 @@ public static class PostProcess
             if (root == null)
             {
                 Trace.WriteLine($"[ALCHITEX] '{manifestPath}' doesn't parse to a JSON object at its root - skipping manifest update.");
-                return;
+                return null;
             }
 
             if (root["header"] is not JsonObject header)
             {
                 Trace.WriteLine($"[ALCHITEX] '{manifestPath}' has no valid \"header\" object - skipping manifest update.");
-                return;
+                return null;
             }
 
             if (root["modules"] is not JsonArray modulesArray
                 || modulesArray.FirstOrDefault(m => m is JsonObject) is not JsonObject module)
             {
                 Trace.WriteLine($"[ALCHITEX] '{manifestPath}' has no valid \"modules\" entry - skipping manifest update.");
-                return;
+                return null;
             }
 
             EnsureFormatVersion(root);
@@ -550,29 +554,34 @@ public static class PostProcess
             module["uuid"] = Guid.NewGuid().ToString();
 
             var tag = $"RTX Reactor {appVersion}";
+            string finalName;
 
             if (wasPlaceholder)
             {
                 var description = string.IsNullOrEmpty(resolvedDescription) ? tag : $"{resolvedDescription}\n{tag}";
                 header["description"] = description;
                 module["description"] = description;
-                header["name"] = resolvedName + NameSuffix;
+                finalName = resolvedName + NameSuffix;
+                header["name"] = finalName;
             }
             else
             {
                 header["description"] = AppendLine((string?)header["description"], tag);
                 module["description"] = AppendLine((string?)module["description"], tag);
-                header["name"] = ((string?)header["name"] ?? resolvedName) + NameSuffix;
+                finalName = ((string?)header["name"] ?? resolvedName) + NameSuffix;
+                header["name"] = finalName;
             }
 
             EnsureMetadata(root, appVersion);
             EnsureCapability(root, "raytraced");
 
             File.WriteAllText(manifestPath, root.ToJsonString(WriteOptions));
+            return finalName;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[ALCHITEX] Failed to update manifest.json at '{manifestPath}': {ex.Message}");
+            return null;
         }
     }
 

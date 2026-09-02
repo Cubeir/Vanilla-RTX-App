@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
@@ -83,6 +84,22 @@ public sealed partial class Alchitex : Window
     /// scans the correct edition's resource-pack folders. Defaults to false (stable).
     /// </summary>
     public bool IsTargetingPreview { get; set; }
+
+    /// <summary>
+    /// Mirrors the sibling modules' report-on-close convention (BetterRTX/DLSS/LUT
+    /// managers): MainWindow's Closed handler for this window reads these once it closes
+    /// and logs accordingly. True only if at least one pack succeeded across the whole
+    /// window session (every Generate click, not just the last one) - a mix of some
+    /// successes and some failures still reports as successful, since StatusMessage
+    /// itself already separates the two lists clearly.
+    /// </summary>
+    public bool OperationSuccessful { get; private set; }
+    public string StatusMessage { get; private set; } = "";
+
+    // Accumulated across every Generate click in this window's lifetime, not just the
+    // most recent one - the user can click Generate more than once before closing.
+    private readonly List<string> _succeededPackNames = new();
+    private readonly List<string> _failedPackNames = new();
 
     private string AlchitexAssetsPath => System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets");
 
@@ -412,9 +429,17 @@ public sealed partial class Alchitex : Window
                     progress,
                     _generateCts.Token);
 
-                if (result.Success) succeeded++;
+                if (result.Success)
+                {
+                    succeeded++;
+                    _succeededPackNames.Add(result.FinalManifestName ?? pack.Name);
+                }
                 else if (_generateCts.IsCancellationRequested) { aborted = true; break; }
-                else failedNames.Add(pack.Name);
+                else
+                {
+                    failedNames.Add(pack.Name);
+                    _failedPackNames.Add(pack.Name);
+                }
             }
 
             if (aborted)
@@ -445,7 +470,55 @@ public sealed partial class Alchitex : Window
             SetGenerationControlsEnabled(true);
             _generateCts?.Dispose();
             _generateCts = null;
+
+            // Refresh even on an exception mid-batch - whatever succeeded before the
+            // exception is still worth reporting when the window closes.
+            UpdateSessionSummary();
         }
+    }
+
+    /// <summary>
+    /// Rebuilds StatusMessage/OperationSuccessful from every pack this window session has
+    /// touched so far (see _succeededPackNames/_failedPackNames) - MainWindow's Closed
+    /// handler for this window reads these once the window actually closes, mirroring how
+    /// BetterRTX/DLSS/LUT manager windows report their own outcome.
+    /// </summary>
+    private void UpdateSessionSummary()
+    {
+        if (_succeededPackNames.Count == 0 && _failedPackNames.Count == 0)
+        {
+            StatusMessage = "";
+            OperationSuccessful = false;
+            return;
+        }
+
+        var sb = new StringBuilder();
+
+        if (_succeededPackNames.Count > 0)
+        {
+            sb.AppendLine("Successfully added RTX support to the following packs:");
+            sb.AppendLine();
+            foreach (var name in _succeededPackNames)
+                sb.AppendLine($"* {name}");
+        }
+
+        if (_failedPackNames.Count > 0)
+        {
+            if (sb.Length > 0) sb.AppendLine();
+            sb.AppendLine("Partially or fully failed to add RTX support to the following:");
+            sb.AppendLine();
+            foreach (var name in _failedPackNames)
+                sb.AppendLine($"* {name}");
+        }
+
+        if (_succeededPackNames.Count > 0)
+        {
+            sb.AppendLine();
+            sb.Append("You can now access these packs in-game, you may also select them from the Select other packs menu for exporting or to further tune them according to your preferences.");
+        }
+
+        StatusMessage = sb.ToString().TrimEnd();
+        OperationSuccessful = _succeededPackNames.Count > 0;
     }
 
     private void AbortButton_Click(object sender, RoutedEventArgs e)

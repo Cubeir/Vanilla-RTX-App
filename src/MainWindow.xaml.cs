@@ -2381,7 +2381,18 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(alchitexWindow);
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
-            _ = BlinkingLamp(true, true, 0.0, 1.0);
+
+            // Log status after window closes
+            if (alchitexWindow.OperationSuccessful)
+            {
+                Log(alchitexWindow.StatusMessage, LogLevel.Alchitex);
+                _ = BlinkingLamp(true, true, 1.0);
+            }
+            else if (!string.IsNullOrEmpty(alchitexWindow.StatusMessage))
+            {
+                Log(alchitexWindow.StatusMessage, LogLevel.Error);
+                _ = BlinkingLamp(true, true, 0.0);
+            }
         };
 
         _childWindows.Add(alchitexWindow);

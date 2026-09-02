@@ -31,7 +31,7 @@ public static class AlchitexPipeline
 {
     public readonly record struct AlchitexProgress(int Completed, int Total, string StatusText);
 
-    public sealed record AlchitexResult(bool Success, string? OutputPackPath, string? ErrorMessage);
+    public sealed record AlchitexResult(bool Success, string? OutputPackPath, string? ErrorMessage, string? FinalManifestName = null);
 
     public static async Task<AlchitexResult> RunAsync(
         string sourcePackPath,
@@ -82,7 +82,7 @@ public static class AlchitexPipeline
 
             // ── Phase 4: manifest, terrain data, icon ────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Finalizing manifest..."));
-            PostProcess.UpdateManifest(workingPackPath, appVersion);
+            var finalManifestName = PostProcess.UpdateManifest(workingPackPath, appVersion);
             PostProcess.UpdateTerrainTexture(workingPackPath);
             PostProcess.RegeneratePackIcon(workingPackPath, alchitexAssetsPath);
             PostProcess.DeleteStaleBookkeepingFiles(workingPackPath);
@@ -95,7 +95,7 @@ public static class AlchitexPipeline
             var finalPath = AlchitexStaging.PromoteToFinalName(workingPackPath, packDisplayName);
 
             progress?.Report(new AlchitexProgress(1, 1, "Done."));
-            return new AlchitexResult(true, finalPath, null);
+            return new AlchitexResult(true, finalPath, null, finalManifestName);
         }
         catch (OperationCanceledException)
         {

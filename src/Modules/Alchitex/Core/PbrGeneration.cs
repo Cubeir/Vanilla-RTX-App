@@ -625,9 +625,12 @@ public static class NormalMapGenerator
                     var normal = CalculateNormal(tiledFb, w + x, h + y);
                     normal = Vector3.Normalize(normal);
 
-                    normal.Y = -normal.Y;
-                    (normal.X, normal.Y) = (-normal.Y, normal.X);
-
+                    // CalculateNormal's (-dx, -dy, 1) is already DirectX-convention (the
+                    // format Bedrock RTX expects) mapped straight to (R, G, B) - no axis
+                    // swap or extra sign flip belongs here. An earlier version of this code
+                    // transposed X and Y trying to "fix" this, which was invisible on a
+                    // symmetric bump's main diagonal but swapped the other two corners -
+                    // don't reintroduce it.
                     var r = (normal.X + 1f) * 0.5f * 255f;
                     var g = (normal.Y + 1f) * 0.5f * 255f;
                     var b = (normal.Z + 1f) * 0.5f * 255f;
