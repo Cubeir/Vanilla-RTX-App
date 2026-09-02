@@ -465,7 +465,7 @@ public static class PostProcess
             header["uuid"] = Guid.NewGuid().ToString();
             module["uuid"] = Guid.NewGuid().ToString();
 
-            var tag = $"Alchitex / Vanilla RTX App {appVersion}";
+            var tag = $"RTX Reactor {appVersion}";
 
             if (wasPlaceholder)
             {
