@@ -81,6 +81,12 @@ public sealed class HeightmapParams
 
 public sealed class NormalParams
 {
+    /// <summary>0.0 (fully flattened toward flat-up) .. 1.0 (full raw detail). Default
+    /// 0.5 - the raw Sobel-derived normal is noticeably stronger than most blocks want.
+    /// Applied after blur, blending the computed normal toward flat-up (128,128,255) by
+    /// (1 - intensity). See PbrGeneration.NormalMapGenerator.</summary>
+    [JsonPropertyName("intensity")] public double Intensity { get; set; } = 0.5;
+
     /// <summary>Inverts the red and green channels post-generation. Workaround for the
     /// game-side bug where certain assets always render their normal map inverted. Never
     /// affects the blue channel - that's always parallax-occlusion height data, see
@@ -204,7 +210,8 @@ public enum SecondaryPbrMode
 /// </summary>
 public sealed record AlchitexOptions(
     SecondaryPbrMode SecondaryPbr,
-    bool SubsurfaceScattering)
+    bool SubsurfaceScattering,
+    bool AddFog)
 {
     /// <summary>
     /// Auto mode's per-texture rule, decided once we know a given color texture's width:
@@ -213,7 +220,16 @@ public sealed record AlchitexOptions(
     /// </summary>
     public const int AutoModeHeightmapMaxWidth = 32;
 
-    public static readonly AlchitexOptions Default = new(SecondaryPbrMode.Auto, SubsurfaceScattering: false);
+    /// <summary>
+    /// Ceiling for an *explicit* Heightmap selection (TextureSetOrchestrator.
+    /// ResolveSecondaryMode): above this width a normal map is generated instead, since
+    /// Minecraft RTX renders heightmap data via a Sobel outline baked into the normal
+    /// map's blue channel, and above ~64px the resulting lines become sub-pixel-thin and
+    /// can overflow the texture atlas.
+    /// </summary>
+    public const int ExplicitHeightmapMaxWidth = 64;
+
+    public static readonly AlchitexOptions Default = new(SecondaryPbrMode.Auto, SubsurfaceScattering: false, AddFog: false);
 }
 
 #endregion

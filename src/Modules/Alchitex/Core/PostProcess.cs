@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -33,8 +34,14 @@ public static class PostProcess
     //
     //   Assets/badge_42x.png
     //     -> 42x42 watermark composited onto the bottom-left corner of every regenerated pack icon.
+    //
+    //   Assets/Fog/vanilla_rtx_fog.zip
+    //     -> top-level "biomes/" and "fogs/" folders, deployed into the pack root and
+    //        every subpack root when the (opt-in, off-by-default) fog toggle is enabled.
     private const string WaterFallbackSubfolder = "WaterFallback";
     private const string IconBadgeFileName = "badge_42x.png";
+    private const string FogSubfolder = "Fog";
+    private const string FogZipFileName = "vanilla_rtx_fog.zip";
 
     #endregion
 
@@ -130,6 +137,57 @@ public static class PostProcess
             {
                 Trace.WriteLine($"[ALCHITEX] Failed to deploy fallback water texture '{baseName}': {ex.Message}");
             }
+        }
+    }
+
+    #endregion
+
+    #region Fog
+
+    /// <summary>
+    /// Deploys Alchitex's packaged fog asset (biomes_client fog references + fog
+    /// definition files) into the pack root and every subpack's own root - not
+    /// textures/blocks, since fog files aren't block-texture-scoped the way water
+    /// fallback is. Opt-in (AlchitexOptions.AddFog, off by default) and overwrites
+    /// whatever's already at each destination path. Never invents content - if the
+    /// packaged zip isn't present under Assets/Fog/, this logs exactly what's missing and
+    /// leaves the pack without fog rather than pretending to have handled it.
+    /// </summary>
+    public static void DeployFog(string packRoot, string alchitexAssetsPath)
+    {
+        var zipPath = Path.Combine(alchitexAssetsPath, FogSubfolder, FogZipFileName);
+        if (!File.Exists(zipPath))
+        {
+            Trace.WriteLine($"[ALCHITEX] Fog asset missing - expected '{zipPath}'. Copy the fog distribution zip (top-level 'biomes/' and 'fogs/' folders) there. Skipping fog deployment for '{packRoot}'.");
+            return;
+        }
+
+        var targetRoots = new List<string> { packRoot };
+        var subpacksDir = Path.Combine(packRoot, "subpacks");
+        if (Directory.Exists(subpacksDir))
+            targetRoots.AddRange(Directory.GetDirectories(subpacksDir));
+
+        try
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+
+            foreach (var targetRoot in targetRoots)
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
+
+                    var destPath = Path.Combine(targetRoot, entry.FullName);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                    entry.ExtractToFile(destPath, overwrite: true);
+                }
+            }
+
+            Trace.WriteLine($"[ALCHITEX] Deployed fog into {targetRoots.Count} location(s) under '{packRoot}'.");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed to deploy fog into '{packRoot}': {ex.Message}");
         }
     }
 

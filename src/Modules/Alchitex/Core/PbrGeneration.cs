@@ -179,25 +179,43 @@ public static class TextureSetOrchestrator
     /// <summary>
     /// Resolves Auto mode per-texture by probing just the image header (MagickImageInfo -
     /// no full decode) for width, per the agreed rule: width &lt;= 32 -> heightmap,
-    /// otherwise -> normal map.
+    /// otherwise -> normal map. Also overrides an *explicit* Heightmap request above
+    /// AlchitexOptions.ExplicitHeightmapMaxWidth - Minecraft RTX renders heightmap data via
+    /// a Sobel outline baked into the normal map's blue channel, and above that width the
+    /// resulting lines become sub-pixel-thin and can overflow the texture atlas, so a
+    /// heightmap simply doesn't work there regardless of what was picked.
     /// </summary>
     private static SecondaryPbrMode ResolveSecondaryMode(SecondaryPbrMode requested, string colorPath)
     {
-        if (requested != SecondaryPbrMode.Auto)
+        if (requested == SecondaryPbrMode.None || requested == SecondaryPbrMode.Normal)
             return requested;
 
+        int width;
         try
         {
-            var info = new MagickImageInfo(colorPath);
-            return info.Width <= AlchitexOptions.AutoModeHeightmapMaxWidth
-                ? SecondaryPbrMode.Heightmap
-                : SecondaryPbrMode.Normal;
+            width = (int)new MagickImageInfo(colorPath).Width;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[ALCHITEX] Auto mode: couldn't read dimensions for '{colorPath}' ({ex.Message}), defaulting to normal map.");
+            Trace.WriteLine($"[ALCHITEX] Couldn't read dimensions for '{colorPath}' ({ex.Message}), defaulting to normal map.");
             return SecondaryPbrMode.Normal;
         }
+
+        if (requested == SecondaryPbrMode.Auto)
+        {
+            return width <= AlchitexOptions.AutoModeHeightmapMaxWidth
+                ? SecondaryPbrMode.Heightmap
+                : SecondaryPbrMode.Normal;
+        }
+
+        // requested == Heightmap (explicit).
+        if (width > AlchitexOptions.ExplicitHeightmapMaxWidth)
+        {
+            Trace.WriteLine($"[ALCHITEX] '{colorPath}' is {width}px wide - too large for a heightmap to render correctly in Minecraft RTX (>{AlchitexOptions.ExplicitHeightmapMaxWidth}px). Generating a normal map instead of the explicitly-requested heightmap.");
+            return SecondaryPbrMode.Normal;
+        }
+
+        return SecondaryPbrMode.Heightmap;
     }
 
     /// <summary>
@@ -290,12 +308,14 @@ public static class TextureSetOrchestrator
 ///   4. Compute the color texture's real luminosity (unaltered - standard perceptual
 ///      weighting, not the flat average from step 1), stretch it into the effective SSS
 ///      min/max range, and write that as the output alpha.
-///   5. Safety net: any pixel whose source color was fully transparent gets forced to
-///      metal=0, emissive=0, roughness=255 (fully matte), alpha=255 opaque - so an
-///      invisible cutout pixel never bleeds a stray metallic/emissive/near-zero-roughness
-///      texel into edge mip levels. (This one exception to "alpha = SSS" is deliberate:
-///      a cutout pixel isn't real surface, so its alpha here is about mip-edge safety,
-///      not scattering.)
+///
+/// The color texture is read upstream (AlchitexPipeline.ProcessOneTarget) with
+/// maxOpacity: true, so originally-transparent pixels arrive here with their real
+/// (usually near-black, per Helpers.ReadImage) RGB recoverable and alpha forced to 255 -
+/// there's no separate "cutout" case to special-case here: those pixels just flow through
+/// the same stretch math as everything else, which naturally lands on safe near-matte
+/// values for the default material entry (roughness stretches toward its max/inverted
+/// range at low grey values).
 /// </summary>
 public static class MersGenerator
 {
@@ -307,11 +327,9 @@ public static class MersGenerator
 
         var grey = new int[w, h];
         var luminosity = new int[w, h];
-        var sourceAlpha = new byte[w, h];
 
         int greyMin = 255, greyMax = 0;
         int lumMin = 255, lumMax = 0;
-        var anyOpaquePixel = false;
 
         using (var colorFb = new FastBitmap(colorBitmap, writable: false))
         {
@@ -320,7 +338,6 @@ public static class MersGenerator
                 for (var x = 0; x < w; x++)
                 {
                     var c = colorFb[x, y];
-                    sourceAlpha[x, y] = c.A;
 
                     var g = (c.R + c.G + c.B) / 3;
                     grey[x, y] = g;
@@ -329,18 +346,11 @@ public static class MersGenerator
 
                     var l = (int)Math.Round(0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B);
                     luminosity[x, y] = l;
-
-                    if (c.A > 0)
-                    {
-                        anyOpaquePixel = true;
-                        if (l < lumMin) lumMin = l;
-                        if (l > lumMax) lumMax = l;
-                    }
+                    if (l < lumMin) lumMin = l;
+                    if (l > lumMax) lumMax = l;
                 }
             }
         }
-
-        if (!anyOpaquePixel) { lumMin = 0; lumMax = 255; }
 
         // (0,0) when disabled, exactly what Stretch() below needs to always produce 0.
         var effectiveSss = sssEnabled ? material.Sss : new SssParams();
@@ -364,15 +374,6 @@ public static class MersGenerator
             foreach (var pass in material.Recursive)
             {
                 ApplyRecursivePass(colorBitmap, grey, greyMin, greyMax, luminosity, lumMin, lumMax, outFb, pass, sssEnabled);
-            }
-
-            for (var y = 0; y < h; y++)
-            {
-                for (var x = 0; x < w; x++)
-                {
-                    if (sourceAlpha[x, y] == 0)
-                        outFb[x, y] = Color.FromArgb(255, 0, 0, 255);
-                }
             }
         }
 
@@ -516,41 +517,51 @@ public static class MersGenerator
 #region Normal Map Generation
 
 /// <summary>
-/// Generates a normal map from a color texture using a Sobel operator, sampled across a
-/// 3x3-tiled copy of the source so pixels near the texture's edges see their *real*
-/// neighbors (the repeated adjacent tile) instead of a hard cutoff - this is what makes
-/// the result tile seamlessly in-game.
-///
-/// Blur/flatten amount is driven continuously by a per-texture noise index (unique-pixel-
-/// ratio heuristic), so a busy/noisy texture automatically gets a simpler, calmer normal
-/// map and a clean/painterly texture keeps its full detail.
-///
-/// The blue channel is always overwritten with parallax-occlusion-mapping height data
-/// (Bedrock RTX reads POM from the normal map's blue channel) rather than left as the
-/// Sobel Z-component - see ApplyPomBlueChannel. This is on for every texture
-/// unconditionally; there's no per-block opt-out at generation time. Downstream
-/// shader/renderer settings (e.g. BetterRTX) are the right place to let a *player* disable
-/// reading POM data - that's not something to gate here.
+/// Generates a normal map from a color texture, built on top of
+/// HeightmapGenerator.ComputeClusteredHeights rather than raw color brightness - the
+/// mean-shift clustered heightmap is the shared height-field basis for both texture
+/// types now:
+///   1. The clustered heightmap is blended 50/50 (regular linear blend, not overlay) with
+///      a ceiling-maximized flat greyscale of the color texture, giving a clean height
+///      field that still carries some of the original texture's own shading.
+///   2. That blended greyscale is sampled across a 3x3-tiled copy of itself (so pixels
+///      near the texture's edges see their *real* neighbors instead of a hard cutoff -
+///      this is what makes the result tile seamlessly in-game) and run through a Sobel
+///      operator to produce the normal's X/Y/Z.
+///   3. Blur is driven continuously by a per-texture noise index (local gradient/contrast
+///      heuristic - see GetNoiseIndex), so a busy/noisy texture automatically gets a
+///      calmer normal map.
+///   4. `intensity` (materials.json, default 0.5 - deliberately toned down from the old
+///      always-near-maximum result) blends the computed normal toward flat-up
+///      (128,128,255); this is now a direct artist knob, independent of the noise index.
+///   5. The blue channel is always overwritten with parallax-occlusion-mapping height
+///      data sourced from the *raw* clustered heightmap (Bedrock RTX reads POM from the
+///      normal map's blue channel) - see ApplyPomBlueChannel. This is on for every
+///      texture unconditionally; there's no per-block opt-out at generation time.
+///      Downstream shader/renderer settings (e.g. BetterRTX) are the right place to let a
+///      *player* disable reading POM data - that's not something to gate here.
 /// </summary>
 public static class NormalMapGenerator
 {
-    // TODO(tuning): the entire "how aggressively do we simplify noisy textures" knob.
+    // TODO(tuning): how aggressively noisy textures get blurred - untested against a
+    // broad enough set of textures yet.
     private const double MinBlurSigma = 0.3;
     private const double MaxBlurSigma = 1.6;
-    private const float MinFlatten = 0.05f;
-    private const float MaxFlatten = 0.55f;
 
     public static Bitmap Generate(Bitmap colorBitmap, NormalParams normalParams)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
 
+        var clustered = HeightmapGenerator.ComputeClusteredHeights(colorBitmap);
+
         var noiseIndex = GetNoiseIndex(colorBitmap);
         var t = Math.Clamp(noiseIndex / 100.0, 0.0, 1.0);
         var blurSigma = Lerp(MinBlurSigma, MaxBlurSigma, t);
-        var flatten = (float)Lerp(MinFlatten, MaxFlatten, t);
+        var flatten = (float)(1.0 - Math.Clamp(normalParams.Intensity, 0.0, 1.0));
 
-        using var tiled = BuildTiledCopy(colorBitmap);
+        using var blended = BuildBlendedGreyBitmap(colorBitmap, clustered);
+        using var tiled = BuildTiledCopy(blended);
         var raw = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
         using (var tiledFb = new FastBitmap(tiled, writable: false))
@@ -586,7 +597,7 @@ public static class NormalMapGenerator
         var blurred = BlurWithMagick(raw, blurSigma);
         raw.Dispose();
 
-        ApplyPomBlueChannel(blurred, colorBitmap);
+        ApplyPomBlueChannel(blurred, clustered);
 
         if (normalParams.Invert)
             InvertRedGreenInPlace(blurred);
@@ -595,22 +606,16 @@ public static class NormalMapGenerator
     }
 
     /// <summary>
-    /// POM height source: flat-average greyscale of the color texture (same convention as
-    /// MERS/heightmap generation), scaled up so its brightest pixel hits exactly 255 -
-    /// deliberately a pure upward scale, not a full min/max stretch, so the darkest
-    /// regions don't get lifted off zero and relative height differences stay
-    /// proportional to the source image's own brightness range.
+    /// Combines the mean-shift clustered heightmap with a ceiling-maximized flat
+    /// greyscale of the color texture via a regular 50% linear blend (not overlay) - this
+    /// is the "somewhat clean greyscale image" that becomes the Sobel input, giving
+    /// normal generation a proper height-field basis instead of raw color brightness.
     /// </summary>
-    private static void ApplyPomBlueChannel(Bitmap normalBitmap, Bitmap colorBitmap)
+    private static Bitmap BuildBlendedGreyBitmap(Bitmap colorBitmap, int[,] clustered)
     {
-        var w = normalBitmap.Width;
-        var h = normalBitmap.Height;
-
-        if (colorBitmap.Width != w || colorBitmap.Height != h)
-        {
-            Trace.WriteLine("[ALCHITEX] POM: color and normal map dimensions differ - skipping POM blue channel override for this texture.");
-            return;
-        }
+        var w = colorBitmap.Width;
+        var h = colorBitmap.Height;
+        var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
         var grey = new int[w, h];
         var maxVal = 0;
@@ -631,12 +636,45 @@ public static class NormalMapGenerator
 
         var scale = maxVal > 0 ? 255.0 / maxVal : 1.0;
 
+        using var outFb = new FastBitmap(output, writable: true);
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var maximizedGrey = Math.Clamp((int)Math.Round(grey[x, y] * scale), 0, 255);
+                var blendedValue = (byte)Math.Clamp((int)Math.Round((maximizedGrey + clustered[x, y]) / 2.0), 0, 255);
+                outFb[x, y] = Color.FromArgb(255, blendedValue, blendedValue, blendedValue);
+            }
+        }
+
+        return output;
+    }
+
+    /// <summary>
+    /// POM height source: the mean-shift clustered heightmap (HeightmapGenerator.
+    /// ComputeClusteredHeights), scaled up so its brightest pixel hits exactly 255 -
+    /// deliberately a pure upward scale, not a full min/max stretch, so the darkest
+    /// regions don't get lifted off zero and relative height differences stay
+    /// proportional to the clustered heightmap's own range.
+    /// </summary>
+    private static void ApplyPomBlueChannel(Bitmap normalBitmap, int[,] clustered)
+    {
+        var w = normalBitmap.Width;
+        var h = normalBitmap.Height;
+
+        var maxVal = 0;
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+                if (clustered[x, y] > maxVal) maxVal = clustered[x, y];
+
+        var scale = maxVal > 0 ? 255.0 / maxVal : 1.0;
+
         using var normalFb = new FastBitmap(normalBitmap, writable: true);
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
             {
-                var pom = (byte)Math.Clamp((int)Math.Round(grey[x, y] * scale), 0, 255);
+                var pom = (byte)Math.Clamp((int)Math.Round(clustered[x, y] * scale), 0, 255);
                 var c = normalFb[x, y];
                 normalFb[x, y] = Color.FromArgb(c.A, c.R, c.G, pom);
             }
@@ -682,24 +720,56 @@ public static class NormalMapGenerator
     }
 
     /// <summary>
-    /// Fraction of the texture's pixels that are unique colors, scaled to a 0-100 index.
+    /// Average local gradient magnitude between each pixel and its immediate right/down
+    /// neighbor (flat-average grey values), normalized to a 0-100 index. Unlike a raw
+    /// unique-color ratio, this actually tracks visual noisiness: soft painterly
+    /// gradients (many unique colors, small per-pixel jumps) score low, while genuinely
+    /// noisy/high-frequency textures (large abrupt jumps) score high.
     /// </summary>
     public static int GetNoiseIndex(Bitmap image)
     {
+        // TODO(tuning): calibration ceiling for what counts as "maximally noisy" -
+        // untested against a broad enough set of textures yet.
+        const double calibrationCeiling = 40.0;
+
         var w = image.Width;
         var h = image.Height;
-        var total = w * h;
-        var unique = new HashSet<int>();
+        var grey = new int[w, h];
 
         using (var fb = new FastBitmap(image, writable: false))
         {
             for (var y = 0; y < h; y++)
+            {
                 for (var x = 0; x < w; x++)
-                    unique.Add(fb[x, y].ToArgb());
+                {
+                    var c = fb[x, y];
+                    grey[x, y] = (c.R + c.G + c.B) / 3;
+                }
+            }
         }
 
-        var ratio = unique.Count / (double)total;
-        return (int)Math.Min(100.0, ratio * 3 * 100);
+        double totalDelta = 0;
+        var sampleCount = 0;
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                if (x + 1 < w)
+                {
+                    totalDelta += Math.Abs(grey[x, y] - grey[x + 1, y]);
+                    sampleCount++;
+                }
+                if (y + 1 < h)
+                {
+                    totalDelta += Math.Abs(grey[x, y] - grey[x, y + 1]);
+                    sampleCount++;
+                }
+            }
+        }
+
+        var averageDelta = sampleCount > 0 ? totalDelta / sampleCount : 0;
+        return (int)Math.Clamp(averageDelta / calibrationCeiling * 100.0, 0, 100);
     }
 
     private static Bitmap BlurWithMagick(Bitmap bitmap, double sigma)
@@ -735,22 +805,44 @@ public static class NormalMapGenerator
 
 /// <summary>
 /// Generates a heightmap from a color texture:
-///   1. Flat-average greyscale, contrast-stretched across the texture's own min/max.
-///   2. Quantized down to exactly three levels (0 / 128 / 255).
-///   3. Transparent regions of the color texture get darkened using an overlay blend
+///   1. ComputeClusteredHeights groups the texture's grey values into however many
+///      distinct height bands it actually has via mean-shift filtering (iterated joint
+///      spatial+range weighted averaging, which converges to the same piecewise-flat
+///      result as literal mode-seeking mean-shift), then assigns each band an
+///      evenly-spaced output level by brightness rank - this replaces the old flat
+///      contrast-stretch + fixed-3-level quantization. Shared with NormalMapGenerator,
+///      which uses this same clustering as its own height-field basis.
+///   2. Transparent regions of the color texture get darkened using an overlay blend
 ///      (not linear) - preserves midtone detail on the darkened side, which matters for
 ///      cases like grass_side where the dirt portion is transparent in the color texture
 ///      but should still read as "below" the opaque grass part.
-///   4. `intensity` blends the quantized result toward a flat neutral median (128).
-///   5. `invert` (workaround for the known game-side inverted-display bug) does a final
+///   3. `intensity` blends the clustered result toward a flat neutral median (128).
+///   4. `invert` (workaround for the known game-side inverted-display bug) does a final
 ///      full color inversion.
 /// Output is single-channel-equivalent grayscale (R=G=B), fully opaque.
 /// </summary>
 public static class HeightmapGenerator
 {
-    private const byte LevelLow = 0;
     private const byte LevelMid = 128;
-    private const byte LevelHigh = 255;
+
+    // TODO(tuning): mean-shift filtering knobs - iteration count, spatial window radius,
+    // range (value) bandwidth, and the spatial sigma that shapes how much nearby pixels
+    // outweigh distant ones. Untested against a broad enough set of textures yet; wants
+    // an artist's eye once there's enough generated output to compare against.
+    private const int MeanShiftIterations = 5;
+    private const int SpatialRadius = 2;
+    private const double SpatialSigma = 1.5;
+    private const double RangeBandwidth = 24.0;
+
+    // Above this pixel count, ComputeClusteredHeights skips the spatial neighbor search
+    // (which scales with W*H*R^2*iterations) and falls back to range-only clustering off
+    // a 256-bin histogram instead - still mean-shift filtering, just position-independent
+    // and bounded regardless of texture size. Automatic, not a user-facing setting.
+    private const int SpatialFallbackPixelCount = 256 * 256;
+
+    // Converged values within this distance of each other are folded into the same
+    // cluster during ranking.
+    private const double ClusterMergeTolerance = 8.0;
 
     public static Bitmap Generate(Bitmap colorBitmap, HeightmapParams heightmapParams)
     {
@@ -758,25 +850,14 @@ public static class HeightmapGenerator
         var h = colorBitmap.Height;
         var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
-        var grey = new int[w, h];
+        var clustered = ComputeClusteredHeights(colorBitmap);
         var alpha = new byte[w, h];
-        int greyMin = 255, greyMax = 0;
 
         using (var colorFb = new FastBitmap(colorBitmap, writable: false))
         {
             for (var y = 0; y < h; y++)
-            {
                 for (var x = 0; x < w; x++)
-                {
-                    var c = colorFb[x, y];
-                    alpha[x, y] = c.A;
-
-                    var g = (c.R + c.G + c.B) / 3;
-                    grey[x, y] = g;
-                    if (g < greyMin) greyMin = g;
-                    if (g > greyMax) greyMax = g;
-                }
-            }
+                    alpha[x, y] = colorFb[x, y].A;
         }
 
         using (var outFb = new FastBitmap(output, writable: true))
@@ -785,19 +866,16 @@ public static class HeightmapGenerator
             {
                 for (var x = 0; x < w; x++)
                 {
-                    double t = greyMax > greyMin ? (grey[x, y] - greyMin) / (double)(greyMax - greyMin) : 0.5;
-                    var stretched = (byte)Math.Clamp((int)Math.Round(t * 255.0), 0, 255);
-
-                    var quantized = QuantizeToThreeLevels(stretched);
+                    var clusteredValue = (byte)clustered[x, y];
 
                     var transparencyAmount = 255 - alpha[x, y];
                     var overlayStrength = transparencyAmount * 0.5 / 255.0;
 
-                    var withOverlay = quantized;
+                    var withOverlay = clusteredValue;
                     if (overlayStrength > 0)
                     {
-                        var blended = OverlayBlendWithBlack(quantized);
-                        withOverlay = Lerp(quantized, blended, overlayStrength);
+                        var blended = OverlayBlendWithBlack(clusteredValue);
+                        withOverlay = Lerp(clusteredValue, blended, overlayStrength);
                     }
 
                     var withIntensity = Lerp(LevelMid, withOverlay, Math.Clamp(heightmapParams.Intensity, 0.0, 1.0));
@@ -811,14 +889,194 @@ public static class HeightmapGenerator
         return output;
     }
 
-    private static byte QuantizeToThreeLevels(byte value)
+    /// <summary>
+    /// Mean-shift filtering core, shared with NormalMapGenerator (which uses this as its
+    /// own height-field input, and separately as its POM blue-channel source). Returns
+    /// raw clustered grey values (0-255) with no artist-facing post-processing applied.
+    /// </summary>
+    public static int[,] ComputeClusteredHeights(Bitmap colorBitmap)
     {
-        var dLow = Math.Abs(value - LevelLow);
-        var dMid = Math.Abs(value - LevelMid);
-        var dHigh = Math.Abs(value - LevelHigh);
+        var w = colorBitmap.Width;
+        var h = colorBitmap.Height;
 
-        if (dLow <= dMid && dLow <= dHigh) return LevelLow;
-        return dMid <= dHigh ? LevelMid : LevelHigh;
+        var grey = new double[w, h];
+        using (var colorFb = new FastBitmap(colorBitmap, writable: false))
+        {
+            for (var y = 0; y < h; y++)
+            {
+                for (var x = 0; x < w; x++)
+                {
+                    var c = colorFb[x, y];
+                    grey[x, y] = (c.R + c.G + c.B) / 3.0;
+                }
+            }
+        }
+
+        var converged = (long)w * h <= SpatialFallbackPixelCount
+            ? ConvergeSpatial(grey, w, h)
+            : ConvergeRangeOnly(grey, w, h);
+
+        return ClusterAndRank(converged, grey, w, h);
+    }
+
+    /// <summary>Full joint spatial+range mean-shift filtering: each pixel's value is
+    /// repeatedly replaced by a weighted average of its small spatial neighborhood,
+    /// weighted by both spatial closeness and value closeness. Neighbors are sampled with
+    /// wraparound/modulo indexing so results stay seamless-tileable without needing a full
+    /// 3x tiled copy at this small radius.</summary>
+    private static double[,] ConvergeSpatial(double[,] grey, int w, int h)
+    {
+        var current = grey;
+
+        for (var iter = 0; iter < MeanShiftIterations; iter++)
+        {
+            var next = new double[w, h];
+
+            for (var y = 0; y < h; y++)
+            {
+                for (var x = 0; x < w; x++)
+                {
+                    var centerValue = current[x, y];
+                    double weightSum = 0, valueSum = 0;
+
+                    for (var dy = -SpatialRadius; dy <= SpatialRadius; dy++)
+                    {
+                        for (var dx = -SpatialRadius; dx <= SpatialRadius; dx++)
+                        {
+                            var nx = ((x + dx) % w + w) % w;
+                            var ny = ((y + dy) % h + h) % h;
+                            var neighborValue = grey[nx, ny];
+
+                            var spatialDist2 = dx * dx + dy * dy;
+                            var rangeDist = neighborValue - centerValue;
+                            var weight = Math.Exp(-spatialDist2 / (2 * SpatialSigma * SpatialSigma))
+                                       * Math.Exp(-(rangeDist * rangeDist) / (2 * RangeBandwidth * RangeBandwidth));
+
+                            weightSum += weight;
+                            valueSum += weight * neighborValue;
+                        }
+                    }
+
+                    next[x, y] = weightSum > 0 ? valueSum / weightSum : centerValue;
+                }
+            }
+
+            current = next;
+        }
+
+        return current;
+    }
+
+    /// <summary>Value-only mean-shift for very large textures, where a per-pixel spatial
+    /// neighbor search would scale too aggressively: clusters purely on a 256-bin
+    /// grey-value histogram (position-independent), which is O(256^2*iterations)
+    /// regardless of texture size, then looks each pixel's converged value up by its
+    /// rounded grey value.</summary>
+    private static double[,] ConvergeRangeOnly(double[,] grey, int w, int h)
+    {
+        var histogram = new int[256];
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+                histogram[Math.Clamp((int)Math.Round(grey[x, y]), 0, 255)]++;
+
+        var representative = new double[256];
+        for (var i = 0; i < 256; i++) representative[i] = i;
+
+        for (var iter = 0; iter < MeanShiftIterations; iter++)
+        {
+            var next = new double[256];
+
+            for (var i = 0; i < 256; i++)
+            {
+                double weightSum = 0, valueSum = 0;
+
+                for (var j = 0; j < 256; j++)
+                {
+                    if (histogram[j] == 0) continue;
+                    var rangeDist = j - representative[i];
+                    var weight = histogram[j] * Math.Exp(-(rangeDist * rangeDist) / (2 * RangeBandwidth * RangeBandwidth));
+                    weightSum += weight;
+                    valueSum += weight * j;
+                }
+
+                next[i] = weightSum > 0 ? valueSum / weightSum : representative[i];
+            }
+
+            representative = next;
+        }
+
+        var converged = new double[w, h];
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+                converged[x, y] = representative[Math.Clamp((int)Math.Round(grey[x, y]), 0, 255)];
+
+        return converged;
+    }
+
+    /// <summary>Merges per-pixel converged values into clusters (values within
+    /// ClusterMergeTolerance of their neighbor in sorted order are folded together),
+    /// ranks clusters by their mean *original* grey value, and assigns each an
+    /// evenly-spaced output level across 0-255 by rank.</summary>
+    private static int[,] ClusterAndRank(double[,] converged, double[,] original, int w, int h)
+    {
+        var distinctValues = new SortedSet<double>();
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+                distinctValues.Add(Math.Round(converged[x, y], 1));
+
+        var clusterOf = new Dictionary<double, int>();
+        var clusterId = 0;
+        var clusterAnchor = 0.0;
+        var first = true;
+
+        foreach (var v in distinctValues)
+        {
+            if (first || v - clusterAnchor > ClusterMergeTolerance)
+            {
+                if (!first) clusterId++;
+                clusterAnchor = v;
+                first = false;
+            }
+            clusterOf[v] = clusterId;
+        }
+
+        var clusterCount = clusterId + 1;
+        var brightnessSum = new double[clusterCount];
+        var brightnessCount = new int[clusterCount];
+        var pixelCluster = new int[w, h];
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var id = clusterOf[Math.Round(converged[x, y], 1)];
+                pixelCluster[x, y] = id;
+                brightnessSum[id] += original[x, y];
+                brightnessCount[id]++;
+            }
+        }
+
+        var clusterMeanBrightness = new double[clusterCount];
+        for (var i = 0; i < clusterCount; i++)
+            clusterMeanBrightness[i] = brightnessCount[i] > 0 ? brightnessSum[i] / brightnessCount[i] : 0;
+
+        var rank = Enumerable.Range(0, clusterCount)
+            .OrderBy(i => clusterMeanBrightness[i])
+            .Select((originalIndex, rankIndex) => (originalIndex, rankIndex))
+            .ToDictionary(p => p.originalIndex, p => p.rankIndex);
+
+        var result = new int[w, h];
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var r = rank[pixelCluster[x, y]];
+                var level = clusterCount > 1 ? (int)Math.Round(r / (double)(clusterCount - 1) * 255.0) : 128;
+                result[x, y] = Math.Clamp(level, 0, 255);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>Photoshop-style "Overlay" blend against a black overlay, at full strength

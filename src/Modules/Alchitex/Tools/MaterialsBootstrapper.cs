@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Vanilla_RTX_App.Modules; // FastBitmap, TextureSetHelper
 using Vanilla_RTX_App.Modules.Alchitex.Core; // MaterialEntry, MerParams, SssParams, HeightmapParams, NormalParams, RecursivePass
 
@@ -10,15 +12,23 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 
 /// <summary>
 /// Debug-only tool: reads every .texture_set.json in an already-fully-PBR'd pack (e.g.
-/// the developer's own Vanilla RTX) and reverse-derives a starting materials.json from
-/// what's actually baked into each MER/MERS texture, so tuning starts from real numbers
-/// instead of a blank sheet.
+/// the developer's own Vanilla RTX) and reverse-derives materials.json entries from what's
+/// actually baked into each MER/MERS texture, so tuning starts from real numbers instead
+/// of a blank sheet.
 ///
 /// Lives under Tools/, not Core/, since it isn't part of the generation pipeline itself -
 /// it's a one-off dev utility for bootstrapping materials.json, wired to a debug-only
 /// button in the Alchitex window.
 ///
-/// What gets derived per texture, straight from the baked MER/MERS pixels:
+/// Append-only by design: this is meant to be re-run repeatedly as the artist's ongoing
+/// workflow for adding new materials over time, not a one-shot "regenerate everything"
+/// tool. If the chosen output file already has an entry for a given texture name, that
+/// entry is left completely untouched - only genuinely new names get written, so the
+/// artist can always go straight to whatever's new after a run instead of re-diffing the
+/// whole file. The output is always written back with "default" first, then every other
+/// key alphabetical, so new entries land in a predictable, easy-to-locate place.
+///
+/// What gets derived per new texture, straight from the baked MER/MERS pixels:
 ///   - metal_min/max, emissive_min/max, roughness_min/max - the observed min/max of the
 ///     R/G/B channels respectively, across the texture's opaque pixels.
 ///   - sss_min/max - the observed min/max of the alpha channel, but only if the texture
@@ -29,9 +39,9 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 ///
 /// What's deliberately left at MaterialEntry's built-in defaults, because none of it is
 /// something you can objectively reverse-engineer from a single baked texture:
-///   - every invert_* flag, recursive passes, heightmap.intensity, normal.invert.
-/// Every derived entry is a genuine starting point meant to be hand-tuned afterwards, not
-/// a finished materials.json.
+///   - every invert_* flag, recursive passes, heightmap.intensity, normal.intensity/invert.
+/// Every newly-derived entry is a genuine starting point meant to be hand-tuned afterwards,
+/// not a finished materials.json.
 /// </summary>
 public static class MaterialsBootstrapper
 {
@@ -42,34 +52,43 @@ public static class MaterialsBootstrapper
         WriteIndented = true,
     };
 
+    private static readonly JsonSerializerOptions ReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
     /// <summary>
     /// Reads every texture set under `sourcePackRoot` (root pack + any subpacks - both
     /// TextureSetHelper.ResolveTextureSets and Directory.GetFiles already recurse the
-    /// whole pack) and writes a derived materials.json into `destinationDirectory`. If a
-    /// materials.json already exists there, it's backed up first (this is a debug tool
-    /// meant to be re-run repeatedly while iterating - it should never silently eat a
-    /// hand-tuned file).
+    /// whole pack) and merges newly-derived entries into `outputPath` (a full materials.json
+    /// file path, chosen via a save-file dialog). Existing entries are never touched - see
+    /// the class doc comment. The file is backed up first regardless (`.bak-<timestamp>`),
+    /// as a safety net even though this is a merge rather than an overwrite.
     /// </summary>
-    public static BootstrapResult GenerateFromExistingPack(string sourcePackRoot, string destinationDirectory)
+    public static BootstrapResult GenerateFromExistingPack(string sourcePackRoot, string outputPath)
     {
         if (!Directory.Exists(sourcePackRoot))
             throw new DirectoryNotFoundException($"Source pack folder not found: '{sourcePackRoot}'");
 
-        Directory.CreateDirectory(destinationDirectory);
-        var outputPath = Path.Combine(destinationDirectory, "materials.json");
-        BackUpExistingFileIfPresent(outputPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-        var entries = new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase)
-        {
-            // A sane, safe neutral fallback for anything a future materials.json doesn't
-            // explicitly cover - not derived from the pack, just MaterialEntry's own
-            // built-in defaults made explicit so the file is immediately valid on its own.
-            ["default"] = new MaterialEntry(),
-        };
+        var merged = LoadExistingEntries(outputPath);
+        BackUpExistingFileIfPresent(outputPath);
 
         var written = 0;
         var skipped = 0;
         var failed = 0;
+
+        if (!merged.ContainsKey("default"))
+        {
+            // A sane, safe neutral fallback for anything materials.json doesn't
+            // explicitly cover - not derived from the pack, just MaterialEntry's own
+            // built-in defaults made explicit so the file is immediately valid on its own.
+            merged["default"] = new MaterialEntry();
+            written++;
+        }
 
         foreach (var resolved in TextureSetHelper.ResolveTextureSets(sourcePackRoot))
         {
@@ -90,16 +109,17 @@ public static class MaterialsBootstrapper
                     continue;
                 }
 
-                var includeSss = resolved.SetNode["metalness_emissive_roughness_subsurface"] != null;
-                var entry = DeriveEntry(loaded.ColorBmp, loaded.MerBmp, includeSss);
-
-                if (!entries.TryAdd(name, entry))
+                if (merged.ContainsKey(name))
                 {
-                    Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: two texture sets both resolved to the name '{name}' - keeping the first one seen and skipping the duplicate ('{resolved.JsonFilePath}').");
+                    // Already present - either pre-existing in the file, or from an
+                    // earlier texture set this same run resolved to the same name.
+                    // Append-only: never overwrite an existing entry.
                     skipped++;
                     continue;
                 }
 
+                var includeSss = resolved.SetNode["metalness_emissive_roughness_subsurface"] != null;
+                merged[name] = DeriveEntry(loaded.ColorBmp, loaded.MerBmp, includeSss);
                 written++;
             }
             catch (Exception ex)
@@ -115,11 +135,54 @@ public static class MaterialsBootstrapper
             }
         }
 
-        var json = JsonSerializer.Serialize(entries, WriteOptions);
-        File.WriteAllText(outputPath, json);
+        WriteOrdered(merged, outputPath);
 
-        Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: wrote {written} entries ({skipped} skipped, {failed} failed) to '{outputPath}'.");
+        Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: wrote {written} new entries ({skipped} skipped, {failed} failed) to '{outputPath}'.");
         return new BootstrapResult(written, skipped, failed, outputPath);
+    }
+
+    /// <summary>Loads `outputPath`'s existing entries to merge into, if it exists.
+    /// A parse failure degrades to "treat as empty" rather than throwing - the backup
+    /// taken right after this call still protects whatever was actually on disk.</summary>
+    private static Dictionary<string, MaterialEntry> LoadExistingEntries(string outputPath)
+    {
+        if (!File.Exists(outputPath))
+            return new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var raw = File.ReadAllText(outputPath);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, MaterialEntry>>(raw, ReadOptions);
+            return parsed != null
+                ? new Dictionary<string, MaterialEntry>(parsed, StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: couldn't parse existing '{outputPath}' ({ex.Message}) - treating as empty for this merge; a backup of the original is taken before writing.");
+            return new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>Writes the merged entry set with "default" first, then every other key
+    /// alphabetical (OrdinalIgnoreCase) - so newly-appended entries land in a predictable,
+    /// easy-to-locate place rather than wherever Dictionary enumeration happened to put
+    /// them.</summary>
+    private static void WriteOrdered(Dictionary<string, MaterialEntry> entries, string outputPath)
+    {
+        var ordered = new JsonObject();
+
+        if (entries.TryGetValue("default", out var defaultEntry))
+            ordered["default"] = JsonSerializer.SerializeToNode(defaultEntry, WriteOptions);
+
+        foreach (var key in entries.Keys
+                     .Where(k => !string.Equals(k, "default", StringComparison.OrdinalIgnoreCase))
+                     .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            ordered[key] = JsonSerializer.SerializeToNode(entries[key], WriteOptions);
+        }
+
+        File.WriteAllText(outputPath, ordered.ToJsonString(WriteOptions));
     }
 
     private static string? ResolveTextureName(TextureSetHelper.ResolvedTextureSet resolved)

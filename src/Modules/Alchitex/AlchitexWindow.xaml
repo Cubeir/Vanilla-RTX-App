@@ -255,6 +255,11 @@
                               HorizontalAlignment="Stretch"
                               IsTextScaleFactorEnabled="False" />
 
+                <ToggleButton x:Name="AddFogToggle"
+                              Content="Add fog"
+                              HorizontalAlignment="Stretch"
+                              IsTextScaleFactorEnabled="False" />
+
                 <Button x:Name="GenerateButton"
                         Content="Generate RTX Textures"
                         Style="{ThemeResource AccentButtonStyle}"

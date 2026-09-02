@@ -71,6 +71,14 @@ public static class AlchitexPipeline
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (options.AddFog)
+            {
+                progress?.Report(new AlchitexProgress(0, 0, "Adding fog..."));
+                await Task.Run(() => PostProcess.DeployFog(workingPackPath, alchitexAssetsPath), cancellationToken);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
             // ── Phase 4: manifest, terrain data, icon ────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Finalizing manifest..."));
             PostProcess.UpdateManifest(workingPackPath, appVersion);
@@ -156,7 +164,7 @@ public static class AlchitexPipeline
     private static void ProcessOneTarget(GenerationTarget target, MaterialsConfig materials, AlchitexOptions options)
     {
         var material = materials.Resolve(target.TextureName);
-        using var colorBitmap = Helpers.ReadImage(target.ColorPath, maxOpacity: false);
+        using var colorBitmap = Helpers.ReadImage(target.ColorPath, maxOpacity: true);
 
         if (!File.Exists(target.MersPath))
         {

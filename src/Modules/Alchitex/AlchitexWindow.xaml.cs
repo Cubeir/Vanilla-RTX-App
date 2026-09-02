@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Linq;
@@ -30,6 +31,7 @@ public static class AlchitexVariables
         // round-trips cleanly through the existing reflection-based Save/LoadSettings.
         public static int SecondaryPbrModeIndex = (int)SecondaryPbrMode.Auto;
         public static bool SubsurfaceScatteringEnabled = false;
+        public static bool AddFogEnabled = false;
     }
     public static class Defaults
     {
@@ -141,6 +143,16 @@ public sealed partial class Alchitex : Window
 
     private void Alchitex_Closed(object sender, WindowEventArgs e)
     {
+        // SaveSettings() only ever persists whatever's currently sitting in
+        // AlchitexVariables.Persistent's static fields - those used to only get updated
+        // when Generate was clicked (ReadOptionsFromUI), so changing a toggle/dropdown and
+        // closing without generating silently lost the change. Sync from the live
+        // controls first. Guarded on MainGrid actually being shown, so closing during the
+        // license screen (controls never touched, still at XAML defaults) doesn't stomp
+        // whatever was already saved from a previous session.
+        if (MainGrid.Visibility == Visibility.Visible)
+            SyncPersistentSettingsFromControls();
+
         AlchitexVariables.SaveSettings();
 
         if (_isClosing) return;
@@ -291,6 +303,7 @@ public sealed partial class Alchitex : Window
 
         SecondaryPbrModeComboBox.SelectedIndex = AlchitexVariables.Persistent.SecondaryPbrModeIndex;
         SubsurfaceScatteringToggle.IsChecked = AlchitexVariables.Persistent.SubsurfaceScatteringEnabled;
+        AddFogToggle.IsChecked = AlchitexVariables.Persistent.AddFogEnabled;
 
 #if DEBUG
         GenerateMaterialsConfigButton.Visibility = Visibility.Visible;
@@ -299,18 +312,28 @@ public sealed partial class Alchitex : Window
 
     // ── PBR generation ───────────────────────────────────────────────────────
 
-    private AlchitexOptions ReadOptionsFromUI()
+    /// <summary>Reads the live control values into AlchitexVariables.Persistent. Shared by
+    /// ReadOptionsFromUI (on Generate) and Alchitex_Closed (on window close) so a
+    /// toggle/dropdown change is captured regardless of which one happens first.</summary>
+    private void SyncPersistentSettingsFromControls()
     {
         var modeIndex = SecondaryPbrModeComboBox.SelectedIndex;
         if (modeIndex < 0) modeIndex = (int)SecondaryPbrMode.Auto;
 
-        var sss = SubsurfaceScatteringToggle.IsChecked ?? false;
-
         AlchitexVariables.Persistent.SecondaryPbrModeIndex = modeIndex;
-        AlchitexVariables.Persistent.SubsurfaceScatteringEnabled = sss;
+        AlchitexVariables.Persistent.SubsurfaceScatteringEnabled = SubsurfaceScatteringToggle.IsChecked ?? false;
+        AlchitexVariables.Persistent.AddFogEnabled = AddFogToggle.IsChecked ?? false;
+    }
+
+    private AlchitexOptions ReadOptionsFromUI()
+    {
+        SyncPersistentSettingsFromControls();
         AlchitexVariables.SaveSettings();
 
-        return new AlchitexOptions((SecondaryPbrMode)modeIndex, sss);
+        return new AlchitexOptions(
+            (SecondaryPbrMode)AlchitexVariables.Persistent.SecondaryPbrModeIndex,
+            AlchitexVariables.Persistent.SubsurfaceScatteringEnabled,
+            AlchitexVariables.Persistent.AddFogEnabled);
     }
 
     private void SetGenerationControlsEnabled(bool enabled)
@@ -321,6 +344,7 @@ public sealed partial class Alchitex : Window
         AbortButton.IsEnabled = !enabled;
         SecondaryPbrModeComboBox.IsEnabled = enabled;
         SubsurfaceScatteringToggle.IsEnabled = enabled;
+        AddFogToggle.IsEnabled = enabled;
         GenerateMaterialsConfigButton.IsEnabled = enabled;
     }
 
@@ -444,8 +468,8 @@ public sealed partial class Alchitex : Window
         var sourceFolder = await PickFolderAsync();
         if (sourceFolder == null) return;
 
-        var destinationFolder = await PickFolderAsync();
-        if (destinationFolder == null) return;
+        var outputPath = await PickSaveMaterialsFileAsync();
+        if (outputPath == null) return;
 
         SetGenerationControlsEnabled(false);
         GenerateProgressBar.Visibility = Visibility.Visible;
@@ -455,8 +479,8 @@ public sealed partial class Alchitex : Window
 
         try
         {
-            var result = await Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, destinationFolder));
-            GenerateStatusText.Text = $"materials.json written: {result.EntriesWritten} entries " +
+            var result = await Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, outputPath));
+            GenerateStatusText.Text = $"materials.json updated: {result.EntriesWritten} new entries " +
                                        $"({result.Skipped} skipped, {result.Failed} failed) -> {result.OutputPath}";
         }
         catch (Exception ex)
@@ -473,10 +497,9 @@ public sealed partial class Alchitex : Window
     }
 
     /// <summary>
-    /// Single-folder picker helper. Two sequential calls are used by the bootstrap
-    /// button (source pack, then destination) rather than a custom two-field dialog -
-    /// this is a debug-only tool, so the standard OS folder picker twice in a row is
-    /// simplest to build and least likely to need maintenance later.
+    /// Single-folder picker helper, used for the bootstrap button's source pack.
+    /// Debug-only tool, so the standard OS folder picker is simplest to build and least
+    /// likely to need maintenance later.
     /// </summary>
     private async Task<string?> PickFolderAsync()
     {
@@ -487,6 +510,25 @@ public sealed partial class Alchitex : Window
 
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
+    }
+
+    /// <summary>
+    /// Save-file picker for the bootstrap button's output materials.json - lets the
+    /// artist target their existing materials.json directly (for the merge/append
+    /// workflow - see MaterialsBootstrapper) instead of picking a destination folder and
+    /// always landing on a fixed filename.
+    /// </summary>
+    private async Task<string?> PickSaveMaterialsFileAsync()
+    {
+        var picker = new FileSavePicker();
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        picker.SuggestedFileName = "materials";
+        picker.DefaultFileExtension = ".json";
+        picker.FileTypeChoices.Add("JSON", new List<string> { ".json" });
+        picker.SuggestedStartLocation = PickerLocationId.Desktop;
+
+        var file = await picker.PickSaveFileAsync();
+        return file?.Path;
     }
 }
 
