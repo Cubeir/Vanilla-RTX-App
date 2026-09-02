@@ -437,7 +437,7 @@ public static class PostProcess
 
     private const string AuthorName = "Cubeir";
     private const string MetadataUrl = "https://github.com/Cubeir/Vanilla-RTX-App";
-    private const string NameSuffix = " §r-§2 RTX§r";
+    private const string NameSuffix = " §r-§a RTX§r";
 
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
@@ -450,6 +450,47 @@ public static class PostProcess
         CommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
     };
+
+    /// <summary>
+    /// Parses `text` into a JsonObject, tolerant of the same non-standard JSON
+    /// TolerantReadOptions already covers (comments, trailing commas) AND of duplicate
+    /// keys within the same object - a real-world quirk seen in actual pack files despite
+    /// being invalid per spec. `JsonNode.Parse` alone can't handle that: its JsonObject
+    /// builds a backing dictionary lazily and throws ArgumentException the first time
+    /// anything enumerates it (a foreach, e.g.) if a duplicate key turns up, even though
+    /// parsing itself "succeeded". This walks a JsonDocument (which tolerates duplicates
+    /// natively, no lazy dictionary involved) and rebuilds a fresh JsonObject by indexer
+    /// assignment instead, where a later duplicate simply overwrites the earlier one - the
+    /// same "last one wins" resolution most JSON consumers, Bedrock's own reader included,
+    /// apply in practice. Returns null if the root isn't an object.
+    /// </summary>
+    private static JsonObject? SafeParseJsonObject(string text)
+    {
+        using var document = JsonDocument.Parse(text, TolerantReadOptions);
+        return RebuildNode(document.RootElement) as JsonObject;
+    }
+
+    private static JsonNode? RebuildNode(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                var obj = new JsonObject();
+                foreach (var prop in element.EnumerateObject())
+                    obj[prop.Name] = RebuildNode(prop.Value); // later duplicate key overwrites earlier
+                return obj;
+            case JsonValueKind.Array:
+                var arr = new JsonArray();
+                foreach (var item in element.EnumerateArray())
+                    arr.Add(RebuildNode(item));
+                return arr;
+            case JsonValueKind.Null:
+            case JsonValueKind.Undefined:
+                return null;
+            default:
+                return JsonValue.Create(element.Clone());
+        }
+    }
 
     /// <summary>
     /// Updates manifest.json in place: new header/module uuids, an RTX tag appended to the
@@ -480,8 +521,8 @@ public static class PostProcess
 
         try
         {
-            var parsed = JsonNode.Parse(File.ReadAllText(manifestPath), documentOptions: TolerantReadOptions);
-            if (parsed is not JsonObject root)
+            var root = SafeParseJsonObject(File.ReadAllText(manifestPath));
+            if (root == null)
             {
                 Trace.WriteLine($"[ALCHITEX] '{manifestPath}' doesn't parse to a JSON object at its root - skipping manifest update.");
                 return;
@@ -708,85 +749,140 @@ public static class PostProcess
     /// single texture path (highest-weight if weights are present, otherwise random or
     /// first) - PBR texture sets can't represent per-variation MERS/normal/heightmap, so a
     /// pack with texture variations needs exactly one winner per slot chosen up front.
+    ///
+    /// Wrapped in its own try/catch and parsed with the same comment/trailing-comma
+    /// tolerance as UpdateManifest (a pack's own terrain_texture.json is just as likely to
+    /// carry an author's "// note" as its manifest.json is) - this method used to have no
+    /// safety net at all, so a malformed file here escaped uncaught all the way to
+    /// AlchitexPipeline's outer catch and failed the *entire* pack.
     /// </summary>
     public static void UpdateTerrainTexture(string packRoot, bool removeVariations = true, bool randomize = true)
     {
         var path = Path.Combine(packRoot, "textures", "terrain_texture.json");
 
-        JsonObject root;
-        if (File.Exists(path))
+        try
         {
-            var text = File.ReadAllText(path);
-            root = string.IsNullOrWhiteSpace(text) ? new JsonObject() : JsonNode.Parse(text)!.AsObject();
-        }
-        else
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            root = new JsonObject();
-        }
-
-        var reordered = new JsonObject { ["num_mip_levels"] = 1, ["padding"] = 1 };
-        foreach (var kvp in root)
-        {
-            if (kvp.Key is "num_mip_levels" or "padding") continue;
-            reordered[kvp.Key] = kvp.Value?.DeepClone();
-        }
-        root = reordered;
-
-        if (removeVariations && root["texture_data"]?.AsObject() is JsonObject textureData)
-        {
-            var random = new Random();
-
-            foreach (var entry in textureData)
+            JsonObject root;
+            if (File.Exists(path))
             {
-                var texturesNode = entry.Value?["textures"];
-                if (texturesNode == null) continue;
-
-                if (texturesNode is JsonObject texturesObj)
+                var text = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(text))
                 {
-                    if (texturesObj["variations"] is JsonArray variations)
+                    root = new JsonObject();
+                }
+                else if (SafeParseJsonObject(text) is JsonObject parsed)
+                {
+                    root = parsed;
+                }
+                else
+                {
+                    Trace.WriteLine($"[ALCHITEX] '{path}' doesn't parse to a JSON object at its root - treating as empty.");
+                    root = new JsonObject();
+                }
+            }
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                root = new JsonObject();
+            }
+
+            var reordered = new JsonObject { ["num_mip_levels"] = 1, ["padding"] = 1 };
+            foreach (var kvp in root)
+            {
+                if (kvp.Key is "num_mip_levels" or "padding") continue;
+                reordered[kvp.Key] = kvp.Value?.DeepClone();
+            }
+            root = reordered;
+
+            if (removeVariations && root["texture_data"] is JsonObject textureData)
+            {
+                var random = new Random();
+
+                foreach (var entry in textureData)
+                {
+                    // entry.Value isn't guaranteed to be an object - a malformed entry
+                    // (e.g. a bare string instead of {"textures": ...}, or a duplicate
+                    // key that collapsed to something unexpected - see SafeParseJsonObject)
+                    // is real, and indexing a non-object JsonNode throws. Guard first.
+                    var texturesNode = entry.Value is JsonObject entryObj ? entryObj["textures"] : null;
+                    if (texturesNode == null) continue;
+
+                    if (texturesNode is JsonObject texturesObj)
                     {
-                        entry.Value!["textures"] = SelectVariation(variations, randomize, random);
-                    }
-                    else
-                    {
-                        // Per-face variants (e.g. "up"/"down"/"side" each carrying their
-                        // own "variations" array): collapse each face independently.
-                        foreach (var sub in texturesObj.ToList())
+                        if (texturesObj["variations"] is JsonArray variations)
                         {
-                            if (sub.Value?["variations"] is JsonArray nestedVariations)
-                                texturesObj[sub.Key] = SelectVariation(nestedVariations, randomize, random);
+                            // Couldn't pick anything usable (empty/malformed array) -
+                            // leave this entry's textures untouched rather than guessing.
+                            if (SelectVariation(variations, randomize, random) is string selected)
+                                entry.Value!["textures"] = selected;
+                        }
+                        else
+                        {
+                            // Per-face variants (e.g. "up"/"down"/"side" each carrying
+                            // their own "variations" array): collapse each face
+                            // independently. Real packs mix plain string faces in with
+                            // object faces here, so sub.Value being a non-object (and
+                            // thus having nothing to flatten) is expected, not an error.
+                            foreach (var sub in texturesObj.ToList())
+                            {
+                                if (sub.Value is JsonObject subObj
+                                    && subObj["variations"] is JsonArray nestedVariations
+                                    && SelectVariation(nestedVariations, randomize, random) is string nestedSelected)
+                                {
+                                    texturesObj[sub.Key] = nestedSelected;
+                                }
+                            }
                         }
                     }
-                }
-                else if (texturesNode is JsonArray texturesArray)
-                {
-                    for (var i = 0; i < texturesArray.Count; i++)
+                    else if (texturesNode is JsonArray texturesArray)
                     {
-                        if (texturesArray[i] is JsonObject item && item["variations"] is JsonArray itemVariations)
+                        for (var i = 0; i < texturesArray.Count; i++)
                         {
-                            texturesArray[i] = SelectVariation(itemVariations, randomize, random);
+                            if (texturesArray[i] is JsonObject item
+                                && item["variations"] is JsonArray itemVariations
+                                && SelectVariation(itemVariations, randomize, random) is string itemSelected)
+                            {
+                                texturesArray[i] = itemSelected;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        File.WriteAllText(path, root.ToJsonString(WriteOptions));
+            File.WriteAllText(path, root.ToJsonString(WriteOptions));
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed to update terrain_texture.json at '{path}': {ex.Message}");
+        }
     }
 
-    private static string SelectVariation(JsonArray variations, bool randomize, Random random)
+    /// <summary>Picks one path out of a "variations" array - highest-weight if every
+    /// entry carries a (coercible) numeric "weight", otherwise random or first. Returns
+    /// null (leaving the caller's entry untouched) rather than throwing if nothing usable
+    /// could be picked - a missing/non-string "path", non-numeric "weight", or empty
+    /// array are all real things malformed/hand-edited packs do.</summary>
+    private static string? SelectVariation(JsonArray variations, bool randomize, Random random)
     {
-        if (variations.All(v => v?["weight"] != null))
-        {
-            var best = variations.OrderByDescending(v => v!["weight"]!.GetValue<int>()).First();
-            return (string)best!["path"]!;
-        }
+        if (variations.Count == 0) return null;
 
-        if (randomize)
-            return (string)variations[random.Next(variations.Count)]!["path"]!;
+        var chosen = variations.All(v => TryGetWeight(v) != null)
+            ? variations.OrderByDescending(v => TryGetWeight(v)!.Value).First()
+            : randomize ? variations[random.Next(variations.Count)] : variations[0];
 
-        return (string)variations[0]!["path"]!;
+        try { return (string?)chosen?["path"]; }
+        catch { return null; }
+    }
+
+    private static int? TryGetWeight(JsonNode? variation)
+    {
+        // A "variations" array entry that isn't itself an object (a bare string, say) has
+        // no "weight" to speak of - guard before indexing rather than throwing.
+        if (variation is not JsonObject obj) return null;
+        var node = obj["weight"];
+        if (node == null) return null;
+        try { return node.GetValue<int>(); }
+        catch { return null; }
     }
 
     #endregion
