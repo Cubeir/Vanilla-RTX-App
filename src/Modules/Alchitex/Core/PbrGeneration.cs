@@ -562,42 +562,80 @@ public static class MersGenerator
 ///      *second*, independent ceiling-maximize of the clustered heightmap happens later,
 ///      purely for the POM blue channel (step 5) - the two are unrelated uses of the same
 ///      source array, not the same operation.
-///   2. That blended greyscale is sampled across a 3x3-tiled copy of itself (so pixels
-///      near the texture's edges see their *real* neighbors instead of a hard cutoff -
-///      this is what makes the result tile seamlessly in-game) and run through a Sobel
-///      operator to produce the normal's X/Y/Z.
-///   3. Blur is driven continuously by a per-texture noise index (local gradient/contrast
-///      heuristic - see GetNoiseIndex), so a busy/noisy texture automatically gets a
-///      calmer normal map.
-///   4. `intensity` (materials.json, default 0.25 - deliberately toned down from the old
-///      always-near-maximum result) blends the computed normal toward flat-up
-///      (128,128,255); this is now a direct artist knob, independent of the noise index.
-///   5. The blue channel is always overwritten with parallax-occlusion-mapping height
+///   2. Gradients come from a Sobel operator sampled with wraparound indexing, so a pixel
+///      on any edge sees its real neighbor from the opposite edge and the result tiles
+///      seamlessly - which is what Bedrock's random rotation of isometric block textures
+///      needs, since any two edges can end up meeting each other.
+///   3. Those gradient magnitudes are normalized against this texture's *own* strong-edge
+///      reference (a high percentile of its non-flat gradients - see
+///      ResolveGradientReference), so a low-contrast texture still gets a well-formed
+///      normal map and a bold one doesn't saturate into a wall of maxed-out edges. This is
+///      what the old version lacked: with an unscaled gradient against a fixed Z of 1, a
+///      one-level difference and a full black-to-white edge both landed within a degree
+///      of each other, so nothing was ever weighted.
+///   4. The normalized magnitude then goes through a response curve whose exponent is
+///      driven by the per-texture noise index (GetNoiseIndex). A clean texture with
+///      well-defined edges gets an exponent above 1: small differences are suppressed and
+///      only genuinely big steps produce strong normals, so planks/bricks/tiles read
+///      crisply. A noisy texture gets an exponent below 1, lifting its small differences
+///      instead - subtle variation is all such a texture has to work with, and its edges
+///      were never well-defined to begin with.
+///   5. `intensity` (materials.json, default 0.25) scales the resulting slope *before* the
+///      normal is built and normalized, so it controls real surface steepness rather than
+///      fading an already-encoded normal toward flat. Every output stays a true unit
+///      normal at any intensity, and 0 gives a perfectly flat map.
+///   6. The blue channel is always overwritten with parallax-occlusion-mapping height
 ///      data sourced from the *raw* clustered heightmap, separately ceiling-maximized and
 ///      contrast-reduced (Bedrock RTX reads POM from the normal map's blue channel) - see
 ///      ApplyPomBlueChannel. This is on for every texture unconditionally; there's no
 ///      per-block opt-out at generation time. Downstream shader/renderer settings (e.g.
 ///      BetterRTX) are the right place to let a *player* disable reading POM data - that's
 ///      not something to gate here.
+///
+/// Deliberately does no blurring at any stage. Blurring the finished map can't respect the
+/// wraparound its gradients were built with - the blur's own edge handling doesn't wrap -
+/// so the outermost pixels stop matching the opposite edge. That's invisible on a statically
+/// placed tile, but Bedrock randomly rotates isometric block textures, and those mismatched
+/// edges then meet each other and show up as seams. The noise index shapes the response
+/// curve (step 4) instead, which calms a busy texture without ever touching edge continuity.
 /// </summary>
 public static class NormalMapGenerator
 {
-    // TODO(tuning): how aggressively noisy textures get blurred - untested against a
-    // broad enough set of textures yet.
-    private const double MinBlurSigma = 0.3;
-    private const double MaxBlurSigma = 1.6;
-
-    // TODO(tuning): how much of the Sobel input's height field comes from the mean-shift
-    // clustered heightmap vs. a ceiling-maximized flat greyscale of the color texture
-    // itself. Higher favors the clean, banded clustered result; lower brings back more of
-    // the original texture's own shading detail. Untested against a broad enough set of
-    // textures yet.
+    // TODO(tuning): how much of the height field comes from the mean-shift clustered
+    // heightmap vs. a ceiling-maximized flat greyscale of the color texture itself.
+    // Higher favors the clean, banded clustered result; lower brings back more of the
+    // original texture's own shading detail.
     private const double HeightmapBlendRatio = 0.75;
 
+    // TODO(tuning): the response curve. Exponent applied to each pixel's normalized
+    // gradient magnitude, interpolated by noise index: above 1 crushes small differences
+    // and rewards big ones, below 1 lifts small ones. If noisy textures come out too busy,
+    // raising NoisyTextureExponent toward 1.0 is the first lever to reach for.
+    private const double CleanTextureExponent = 2.2;  // noise index 0
+    private const double NoisyTextureExponent = 0.65; // noise index 100
+
+    // TODO(tuning): what counts as this texture's "full strength" edge - a percentile
+    // taken over its non-flat gradients only. Restricting the population that way matters:
+    // on a texture that's mostly empty space, including every flat pixel would drag the
+    // percentile down to nothing and then normalize the faint remainder up to full.
+    private const double GradientReferencePercentile = 0.95;
+    private const double GradientFlatThreshold = 1.0 / 255.0;
+    // Floor for that reference, so a genuinely flat texture's faint noise never gets
+    // normalized up into a full-strength normal map.
+    private const double MinGradientReference = 0.02;
+
+    // TODO(tuning): slope the shaped gradient reaches at normal.intensity = 1.0. At the
+    // 0.25 default that works out to a 45-degree tilt on a texture's strongest edges.
+    private const double MaxSlope = 4.0;
+
     // TODO(tuning): calibration ceiling for GetNoiseIndex - what average per-pixel
-    // brightness delta counts as "maximally noisy" (index 100). Untested against a broad
-    // enough set of textures yet.
+    // brightness delta counts as "maximally noisy" (index 100).
     private const double NoiseCalibrationCeiling = 40.0;
+
+    // Magnitude histogram used to resolve the percentile above without sorting every
+    // pixel - fixed cost regardless of texture size (animation strips get enormous).
+    private const int GradientHistogramBins = 1024;
+    private const double GradientHistogramMax = 2.0;
 
     public static Bitmap Generate(Bitmap colorBitmap, NormalParams normalParams)
     {
@@ -605,75 +643,81 @@ public static class NormalMapGenerator
         var h = colorBitmap.Height;
 
         var clustered = HeightmapGenerator.ComputeClusteredHeights(colorBitmap);
+        var height = BuildHeightField(colorBitmap, clustered);
 
-        var noiseIndex = GetNoiseIndex(colorBitmap);
-        var t = Math.Clamp(noiseIndex / 100.0, 0.0, 1.0);
-        var blurSigma = Lerp(MinBlurSigma, MaxBlurSigma, t);
-        var flatten = (float)(1.0 - Math.Clamp(normalParams.Intensity, 0.0, 1.0));
+        var gradX = new float[w, h];
+        var gradY = new float[w, h];
+        ComputeSobelGradients(height, w, h, gradX, gradY);
 
-        using var blended = BuildBlendedGreyBitmap(colorBitmap, clustered);
-        using var tiled = BuildTiledCopy(blended);
-        var raw = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+        var reference = ResolveGradientReference(gradX, gradY, w, h);
 
-        using (var tiledFb = new FastBitmap(tiled, writable: false))
-        using (var rawFb = new FastBitmap(raw, writable: true))
+        var noise = Math.Clamp(GetNoiseIndex(colorBitmap) / 100.0, 0.0, 1.0);
+        var exponent = Lerp(CleanTextureExponent, NoisyTextureExponent, noise);
+        var strength = MaxSlope * Math.Clamp(normalParams.Intensity, 0.0, 1.0);
+
+        var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+
+        using (var outFb = new FastBitmap(output, writable: true))
         {
             for (var y = 0; y < h; y++)
             {
                 for (var x = 0; x < w; x++)
                 {
-                    var normal = CalculateNormal(tiledFb, w + x, h + y);
-                    normal = Vector3.Normalize(normal);
+                    double gx = gradX[x, y];
+                    double gy = gradY[x, y];
+                    var magnitude = Math.Sqrt(gx * gx + gy * gy);
 
-                    // CalculateNormal's (-dx, -dy, 1) is already DirectX-convention (the
-                    // format Bedrock RTX expects) mapped straight to (R, G, B) - no axis
-                    // swap or extra sign flip belongs here. An earlier version of this code
-                    // transposed X and Y trying to "fix" this, which was invisible on a
-                    // symmetric bump's main diagonal but swapped the other two corners -
-                    // don't reintroduce it.
-                    var r = (normal.X + 1f) * 0.5f * 255f;
-                    var g = (normal.Y + 1f) * 0.5f * 255f;
-                    var b = (normal.Z + 1f) * 0.5f * 255f;
+                    double slopeX = 0, slopeY = 0;
+                    if (magnitude > 0)
+                    {
+                        // Shape the magnitude, keep the direction.
+                        var shaped = Math.Pow(Math.Clamp(magnitude / reference, 0.0, 1.0), exponent) * strength;
+                        slopeX = gx / magnitude * shaped;
+                        slopeY = gy / magnitude * shaped;
+                    }
 
-                    r = r * (1 - flatten) + 128f * flatten;
-                    g = g * (1 - flatten) + 128f * flatten;
-                    b = b * (1 - flatten) + 255f * flatten;
+                    // (-slopeX, -slopeY, 1) is already DirectX convention (the format
+                    // Bedrock RTX expects) mapped straight to (R, G, B) - no axis swap or
+                    // extra sign flip belongs here. An earlier version transposed X and Y
+                    // trying to "fix" this, which was invisible on a symmetric bump's main
+                    // diagonal but swapped the other two corners - don't reintroduce it.
+                    var normal = Vector3.Normalize(new Vector3((float)-slopeX, (float)-slopeY, 1f));
 
-                    rawFb[x, y] = Color.FromArgb(
+                    outFb[x, y] = Color.FromArgb(
                         255,
-                        (byte)Math.Clamp((int)r, 0, 255),
-                        (byte)Math.Clamp((int)g, 0, 255),
-                        (byte)Math.Clamp((int)b, 0, 255));
+                        EncodeChannel(normal.X),
+                        EncodeChannel(normal.Y),
+                        EncodeChannel(normal.Z));
                 }
             }
         }
 
-        var blurred = BlurWithMagick(raw, blurSigma);
-        raw.Dispose();
-
-        ApplyPomBlueChannel(blurred, clustered);
+        ApplyPomBlueChannel(output, clustered);
 
         if (normalParams.Invert)
-            InvertRedGreenInPlace(blurred);
+            InvertRedGreenInPlace(output);
 
-        return blurred;
+        return output;
     }
 
+    private static byte EncodeChannel(float component)
+        => (byte)Math.Clamp((int)Math.Round((component + 1f) * 0.5f * 255f), 0, 255);
+
     /// <summary>
-    /// Combines the mean-shift clustered heightmap (raw, untouched here) with a
+    /// Blends the mean-shift clustered heightmap (raw, untouched here) with a
     /// ceiling-maximized flat greyscale of the color texture, weighted by
-    /// HeightmapBlendRatio (regular linear blend, not overlay) - this is the "somewhat
-    /// clean greyscale image" that becomes the Sobel input, giving normal generation a
-    /// proper height-field basis instead of raw color brightness. The ceiling-maximize
-    /// step here only ever touches the color-texture greyscale computed in this method -
-    /// the clustered heightmap's own separate ceiling-maximize, for the POM blue channel,
-    /// happens later in ApplyPomBlueChannel and has nothing to do with this blend.
+    /// HeightmapBlendRatio (regular linear blend, not overlay), into the single 0-1 height
+    /// field the gradients are measured against. Kept as floats rather than round-tripped
+    /// through an 8-bit bitmap, so the gradient pass sees the real blend instead of a
+    /// re-quantized copy of it. The ceiling-maximize step here only ever touches the
+    /// color-texture greyscale computed in this method - the clustered heightmap's own
+    /// separate ceiling-maximize, for the POM blue channel, happens later in
+    /// ApplyPomBlueChannel and has nothing to do with this blend.
     /// </summary>
-    private static Bitmap BuildBlendedGreyBitmap(Bitmap colorBitmap, int[,] clustered)
+    private static float[,] BuildHeightField(Bitmap colorBitmap, int[,] clustered)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
-        var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
         var grey = new int[w, h];
         var maxVal = 0;
@@ -693,21 +737,119 @@ public static class NormalMapGenerator
         }
 
         var scale = maxVal > 0 ? 255.0 / maxVal : 1.0;
+        var height = new float[w, h];
 
-        using var outFb = new FastBitmap(output, writable: true);
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
             {
-                var maximizedGrey = Math.Clamp((int)Math.Round(grey[x, y] * scale), 0, 255);
-                var blendedValue = (byte)Math.Clamp(
-                    (int)Math.Round(clustered[x, y] * HeightmapBlendRatio + maximizedGrey * (1.0 - HeightmapBlendRatio)),
-                    0, 255);
-                outFb[x, y] = Color.FromArgb(255, blendedValue, blendedValue, blendedValue);
+                var maximizedGrey = Math.Clamp(grey[x, y] * scale, 0.0, 255.0);
+                var blended = clustered[x, y] * HeightmapBlendRatio + maximizedGrey * (1.0 - HeightmapBlendRatio);
+                height[x, y] = (float)(blended / 255.0);
             }
         }
 
-        return output;
+        return height;
+    }
+
+    /// <summary>
+    /// Sobel gradients over the height field, sampled with wraparound indexing so an edge
+    /// pixel sees its real neighbor from the opposite edge - that's what makes the result
+    /// tile seamlessly, and it replaces the old approach of building a 3x3-tiled copy of
+    /// the whole bitmap just to read nine neighbors per pixel.
+    ///
+    /// Output is in height-per-pixel units - a full 0-to-1 step across one pixel boundary
+    /// reads as exactly 1.0 - which is what lets MaxSlope and MinGradientReference be
+    /// expressed as real slopes rather than arbitrary kernel-sum numbers.
+    ///
+    /// (Scharr was measured here as an alternative, on the theory that its rotational
+    /// symmetry would matter for the isometric textures Bedrock randomly rotates. It
+    /// didn't: the two are identical on smooth gradients - both are exact for linear
+    /// signals - and on hard pixel-art edges Scharr came out marginally worse, with both
+    /// dominated by the ~32% anisotropy inherent to staircasing a diagonal onto a pixel
+    /// grid. Not worth the change.)
+    /// </summary>
+    private static void ComputeSobelGradients(float[,] height, int w, int h, float[,] gradX, float[,] gradY)
+    {
+        ReadOnlySpan<float> kx = stackalloc float[] { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
+        ReadOnlySpan<float> ky = stackalloc float[] { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
+        const float weightSum = 4f; // 1 + 2 + 1 down each signed side of the kernel
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                float dx = 0, dy = 0;
+                var k = 0;
+
+                for (var j = -1; j <= 1; j++)
+                {
+                    for (var i = -1; i <= 1; i++)
+                    {
+                        var nx = ((x + i) % w + w) % w;
+                        var ny = ((y + j) % h + h) % h;
+                        var v = height[nx, ny];
+                        dx += v * kx[k];
+                        dy += v * ky[k];
+                        k++;
+                    }
+                }
+
+                gradX[x, y] = dx / weightSum;
+                gradY[x, y] = dy / weightSum;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The gradient magnitude this texture's "full strength" edges sit at - a high
+    /// percentile over its non-flat pixels only. Using the texture's own edges as the
+    /// reference is what lets a soft, low-contrast texture still produce a well-formed
+    /// normal map while a very bold one doesn't collapse into uniformly maxed-out edges,
+    /// and it's what gives the response curve a meaningful 0-1 range to shape in the first
+    /// place. Excluding flat pixels matters: on a texture that's mostly empty space,
+    /// counting every flat pixel would drag any percentile to nothing, and its faint
+    /// remainder would then normalize up to full strength.
+    ///
+    /// Uses a fixed-size histogram rather than sorting every magnitude, so cost doesn't
+    /// scale with the (occasionally enormous - animation strips run to hundreds of
+    /// thousands of pixels) texture size.
+    /// </summary>
+    private static double ResolveGradientReference(float[,] gradX, float[,] gradY, int w, int h)
+    {
+        var histogram = new int[GradientHistogramBins];
+        var counted = 0;
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                double gx = gradX[x, y];
+                double gy = gradY[x, y];
+                var magnitude = Math.Sqrt(gx * gx + gy * gy);
+                if (magnitude <= GradientFlatThreshold) continue;
+
+                var bin = (int)(magnitude / GradientHistogramMax * (GradientHistogramBins - 1));
+                histogram[Math.Clamp(bin, 0, GradientHistogramBins - 1)]++;
+                counted++;
+            }
+        }
+
+        if (counted == 0) return MinGradientReference;
+
+        var target = (long)Math.Ceiling(counted * GradientReferencePercentile);
+        long running = 0;
+
+        for (var i = 0; i < GradientHistogramBins; i++)
+        {
+            running += histogram[i];
+            if (running < target) continue;
+
+            var magnitude = (i + 0.5) / (GradientHistogramBins - 1) * GradientHistogramMax;
+            return Math.Max(magnitude, MinGradientReference);
+        }
+
+        return Math.Max(GradientHistogramMax, MinGradientReference);
     }
 
     // Built-in (not a materials.json knob) default POM contrast reduction - the mean-shift
@@ -751,44 +893,6 @@ public static class NormalMapGenerator
                 normalFb[x, y] = Color.FromArgb(c.A, c.R, c.G, pom);
             }
         }
-    }
-
-    private static Bitmap BuildTiledCopy(Bitmap source)
-    {
-        var w = source.Width;
-        var h = source.Height;
-        var tiled = new Bitmap(w * 3, h * 3, PixelFormat.Format32bppArgb);
-
-        using var g = Graphics.FromImage(tiled);
-        for (var ty = 0; ty < 3; ty++)
-            for (var tx = 0; tx < 3; tx++)
-                g.DrawImage(source, tx * w, ty * h);
-
-        return tiled;
-    }
-
-    private static Vector3 CalculateNormal(FastBitmap tiled, int x, int y)
-    {
-        ReadOnlySpan<float> gx = stackalloc float[] { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
-        ReadOnlySpan<float> gy = stackalloc float[] { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
-
-        float dx = 0, dy = 0;
-        var k = 0;
-        for (var j = -1; j <= 1; j++)
-        {
-            for (var i = -1; i <= 1; i++)
-            {
-                // x,y is always deep inside the tiled canvas (one full real tile on every
-                // side), so a +-1 kernel offset never leaves tiled bounds - no wrap needed.
-                var c = tiled[x + i, y + j];
-                var intensity = (c.R + c.G + c.B) / 3f;
-                dx += intensity * gx[k];
-                dy += intensity * gy[k];
-                k++;
-            }
-        }
-
-        return new Vector3(-dx, -dy, 1);
     }
 
     /// <summary>
@@ -838,17 +942,6 @@ public static class NormalMapGenerator
 
         var averageDelta = sampleCount > 0 ? totalDelta / sampleCount : 0;
         return (int)Math.Clamp(averageDelta / NoiseCalibrationCeiling * 100.0, 0, 100);
-    }
-
-    private static Bitmap BlurWithMagick(Bitmap bitmap, double sigma)
-    {
-        using var ms = new MemoryStream();
-        bitmap.Save(ms, ImageFormat.Png);
-        ms.Position = 0;
-
-        using var magickImage = new MagickImage(ms);
-        magickImage.Blur(0, sigma);
-        return magickImage.ToBitmap();
     }
 
     private static void InvertRedGreenInPlace(Bitmap bitmap)
