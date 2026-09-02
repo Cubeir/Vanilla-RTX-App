@@ -66,25 +66,30 @@
                     Background="Transparent"
                     IsHitTestVisible="False" />
 
-            <!-- Titlebar Buttons -->
-            <Border Margin="-1,-1,16,0"
+            <!-- ══ TITLEBAR ACTIONS - post-license ═════════════════════════════════
+                 One of the two containers that make up the post-license UI (the other is
+                 MainGrid). Everything in here is hidden until the license is accepted, and
+                 children inherit that, so a new titlebar control added inside this Border
+                 needs NO code in ShowMainContent - just drop it in.
+                 ═══════════════════════════════════════════════════════════════════ -->
+            <Border x:Name="TitleBarActions"
+                    Margin="-1,-1,16,0"
                     VerticalAlignment="Top"
                     HorizontalAlignment="Left"
                     Height="34"
-                    Width="Auto">
+                    Width="Auto"
+                    Visibility="Collapsed">
                 <Grid Background="Transparent"
                       BorderBrush="Transparent"
                       BorderThickness="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
-                        <!-- Button -->
+                        <!-- Always-present buttons -->
                         <ColumnDefinition Width="Auto" />
-                        <!-- Separator -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Button -->
+                        <!-- Debug-only group -->
                     </Grid.ColumnDefinitions>
 
-                    <!-- Chat Button -->
+                    <!-- Info Button -->
                     <Button x:Name="InfoButton"
                             Grid.Column="0"
                             FontFamily="{ThemeResource SymbolThemeFontFamily}"
@@ -100,29 +105,32 @@
                             ToolTipService.ToolTip="Learn more..."
                             IsTextScaleFactorEnabled="False" />
 
-                    <!-- Separator -->
-                    <Border Grid.Column="1"
-                            Width="1"
-                            Margin="4,6,4,6"
-                            Visibility="Collapsed"
-                            x:Name="TheSeparatorBehindDevOnlyTitleBarButton"
-                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                    <!-- Debug builds only. Same idea one level down: dev-only titlebar
+                         controls go inside this group and the single #if DEBUG line in
+                         ShowMainContent already covers them. -->
+                    <StackPanel x:Name="DevOnlyTitleBarActions"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Visibility="Collapsed">
 
-                    <!-- Appears in debug builds only: bootstrap materials.json from an already-PBR'd pack.
-                     Visibility is forced Visible in code-behind under #if DEBUG only. -->
-                    <Button x:Name="GenerateMaterialsConfigButton"
-                            Grid.Column="2"
-                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Style="{ThemeResource SubtleButtonStyle}"
-                            Content="&#xEC7A;"
-                            Width="40"
-                            Height="35"
-                            CornerRadius="0"
-                            FontSize="16"
-                            Visibility="Collapsed"
-                            Click="GenerateMaterialsConfigButton_Click"
-                            ToolTipService.ToolTip="DEVELOPER TOOL FOR APPENDING OR GENERATING A BOOTSTRAP FOR MATERIALS.JSON FILE FROM AN EXISTING PBR TEXTURE PACK."
-                            IsTextScaleFactorEnabled="False" />
+                        <!-- Separator -->
+                        <Border Width="1"
+                                Margin="4,6,4,6"
+                                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                        <!-- Bootstrap materials.json from an already-PBR'd pack. -->
+                        <Button x:Name="GenerateMaterialsConfigButton"
+                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                Style="{ThemeResource SubtleButtonStyle}"
+                                Content="&#xEC7A;"
+                                Width="40"
+                                Height="35"
+                                CornerRadius="0"
+                                FontSize="16"
+                                Click="GenerateMaterialsConfigButton_Click"
+                                ToolTipService.ToolTip="DEVELOPER TOOL FOR APPENDING OR GENERATING A BOOTSTRAP FOR MATERIALS.JSON FILE FROM AN EXISTING PBR TEXTURE PACK."
+                                IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
                 </Grid>
             </Border>
             
@@ -261,9 +269,18 @@
             </StackPanel>
         </Grid>
 
-        <!-- ═══════════════════════════════════════════════════════ -->
-        <!--  MAIN CONTENT GRID (Shown after license accept)         -->
-        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!--  MAIN CONTENT GRID - post-license                                   -->
+        <!--                                                                     -->
+        <!--  The second of the two post-license containers (TitleBarActions up  -->
+        <!--  in the titlebar is the other). Everything the user sees after      -->
+        <!--  accepting the license lives in one of those two, and children       -->
+        <!--  inherit the container's visibility - so adding a control here needs -->
+        <!--  no matching line in ShowMainContent. Don't collapse new controls    -->
+        <!--  individually unless they're meant to stay hidden for some OTHER     -->
+        <!--  reason (AbortButton, the progress bar and status text do that -     -->
+        <!--  they're driven by generation state, not by license state).          -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
         <Grid x:Name="MainGrid"
               Visibility="Collapsed"
               Background="Transparent"

@@ -311,18 +311,32 @@ public sealed partial class Alchitex : Window
     // ── Reveal main content ───────────────────────────────────────────────────
 
     // Main content are hidden before license is accepted
-    private async void ShowMainContent()
+    /// <summary>
+    /// Reveals the app once the license has been accepted.
+    ///
+    /// The whole post-license UI lives inside exactly two containers - TitleBarActions and
+    /// MainGrid - and children inherit a collapsed parent, so revealing it is those two
+    /// lines and only those two lines. Adding a new control after the license screen needs
+    /// nothing here: put it inside either container and it comes along for free. Please
+    /// keep it that way rather than collapsing new controls individually and re-showing
+    /// them here, which is what this used to do.
+    ///
+    /// The only things that still belong in this method are ones that aren't about license
+    /// state at all: title text, restoring persisted control values, and the debug-only
+    /// group (a different axis entirely - build configuration, not license acceptance).
+    /// </summary>
+    private void ShowMainContent()
     {
         TitleBarText.Text = "RTX Reactor";
-        InfoButton.Visibility = Visibility.Visible;
+
+        TitleBarActions.Visibility = Visibility.Visible;
         MainGrid.Visibility = Visibility.Visible;
 
         SecondaryPbrModeComboBox.SelectedIndex = AlchitexVariables.Persistent.SecondaryPbrModeIndex;
         AddFogToggle.IsChecked = AlchitexVariables.Persistent.AddFogEnabled;
 
 #if DEBUG
-        GenerateMaterialsConfigButton.Visibility = Visibility.Visible;
-        TheSeparatorBehindDevOnlyTitleBarButton.Visibility = Visibility.Visible;
+        DevOnlyTitleBarActions.Visibility = Visibility.Visible;
 #endif
     }
 
