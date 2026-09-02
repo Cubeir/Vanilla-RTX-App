@@ -295,6 +295,114 @@ public static class TextureSetOrchestrator
 
 #endregion
 
+#region Shared Colour Analysis
+
+/// <summary>
+/// The single place the "what counts as real colour data" rule lives, and the
+/// contrast-maximized greyscale every generator derives from it. MERS, heightmap and
+/// normal generation all reduce a colour texture to the same flat-average greyscale and
+/// all need the same answer to the same question - which pixels are allowed a *vote* in
+/// what that texture's value range actually is - so it lives here rather than being
+/// re-derived (and drifting) in three places.
+/// </summary>
+public static class ColorField
+{
+    /// <summary>
+    /// A pixel counts toward a texture's value domain if it's not fully transparent
+    /// (opacity &gt;= 1), or - for the fully-transparent case - if its underlying colour
+    /// isn't one of the two conventional "background padding" fills (pure black or pure
+    /// white at alpha 0). Texture authors routinely leave real colour data under a
+    /// collapsed alpha channel too (e.g. grass_side's dirt portion, transparent so the
+    /// game skips tinting it, but still real colour) - that data should still count.
+    ///
+    /// Excluded pixels are only denied a vote in the domain; they still get a real output
+    /// value from whatever stretch that domain feeds, clamped to the nearest extreme.
+    /// </summary>
+    public static bool IsRealColorData(Color c)
+    {
+        if (c.A >= 1) return true;
+
+        var isPureBlack = c.R == 0 && c.G == 0 && c.B == 0;
+        var isPureWhite = c.R == 255 && c.G == 255 && c.B == 255;
+        return !(isPureBlack || isPureWhite);
+    }
+
+    /// <summary>
+    /// Flat-average greyscale ((R+G+B)/3, deliberately not luminosity-weighted - the same
+    /// "value" convention across every generator) for every pixel, plus the min/max of
+    /// that greyscale taken over real-colour pixels only. Callers that stretch into their
+    /// own arbitrary target ranges (MersGenerator) want this raw form; callers that just
+    /// want the texture normalized to full range want BuildContrastMaximized below.
+    /// </summary>
+    public static (int[,] Grey, int Min, int Max) ComputeGreyField(Bitmap colorBitmap)
+    {
+        var w = colorBitmap.Width;
+        var h = colorBitmap.Height;
+        var grey = new int[w, h];
+
+        int min = 255, max = 0;
+        var sawRealPixel = false;
+
+        using (var colorFb = new FastBitmap(colorBitmap, writable: false))
+        {
+            for (var y = 0; y < h; y++)
+            {
+                for (var x = 0; x < w; x++)
+                {
+                    var c = colorFb[x, y];
+                    var g = (c.R + c.G + c.B) / 3;
+                    grey[x, y] = g;
+
+                    if (!ColorField.IsRealColorData(c)) continue;
+
+                    sawRealPixel = true;
+                    if (g < min) min = g;
+                    if (g > max) max = g;
+                }
+            }
+        }
+
+        // Nothing real anywhere (a fully blank/padding-only texture) - fall back to the
+        // full range so the stretch degenerates to identity instead of dividing by zero.
+        if (!sawRealPixel) { min = 0; max = 255; }
+
+        return (grey, min, max);
+    }
+
+    /// <summary>
+    /// The contrast-maximized greyscale: flat-average grey stretched so the darkest real
+    /// pixel lands at 0.0 and the brightest at 1.0, everything between interpolated.
+    /// Pixels outside the real-colour domain still get a value, clamped to whichever end
+    /// they fall past.
+    ///
+    /// Note this is a *full* min-to-max stretch, distinct from the ceiling-maximize used
+    /// for POM data (ApplyPomBlueChannel), which deliberately only scales up so the
+    /// brightest pixel hits the top while leaving the dark end where it sits.
+    /// </summary>
+    public static float[,] BuildContrastMaximized(Bitmap colorBitmap)
+    {
+        var w = colorBitmap.Width;
+        var h = colorBitmap.Height;
+        var (grey, min, max) = ComputeGreyField(colorBitmap);
+
+        var result = new float[w, h];
+        var range = max - min;
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var t = range > 0 ? (grey[x, y] - min) / (double)range : 0.5;
+                result[x, y] = (float)Math.Clamp(t, 0.0, 1.0);
+            }
+        }
+
+        return result;
+    }
+}
+
+#endregion
+
 #region MERS Generation
 
 /// <summary>
@@ -317,7 +425,7 @@ public static class TextureSetOrchestrator
 ///      min/max range, and write that as the output alpha.
 ///
 /// The min/max *domain* used for every stretch above (steps 2 and 4, and the recursive
-/// pass's own sub-stretch) only ever considers "real" pixels - see IsRealColorData below -
+/// pass's own sub-stretch) only ever considers "real" pixels - see ColorField.IsRealColorData -
 /// so background junk (typically a fully-black or fully-white fill left under a fully
 /// collapsed alpha channel, the common way texture pack authors pad cutout regions) can't
 /// artificially widen the domain and flatten the contrast of the actual visible content.
@@ -332,23 +440,6 @@ public static class MersGenerator
     // saturated color can, so it's capped well below full (255/3) rather than 0 or 255.
     // Kept from the legacy heuristic this was ported from.
     private const int WhitePixelMaskOpacity = 85;
-
-    /// <summary>
-    /// A pixel counts toward the contrast-stretch domain if it's not fully transparent
-    /// (opacity &gt;= 1), or - for the fully-transparent case - if its underlying color
-    /// isn't one of the two conventional "background padding" fills (pure black or pure
-    /// white at alpha 0). Texture authors routinely leave real color data under a
-    /// collapsed alpha channel too (e.g. grass_side's dirt portion, transparent so the
-    /// game skips tinting it, but still real color) - that data should still count.
-    /// </summary>
-    private static bool IsRealColorData(Color c)
-    {
-        if (c.A >= 1) return true;
-
-        var isPureBlack = c.R == 0 && c.G == 0 && c.B == 0;
-        var isPureWhite = c.R == 255 && c.G == 255 && c.B == 255;
-        return !(isPureBlack || isPureWhite);
-    }
 
     public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material)
     {
@@ -376,7 +467,7 @@ public static class MersGenerator
                     var l = (int)Math.Round(0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B);
                     luminosity[x, y] = l;
 
-                    if (!IsRealColorData(c)) continue;
+                    if (!ColorField.IsRealColorData(c)) continue;
 
                     if (g < greyMin) greyMin = g;
                     if (g > greyMax) greyMax = g;
@@ -437,7 +528,7 @@ public static class MersGenerator
                     if (opacity <= 0) continue;
 
                     anyMasked = true;
-                    if (!IsRealColorData(c)) continue;
+                    if (!ColorField.IsRealColorData(c)) continue;
 
                     var g = grey[x, y];
                     if (g < subGreyMin) subGreyMin = g;
@@ -719,33 +810,20 @@ public static class NormalMapGenerator
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
 
-        var grey = new int[w, h];
-        var maxVal = 0;
-
-        using (var colorFb = new FastBitmap(colorBitmap, writable: false))
-        {
-            for (var y = 0; y < h; y++)
-            {
-                for (var x = 0; x < w; x++)
-                {
-                    var c = colorFb[x, y];
-                    var g = (c.R + c.G + c.B) / 3;
-                    grey[x, y] = g;
-                    if (g > maxVal) maxVal = g;
-                }
-            }
-        }
-
-        var scale = maxVal > 0 ? 255.0 / maxVal : 1.0;
+        // Shared, alpha-aware contrast maximization (ColorField) rather than a local
+        // greyscale pass - background padding under a collapsed alpha channel gets no vote
+        // in the range here for exactly the same reason it gets none in MERS generation,
+        // and both now go through one implementation instead of two that could drift.
+        var maximizedGrey = ColorField.BuildContrastMaximized(colorBitmap);
         var height = new float[w, h];
 
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
             {
-                var maximizedGrey = Math.Clamp(grey[x, y] * scale, 0.0, 255.0);
-                var blended = clustered[x, y] * HeightmapBlendRatio + maximizedGrey * (1.0 - HeightmapBlendRatio);
-                height[x, y] = (float)(blended / 255.0);
+                var clusteredNormalized = clustered[x, y] / 255.0;
+                var blended = clusteredNormalized * HeightmapBlendRatio + maximizedGrey[x, y] * (1.0 - HeightmapBlendRatio);
+                height[x, y] = (float)Math.Clamp(blended, 0.0, 1.0);
             }
         }
 
@@ -998,7 +1076,16 @@ public static class HeightmapGenerator
     private const int MeanShiftIterations = 5;
     private const int SpatialRadius = 2;
     private const double SpatialSigma = 1.5;
-    private const double RangeBandwidth = 24.0;
+
+    // TODO(tuning): how far apart two values can be and still get pulled together. This is
+    // the constant that decides whether a feature survives, so it errs deliberately narrow:
+    // a bandwidth wider than a real feature's separation swallows that feature, and once
+    // swallowed nothing downstream can recover it - the merged region resolves to a single
+    // averaged level, gap gone. Measured on a plank texture whose mortar line sat 21 levels
+    // below the plank face: at 24 the line was bridged and came out at the same height as
+    // the wood; at 12 it separated cleanly. Erring narrow is the safe direction now that
+    // the merge pass below collapses whatever over-segmentation that causes.
+    private const double RangeBandwidth = 12.0;
 
     // Above this pixel count, ComputeClusteredHeights skips the spatial neighbor search
     // (which scales with W*H*R^2*iterations) and falls back to range-only clustering off
@@ -1015,6 +1102,21 @@ public static class HeightmapGenerator
     // texture that would otherwise land on many clusters gets merged down harder to reach
     // this; a calm texture that already converged to fewer is untouched. TODO(tuning).
     private const int MaxClusters = 6;
+
+    // TODO(tuning): ceiling on how far the placed cluster levels get stretched back out to
+    // fill 0-255. Clusters are placed at their real mean brightness, so a texture whose
+    // bands genuinely span the range barely gets stretched at all; this caps what happens
+    // at the other extreme, where a nearly-flat texture's few barely-separated bands would
+    // otherwise be blown out into a full-depth staircase they never earned.
+    private const double MaxHeightStretch = 3.0;
+
+    // Pairing mean-shift with a fixed-step quantization of the same values, and keeping
+    // only regions the two agree on, was tried here as a guard against mean-shift bridging
+    // features it shouldn't. It didn't survive measurement: fixed band boundaries sit at
+    // arbitrary values, so on a plank texture whose mortar line straddled one, the line
+    // came out as two different heights - worse than the problem it was meant to fix - and
+    // once the bandwidth below was narrowed the guard had nothing left to catch anyway.
+    // Narrowing the bandwidth is the real cure; the merge pass makes it safe.
 
     public static Bitmap Generate(Bitmap colorBitmap, HeightmapParams heightmapParams)
     {
@@ -1071,24 +1173,23 @@ public static class HeightmapGenerator
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
 
+        // Contrast-maximized up front (and alpha-aware - background padding under a
+        // collapsed alpha channel gets no vote in the range, see ColorField), so the
+        // bandwidth/tolerance constants below mean the same thing on a washed-out texture
+        // as on a punchy one instead of drifting with whatever range the source happened
+        // to occupy.
+        var normalized = ColorField.BuildContrastMaximized(colorBitmap);
+
         var grey = new double[w, h];
-        using (var colorFb = new FastBitmap(colorBitmap, writable: false))
-        {
-            for (var y = 0; y < h; y++)
-            {
-                for (var x = 0; x < w; x++)
-                {
-                    var c = colorFb[x, y];
-                    grey[x, y] = (c.R + c.G + c.B) / 3.0;
-                }
-            }
-        }
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+                grey[x, y] = normalized[x, y] * 255.0;
 
         var converged = (long)w * h <= SpatialFallbackPixelCount
             ? ConvergeSpatial(grey, w, h)
             : ConvergeRangeOnly(grey, w, h);
 
-        return ClusterAndRank(converged, grey, w, h);
+        return ClusterAndPlace(converged, grey, w, h);
     }
 
     /// <summary>Full joint spatial+range mean-shift filtering: each pixel's value is
@@ -1189,9 +1290,10 @@ public static class HeightmapGenerator
     /// ClusterMergeTolerance of their neighbor in sorted order are folded together), caps
     /// the result at MaxClusters by repeatedly merging whichever two brightness-adjacent
     /// clusters are closest together (weighted by pixel count) until at or under the cap,
-    /// then assigns each surviving cluster an evenly-spaced output level across 0-255 by
-    /// brightness rank.</summary>
-    private static int[,] ClusterAndRank(double[,] converged, double[,] original, int w, int h)
+    /// then places each surviving cluster at its own mean brightness - see the comment at
+    /// the placement step for why placing by value rather than by rank is what makes
+    /// plank/mortar-style textures come out right.</summary>
+    private static int[,] ClusterAndPlace(double[,] converged, double[,] original, int w, int h)
     {
         var distinctValues = new SortedSet<double>();
         for (var y = 0; y < h; y++)
@@ -1234,16 +1336,16 @@ public static class HeightmapGenerator
         for (var i = 0; i < clusterCount; i++)
             clusterMeanBrightness[i] = brightnessCount[i] > 0 ? brightnessSum[i] / brightnessCount[i] : 0;
 
-        // Brightness-sorted list of surviving buckets, each carrying which original
-        // cluster ids it absorbed. Starts as one bucket per cluster; merging two adjacent
-        // buckets (always adjacent in this sorted order, since nothing ever reorders) is
-        // just a local list splice - cheap even repeated down to MaxClusters.
+        // Brightness-sorted list of surviving buckets, each carrying which original region
+        // ids it absorbed. Starts as one bucket per region; merging two adjacent buckets
+        // (always adjacent in this sorted order, since nothing ever reorders) is just a
+        // local list splice - cheap even repeated all the way down.
         var order = Enumerable.Range(0, clusterCount).OrderBy(i => clusterMeanBrightness[i]).ToList();
         var bucketMeans = order.Select(i => clusterMeanBrightness[i]).ToList();
         var bucketCounts = order.Select(i => brightnessCount[i]).ToList();
         var bucketMembers = order.Select(i => new List<int> { i }).ToList();
 
-        while (bucketMeans.Count > MaxClusters)
+        while (bucketMeans.Count > 1)
         {
             var mergeAt = 0;
             var smallestGap = double.MaxValue;
@@ -1252,6 +1354,12 @@ public static class HeightmapGenerator
                 var gap = bucketMeans[i + 1] - bucketMeans[i];
                 if (gap < smallestGap) { smallestGap = gap; mergeAt = i; }
             }
+
+            // Two reasons to keep merging: still over the cap, or the two closest levels
+            // are near enough that keeping them apart would just be two nearly-identical
+            // heights sitting next to each other - which is the definition of a heightmap
+            // that reads as a mess in game. Under the cap AND well separated means done.
+            if (bucketMeans.Count <= MaxClusters && smallestGap > ClusterMergeTolerance) break;
 
             var combinedCount = bucketCounts[mergeAt] + bucketCounts[mergeAt + 1];
             bucketMeans[mergeAt] = combinedCount > 0
@@ -1265,20 +1373,47 @@ public static class HeightmapGenerator
             bucketMembers.RemoveAt(mergeAt + 1);
         }
 
-        var finalRankOf = new int[clusterCount];
-        for (var finalRank = 0; finalRank < bucketMembers.Count; finalRank++)
-            foreach (var originalId in bucketMembers[finalRank])
-                finalRankOf[originalId] = finalRank;
+        var bucketOf = new int[clusterCount];
+        for (var bucket = 0; bucket < bucketMembers.Count; bucket++)
+            foreach (var originalId in bucketMembers[bucket])
+                bucketOf[originalId] = bucket;
 
-        var finalCount = bucketMeans.Count;
+        // Each surviving bucket sits at its own real mean brightness, NOT at an evenly
+        // spaced slot for its rank. That distinction is the whole point: rank spacing
+        // throws away how far apart the clusters actually were, so on a plank texture the
+        // handful of near-identical wood-grain bands (means maybe 8 levels apart) would
+        // get pushed the same distance apart as the genuinely deep mortar gap 90 levels
+        // below them - manufacturing several big height steps out of grain noise while
+        // under-selling the one step that mattered. Placing buckets by value keeps the gap
+        // low, keeps the grain bands nearly coincident, and still hands back flat
+        // plateaus, because every pixel in a bucket resolves to the same single level.
+        var levels = new double[bucketMeans.Count];
+        for (var i = 0; i < bucketMeans.Count; i++)
+            levels[i] = bucketMeans[i];
+
+        var lowest = levels.Min();
+        var highest = levels.Max();
+        var span = highest - lowest;
+
+        // Restore full range, but only up to MaxHeightStretch. A texture whose buckets
+        // already span most of the range barely moves; one whose buckets sit a few levels
+        // apart stays subtle instead of being blown out into a full-depth staircase it
+        // never earned. Linear either way, so the proportions between buckets survive.
+        var stretch = span > 0 ? Math.Min(255.0 / span, MaxHeightStretch) : 0.0;
+
+        var placed = new int[levels.Length];
+        for (var i = 0; i < levels.Length; i++)
+        {
+            var value = span > 0 ? (levels[i] - lowest) * stretch : LevelMid;
+            placed[i] = (int)Math.Clamp(Math.Round(value), 0, 255);
+        }
+
         var result = new int[w, h];
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
             {
-                var r = finalRankOf[pixelCluster[x, y]];
-                var level = finalCount > 1 ? (int)Math.Round(r / (double)(finalCount - 1) * 255.0) : 128;
-                result[x, y] = Math.Clamp(level, 0, 255);
+                result[x, y] = placed[bucketOf[pixelCluster[x, y]]];
             }
         }
 
