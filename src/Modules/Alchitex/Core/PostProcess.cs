@@ -88,26 +88,30 @@ public static class PostProcess
 
         var nameNoExt = Path.GetFileNameWithoutExtension(imagePath);
         var directory = Path.GetDirectoryName(imagePath)!;
-        var greyPath = nameNoExt.EndsWith("_grey", StringComparison.OrdinalIgnoreCase)
-            ? imagePath
-            : Path.Combine(directory, nameNoExt + "_grey.tga");
+        // Always .tga regardless of the source's own extension - highest game priority
+        // (.tga > .png > .jpg > .jpeg), and avoids ever writing TGA-formatted bytes into a
+        // non-.tga-named file when the source was already "_grey"-named but not itself a
+        // .tga (e.g. a pack's own water_still_grey.png).
+        var greyNameNoExt = nameNoExt.EndsWith("_grey", StringComparison.OrdinalIgnoreCase) ? nameNoExt : nameNoExt + "_grey";
+        var greyPath = Path.Combine(directory, greyNameNoExt + ".tga");
 
         Helpers.WriteImageAsTGA(output, greyPath);
     }
 
     /// <summary>
-    /// Tries to make sure `blocksFolder` ends up with both a water_still_grey and a
-    /// water_flow_grey texture, per texture independently (not atomic across the pair -
-    /// each one can get there by a different means):
-    ///   1. Already present, in whichever candidate extension the game itself would
-    ///      resolve first (TextureSetHelper.FindTextureFile - same .tga &gt; .png &gt; .jpg
-    ///      &gt; .jpeg priority order used everywhere else a texture name gets resolved to a
-    ///      file) - left alone as-is, whatever format it's already in.
-    ///   2. Otherwise, a colored/inventory variant (water_still / water_flow, same
-    ///      priority-resolved lookup) exists - packs sometimes ship that but forget the
-    ///      in-world grey one the game actually tints per-biome, so it's greyscaled via
-    ///      ConvertWaterToGrey into a TGA _grey sibling (always .tga, regardless of the
-    ///      source's extension - see ConvertWaterToGrey/Helpers.WriteImageAsTGA).
+    /// Tries to make sure `blocksFolder` ends up with a proper RTX-encoded
+    /// water_still_grey.tga and water_flow_grey.tga, per texture independently (not
+    /// atomic across the pair - each one can get there from a different source). A pack's
+    /// own water_still_grey/water_flow_grey isn't guaranteed to already carry Bedrock
+    /// RTX's specific brightness-as-opacity encoding (it might just be the plain in-world
+    /// tinting texture from a non-RTX pack) - and even if it does, .tga has to win
+    /// priority over whatever extension it shipped as - so it always gets run through
+    /// ConvertWaterToGrey, overwriting in place, same as everything else in this pipeline.
+    /// Source preference (TextureSetHelper.FindTextureFile - same .tga &gt; .png &gt; .jpg
+    /// &gt; .jpeg priority order used everywhere else a texture name gets resolved to a
+    /// file): the pack's own "_grey"-named texture if present, otherwise the colored/
+    /// inventory variant (packs sometimes ship only that and forget the in-world grey one
+    /// the game actually tints per-biome).
     /// Returns true only if this folder ends up with BOTH grey textures present by the
     /// time this returns, regardless of which of the two means produced each one - the
     /// caller (AlchitexPipeline.RunWaterGlassPass) uses this to decide whether the zip
@@ -115,22 +119,27 @@ public static class PostProcess
     /// </summary>
     public static bool EnsureGreyWaterTextures(string blocksFolder)
     {
-        EnsureOneGreyWaterTexture(blocksFolder, "water_still");
-        EnsureOneGreyWaterTexture(blocksFolder, "water_flow");
-
-        return TextureSetHelper.FindTextureFile(blocksFolder, "water_still_grey") != null
-            && TextureSetHelper.FindTextureFile(blocksFolder, "water_flow_grey") != null;
+        var still = EnsureOneGreyWaterTexture(blocksFolder, "water_still");
+        var flow = EnsureOneGreyWaterTexture(blocksFolder, "water_flow");
+        return still && flow;
     }
 
-    private static void EnsureOneGreyWaterTexture(string blocksFolder, string baseName)
+    private static bool EnsureOneGreyWaterTexture(string blocksFolder, string baseName)
     {
-        if (TextureSetHelper.FindTextureFile(blocksFolder, baseName + "_grey") != null) return;
+        var source = TextureSetHelper.FindTextureFile(blocksFolder, baseName + "_grey")
+                  ?? TextureSetHelper.FindTextureFile(blocksFolder, baseName);
+        if (source == null) return false;
 
-        var coloredPath = TextureSetHelper.FindTextureFile(blocksFolder, baseName);
-        if (coloredPath == null) return;
-
-        try { ConvertWaterToGrey(coloredPath); }
-        catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to derive '{baseName}_grey' from '{coloredPath}': {ex.Message}"); }
+        try
+        {
+            ConvertWaterToGrey(source);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed to derive '{baseName}_grey' from '{source}': {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>

@@ -84,10 +84,10 @@ public sealed class HeightmapParams
 public sealed class NormalParams
 {
     /// <summary>0.0 (fully flattened toward flat-up) .. 1.0 (full raw detail). Default
-    /// 0.5 - the raw Sobel-derived normal is noticeably stronger than most blocks want.
+    /// 0.25 - the raw Sobel-derived normal is noticeably stronger than most blocks want.
     /// Applied after blur, blending the computed normal toward flat-up (128,128,255) by
     /// (1 - intensity). See PbrGeneration.NormalMapGenerator.</summary>
-    [JsonPropertyName("intensity")] public double Intensity { get; set; } = 0.5;
+    [JsonPropertyName("intensity")] public double Intensity { get; set; } = 0.25;
 
     /// <summary>Inverts the red and green channels post-generation. Workaround for the
     /// game-side bug where certain assets always render their normal map inverted. Never

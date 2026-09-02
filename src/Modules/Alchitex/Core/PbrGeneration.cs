@@ -316,16 +316,34 @@ public static class TextureSetOrchestrator
 ///      weighting, not the flat average from step 1), stretch it into the effective SSS
 ///      min/max range, and write that as the output alpha.
 ///
-/// The color texture is read upstream (AlchitexPipeline.ProcessOneTarget) with
-/// maxOpacity: true, so originally-transparent pixels arrive here with their real
-/// (usually near-black, per Helpers.ReadImage) RGB recoverable and alpha forced to 255 -
-/// there's no separate "cutout" case to special-case here: those pixels just flow through
-/// the same stretch math as everything else, which naturally lands on safe near-matte
-/// values for the default material entry (roughness stretches toward its max/inverted
-/// range at low grey values).
+/// The min/max *domain* used for every stretch above (steps 2 and 4, and the recursive
+/// pass's own sub-stretch) only ever considers "real" pixels - see IsRealColorData below -
+/// so background junk (typically a fully-black or fully-white fill left under a fully
+/// collapsed alpha channel, the common way texture pack authors pad cutout regions) can't
+/// artificially widen the domain and flatten the contrast of the actual visible content.
+/// Excluded pixels still get a real output value (via the same Stretch call, using the
+/// domain computed without them - Stretch already clamps out-of-range input to the
+/// nearest extreme), they just don't get a *vote* in what that domain is.
 /// </summary>
 public static class MersGenerator
 {
+    /// <summary>
+    /// A pixel counts toward the contrast-stretch domain if it's not fully transparent
+    /// (opacity &gt;= 1), or - for the fully-transparent case - if its underlying color
+    /// isn't one of the two conventional "background padding" fills (pure black or pure
+    /// white at alpha 0). Texture authors routinely leave real color data under a
+    /// collapsed alpha channel too (e.g. grass_side's dirt portion, transparent so the
+    /// game skips tinting it, but still real color) - that data should still count.
+    /// </summary>
+    private static bool IsRealColorData(Color c)
+    {
+        if (c.A >= 1) return true;
+
+        var isPureBlack = c.R == 0 && c.G == 0 && c.B == 0;
+        var isPureWhite = c.R == 255 && c.G == 255 && c.B == 255;
+        return !(isPureBlack || isPureWhite);
+    }
+
     public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material)
     {
         var w = colorBitmap.Width;
@@ -348,11 +366,14 @@ public static class MersGenerator
 
                     var g = (c.R + c.G + c.B) / 3;
                     grey[x, y] = g;
-                    if (g < greyMin) greyMin = g;
-                    if (g > greyMax) greyMax = g;
 
                     var l = (int)Math.Round(0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B);
                     luminosity[x, y] = l;
+
+                    if (!IsRealColorData(c)) continue;
+
+                    if (g < greyMin) greyMin = g;
+                    if (g > greyMax) greyMax = g;
                     if (l < lumMin) lumMin = l;
                     if (l > lumMax) lumMax = l;
                 }
@@ -404,11 +425,14 @@ public static class MersGenerator
             {
                 for (var x = 0; x < w; x++)
                 {
-                    var opacity = ComputeDominanceOpacity(colorFb[x, y], pass.Channel);
+                    var c = colorFb[x, y];
+                    var opacity = ComputeDominanceOpacity(c, pass.Channel);
                     mask[x, y] = opacity;
                     if (opacity <= 0) continue;
 
                     anyMasked = true;
+                    if (!IsRealColorData(c)) continue;
+
                     var g = grey[x, y];
                     if (g < subGreyMin) subGreyMin = g;
                     if (g > subGreyMax) subGreyMax = g;
@@ -653,12 +677,22 @@ public static class NormalMapGenerator
         return output;
     }
 
+    // Built-in (not a materials.json knob) default POM contrast reduction - the mean-shift
+    // heightmap can still sink quite deep even after ceiling-maximizing it, so every
+    // pixel's remaining distance from the surface (255) gets pulled in by this fraction.
+    // Same mechanic as Tuner.ApplyNormalMapIntensity's own blue-channel handling:
+    // recession = 255 - value; shrinking recession pulls pixels toward the surface and can
+    // never overflow past 255, so no separate compression pass is needed. TODO(tuning).
+    private const double PomContrastReduction = 0.67;
+
     /// <summary>
     /// POM height source: the mean-shift clustered heightmap (HeightmapGenerator.
     /// ComputeClusteredHeights), scaled up so its brightest pixel hits exactly 255 -
     /// deliberately a pure upward scale, not a full min/max stretch, so the darkest
     /// regions don't get lifted off zero and relative height differences stay
-    /// proportional to the clustered heightmap's own range.
+    /// proportional to the clustered heightmap's own range - then has its remaining
+    /// recession from 255 reduced by PomContrastReduction, since the ceiling-maximize
+    /// alone still leaves some clusters sitting quite deep.
     /// </summary>
     private static void ApplyPomBlueChannel(Bitmap normalBitmap, int[,] clustered)
     {
@@ -677,7 +711,9 @@ public static class NormalMapGenerator
         {
             for (var x = 0; x < w; x++)
             {
-                var pom = (byte)Math.Clamp((int)Math.Round(clustered[x, y] * scale), 0, 255);
+                var maximized = clustered[x, y] * scale;
+                var recession = 255.0 - maximized;
+                var pom = (byte)Math.Clamp((int)Math.Round(255.0 - recession * (1.0 - PomContrastReduction)), 0, 255);
                 var c = normalFb[x, y];
                 normalFb[x, y] = Color.FromArgb(c.A, c.R, c.G, pom);
             }
@@ -846,6 +882,12 @@ public static class HeightmapGenerator
     // Converged values within this distance of each other are folded into the same
     // cluster during ranking.
     private const double ClusterMergeTolerance = 8.0;
+
+    // Hard cap on the final number of elevation levels a texture can produce, regardless
+    // of how many distinct clusters mean-shift converged to. A busy/high-color-count
+    // texture that would otherwise land on many clusters gets merged down harder to reach
+    // this; a calm texture that already converged to fewer is untouched. TODO(tuning).
+    private const int MaxClusters = 6;
 
     public static Bitmap Generate(Bitmap colorBitmap, HeightmapParams heightmapParams)
     {
@@ -1017,9 +1059,11 @@ public static class HeightmapGenerator
     }
 
     /// <summary>Merges per-pixel converged values into clusters (values within
-    /// ClusterMergeTolerance of their neighbor in sorted order are folded together),
-    /// ranks clusters by their mean *original* grey value, and assigns each an
-    /// evenly-spaced output level across 0-255 by rank.</summary>
+    /// ClusterMergeTolerance of their neighbor in sorted order are folded together), caps
+    /// the result at MaxClusters by repeatedly merging whichever two brightness-adjacent
+    /// clusters are closest together (weighted by pixel count) until at or under the cap,
+    /// then assigns each surviving cluster an evenly-spaced output level across 0-255 by
+    /// brightness rank.</summary>
     private static int[,] ClusterAndRank(double[,] converged, double[,] original, int w, int h)
     {
         var distinctValues = new SortedSet<double>();
@@ -1063,18 +1107,50 @@ public static class HeightmapGenerator
         for (var i = 0; i < clusterCount; i++)
             clusterMeanBrightness[i] = brightnessCount[i] > 0 ? brightnessSum[i] / brightnessCount[i] : 0;
 
-        var rank = Enumerable.Range(0, clusterCount)
-            .OrderBy(i => clusterMeanBrightness[i])
-            .Select((originalIndex, rankIndex) => (originalIndex, rankIndex))
-            .ToDictionary(p => p.originalIndex, p => p.rankIndex);
+        // Brightness-sorted list of surviving buckets, each carrying which original
+        // cluster ids it absorbed. Starts as one bucket per cluster; merging two adjacent
+        // buckets (always adjacent in this sorted order, since nothing ever reorders) is
+        // just a local list splice - cheap even repeated down to MaxClusters.
+        var order = Enumerable.Range(0, clusterCount).OrderBy(i => clusterMeanBrightness[i]).ToList();
+        var bucketMeans = order.Select(i => clusterMeanBrightness[i]).ToList();
+        var bucketCounts = order.Select(i => brightnessCount[i]).ToList();
+        var bucketMembers = order.Select(i => new List<int> { i }).ToList();
 
+        while (bucketMeans.Count > MaxClusters)
+        {
+            var mergeAt = 0;
+            var smallestGap = double.MaxValue;
+            for (var i = 0; i < bucketMeans.Count - 1; i++)
+            {
+                var gap = bucketMeans[i + 1] - bucketMeans[i];
+                if (gap < smallestGap) { smallestGap = gap; mergeAt = i; }
+            }
+
+            var combinedCount = bucketCounts[mergeAt] + bucketCounts[mergeAt + 1];
+            bucketMeans[mergeAt] = combinedCount > 0
+                ? (bucketMeans[mergeAt] * bucketCounts[mergeAt] + bucketMeans[mergeAt + 1] * bucketCounts[mergeAt + 1]) / combinedCount
+                : (bucketMeans[mergeAt] + bucketMeans[mergeAt + 1]) / 2.0;
+            bucketCounts[mergeAt] = combinedCount;
+            bucketMembers[mergeAt].AddRange(bucketMembers[mergeAt + 1]);
+
+            bucketMeans.RemoveAt(mergeAt + 1);
+            bucketCounts.RemoveAt(mergeAt + 1);
+            bucketMembers.RemoveAt(mergeAt + 1);
+        }
+
+        var finalRankOf = new int[clusterCount];
+        for (var finalRank = 0; finalRank < bucketMembers.Count; finalRank++)
+            foreach (var originalId in bucketMembers[finalRank])
+                finalRankOf[originalId] = finalRank;
+
+        var finalCount = bucketMeans.Count;
         var result = new int[w, h];
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
             {
-                var r = rank[pixelCluster[x, y]];
-                var level = clusterCount > 1 ? (int)Math.Round(r / (double)(clusterCount - 1) * 255.0) : 128;
+                var r = finalRankOf[pixelCluster[x, y]];
+                var level = finalCount > 1 ? (int)Math.Round(r / (double)(finalCount - 1) * 255.0) : 128;
                 result[x, y] = Math.Clamp(level, 0, 255);
             }
         }

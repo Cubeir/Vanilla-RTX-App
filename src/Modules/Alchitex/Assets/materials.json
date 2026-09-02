@@ -5,8 +5,8 @@
       "metal_max": 0,
       "emissive_min": 0,
       "emissive_max": 0,
-      "roughness_min": 201,
-      "roughness_max": 249,
+      "roughness_min": 192,
+      "roughness_max": 255,
       "invert_metal": false,
       "invert_emissive": false,
       "invert_roughness": true
@@ -17,11 +17,11 @@
     },
     "recursive": [],
     "heightmap": {
-      "intensity": 1,
+      "intensity": 0.5,
       "invert": false
     },
     "normal": {
-      "intensity": 0.5,
+      "intensity": 0.25,
       "invert": false
     }
   },

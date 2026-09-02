@@ -165,7 +165,7 @@ public static class AlchitexPipeline
     private static void ProcessOneTarget(GenerationTarget target, MaterialsConfig materials, AlchitexOptions options)
     {
         var material = materials.Resolve(target.TextureName);
-        using var colorBitmap = Helpers.ReadImage(target.ColorPath, maxOpacity: true);
+        using var colorBitmap = Helpers.ReadImage(target.ColorPath, maxOpacity: false);
 
         if (!File.Exists(target.MersPath))
         {
