@@ -1,13 +1,5 @@
-LICENSE VERSION: 0.0
+LICENSE VERSION: 1.0
 
-Check back later, RTX Reactor is becoming a part of the Vanilla RTX App later down the road!
+RTX Reactor is completely free for personal use.
 
-What is RTX Reactor?
-It is a premium PBR texture generation too that allows anyone to use their favorite Bedrock Edition texture packs with ray tracing.
-Introduced in early 2023 as an exclusive tool available to all who decided to support Vanilla RTX's developer, with a promise to eventually become free and open-source.
-
-While this version of RTX Reactor is going to be a complete rewrite from the ground up, the vision remains the same:
-A software that generate packs that would be usually better or no different than when the average resource pack author tries to add proper ray tracing support to their texture packs (which in reality most never do, as of writing this, aside from Vanilla RTX there are close to no up-to-date texture packs for ray tracing floating around the internet)
-RTX Reactor will eliminate lots of manual human effort, so that you the player, are no longer limited to Vanilla RTX or a few Minecraft RTX capable resource packs to use on the latest version, but instead thousands.
-
-The rewrite will come with proper Vibrant Visuals support, even more sophesticated generation methods, and possibly under a new name...
+For commercial use, 

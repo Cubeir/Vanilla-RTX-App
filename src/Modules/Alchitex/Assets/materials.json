@@ -1692,10 +1692,10 @@
   "blast_furnace_front_on": {
     "mer": {
       "metal_min": 0,
-      "metal_max": 231,
+      "metal_max": 0,
       "emissive_min": 0,
-      "emissive_max": 69,
-      "roughness_min": 37,
+      "emissive_max": 0,
+      "roughness_min": 32,
       "roughness_max": 255,
       "invert_metal": false,
       "invert_emissive": false,
@@ -1705,7 +1705,15 @@
       "min": 0,
       "max": 0
     },
-    "recursive": [],
+    "recursive": [
+      {
+        "channel": "R",
+        "mer": {
+          "emissive_min": 20,
+          "emissive_max": 30
+        }
+      }
+    ],
     "heightmap": {
       "intensity": 1,
       "invert": false
