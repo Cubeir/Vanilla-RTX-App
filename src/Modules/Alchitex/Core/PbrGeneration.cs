@@ -48,7 +48,8 @@ public sealed record GenerationTarget(
 ///
 /// Every texture set Alchitex writes always uses metalness_emissive_roughness_subsurface -
 /// never plain metalness_emissive_roughness - and always gets real SSS data, see
-/// MersGenerator below.
+/// MersGenerator below - except for textures matching pbr_blacklist.json (Configuration.
+/// PbrBlacklist), which still get a texture set, just a color-only one with no PBR keys.
 ///
 /// Running this twice on an already-processed pack is a no-op for every texture that
 /// already got a texture set on the first run - which is exactly the "safe to re-run
@@ -60,7 +61,8 @@ public static class TextureSetOrchestrator
 
     public static Result GenerateMissingTextureSets(
         string packRoot,
-        AlchitexOptions options)
+        AlchitexOptions options,
+        PbrBlacklist blacklist)
     {
         var created = 0;
         var skippedJunk = 0;
@@ -101,10 +103,12 @@ public static class TextureSetOrchestrator
         {
             if (nameLowerNoExt.EndsWith("_mer") || nameLowerNoExt.EndsWith("_mers")) return true;
             if (nameLowerNoExt.EndsWith("_normal") || nameLowerNoExt.EndsWith("_heightmap")) return true;
-            if (nameLowerNoExt.Contains("bubble") || nameLowerNoExt.Contains("_placeholder") || nameLowerNoExt.Contains("_carried")) return true;
-            // Water is handled entirely by PostProcess (Bedrock RTX reads water_*_grey
-            // directly, not through a per-block texture_set.json/materials.json pass).
-            if (nameLowerNoExt.Contains("water_flow") || nameLowerNoExt.Contains("water_still")) return true;
+            if (nameLowerNoExt.Contains("bubble") || nameLowerNoExt.Contains("_placeholder")) return true;
+            // Colored/inventory water icons - consumed as source material by the
+            // water-fallback pass (PostProcess.EnsureGreyWaterTextures), never need a
+            // texture set of their own. The grey in-world variants (water_still_grey/
+            // water_flow_grey) DO get one now - see the PBR blacklist below.
+            if (nameLowerNoExt == "water_flow" || nameLowerNoExt == "water_still") return true;
             return false;
         }
 
@@ -134,25 +138,30 @@ public static class TextureSetOrchestrator
                     continue;
                 }
 
-                var secondaryMode = ResolveSecondaryMode(options.SecondaryPbr, colorPath);
+                var set = new JsonObject { ["color"] = nameNoExt };
 
-                var set = new JsonObject
+                if (blacklist.IsBlacklisted(nameNoExt))
                 {
-                    ["color"] = nameNoExt,
-                    ["metalness_emissive_roughness_subsurface"] = nameNoExt + "_mers",
-                };
+                    // pbr_blacklist.json match - color-only texture set, no PBR keys at all.
+                    Trace.WriteLine($"[ALCHITEX] '{nameNoExt}' matches pbr_blacklist.json - writing a color-only texture set, no PBR.");
+                }
+                else
+                {
+                    set["metalness_emissive_roughness_subsurface"] = nameNoExt + "_mers";
 
-                switch (secondaryMode)
-                {
-                    case SecondaryPbrMode.Normal:
-                        set["normal"] = nameNoExt + "_normal";
-                        break;
-                    case SecondaryPbrMode.Heightmap:
-                        set["heightmap"] = nameNoExt + "_heightmap";
-                        break;
-                    case SecondaryPbrMode.None:
-                    case SecondaryPbrMode.Auto: // Auto never reaches here unresolved - see ResolveSecondaryMode
-                        break;
+                    var secondaryMode = ResolveSecondaryMode(options.SecondaryPbr, colorPath);
+                    switch (secondaryMode)
+                    {
+                        case SecondaryPbrMode.Normal:
+                            set["normal"] = nameNoExt + "_normal";
+                            break;
+                        case SecondaryPbrMode.Heightmap:
+                            set["heightmap"] = nameNoExt + "_heightmap";
+                            break;
+                        case SecondaryPbrMode.None:
+                        case SecondaryPbrMode.Auto: // Auto never reaches here unresolved - see ResolveSecondaryMode
+                            break;
+                    }
                 }
 
                 var root = new JsonObject

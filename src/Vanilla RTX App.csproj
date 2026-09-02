@@ -1168,19 +1168,13 @@
     <None Update="Modules\Alchitex\Assets\materials.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Modules\Alchitex\Assets\pbr_blacklist.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Modules\Alchitex\Assets\vanilla-rtx-fog.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Modules\Alchitex\Assets\WaterFallback\water_flow_grey.texture_set.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Modules\Alchitex\Assets\WaterFallback\water_flow_grey.tga">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Modules\Alchitex\Assets\WaterFallback\water_still_grey.texture_set.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Modules\Alchitex\Assets\WaterFallback\water_still_grey.tga">
+    <None Update="Modules\Alchitex\Assets\water-fallback.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <Page Update="Core\PsaCard.xaml">

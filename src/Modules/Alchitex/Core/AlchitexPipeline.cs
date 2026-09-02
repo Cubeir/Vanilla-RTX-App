@@ -52,10 +52,11 @@ public static class AlchitexPipeline
             cancellationToken.ThrowIfCancellationRequested();
 
             var materials = MaterialsConfig.Load(Path.Combine(alchitexAssetsPath, "materials.json"));
+            var blacklist = PbrBlacklist.Load(Path.Combine(alchitexAssetsPath, "pbr_blacklist.json"));
 
             // ── Phase 2: texture sets ────────────────────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Scanning textures..."));
-            TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options);
+            TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options, blacklist);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -191,23 +192,33 @@ public static class AlchitexPipeline
 
     private static void RunWaterGlassPass(string packRoot, string alchitexAssetsPath)
     {
-        foreach (var blocksFolder in AlchitexStaging.DiscoverBlocksFolders(packRoot))
-        {
-            foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
-            {
-                foreach (var file in Directory.GetFiles(blocksFolder, "*" + ext, SearchOption.AllDirectories))
-                {
-                    var nameLower = Path.GetFileNameWithoutExtension(file).ToLowerInvariant();
-                    if (!nameLower.Contains("water_flow") && !nameLower.Contains("water_still")) continue;
-                    if (nameLower.EndsWith("_grey")) continue;
+        // Root-pack blocks folder(s) first: if the zip fallback ends up needed anywhere,
+        // it only ever gets deployed once (see the loop below) - a subpack that doesn't
+        // define its own water inherits the root pack's at runtime, so it needs to land on
+        // root, not on whichever subpack happens to be enumerated first.
+        var blocksFolders = AlchitexStaging.DiscoverBlocksFolders(packRoot)
+            .OrderBy(f => f.Replace('\\', '/').Contains("/subpacks/", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+            .ToList();
 
-                    try { PostProcess.ConvertWaterToGrey(file); }
-                    catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to convert water texture '{file}': {ex.Message}"); }
-                }
+        var zipFallbackDeployed = false;
+
+        foreach (var blocksFolder in blocksFolders)
+        {
+            bool hasCompleteGreyWater;
+            try
+            {
+                hasCompleteGreyWater = PostProcess.EnsureGreyWaterTextures(blocksFolder);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[ALCHITEX] Failed processing water textures in '{blocksFolder}': {ex.Message}");
+                hasCompleteGreyWater = false;
             }
 
-            try { PostProcess.DeployFallbackWaterIfMissing(blocksFolder, alchitexAssetsPath); }
-            catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to deploy fallback water into '{blocksFolder}': {ex.Message}"); }
+            if (!hasCompleteGreyWater && !zipFallbackDeployed)
+            {
+                zipFallbackDeployed = PostProcess.DeployFallbackWaterZip(blocksFolder, alchitexAssetsPath);
+            }
         }
 
         // Glass fixups apply to every resolved color texture in the pack (both

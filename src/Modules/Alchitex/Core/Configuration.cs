@@ -2,14 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 
-// This file holds two small, closely related pieces of "what should this run do" state -
-// the artist-authored per-block JSON schema, and the UI-facing per-run toggles - rather
-// than splitting them into separate files for subsystems this small.
+// This file holds three small, closely related pieces of "what should this run do" state -
+// the artist-authored per-block JSON schema, the PBR blacklist, and the UI-facing per-run
+// toggles - rather than splitting them into separate files for subsystems this small.
 
 #region Materials Schema (materials.json)
 
@@ -178,6 +180,71 @@ public sealed class MaterialsConfig
             return entry;
 
         return _default;
+    }
+}
+
+#endregion
+
+#region PBR Blacklist (pbr_blacklist.json)
+
+/// <summary>
+/// Textures matching a pattern here still get a .texture_set.json written by
+/// TextureSetOrchestrator, but a minimal one - color only, no
+/// metalness_emissive_roughness_subsurface/normal/heightmap keys at all - rather than
+/// getting full PBR generated. Lives next to materials.json (Assets/pbr_blacklist.json) as
+/// a flat JSON array of patterns, exact-match unless a pattern contains '*' (matched
+/// anywhere in the pattern, standard glob semantics - e.g. "*_carried" matches any name
+/// ending in "_carried"). Case-insensitive throughout, same as materials.json's own
+/// exact-name matching.
+/// </summary>
+public sealed class PbrBlacklist
+{
+    private static readonly JsonSerializerOptions ReadOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
+    private readonly List<string> _patterns;
+
+    private PbrBlacklist(List<string> patterns) => _patterns = patterns;
+
+    /// <summary>
+    /// Loads pbr_blacklist.json from disk. Never throws - on any failure this logs and
+    /// returns an empty blacklist, so a malformed or missing file just means nothing gets
+    /// blacklisted rather than crashing the whole run.
+    /// </summary>
+    public static PbrBlacklist Load(string blacklistJsonPath)
+    {
+        try
+        {
+            var raw = File.ReadAllText(blacklistJsonPath);
+            var parsed = JsonSerializer.Deserialize<List<string>>(raw, ReadOptions) ?? new List<string>();
+            return new PbrBlacklist(parsed.Select(p => p.ToLowerInvariant()).ToList());
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed to load pbr_blacklist.json at '{blacklistJsonPath}': {ex.Message}. No textures will be blacklisted for this run.");
+            return new PbrBlacklist(new List<string>());
+        }
+    }
+
+    /// <summary>Exact-name-or-default (no path, no extension, case-insensitive) - same
+    /// input shape as MaterialsConfig.Resolve.</summary>
+    public bool IsBlacklisted(string textureNameWithoutExtension)
+    {
+        var name = textureNameWithoutExtension.ToLowerInvariant();
+        return _patterns.Any(pattern => MatchesPattern(name, pattern));
+    }
+
+    private static bool MatchesPattern(string name, string pattern)
+    {
+        if (!pattern.Contains('*'))
+            return name == pattern;
+
+        var regexPattern = "^" + string.Join(".*", pattern.Split('*').Select(Regex.Escape)) + "$";
+        return Regex.IsMatch(name, regexPattern);
     }
 }
 

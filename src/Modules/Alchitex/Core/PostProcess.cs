@@ -29,8 +29,9 @@ public static class PostProcess
     // actually be placed here by hand. Every method that needs one checks for it
     // explicitly and logs the exact expected path rather than silently no-op'ing.
     //
-    //   Assets/WaterFallback/water_flow_grey.tga + .texture_set.json
-    //   Assets/WaterFallback/water_still_grey.tga + .texture_set.json
+    //   Assets/water-fallback.zip
+    //     -> four flat files, no folders inside: water_flow_grey.tga + .texture_set.json,
+    //        water_still_grey.tga + .texture_set.json.
     //
     //   Assets/badge_42x.png
     //     -> 42x42 watermark composited onto the bottom-left corner of every regenerated pack icon.
@@ -38,7 +39,7 @@ public static class PostProcess
     //   Assets/vanilla-rtx-fog.zip
     //     -> top-level "biomes/" and "fogs/" folders, deployed into the pack root and
     //        every subpack root when the (opt-in, off-by-default) fog toggle is enabled.
-    private const string WaterFallbackSubfolder = "WaterFallback";
+    private const string WaterFallbackZipFileName = "water-fallback.zip";
     private const string IconBadgeFileName = "badge_42x.png";
     private const string FogZipFileName = "vanilla-rtx-fog.zip";
 
@@ -95,47 +96,81 @@ public static class PostProcess
     }
 
     /// <summary>
-    /// If `blocksFolder` has neither water_flow_grey nor water_still_grey after the pack's
-    /// own water textures (if any) have been processed, drops in Alchitex's packaged
-    /// fallback water. Takes a specific textures/blocks folder directly (root pack or a
-    /// subpack's - see AlchitexStaging.DiscoverBlocksFolders) rather than a pack root,
-    /// since each one is checked and topped up independently. Never creates directories or
-    /// silently invents content - if the source fallback assets aren't present under
-    /// Assets/WaterFallback/, this logs exactly what's missing and where it needs to go,
-    /// and leaves the pack without fallback water rather than pretending to have handled it.
+    /// Tries to make sure `blocksFolder` ends up with both water_still_grey.tga and
+    /// water_flow_grey.tga, per texture independently (not atomic across the pair - each
+    /// one can get there by a different means):
+    ///   1. Already present (any candidate extension) - left alone.
+    ///   2. Otherwise, a colored/inventory variant (water_still / water_flow, any
+    ///      candidate extension) exists - packs sometimes ship that but forget the
+    ///      in-world grey one the game actually tints per-biome, so it's greyscaled via
+    ///      ConvertWaterToGrey into a TGA _grey sibling.
+    /// Returns true only if this folder ends up with BOTH grey textures present by the
+    /// time this returns, regardless of which of the two means produced each one - the
+    /// caller (AlchitexPipeline.RunWaterGlassPass) uses this to decide whether the zip
+    /// fallback is still needed anywhere in the pack.
     /// </summary>
-    public static void DeployFallbackWaterIfMissing(string blocksFolder, string alchitexAssetsPath)
+    public static bool EnsureGreyWaterTextures(string blocksFolder)
     {
-        var hasFlow = File.Exists(Path.Combine(blocksFolder, "water_flow_grey.tga"));
-        var hasStill = File.Exists(Path.Combine(blocksFolder, "water_still_grey.tga"));
-        if (hasFlow && hasStill) return;
+        EnsureOneGreyWaterTexture(blocksFolder, "water_still");
+        EnsureOneGreyWaterTexture(blocksFolder, "water_flow");
 
-        var fallbackSourceFolder = Path.Combine(alchitexAssetsPath, WaterFallbackSubfolder);
+        return File.Exists(Path.Combine(blocksFolder, "water_still_grey.tga"))
+            && File.Exists(Path.Combine(blocksFolder, "water_flow_grey.tga"));
+    }
 
-        foreach (var baseName in new[] { "water_flow_grey", "water_still_grey" })
+    private static void EnsureOneGreyWaterTexture(string blocksFolder, string baseName)
+    {
+        foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
         {
-            var targetTga = Path.Combine(blocksFolder, baseName + ".tga");
-            if (File.Exists(targetTga)) continue;
+            if (File.Exists(Path.Combine(blocksFolder, baseName + "_grey" + ext))) return;
+        }
 
-            var sourceTga = Path.Combine(fallbackSourceFolder, baseName + ".tga");
-            var sourceJson = Path.Combine(fallbackSourceFolder, baseName + ".texture_set.json");
+        foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
+        {
+            var coloredPath = Path.Combine(blocksFolder, baseName + ext);
+            if (!File.Exists(coloredPath)) continue;
 
-            if (!File.Exists(sourceTga) || !File.Exists(sourceJson))
+            try { ConvertWaterToGrey(coloredPath); }
+            catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to derive '{baseName}_grey' from '{coloredPath}': {ex.Message}"); }
+            return;
+        }
+    }
+
+    /// <summary>
+    /// Extracts Alchitex's packaged water-fallback.zip (four flat files, no folders inside -
+    /// both grey TGAs and their .texture_set.json descriptors) directly into `blocksFolder`,
+    /// overwriting anything already there. Only called when EnsureGreyWaterTextures couldn't
+    /// produce a complete grey water pair for a folder from the pack's own assets, and only
+    /// once per pack - see AlchitexPipeline.RunWaterGlassPass. Never invents content - if the
+    /// packaged zip isn't present under Assets/, this logs exactly what's missing and leaves
+    /// the pack without fallback water rather than pretending to have handled it. Returns
+    /// true only on a successful extraction.
+    /// </summary>
+    public static bool DeployFallbackWaterZip(string blocksFolder, string alchitexAssetsPath)
+    {
+        var zipPath = Path.Combine(alchitexAssetsPath, WaterFallbackZipFileName);
+        if (!File.Exists(zipPath))
+        {
+            Trace.WriteLine($"[ALCHITEX] Water fallback asset missing - expected '{zipPath}'. Skipping fallback deployment for '{blocksFolder}'.");
+            return false;
+        }
+
+        try
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            foreach (var entry in archive.Entries)
             {
-                Trace.WriteLine($"[ALCHITEX] Water fallback asset missing - expected '{sourceTga}' and '{sourceJson}'. Copy legacy RTX Reactor's src/packages/{baseName}.tga and .texture_set.json into 'Assets/{WaterFallbackSubfolder}/'. Skipping fallback deployment for '{blocksFolder}'.");
-                continue;
+                if (string.IsNullOrEmpty(entry.Name)) continue; // defensive - zip is flat, no folder entries expected
+                entry.ExtractToFile(Path.Combine(blocksFolder, entry.Name), overwrite: true);
             }
 
-            try
-            {
-                File.Copy(sourceTga, targetTga, overwrite: true);
-                File.Copy(sourceJson, Path.Combine(blocksFolder, baseName + ".texture_set.json"), overwrite: true);
-                Trace.WriteLine($"[ALCHITEX] Deployed fallback water texture '{baseName}' into '{blocksFolder}'.");
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[ALCHITEX] Failed to deploy fallback water texture '{baseName}': {ex.Message}");
-            }
+            Trace.WriteLine($"[ALCHITEX] Deployed water fallback into '{blocksFolder}'.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed to deploy water fallback into '{blocksFolder}': {ex.Message}");
+            return false;
         }
     }
 
