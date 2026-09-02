@@ -2360,7 +2360,7 @@ public sealed partial class MainWindow : Window
             return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
             // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
             // have a higher chance of breaking, not working, or not seeing any benefit from this feature.
-            // It's true! (legacy packs, few to no block textures are decent starting indicators for now.
+            // It's true! (legacy packs, few to no block textures are decent starting indicators for now)
         }
 
 

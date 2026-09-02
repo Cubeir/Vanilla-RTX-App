@@ -516,9 +516,9 @@ public sealed partial class Alchitex : Window
         }
         if (_succeededPackNames.Count > 0)
         {
-            string irOrThem = _succeededPackNames.Count == 1 ? "it" : "them";
+            string pronouns = _succeededPackNames.Count == 1 ? "it" : "them";
             sb.AppendLine();
-            sb.Append($"ℹ️ You can now activate {irOrThem} in-game, you may also select {irOrThem} from the Select other packs menu for exporting or to Tuning from the main menu.");
+            sb.Append($"ℹ️ You can now activate {pronouns} in-game, you may also select {pronouns} from the Select other packs menu to Export or Tune {pronouns} from the main menu.");
         }
 
         if (_failedPackNames.Count > 0)

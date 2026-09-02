@@ -361,6 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-LocalState.lnk
 .editorconfig
-SCHEMATICS.md
+CLAUDE.md
