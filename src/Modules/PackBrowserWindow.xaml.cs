@@ -499,7 +499,7 @@ public sealed partial class PackBrowserWindow : Window
             Width = 96,
             Height = 96,
             CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(Microsoft.UI.Colors.Gray),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(96, 96, 96, 96)),
             Translation = new System.Numerics.Vector3(0, 0, 12)
         };
 
