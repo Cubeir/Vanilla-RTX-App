@@ -1095,8 +1095,8 @@ public sealed partial class PackBrowserWindow : Window
     {
         try
         {
-            return string.Empty; // INTENTIONALLY CRIPPLED
-            // REMOVE THIS LINE TO RENABLE PACK SIZE BADGE
+            return string.Empty; // INTENTIONALLY SHORTED.
+            // REMOVE THIS LINE TO RENABLE PACK SIZE BADGE (It is decided downstream that if empty, don't show badge.)
             // REMOVED BECAUSE, IT SLOWS DOWN THE WINDOW TOO MUCH, NOT WORTH IT! QUERYING ALL FILES
 
             var totalBytes = await Task.Run(() =>
