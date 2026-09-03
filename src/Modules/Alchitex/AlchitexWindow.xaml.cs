@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Printing;
@@ -863,17 +863,28 @@ public sealed partial class Alchitex : Window
     /// currently is.</summary>
     private bool IsGenerating => _generateCts is { IsCancellationRequested: false };
 
+    /// <summary>
+    /// Controls whose value is read once when a run starts, so changing them mid-run would
+    /// silently mean nothing. GenerateButton is deliberately absent: during a run it IS the
+    /// abort control and has to stay live.
+    /// </summary>
+    private static readonly string[] RunLockedControls =
+    {
+        "SecondaryPbrModeComboBox", "AddFogToggle", "DeleteOriginalToggle", "GenerateMaterialsConfigButton",
+    };
+
     private void SetGenerationControlsEnabled(bool enabled)
     {
-        // The reactor is never disabled: during a run it IS the abort control, so it has to
-        // stay live and hit-testable. GenerateButton_Click decides which of the two things
-        // a click means, and the tooltip says which one is on offer.
-        ToolTipService.SetToolTip(GenerateButton, enabled ? "Generate" : "Abort generation");
+        // WindowControlsManager rather than a hand-rolled list of IsEnabled assignments -
+        // it's the app's existing tool for this, and its reference counting means an
+        // overlapping disable (a second run started before the first finished unwinding)
+        // can't restore a control early.
+        WindowControlsManager.ToggleSpecificControls(this, enabled, RunLockedControls);
 
-        SecondaryPbrModeComboBox.IsEnabled = enabled;
-        AddFogToggle.IsEnabled = enabled;
-        DeleteOriginalToggle.IsEnabled = enabled;
-        GenerateMaterialsConfigButton.IsEnabled = enabled;
+        // The reactor's tooltip says which of its two jobs a click would do right now.
+        ToolTipService.SetToolTip(GenerateButton, enabled
+            ? "Generate RTX support for every pack in the queue"
+            : "Stop generating - the pack being worked on is discarded, the rest stay queued");
     }
 
     private async void GenerateButton_Click(object sender, RoutedEventArgs e)
@@ -963,10 +974,17 @@ public sealed partial class Alchitex : Window
 
                 var (pack, stripExistingPbr) = queue[i];
 
-                // Dismissed the moment it's handed over, NOT after the run finishes. Any
-                // redraw during the run (an output icon finishing its load, say) rebuilds
-                // the input row from this list - so a pack still in it at that point pops
-                // back into the queue it just left.
+                // The queue stays live for everything not yet started. A pack the user
+                // discarded while an earlier one was running is simply skipped here - this
+                // check is what keeps "what the queue shows" and "what actually runs" the
+                // same thing, rather than two lists that agreed once at the start.
+                if (_dismissedLocations.Contains(pack.Location)) continue;
+
+                // Dismissed the moment it's handed over - after the check above, so the two
+                // uses of this set don't collide. It also has to happen BEFORE the run, not
+                // after: any redraw during the run (an output icon finishing its load, say)
+                // rebuilds the input row from this set, and a pack still in it at that
+                // point pops back into the queue it just left.
                 _dismissedLocations.Add(pack.Location);
 
                 // The pack visibly goes into the reactor before its run starts, and the
@@ -1021,9 +1039,23 @@ public sealed partial class Alchitex : Window
                     // and it still resolves when the original has just been uninstalled.
                     await AddToOutputRowAsync(result.OutputPackPath ?? pack.Location, result.FinalManifestName ?? pack.Name);
                 }
-                else if (_generateCts.IsCancellationRequested) { aborted = true; break; }
+                else if (_generateCts.IsCancellationRequested)
+                {
+                    // Aborted mid-pack. Nothing was produced and its temp copy is about to
+                    // be swept, so the honest thing is to put it back where it came from -
+                    // it's still a pack waiting to be generated, and the user can just hit
+                    // Generate again. Every pack after it was never handed over, so it's
+                    // still queued anyway.
+                    _dismissedLocations.Remove(pack.Location);
+                    await ReturnTileToQueueAsync(pack.Location);
+
+                    aborted = true;
+                    break;
+                }
                 else
                 {
+                    // A genuine failure stays out of the queue: re-offering a pack that
+                    // just failed invites the same failure on the next click.
                     failedNames.Add(pack.Name);
                     _failedPackNames.Add(pack.Name);
                 }
@@ -1090,6 +1122,24 @@ public sealed partial class Alchitex : Window
 
         InputQueuePanel.Children.Remove(tile);
         AnimateReflow();
+    }
+
+    /// <summary>
+    /// Puts an aborted pack back in the input queue, coming back out of the reactor the way
+    /// a finished one comes out into the output row. Nothing was generated for it, so this
+    /// is a return, not a result - which is exactly what the reversed motion says.
+    /// </summary>
+    private async Task ReturnTileToQueueAsync(string location)
+    {
+        RenderQueues(); // it's un-dismissed by now, so this brings its tile back
+
+        var tile = InputQueuePanel.Children
+            .OfType<FrameworkElement>()
+            .FirstOrDefault(t => t.Tag is string tagged &&
+                                 string.Equals(tagged, location, StringComparison.OrdinalIgnoreCase));
+
+        if (tile != null)
+            await AnimateArrivalAsync(tile);
     }
 
     /// <summary>
@@ -1352,8 +1402,9 @@ public sealed partial class Alchitex : Window
         SetStatus("Aborting...");
         _generateCts.Cancel();
 
-        // Drop the red X immediately: the click landed, so it isn't a warning any more.
-        _reactor?.EndAbortHint();
+        // Drop the red X now, no grace period: the click landed, so it isn't a warning
+        // about something that might happen any more.
+        _reactor?.EndAbortHintImmediate();
     }
 
     // ── Debug: materials.json bootstrap ─────────────────────────────────────

@@ -328,14 +328,24 @@
                                  reactor is part of this area, not a thing parked beside
                                  it. Its own art covers the acrylic completely, so this is
                                  structural rather than something you can see. -->
+                            <!-- Translation Z + ThemeShadow, the same pairing the titlebar
+                                 uses, but pushed much further out: this is meant to read as
+                                 an island floating well above the window's background art
+                                 rather than a panel resting on it. It spans the reactor's
+                                 column too, so the shadow wraps the whole area as one
+                                 object instead of stopping at the button's edge. -->
                             <Border x:Name="AlchitexPanelBackground"
                                     Grid.ColumnSpan="2"
-                                    CornerRadius="8">
+                                    CornerRadius="8"
+                                    Translation="0,0,64">
                                 <Border.Background>
                                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                   TintOpacity="0.6"
                                                   FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                 </Border.Background>
+                                <Border.Shadow>
+                                    <ThemeShadow />
+                                </Border.Shadow>
                             </Border>
 
                             <Grid Grid.Column="0">
@@ -360,23 +370,30 @@
                                               Header="Secondary PBR texture"
                                               HorizontalAlignment="Stretch"
                                               SelectedIndex="1"
-                                              IsTextScaleFactorEnabled="False">
-                                        <ComboBoxItem Content="None" />
-                                        <ComboBoxItem Content="Auto" />
+                                              IsTextScaleFactorEnabled="False"
+                                              ToolTipService.ToolTip="None: all textures will appear flat.
+                                              &#x0a;Automatic: automatically picks between Normal map and Heightmap depending on texture resolution.
+                                              &#x0a;Normal map: fakes depth on textures by defining how light bounces off of each individual pixel on textures + Parallax Occlusion Mapping data when supported.
+                                              &#x0a;Heightmap: uses height information to create depth perception on textures specifically for low resolution textures (Recommended only for texture packs lower than 32x).">
+                                        <ComboBoxItem Content="None (flat textures)" />
+                                        <ComboBoxItem Content="Automatic" />
                                         <ComboBoxItem Content="Normal map" />
                                         <ComboBoxItem Content="Heightmap" />
                                     </ComboBox>
 
                                     <ToggleSwitch x:Name="AddFogToggle"
-                                                  Header="Add RTX compatible per-biome configs"
+                                                  Header="Add RTX per-biome atmospheric configs"
                                                   IsOn="True"
-                                                  IsTextScaleFactorEnabled="False" />
+                                                  IsTextScaleFactorEnabled="False"
+                                                  ToolTipService.ToolTip="Adds detailed per-biome fog settings to packs, provided by Vanilla RTX, this may override their existing per-biome configurations.
+                                                  &#x0a;&#x0a;This is generally recommended for most packs, otherwise there likely won't be any fog, light shafts or unique atmospheric treats across biomes." />
 
                                     <ToggleSwitch x:Name="DeleteOriginalToggle"
                                                   Header="Uninstall the original pack"
                                                   IsOn="False"
                                                   IsTextScaleFactorEnabled="False"
-                                                  ToolTipService.ToolTip="Deletes each selected pack from your installed packs once its RTX version has been generated successfully. Nothing is deleted if generation fails." />
+                                                  ToolTipService.ToolTip="Deletes each pack from your installed packs once its RTX version is finished and installed.
+                                                  &#x0a;&#x0a;Nothing is deleted if generation fails or is otherwise stopped mid operation." />
                                 </StackPanel>
 
                                 <!-- ── Bevel: light rule then dark rule, the same pairing
@@ -412,6 +429,7 @@
                                          is otherwise just blank space with no clue what
                                          it's for. -->
                                     <FontIcon Grid.Row="0"
+                                              ToolTipService.ToolTip="Packs queued for RTX generation"
                                               Glyph="&#xE72A;"
                                               FontSize="64"
                                               Opacity="0.15"
@@ -421,6 +439,7 @@
                                               IsTextScaleFactorEnabled="False" />
 
                                     <FontIcon Grid.Row="1"
+                                              ToolTipService.ToolTip="Packs that have finished generating"
                                               Glyph="&#xE72B;"
                                               FontSize="64"
                                               Opacity="0.15"

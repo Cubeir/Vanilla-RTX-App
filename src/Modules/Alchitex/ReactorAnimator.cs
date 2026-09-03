@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI;
@@ -70,8 +70,20 @@ public sealed class ReactorAnimator
         (0, 0), (0, 2), (1, 1), (2, 0), (2, 2),
     };
 
-    private static readonly Color AbortRedBright = ColorHelper.FromArgb(255, 0xFF, 0x2E, 0x2E);
-    private static readonly Color AbortRedDeep = ColorHelper.FromArgb(255, 0x7A, 0x00, 0x00);
+    // The cross only ever moves between these three, and they're all unambiguously red -
+    // the X has to hold its shape while it flickers. Anything that dropped toward the blues
+    // (or toward black) would break the shape apart every time it pulsed, which is the
+    // opposite of "this is dangerous, and it is definitely still here".
+    private static readonly Color[] AbortReds =
+    {
+        ColorHelper.FromArgb(255, 0xFF, 0x3B, 0x3B), // hot
+        ColorHelper.FromArgb(255, 0xC8, 0x1E, 0x1E), // mid
+        ColorHelper.FromArgb(255, 0x8A, 0x0E, 0x0E), // deep, still clearly red
+    };
+
+    // The backdrop the cross is read against - dark enough to disappear, and the darkest
+    // thing the reactor's own palette contains.
+    private static readonly Color AbortBackdrop = Palette[Palette.Length - 1];
 
     private const int GridSize = 3;
 
@@ -93,6 +105,7 @@ public sealed class ReactorAnimator
     private Storyboard? _bloomLoop;
     private DispatcherTimer? _pressHoldTimer;
     private DispatcherTimer? _abortHintTimer;
+    private DispatcherTimer? _abortHintEndTimer;
     private DateTime _lastPulseUtc = DateTime.MinValue;
     private bool _isGenerating;
     private bool _isAbortHintActive;
@@ -215,7 +228,7 @@ public sealed class ReactorAnimator
 
         // The pointer may still be sitting on the button when the run ends. Drop the abort
         // stance explicitly, or its flag would keep swallowing every later pulse.
-        StopAbortHint();
+        EndAbortHintImmediate();
         EnterRest();
     }
 
@@ -235,46 +248,79 @@ public sealed class ReactorAnimator
     /// </summary>
     public void BeginAbortHint()
     {
-        if (!_isInitialized || _isAbortHintActive) return;
+        if (!_isInitialized) return;
 
+        // A pending teardown means the pointer only "left" for a moment - see EndAbortHint.
+        StopAbortHintEndTimer();
+
+        if (_isAbortHintActive) return;
         _isAbortHintActive = true;
 
         foreach (var (row, col) in AbortCross)
-            SetTileColor(row, col, AbortRedBright, 90);
+            SetTileColor(row, col, AbortReds[0], 90);
 
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
                 if (!IsOnCross(row, col))
-                    AnimateTile(row, col, Palette.Length - 1, 140);
+                    SetTileColor(row, col, AbortBackdrop, 140);
 
         if (AnimationsSuspended) return;
 
-        // Every cross tile pulses on its own schedule between deep and bright, which is
-        // what makes it read as live and unstable rather than a static red X.
+        // Each cross tile drifts between the three reds on its own schedule - alive and
+        // agitated, but never leaving red, so the X never stops being an X.
         StopAbortHintTimer();
-        _abortHintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(110) };
+        _abortHintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(130) };
         _abortHintTimer.Tick += (s, e) =>
         {
             foreach (var (row, col) in AbortCross)
             {
-                if (_random.NextDouble() < 0.45) continue; // stagger, so they don't blink in unison
+                if (_random.NextDouble() < 0.5) continue; // stagger, so they don't blink in unison
 
-                var hot = _random.NextDouble() < 0.5;
-                SetTileColor(row, col, hot ? AbortRedBright : AbortRedDeep, _random.Next(70, 150));
+                // Weighted toward the hot end: mostly bright, occasionally banked down.
+                var roll = _random.NextDouble();
+                var color = roll < 0.5 ? AbortReds[0] : roll < 0.85 ? AbortReds[1] : AbortReds[2];
+
+                SetTileColor(row, col, color, _random.Next(90, 180));
             }
         };
         _abortHintTimer.Start();
     }
 
-    /// <summary>Pointer left, or the run ended. Hands the grid back to whatever owns it
-    /// now - a run in progress repaints itself on its next pulse, so this only has to undo
-    /// the red.</summary>
+    /// <summary>
+    /// Pointer left. Deliberately debounced rather than immediate: a tooltip opening over
+    /// the button counts as leaving it, and the pointer re-enters a frame later, so acting
+    /// straight away made the grid strobe between the red X and the blue phase colors. A
+    /// re-entry inside the grace period cancels the teardown entirely.
+    /// </summary>
     public void EndAbortHint()
     {
         if (!_isInitialized || !_isAbortHintActive) return;
+        if (_abortHintEndTimer != null) return; // already winding down
 
+        if (AnimationsSuspended)
+        {
+            EndAbortHintImmediate();
+            return;
+        }
+
+        _abortHintEndTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
+        _abortHintEndTimer.Tick += (s, e) => EndAbortHintImmediate();
+        _abortHintEndTimer.Start();
+    }
+
+    /// <summary>Drops the abort stance now, no grace period - for the click actually
+    /// landing, the run ending, or the window closing.</summary>
+    public void EndAbortHintImmediate()
+    {
+        if (!_isInitialized) return;
+
+        var wasActive = _isAbortHintActive;
         StopAbortHint();
 
+        if (!wasActive) return;
+
+        // A run in progress repaints itself on its next pulse; this just has to get the
+        // red off the grid in the meantime.
         if (_isGenerating)
         {
             for (var row = 0; row < GridSize; row++)
@@ -289,6 +335,7 @@ public sealed class ReactorAnimator
     private void StopAbortHint()
     {
         StopAbortHintTimer();
+        StopAbortHintEndTimer();
         _isAbortHintActive = false;
     }
 
@@ -298,6 +345,14 @@ public sealed class ReactorAnimator
 
         _abortHintTimer.Stop();
         _abortHintTimer = null;
+    }
+
+    private void StopAbortHintEndTimer()
+    {
+        if (_abortHintEndTimer == null) return;
+
+        _abortHintEndTimer.Stop();
+        _abortHintEndTimer = null;
     }
 
     private static bool IsOnCross(int row, int col)
@@ -336,6 +391,12 @@ public sealed class ReactorAnimator
                 for (var row = 0; row < GridSize; row++)
                     for (var col = 0; col < GridSize; col++)
                         AnimateTile(row, col, _random.Next(Palette.Length), 90);
+
+                // Now and then one cell drops out entirely for a beat. At this speed the
+                // grid can otherwise read as flat noise; a hole punched through it every
+                // so often gives the eye something with depth to catch on.
+                if (_random.NextDouble() < 0.12)
+                    DipTile(_random.Next(GridSize), _random.Next(GridSize), 0.35, 280);
                 break;
 
             case Core.AlchitexPhase.StrippingPbr:
@@ -398,6 +459,11 @@ public sealed class ReactorAnimator
         // The head itself: hard cut to the darkest value, no easing in - erasure is not
         // a fade, it's a removal.
         AnimateTile(headRow, headCol, Palette.Length - 1, 0);
+
+        // ...and the tile briefly goes see-through, so the acrylic panel behind the reactor
+        // shows through the hole. Erasing shouldn't just darken a cell, it should look like
+        // something was taken out of it.
+        DipTile(headRow, headCol, 0.15, 420);
 
         // Two cells behind it, recovering at different rates so the trail has depth.
         var behind1 = (head - 1 + GridSize * GridSize) % (GridSize * GridSize);
@@ -486,6 +552,43 @@ public sealed class ReactorAnimator
 
     private void AnimateTile(int row, int col, int paletteIndex, double durationMs, double delayMs = 0)
         => SetTileColor(row, col, Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)], durationMs, delayMs);
+
+    /// <summary>
+    /// Fades one tile down to <paramref name="toOpacity"/> and back over the given total
+    /// duration, punching a temporary hole in the reactor's face that the acrylic panel
+    /// behind it shows through.
+    ///
+    /// Cheaper than any of the color work: Opacity is an independent animation, so this
+    /// runs on the compositor and never touches the UI thread after it starts.
+    /// </summary>
+    private void DipTile(int row, int col, double toOpacity, double totalMs)
+    {
+        var tile = _tiles[row, col];
+
+        if (AnimationsSuspended) return; // a flicker that only ever ends where it started
+
+        var animation = new DoubleAnimationUsingKeyFrames();
+        animation.KeyFrames.Add(new EasingDoubleKeyFrame { KeyTime = TimeSpan.Zero, Value = 1.0 });
+        animation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = TimeSpan.FromMilliseconds(totalMs * 0.35),
+            Value = toOpacity,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        });
+        animation.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = TimeSpan.FromMilliseconds(totalMs),
+            Value = 1.0,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
+        });
+
+        Storyboard.SetTarget(animation, tile);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
+    }
 
     /// <summary>
     /// The one place a tile's color ever changes. Takes a Color rather than a palette index
