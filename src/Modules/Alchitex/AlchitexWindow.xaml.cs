@@ -1036,7 +1036,7 @@ public sealed partial class Alchitex : Window
             else
             {
                 SetStatusThenRevert(failedNames.Count == 0
-                    ? $"Done - {succeeded}/{queue.Count} pack(s) processed successfully."
+                    ? $"Done - {succeeded}/{queue.Count} pack(s) processed successfully!"
                     : $"Done - {succeeded}/{queue.Count} succeeded. Failed: {string.Join(", ", failedNames)}");
             }
         }
@@ -1427,32 +1427,6 @@ public sealed partial class Alchitex : Window
 }
 
 
-/* ── The Backlogs and Scattered Ideas ─────────────────────────────────────────────────────
+/* ### BACKLOG/TODO OF ALCHITEX (HIGHLY CONFIDENTIAL)
  * 
- * Idea: don't even bother putting Alchitex on a new window, its special, and probably will end up with a codebase the same size as the rest of features combined
- * So, here's what, Hide the MainWindow MainGrid, then display alchitex content...
- * simple! Don't launch it in a separate window
- * You could strip out parts of titlebar content so it remains intact upon clicking Reactor button
- * "Take to RTX Reactor"
- * Could animate the background coming up, cool ideas could be executed here. 
- * 
-// Potentially rename to Alchemist, PBR Alchemist or RTX Reactor or ARCHITEX or ALCHETEX before release.
-
-// Perfect the licensing windows' appearance
-
-// Review: is it a good idea to limit features lifecycle to their windows? In general... should it all ahve been on the main window?
-// well, you see, in your case, navigation view would've been very generic
-// and some modules like alchitex might become too heavy, so yes, making the main window act like a nexus hub that spawns child apps is better...
-// they have minimal communication/interactions, its like main window is a father responsible for them with all of the logs n things
-// navigation view is also nice... think about it, just think, u love the way your buttons look, don't want them to go!
-
-// REDSTONE ELEMENT IMPLEMENTAITON IDEA:
-// We got the tile backgrounds
-// Beneath there, have PROCEDURALLY GENERATED redstone going Upward from below, that makes 2 layers of bitmaps!
-// still do it like u had in mind, tiles exist, images are dynamically selected based on neighbors
-// Then, have a toggle, like the lamp, to either trigger random flashes, or continous random power flashes in the redstone
-// A nice way to convey something being done in the background!
-// This is the way, and is actually imeplementable, unlike earlier versions of the idea. (how were to understand which areas are... to trigger)
-// it isn't too convoluted, and is gonna look AMAZING.
-/// 
 */

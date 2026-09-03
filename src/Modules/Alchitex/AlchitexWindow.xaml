@@ -313,7 +313,11 @@
                     <Grid x:Name="AlchitexControlsArea"
                           Grid.Row="0"
                           Height="340"
+                          Translation="0,0,64"
                           SizeChanged="AlchitexControlsArea_SizeChanged">
+                        <Grid.Shadow>
+                            <ThemeShadow />
+                        </Grid.Shadow>
                         <Grid Margin="24,20,24,20">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -410,7 +414,7 @@
                                     <FontIcon Grid.Row="0"
                                               Glyph="&#xE72A;"
                                               FontSize="64"
-                                              Opacity="0.175"
+                                              Opacity="0.15"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               IsHitTestVisible="False"
@@ -419,7 +423,7 @@
                                     <FontIcon Grid.Row="1"
                                               Glyph="&#xE72B;"
                                               FontSize="64"
-                                              Opacity="0.175"
+                                              Opacity="0.15"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               IsHitTestVisible="False"
@@ -470,7 +474,7 @@
                                     BorderThickness="0"
                                     CornerRadius="0"
                                     Padding="0"
-                                    ToolTipService.ToolTip="Generate"
+                                    ToolTipService.ToolTip="Begin the generation process."
                                     IsTextScaleFactorEnabled="False"
                                     Click="GenerateButton_Click">
                                 <Grid IsHitTestVisible="False">
@@ -488,6 +492,7 @@
                             </Button>
                         </Grid>
                     </Grid>
+
 
                     <!-- ── Progress bar, sitting on the seam between the controls and
                          the announcements ── -->
