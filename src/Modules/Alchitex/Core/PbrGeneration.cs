@@ -1101,7 +1101,15 @@ public static class HeightmapGenerator
     // of how many distinct clusters mean-shift converged to. A busy/high-color-count
     // texture that would otherwise land on many clusters gets merged down harder to reach
     // this; a calm texture that already converged to fewer is untouched. TODO(tuning).
-    private const int MaxClusters = 6;
+    // TODO(tuning): the hard ceiling on distinct elevations, and the single most direct
+    // lever on "this heightmap looks like a mess". Output has exactly this many distinct
+    // greys for an opaque texture (rank placement spreads them evenly across 0-255), so
+    // 4 means 0/85/170/255.
+    //
+    // Note this is only the ceiling on the *clustered ladder*. A cutout texture gets a
+    // second darkened variant of each level from the transparency overlay in Generate
+    // below, so the count a cutout texture actually shows is up to double this.
+    private const int MaxClusters = 4;
 
     // Pairing mean-shift with a fixed-step quantization of the same values, and keeping
     // only regions the two agree on, was tried here as a guard against mean-shift bridging
