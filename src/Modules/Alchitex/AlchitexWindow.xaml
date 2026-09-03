@@ -310,7 +310,7 @@
                 </ComboBox>
 
                 <ToggleButton x:Name="AddFogToggle"
-                              Content="Override with Vanilla RTX's per-biome fog and configurations"
+                              Content="Add RTX compatible per-biome atmospheric configs"
                               HorizontalAlignment="Stretch"
                               IsTextScaleFactorEnabled="False" />
 
