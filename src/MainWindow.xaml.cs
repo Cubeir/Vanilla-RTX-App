@@ -2350,17 +2350,25 @@ public sealed partial class MainWindow : Window
     {
         if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
 
-        if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
+        // Candidacy used to gate this button entirely. It no longer does: packs increasingly
+        // declare "pbr"/"raytraced" while shipping little or no actual PBR content, and those
+        // are precisely RTX Reactor's audience (Faithful 32x and friends), yet none of them
+        // can ever earn the candidate tag. The tag is now advisory only - anything the user
+        // selected can be sent through, and RTX Reactor confirms per pack, in its own window,
+        // before touching one that either already claims PBR or looks like a poor fit.
+        if (SelectedPacks.Count == 0)
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
             {
-                Log("RTX Reactor generates proper RTX support only for non-PBR texture packs that it may consider suitable.", LogLevel.Alchitex);
+                Log("RTX Reactor generates proper RTX support for texture packs, it works best on packs with no PBR textures of their own.", LogLevel.Alchitex);
             }
-            Log($"You must select at least one '{PackBrowserWindow.AlchitexCandidateTag}' from your resource packs to use this feature on.", LogLevel.Warning);
-            return; // TODO: Definition of what makes a pack truly a good "Alchitex Candidate" could evolve over time into something more concrete
-            // Might wanna let ALL non-RTX AND non-VV packs in, but leave a warning for user once inside the window, that texture packs not marked as candidates
-            // have a higher chance of breaking, not working, or not seeing any benefit from this feature.
-            // It's true! (legacy packs, few to no block textures are decent starting indicators for now)
+            Log("You must select at least one resource pack to use this feature on.", LogLevel.Warning);
+            return;
+        }
+
+        if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
+        {
+            Log($"None of your selected packs is tagged '{PackBrowserWindow.AlchitexCandidateTag}' - RTX Reactor will ask you to confirm each one before generating.", LogLevel.Alchitex);
         }
 
 

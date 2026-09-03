@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Vanilla_RTX_App.Modules.Alchitex.Tools; // PbrStripper
 
 namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 
@@ -19,7 +20,10 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 /// AlchitexStaging.CleanupOrphanedTempFolders to sweep up.
 ///
 /// Order:
-///   1. Stage a working copy under a temp name next to the source pack.
+///   1. Stage a working copy under a temp name next to the source pack, and - only when
+///      the user confirmed it for this pack - strip whatever PBR that copy already had
+///      (PbrStripper), so an "already RTX/Vibrant Visuals" pack can be regenerated from
+///      its color textures instead of being skipped wholesale.
 ///   2. Generate texture sets: write missing .texture_set.json descriptors
 ///      (PbrGeneration.TextureSetOrchestrator), then discover what actually needs
 ///      generating and generate MERS + normal-or-heightmap pixels for it.
@@ -50,6 +54,16 @@ public static class AlchitexPipeline
             workingPackPath = await Task.Run(() => AlchitexStaging.CreateTempCopy(sourcePackPath), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // ── Phase 1b: strip pre-existing PBR (opt-in, per pack) ──────────
+            // Runs against the staged copy only - the user's own pack is never opened for
+            // writing, so agreeing to "regenerate" a pack can't cost them the original.
+            if (options.StripExistingPbr)
+            {
+                progress?.Report(new AlchitexProgress(0, 0, "Removing existing PBR textures..."));
+                await Task.Run(() => PbrStripper.Strip(workingPackPath), cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             var materials = MaterialsConfig.Load(Path.Combine(alchitexAssetsPath, "materials.json"));
             var blacklist = PbrBlacklist.Load(Path.Combine(alchitexAssetsPath, "pbr_blacklist.json"));

@@ -288,10 +288,16 @@ public enum SecondaryPbrMode
 /// materials.json-authored SSS applied - there's no run-time toggle for this. A shader
 /// choosing not to read it downstream (same as POM) isn't something to clutter generation
 /// with.
+///
+/// StripExistingPbr is the one option that isn't a window-wide setting: it's decided per
+/// pack, from that pack's own confirmation dialog (AlchitexWindow), and the batch loop
+/// applies it with `options with { StripExistingPbr = true }` for the packs the user agreed
+/// to have regenerated. See PbrStripper.
 /// </summary>
 public sealed record AlchitexOptions(
     SecondaryPbrMode SecondaryPbr,
-    bool AddFog)
+    bool AddFog,
+    bool StripExistingPbr = false)
 {
     /// <summary>
     /// Auto mode's per-texture rule, decided once we know a given color texture's width:

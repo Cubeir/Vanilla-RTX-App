@@ -574,7 +574,7 @@ public static class PostProcess
             }
 
             EnsureMetadata(root);
-            EnsureCapability(root, "raytraced");
+            EnsureCapability(root, "raytraced", removeCapability: "pbr");
 
             File.WriteAllText(manifestPath, root.ToJsonString(WriteOptions));
             return finalName;
@@ -734,11 +734,21 @@ public static class PostProcess
         metadata["url"] = MetadataUrl;
     }
 
-    private static void EnsureCapability(JsonObject root, string capability)
+    /// <summary>
+    /// Adds <paramref name="capability"/> to the manifest's capabilities, and drops
+    /// <paramref name="removeCapability"/> if it's there. Everything else the pack declared
+    /// (e.g. "chemistry") is preserved - this only ever touches the two capabilities it's
+    /// told about.
+    ///
+    /// The removal exists for "pbr" (Vibrant Visuals): RTX Reactor produces RTX-capable
+    /// packs, full stop. Whatever Vibrant Visuals content a source pack claimed, it either
+    /// never existed or was just stripped and regenerated as RTX PBR (see PbrStripper), so
+    /// leaving "pbr" declared would advertise a capability this pack no longer backs.
+    /// </summary>
+    private static void EnsureCapability(JsonObject root, string capability, string? removeCapability = null)
     {
-        // Preserves whatever the pack already declared (e.g. "chemistry") rather than
-        // overwriting the whole array, and only adds what's missing. `as`, not `?.AsArray()`
-        // - a present-but-wrong-kind "capabilities" degrades to "treat as missing".
+        // `as`, not `?.AsArray()` - a present-but-wrong-kind "capabilities" degrades to
+        // "treat as missing".
         var existing = root["capabilities"] as JsonArray;
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -751,6 +761,7 @@ public static class PostProcess
             }
         }
 
+        if (removeCapability != null) set.Remove(removeCapability);
         set.Add(capability);
 
         root["capabilities"] = new JsonArray(set.Select(s => (JsonNode)JsonValue.Create(s)!).ToArray());

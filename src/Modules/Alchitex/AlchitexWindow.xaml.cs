@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Vanilla_RTX_App.Core;
@@ -377,10 +378,12 @@ public sealed partial class Alchitex : Window
 
     private async void GenerateButton_Click(object sender, RoutedEventArgs e)
     {
-        var candidates = TunerVariables.SelectedPacks.Where(p => p.IsAlchitexCandidate).ToList();
-        if (candidates.Count == 0)
+        // Every selected pack is eligible now, not just the ones tagged as candidates -
+        // see the confirmation phase below for what that costs the user.
+        var selected = TunerVariables.SelectedPacks.ToList();
+        if (selected.Count == 0)
         {
-            GenerateStatusText.Text = "No candidate packs selected.";
+            GenerateStatusText.Text = "No packs selected.";
             GenerateStatusText.Visibility = Visibility.Visible;
             return;
         }
@@ -388,26 +391,52 @@ public sealed partial class Alchitex : Window
         var options = ReadOptionsFromUI();
 
         SetGenerationControlsEnabled(false);
-        GenerateProgressBar.Visibility = Visibility.Visible;
-        GenerateProgressBar.IsIndeterminate = true;
         GenerateStatusText.Visibility = Visibility.Visible;
-        GenerateStatusText.Text = "Cleaning up leftovers from any previous run...";
 
-        // Every batch starts by sweeping any alchitex_temp_* folder left behind by a
-        // previous run that didn't finish (crash, force-close, a prior Abort). Cheap,
-        // and means debris never has a chance to accumulate across sessions.
-        await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
-
-        GenerateStatusText.Text = $"Preparing ({candidates.Count} pack{(candidates.Count == 1 ? "" : "s")})...";
-
+        // Created *before* the confirmation dialogs rather than just before the batch:
+        // SetGenerationControlsEnabled has already swapped Generate out for Abort, so the
+        // button is sitting right there while the user works through the dialogs, and it
+        // would do nothing at all against a null token source.
         _generateCts = new CancellationTokenSource();
+
         var succeeded = 0;
-        var failedNames = new System.Collections.Generic.List<string>();
+        var failedNames = new List<string>();
         var aborted = false;
 
         try
         {
-            for (var i = 0; i < candidates.Count; i++)
+            // ── Confirmation phase ───────────────────────────────────────────
+            // Asked up front, for every pack, before any work begins - a dialog appearing
+            // partway through a running batch (over a live progress bar, after some packs
+            // are already written) would be a much worse place to ask.
+            var queue = await BuildGenerationQueueAsync(selected, _generateCts.Token);
+
+            if (_generateCts.IsCancellationRequested)
+            {
+                GenerateStatusText.Text = "Aborted before generating anything.";
+                return;
+            }
+
+            if (queue.Count == 0)
+            {
+                GenerateStatusText.Text = selected.Count == 1
+                    ? "Skipped - nothing left to generate."
+                    : "Skipped every selected pack - nothing left to generate.";
+                return;
+            }
+
+            GenerateProgressBar.Visibility = Visibility.Visible;
+            GenerateProgressBar.IsIndeterminate = true;
+            GenerateStatusText.Text = "Cleaning up leftovers from any previous run...";
+
+            // Every batch starts by sweeping any alchitex_temp_* folder left behind by a
+            // previous run that didn't finish (crash, force-close, a prior Abort). Cheap,
+            // and means debris never has a chance to accumulate across sessions.
+            await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
+
+            GenerateStatusText.Text = $"Preparing ({queue.Count} pack{(queue.Count == 1 ? "" : "s")})...";
+
+            for (var i = 0; i < queue.Count; i++)
             {
                 if (_generateCts.IsCancellationRequested)
                 {
@@ -415,7 +444,7 @@ public sealed partial class Alchitex : Window
                     break;
                 }
 
-                var pack = candidates[i];
+                var (pack, stripExistingPbr) = queue[i];
                 var packIndex = i; // captured for the progress closure below
 
                 // Progress<T> captures this thread's SynchronizationContext at construction
@@ -431,13 +460,13 @@ public sealed partial class Alchitex : Window
                         GenerateProgressBar.Maximum = p.Total;
                         GenerateProgressBar.Value = p.Completed;
                     }
-                    GenerateStatusText.Text = $"[{packIndex + 1}/{candidates.Count}] {pack.Name}: {p.StatusText}";
+                    GenerateStatusText.Text = $"[{packIndex + 1}/{queue.Count}] {pack.Name}: {p.StatusText}";
                 });
 
                 var result = await AlchitexPipeline.RunAsync(
                     pack.Location,
                     pack.Name,
-                    options,
+                    stripExistingPbr ? options with { StripExistingPbr = true } : options,
                     AlchitexAssetsPath,
                     TunerVariables.appVersion,
                     progress,
@@ -463,8 +492,8 @@ public sealed partial class Alchitex : Window
             else
             {
                 GenerateStatusText.Text = failedNames.Count == 0
-                    ? $"Done - {succeeded}/{candidates.Count} pack(s) processed successfully."
-                    : $"Done - {succeeded}/{candidates.Count} succeeded. Failed: {string.Join(", ", failedNames)}";
+                    ? $"Done - {succeeded}/{queue.Count} pack(s) processed successfully."
+                    : $"Done - {succeeded}/{queue.Count} succeeded. Failed: {string.Join(", ", failedNames)}";
             }
         }
         catch (Exception ex)
@@ -488,6 +517,125 @@ public sealed partial class Alchitex : Window
             // Refresh even on an exception mid-batch - whatever succeeded before the
             // exception is still worth reporting when the window closes.
             UpdateSessionSummary();
+        }
+    }
+
+    // ── Confirmation phase ───────────────────────────────────────────────────
+
+    private readonly record struct QueuedPack(
+        (string Location, string Name, string Type, bool IsAlchitexCandidate) Pack,
+        bool StripExistingPbr);
+
+    /// <summary>
+    /// Turns the user's selection into the list of packs to actually generate for, asking
+    /// about the ones that warrant a question first. Three cases:
+    ///
+    ///   * Tagged as an RTX Reactor candidate - exactly what this tool is for. No dialog.
+    ///   * Already declaring "raytraced"/"pbr" - asks whether to wipe the PBR it ships and
+    ///     regenerate from its color textures (AlchitexOptions.StripExistingPbr, applied to
+    ///     the staged copy only). Increasingly this is a pack that declares a capability
+    ///     while shipping almost no PBR content, which is the whole reason this path exists.
+    ///   * Neither - a warning that there may be little here to work with, and a way out.
+    ///
+    /// Declining just drops that pack from the queue; the rest of the selection still runs.
+    /// A pack's own Name is used verbatim from the selection (already resolved from the
+    /// manifest or a .lang file upstream, formatting codes stripped) - nothing here re-reads
+    /// a manifest to label a dialog.
+    /// </summary>
+    private async Task<List<QueuedPack>> BuildGenerationQueueAsync(
+        List<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selected,
+        CancellationToken cancellationToken)
+    {
+        var queue = new List<QueuedPack>();
+
+        foreach (var pack in selected)
+        {
+            if (cancellationToken.IsCancellationRequested) break;
+
+            var alreadyDeclaresPbr = pack.Type is "RTX" or "Vibrant Visuals";
+
+            if (!alreadyDeclaresPbr && pack.IsAlchitexCandidate)
+            {
+                queue.Add(new QueuedPack(pack, StripExistingPbr: false));
+                continue;
+            }
+
+            GenerateStatusText.Text = $"Waiting for your decision on {pack.Name}...";
+
+            var confirmed = alreadyDeclaresPbr
+                ? await ConfirmRegenerateExistingPbrAsync(pack.Name, pack.Type)
+                : await ConfirmUnsuitablePackAsync(pack.Name);
+
+            if (confirmed)
+                queue.Add(new QueuedPack(pack, StripExistingPbr: alreadyDeclaresPbr));
+        }
+
+        return queue;
+    }
+
+    /// <summary>Asked once per already-PBR pack. Defaults to Skip - the destructive option
+    /// shouldn't be the one a stray Enter picks.</summary>
+    private async Task<bool> ConfirmRegenerateExistingPbrAsync(string packName, string packType)
+    {
+        try
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "This pack already has PBR textures",
+                Content =
+                    $"\"{packName}\" is tagged {packType}, so it already declares PBR support and may ship its own " +
+                    "MER/MERS, normal and heightmap textures.\n\n" +
+                    "RTX Reactor can delete all of them and generate a complete new set from the pack's color " +
+                    "textures. Your installed copy is never modified - all of this happens on a copy, which becomes " +
+                    "a separate RTX pack.\n\n" +
+                    "This is worth doing for packs that declare Vibrant Visuals or RTX support but barely ship any " +
+                    "PBR content. If this pack's own PBR work is good, the generated copy will not have it.",
+                PrimaryButtonText = "Remove and regenerate",
+                CloseButtonText = "Skip this pack",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot,
+                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+            };
+
+            return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        }
+        catch (Exception ex)
+        {
+            // A dialog that couldn't be shown must not silently green-light a destructive
+            // pass on someone's pack.
+            Trace.WriteLine($"[ALCHITEX] Couldn't show the regenerate-PBR dialog for '{packName}': {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>Asked once per pack that's neither already-PBR nor a tagged candidate -
+    /// nothing here is destructive, the pack just may not have much for us to work with.</summary>
+    private async Task<bool> ConfirmUnsuitablePackAsync(string packName)
+    {
+        try
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "RTX Reactor may not add much to this pack",
+                Content =
+                    $"\"{packName}\" isn't tagged \"{PackBrowserWindow.AlchitexCandidateTag}\" - it has few block " +
+                    "textures to work with, or uses a pack format too old to build RTX support on.\n\n" +
+                    "You can still run it. Your installed copy is left untouched and the result is a separate RTX " +
+                    "pack, so there's nothing to lose except the time it takes - but it may come out with little or " +
+                    "nothing added to it.",
+                PrimaryButtonText = "Generate anyway",
+                CloseButtonText = "Skip this pack",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot,
+                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+            };
+
+            return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Couldn't show the unsuitable-pack dialog for '{packName}': {ex.Message}");
+            return false;
         }
     }
 
