@@ -581,10 +581,9 @@ public sealed partial class Alchitex : Window
         {
             var dialog = new ContentDialog
             {
-                Title = "This pack already has PBR textures",
+                Title = $"{packName} might already have PBR textures!",
                 Content =
-                    $"\"{packName}\" is tagged {packType}, so it already declares PBR support and may ship its own " +
-                    "MER/MERS, normal and heightmap textures.\n\n" +
+                    $"\"{packName}\" declares itself as {packType} compatible, so it may already have its own PBR textures. " +
                     "RTX Reactor can delete all of them and generate a complete new set from the pack's color " +
                     "textures. Your installed copy is never modified - all of this happens on a copy, which becomes " +
                     "a separate RTX pack.\n\n" +
@@ -616,13 +615,13 @@ public sealed partial class Alchitex : Window
         {
             var dialog = new ContentDialog
             {
-                Title = "RTX Reactor may not add much to this pack",
+                Title = $"{packName} may not be suitable for RTX enhancement!",
                 Content =
-                    $"\"{packName}\" isn't tagged \"{PackBrowserWindow.AlchitexCandidateTag}\" - it has few block " +
+                    $"\"{packName}\" isn't tagged as an \"{PackBrowserWindow.AlchitexCandidateTag}\" - it has few block " +
                     "textures to work with, or uses a pack format too old to build RTX support on.\n\n" +
-                    "You can still run it. Your installed copy is left untouched and the result is a separate RTX " +
-                    "pack, so there's nothing to lose except the time it takes - but it may come out with little or " +
-                    "nothing added to it.",
+                    "You can still run it. Your installed copy is left untouched and the result is " +
+                    "a separate RTX-compatible pack, so there's nothing to lose, but it may come out with little to " +
+                    "nothing added to it, or it may not work at all.",
                 PrimaryButtonText = "Generate anyway",
                 CloseButtonText = "Skip this pack",
                 DefaultButton = ContentDialogButton.Close,
