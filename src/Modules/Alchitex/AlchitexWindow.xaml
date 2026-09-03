@@ -373,19 +373,6 @@
                                                   IsOn="False"
                                                   IsTextScaleFactorEnabled="False"
                                                   ToolTipService.ToolTip="Deletes each selected pack from your installed packs once its RTX version has been generated successfully. Nothing is deleted if generation fails." />
-
-                                    <!-- Temporary home for Abort: the reactor will grow its
-                                         own way to cancel a run once it's animated. Hidden
-                                         unless a run is in progress. -->
-                                    <Button x:Name="AbortButton"
-                                            Content="Abort generation"
-                                            Background="#B91C1C"
-                                            Foreground="White"
-                                            HorizontalAlignment="Stretch"
-                                            Padding="16,12,16,12"
-                                            Visibility="Collapsed"
-                                            IsTextScaleFactorEnabled="False"
-                                            Click="AbortButton_Click" />
                                 </StackPanel>
 
                                 <!-- ── Bevel: light rule then dark rule, the same pairing
@@ -414,6 +401,29 @@
                                         <RowDefinition Height="*" />
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
+
+                                    <!-- Direction markers, sitting behind the tiles: into
+                                         the reactor on top, back out underneath. They
+                                         earn their keep most when a row is empty, which
+                                         is otherwise just blank space with no clue what
+                                         it's for. -->
+                                    <FontIcon Grid.Row="0"
+                                              Glyph="&#xE72A;"
+                                              FontSize="64"
+                                              Opacity="0.175"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsHitTestVisible="False"
+                                              IsTextScaleFactorEnabled="False" />
+
+                                    <FontIcon Grid.Row="1"
+                                              Glyph="&#xE72B;"
+                                              FontSize="64"
+                                              Opacity="0.175"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsHitTestVisible="False"
+                                              IsTextScaleFactorEnabled="False" />
 
                                     <ScrollViewer Grid.Row="0"
                                                   HorizontalScrollBarVisibility="Auto"

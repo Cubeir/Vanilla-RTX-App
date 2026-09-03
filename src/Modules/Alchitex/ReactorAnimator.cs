@@ -63,6 +63,16 @@ public sealed class ReactorAnimator
         { 4, 3, 2 },
     };
 
+    // The abort stance. Four corners plus the middle: on a 3x3 grid that reads as an X,
+    // which is the whole point - the button has to say "this stops it" without a label.
+    private static readonly (int Row, int Col)[] AbortCross =
+    {
+        (0, 0), (0, 2), (1, 1), (2, 0), (2, 2),
+    };
+
+    private static readonly Color AbortRedBright = ColorHelper.FromArgb(255, 0xFF, 0x2E, 0x2E);
+    private static readonly Color AbortRedDeep = ColorHelper.FromArgb(255, 0x7A, 0x00, 0x00);
+
     private const int GridSize = 3;
 
     // Nothing reaches the compositor more often than this, however hard the pipeline
@@ -82,8 +92,10 @@ public sealed class ReactorAnimator
 
     private Storyboard? _bloomLoop;
     private DispatcherTimer? _pressHoldTimer;
+    private DispatcherTimer? _abortHintTimer;
     private DateTime _lastPulseUtc = DateTime.MinValue;
     private bool _isGenerating;
+    private bool _isAbortHintActive;
     private bool _isInitialized;
 
     private static bool AnimationsSuspended => TunerVariables.Persistent.SuspendUIAnimations;
@@ -200,7 +212,100 @@ public sealed class ReactorAnimator
         if (!_isInitialized) return;
 
         _isGenerating = false;
+
+        // The pointer may still be sitting on the button when the run ends. Drop the abort
+        // stance explicitly, or its flag would keep swallowing every later pulse.
+        StopAbortHint();
         EnterRest();
+    }
+
+    // ── Abort stance ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The reactor's "click me and this stops" face, shown while the pointer is over the
+    /// button during a run: the cross lights up in an agitated red while every other tile
+    /// drops to the darkest blue so the X reads cleanly.
+    ///
+    /// It deliberately claims the whole grid - Pulse is ignored for as long as this is up,
+    /// which is why the phase animations visibly stop dead underneath it. That interruption
+    /// is the message: the thing you're about to do is abrupt.
+    ///
+    /// The bloom is left completely alone. It belongs to the run, and the run is still
+    /// going until the user actually commits.
+    /// </summary>
+    public void BeginAbortHint()
+    {
+        if (!_isInitialized || _isAbortHintActive) return;
+
+        _isAbortHintActive = true;
+
+        foreach (var (row, col) in AbortCross)
+            SetTileColor(row, col, AbortRedBright, 90);
+
+        for (var row = 0; row < GridSize; row++)
+            for (var col = 0; col < GridSize; col++)
+                if (!IsOnCross(row, col))
+                    AnimateTile(row, col, Palette.Length - 1, 140);
+
+        if (AnimationsSuspended) return;
+
+        // Every cross tile pulses on its own schedule between deep and bright, which is
+        // what makes it read as live and unstable rather than a static red X.
+        StopAbortHintTimer();
+        _abortHintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(110) };
+        _abortHintTimer.Tick += (s, e) =>
+        {
+            foreach (var (row, col) in AbortCross)
+            {
+                if (_random.NextDouble() < 0.45) continue; // stagger, so they don't blink in unison
+
+                var hot = _random.NextDouble() < 0.5;
+                SetTileColor(row, col, hot ? AbortRedBright : AbortRedDeep, _random.Next(70, 150));
+            }
+        };
+        _abortHintTimer.Start();
+    }
+
+    /// <summary>Pointer left, or the run ended. Hands the grid back to whatever owns it
+    /// now - a run in progress repaints itself on its next pulse, so this only has to undo
+    /// the red.</summary>
+    public void EndAbortHint()
+    {
+        if (!_isInitialized || !_isAbortHintActive) return;
+
+        StopAbortHint();
+
+        if (_isGenerating)
+        {
+            for (var row = 0; row < GridSize; row++)
+                for (var col = 0; col < GridSize; col++)
+                    AnimateTile(row, col, RestLayout[row, col], 220);
+            return;
+        }
+
+        EnterRest();
+    }
+
+    private void StopAbortHint()
+    {
+        StopAbortHintTimer();
+        _isAbortHintActive = false;
+    }
+
+    private void StopAbortHintTimer()
+    {
+        if (_abortHintTimer == null) return;
+
+        _abortHintTimer.Stop();
+        _abortHintTimer = null;
+    }
+
+    private static bool IsOnCross(int row, int col)
+    {
+        foreach (var (r, c) in AbortCross)
+            if (r == row && c == col) return true;
+
+        return false;
     }
 
     // ── Per-phase behavior ───────────────────────────────────────────────────
@@ -213,6 +318,9 @@ public sealed class ReactorAnimator
     public void Pulse(Core.AlchitexPhase phase)
     {
         if (!_isInitialized) return;
+
+        // The abort stance owns the whole grid while it's up - see BeginAbortHint.
+        if (_isAbortHintActive) return;
 
         // Throttle everything. GeneratingTextures alone can arrive thousands of times a
         // second; the rest are rare but there's no reason to special-case them.
@@ -230,16 +338,12 @@ public sealed class ReactorAnimator
                         AnimateTile(row, col, _random.Next(Palette.Length), 90);
                 break;
 
-            // Deleting someone's PBR textures: quiet and deliberate, a few tiles drifting.
             case Core.AlchitexPhase.StrippingPbr:
-                FlickerRandomTiles(_random.Next(2, 4), 420);
+                StepErasure();
                 break;
 
-            // Uninstalling a pack - the reactor goes dark all at once.
             case Core.AlchitexPhase.RemovingPack:
-                for (var row = 0; row < GridSize; row++)
-                    for (var col = 0; col < GridSize; col++)
-                        AnimateTile(row, col, _random.Next(3, Palette.Length), 320);
+                PlayImplosion();
                 break;
 
             // Staging and scanning: nothing is being written yet. A single tile lifts
@@ -257,6 +361,11 @@ public sealed class ReactorAnimator
             case Core.AlchitexPhase.Bookkeeping:
                 StepTrail();
                 break;
+
+            // A pack just landed. One bright wash across the grid, corner to corner.
+            case Core.AlchitexPhase.Done:
+                PlayCompletionWash();
+                break;
         }
     }
 
@@ -266,6 +375,80 @@ public sealed class ReactorAnimator
     {
         for (var i = 0; i < count; i++)
             AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(Palette.Length), durationMs);
+    }
+
+    // Where the erasure head currently is, as a flat 0..8 index in row-major order.
+    private int _erasureHead = -1;
+
+    /// <summary>
+    /// Stripping a pack's existing PBR: a wipe head travels the grid in reading order,
+    /// snapping the tile under it to black-dark instantly while the tiles behind it bleed
+    /// back up toward their resting values. What it should look like is content being
+    /// cleared off a surface, one cell at a time, with the cleared trail slowly recovering
+    /// - not a random flicker, because this phase isn't random work, it's a sweep.
+    /// </summary>
+    private void StepErasure()
+    {
+        _erasureHead = (_erasureHead + 1) % (GridSize * GridSize);
+
+        var head = _erasureHead;
+        var headRow = head / GridSize;
+        var headCol = head % GridSize;
+
+        // The head itself: hard cut to the darkest value, no easing in - erasure is not
+        // a fade, it's a removal.
+        AnimateTile(headRow, headCol, Palette.Length - 1, 0);
+
+        // Two cells behind it, recovering at different rates so the trail has depth.
+        var behind1 = (head - 1 + GridSize * GridSize) % (GridSize * GridSize);
+        var behind2 = (head - 2 + GridSize * GridSize) % (GridSize * GridSize);
+
+        AnimateTile(behind1 / GridSize, behind1 % GridSize, Palette.Length - 2, 260);
+        AnimateTile(behind2 / GridSize, behind2 % GridSize, RestLayout[behind2 / GridSize, behind2 % GridSize], 520);
+    }
+
+    /// <summary>
+    /// Uninstalling the original pack: everything flashes bright for an instant, then
+    /// collapses to black from the outside in - the corners first, the middle last, each
+    /// ring delayed behind the one outside it. An implosion, because that's what deleting
+    /// the thing you started from feels like it should look like.
+    /// </summary>
+    private void PlayImplosion()
+    {
+        for (var row = 0; row < GridSize; row++)
+        {
+            for (var col = 0; col < GridSize; col++)
+            {
+                // Chebyshev distance from the centre: 1 for the ring, 0 for the middle.
+                var ring = Math.Max(Math.Abs(row - 1), Math.Abs(col - 1));
+
+                // The flash.
+                AnimateTile(row, col, 0, 90);
+
+                // The collapse, outer ring first, centre last and slowest.
+                AnimateTile(row, col, Palette.Length - 1, 260, delayMs: 120 + (1 - ring) * 220);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A pack finished: one bright wash sweeping corner to corner, each tile lit on a
+    /// delay proportional to how far along the diagonal it sits, then released back to
+    /// rest behind the wash.
+    /// </summary>
+    private void PlayCompletionWash()
+    {
+        for (var row = 0; row < GridSize; row++)
+        {
+            for (var col = 0; col < GridSize; col++)
+            {
+                var diagonal = row + col; // 0..4, top-left to bottom-right
+                var delay = diagonal * 70.0;
+
+                AnimateTile(row, col, 0, 120, delayMs: delay);
+                AnimateTile(row, col, RestLayout[row, col], 320, delayMs: delay + 160);
+            }
+        }
     }
 
     // Where the bright cell currently sits, so consecutive trail steps move rather than
@@ -301,12 +484,18 @@ public sealed class ReactorAnimator
 
     // ── Primitives ───────────────────────────────────────────────────────────
 
-    private void AnimateTile(int row, int col, int paletteIndex, double durationMs)
+    private void AnimateTile(int row, int col, int paletteIndex, double durationMs, double delayMs = 0)
+        => SetTileColor(row, col, Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)], durationMs, delayMs);
+
+    /// <summary>
+    /// The one place a tile's color ever changes. Takes a Color rather than a palette index
+    /// so the abort stance can paint its reds through the same path as everything else.
+    /// </summary>
+    private void SetTileColor(int row, int col, Color target, double durationMs, double delayMs = 0)
     {
         var brush = _brushes[row, col];
-        var target = Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)];
 
-        if (AnimationsSuspended || durationMs <= 0)
+        if (AnimationsSuspended || (durationMs <= 0 && delayMs <= 0))
         {
             brush.Color = target;
             return;
@@ -318,7 +507,8 @@ public sealed class ReactorAnimator
         var animation = new ColorAnimation
         {
             To = target,
-            Duration = TimeSpan.FromMilliseconds(durationMs),
+            Duration = TimeSpan.FromMilliseconds(Math.Max(durationMs, 1)),
+            BeginTime = TimeSpan.FromMilliseconds(delayMs),
             EnableDependentAnimation = true,
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
         };
@@ -407,6 +597,7 @@ public sealed class ReactorAnimator
     public void Shutdown()
     {
         StopPressHold();
+        StopAbortHint();
         StopBloomLoop();
     }
 }

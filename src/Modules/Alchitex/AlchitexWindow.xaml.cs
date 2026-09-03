@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Printing;
@@ -358,14 +358,34 @@ public sealed partial class Alchitex : Window
         _reactor = new ReactorAnimator(ReactorTileGrid, ReactorBloom);
         _reactor.Initialize();
 
-        // Press-and-hold is a pointer state, not a click - the button's own Click event
-        // fires too late and only once, so the wind-up is driven from these three.
+        // Press-and-hold and the abort stance are both pointer states, not clicks - the
+        // button's own Click event fires too late and only once. Which one a given gesture
+        // means depends entirely on whether a run is going: idle, the reactor winds up;
+        // running, it shows the red X and a click stops the run.
+        GenerateButton.AddHandler(UIElement.PointerEnteredEvent,
+            new PointerEventHandler((s, e) => { if (IsGenerating) _reactor?.BeginAbortHint(); }), handledEventsToo: true);
+
+        GenerateButton.AddHandler(UIElement.PointerExitedEvent,
+            new PointerEventHandler((s, e) =>
+            {
+                _reactor?.EndAbortHint();
+                if (!IsGenerating) _reactor?.EndPressHold();
+            }), handledEventsToo: true);
+
         GenerateButton.AddHandler(UIElement.PointerPressedEvent,
-            new PointerEventHandler((s, e) => _reactor?.BeginPressHold()), handledEventsToo: true);
+            new PointerEventHandler((s, e) =>
+            {
+                if (IsGenerating) _reactor?.BeginAbortHint();
+                else _reactor?.BeginPressHold();
+            }), handledEventsToo: true);
+
+        // Release leaves the pointer sitting on the button, so the abort stance stays up -
+        // only the idle wind-up ends here.
         GenerateButton.AddHandler(UIElement.PointerReleasedEvent,
-            new PointerEventHandler((s, e) => _reactor?.EndPressHold()), handledEventsToo: true);
+            new PointerEventHandler((s, e) => { if (!IsGenerating) _reactor?.EndPressHold(); }), handledEventsToo: true);
+
         GenerateButton.AddHandler(UIElement.PointerCaptureLostEvent,
-            new PointerEventHandler((s, e) => _reactor?.EndPressHold()), handledEventsToo: true);
+            new PointerEventHandler((s, e) => { if (!IsGenerating) _reactor?.EndPressHold(); }), handledEventsToo: true);
 
         _ = RebuildPackIconsAsync();
 
@@ -585,19 +605,19 @@ public sealed partial class Alchitex : Window
                 Width = size,
                 Height = size,
                 CornerRadius = new CornerRadius(5),
-                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(200, 0, 0, 0)),
+                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(150, 0, 0, 0)),
                 Opacity = 0,
                 Child = new FontIcon
                 {
                     Glyph = "", // RemoveFrom
-                    FontSize = size * 0.45,
+                    FontSize = size * 0.34,
                     Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
             };
 
-            ToolTipService.SetToolTip(discard, "Remove from this queue (stays selected in the main window)");
+            ToolTipService.SetToolTip(discard, $"Remove {PackBrowserWindow.StripMinecraftFormatting(packName)} from this queue.");
 
             // Revealed by hovering the tile as a whole, so the target is the icon itself
             // rather than a control you have to find before you can use it.
@@ -675,10 +695,8 @@ public sealed partial class Alchitex : Window
     {
         if (AnimationsSuspended) return;
 
-        var distance = Math.Max(120, PackQueueHost.ActualWidth - tile.ActualOffset.X);
-
         await RunStoryboardAsync(BuildTileStoryboard(tile, IntoReactorAnimationMs,
-            translateX: distance, opacity: 0, scale: 0.35,
+            translateX: ReactorTravelDistance(tile), opacity: 0, scale: 0.35,
             easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
     }
 
@@ -697,22 +715,30 @@ public sealed partial class Alchitex : Window
         }
     }
 
-    /// <summary>A finished pack arriving in the output row, coming from the reactor's
-    /// side rather than just appearing.</summary>
-    private void AnimateArrival(FrameworkElement tile)
+    /// <summary>
+    /// A finished pack coming out of the reactor - AnimateIntoReactorAsync played
+    /// backwards: it starts small and transparent, off at the reactor's side, and travels
+    /// back down the row into place. Same distance basis and easing (mirrored) as the
+    /// intake, so the two read as one motion in opposite directions.
+    /// </summary>
+    private async Task AnimateArrivalAsync(FrameworkElement tile)
     {
         if (AnimationsSuspended) return;
-
         if (tile.RenderTransform is not CompositeTransform transform) return;
 
-        transform.TranslateX = 60;
-        transform.ScaleX = transform.ScaleY = 0.6;
+        transform.TranslateX = ReactorTravelDistance(tile);
+        transform.ScaleX = transform.ScaleY = 0.35;
         tile.Opacity = 0;
 
-        _ = RunStoryboardAsync(BuildTileStoryboard(tile, ArrivalAnimationMs,
+        await RunStoryboardAsync(BuildTileStoryboard(tile, ArrivalAnimationMs,
             translateX: 0, opacity: 1, scale: 1.0,
             easing: new QuadraticEase { EasingMode = EasingMode.EaseOut }));
     }
+
+    /// <summary>How far a tile has to travel to reach the reactor from where it sits.
+    /// Shared by the intake and the arrival so the two mirror each other exactly.</summary>
+    private double ReactorTravelDistance(FrameworkElement tile)
+        => Math.Max(120, PackQueueHost.ActualWidth - tile.ActualOffset.X);
 
     /// <summary>
     /// One storyboard covering any combination of translate/scale/opacity on a tile.
@@ -831,13 +857,19 @@ public sealed partial class Alchitex : Window
             AlchitexVariables.Persistent.AddFogEnabled);
     }
 
+    /// <summary>True while a run is in progress and hasn't been asked to stop. The reactor
+    /// button's gesture handling and its own Click both branch on this - it's the same
+    /// button for "start" and "stop", so everything about it depends on which one it
+    /// currently is.</summary>
+    private bool IsGenerating => _generateCts is { IsCancellationRequested: false };
+
     private void SetGenerationControlsEnabled(bool enabled)
     {
-        // The Generate button stays on screen while disabled now that it's the giant logo -
-        // hiding the centrepiece of the window mid-run would read as the UI breaking.
-        GenerateButton.IsEnabled = enabled;
-        AbortButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
-        AbortButton.IsEnabled = !enabled;
+        // The reactor is never disabled: during a run it IS the abort control, so it has to
+        // stay live and hit-testable. GenerateButton_Click decides which of the two things
+        // a click means, and the tooltip says which one is on offer.
+        ToolTipService.SetToolTip(GenerateButton, enabled ? "Generate" : "Abort generation");
+
         SecondaryPbrModeComboBox.IsEnabled = enabled;
         AddFogToggle.IsEnabled = enabled;
         DeleteOriginalToggle.IsEnabled = enabled;
@@ -846,12 +878,29 @@ public sealed partial class Alchitex : Window
 
     private async void GenerateButton_Click(object sender, RoutedEventArgs e)
     {
-        // Every selected pack is eligible now, not just the ones tagged as candidates -
-        // see the confirmation phase below for what that costs the user.
-        var selected = TunerVariables.SelectedPacks.ToList();
+        // A run already going: the reactor doubles as its own abort button, and the red X
+        // the user is looking at while they click is what says so.
+        if (IsGenerating)
+        {
+            AbortGeneration();
+            return;
+        }
+
+        // Every selected pack is eligible now, not just the ones tagged as candidates (see
+        // the confirmation phase below) - EXCEPT the ones dismissed from the queue, which
+        // is the whole point of the discard button. This has to read the same list the
+        // queue renders from, or the two disagree about what a click does.
+        var selected = TunerVariables.SelectedPacks
+            .Where(p => !string.IsNullOrEmpty(p.Location))
+            .Where(p => !_dismissedLocations.Contains(p.Location))
+            .Where(p => System.IO.Directory.Exists(p.Location))
+            .ToList();
+
         if (selected.Count == 0)
         {
-            SetStatusThenRevert("No packs selected.");
+            SetStatusThenRevert(TunerVariables.SelectedPacks.Count == 0
+                ? "No packs selected."
+                : "The queue is empty - at least one pack is needed.");
             return;
         }
 
@@ -914,6 +963,12 @@ public sealed partial class Alchitex : Window
 
                 var (pack, stripExistingPbr) = queue[i];
 
+                // Dismissed the moment it's handed over, NOT after the run finishes. Any
+                // redraw during the run (an output icon finishing its load, say) rebuilds
+                // the input row from this list - so a pack still in it at that point pops
+                // back into the queue it just left.
+                _dismissedLocations.Add(pack.Location);
+
                 // The pack visibly goes into the reactor before its run starts, and the
                 // rest of the queue closes the gap behind it.
                 await SendTileIntoReactorAsync(pack.Location);
@@ -964,7 +1019,7 @@ public sealed partial class Alchitex : Window
                     // Out the bottom of the reactor and into the output row. Keyed on the
                     // generated pack's own folder, so its icon is the NEW pack's icon -
                     // and it still resolves when the original has just been uninstalled.
-                    AddToOutputRow(result.OutputPackPath ?? pack.Location, result.FinalManifestName ?? pack.Name);
+                    await AddToOutputRowAsync(result.OutputPackPath ?? pack.Location, result.FinalManifestName ?? pack.Name);
                 }
                 else if (_generateCts.IsCancellationRequested) { aborted = true; break; }
                 else
@@ -972,10 +1027,6 @@ public sealed partial class Alchitex : Window
                     failedNames.Add(pack.Name);
                     _failedPackNames.Add(pack.Name);
                 }
-
-                // Whether it succeeded or not, this pack is done: it stays out of the queue
-                // for the rest of this window's lifetime (but stays selected upstream).
-                _dismissedLocations.Add(pack.Location);
             }
 
             if (aborted)
@@ -1041,26 +1092,25 @@ public sealed partial class Alchitex : Window
         AnimateReflow();
     }
 
-    /// <summary>Adds a finished pack to the output row and plays its arrival.</summary>
-    private void AddToOutputRow(string location, string packName)
+    /// <summary>
+    /// Adds a finished pack to the output row and plays it coming out of the reactor.
+    ///
+    /// The icon is loaded BEFORE the tile is built, not in the background: a redraw landing
+    /// mid-animation would replace the tile being animated with a fresh one and the
+    /// arrival would be over before it was visible. One file read against a run measured
+    /// in seconds is the right trade.
+    /// </summary>
+    private async Task AddToOutputRowAsync(string location, string packName)
     {
         _outputPacks.Add((location, packName));
 
-        // The generated pack has its own regenerated icon; load it in the background and
-        // redraw once it's there, rather than holding the batch up for a file read.
-        _ = LoadOutputIconAsync(location);
+        if (!_packIconCache.ContainsKey(location))
+            _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
 
         var tile = BuildPackTile(location, packName, allowDiscard: false);
         OutputQueuePanel.Children.Add(tile);
-        AnimateArrival(tile);
-    }
 
-    private async Task LoadOutputIconAsync(string location)
-    {
-        if (_packIconCache.ContainsKey(location)) return;
-
-        _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
-        RenderQueues();
+        await AnimateArrivalAsync(tile);
     }
 
     // ── "Uninstall the original pack" ────────────────────────────────────────
@@ -1293,13 +1343,17 @@ public sealed partial class Alchitex : Window
         OperationSuccessful = _succeededPackNames.Count > 0;
     }
 
-    private void AbortButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Stops the run in progress. Reached by clicking the reactor while it's
+    /// showing the abort stance - there's no separate Abort button any more.</summary>
+    private void AbortGeneration()
     {
         if (_generateCts == null || _generateCts.IsCancellationRequested) return;
 
         SetStatus("Aborting...");
-        AbortButton.IsEnabled = false; // avoid double-cancel; re-enabled by SetGenerationControlsEnabled once the run unwinds
         _generateCts.Cancel();
+
+        // Drop the red X immediately: the click landed, so it isn't a warning any more.
+        _reactor?.EndAbortHint();
     }
 
     // ── Debug: materials.json bootstrap ─────────────────────────────────────
