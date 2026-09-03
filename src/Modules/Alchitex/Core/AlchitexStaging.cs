@@ -210,6 +210,28 @@ public static class AlchitexStaging
         return results;
     }
 
+    /// <summary>
+    /// Every "textures" folder anywhere under the pack root - the root pack's own plus one
+    /// per subpack (see DiscoverBlocksFolders). terrain_texture.json lives directly inside
+    /// each of these, as a sibling of "blocks", so post-process steps that need to reach it
+    /// per-subpack use this instead of hardcoding the root pack's "textures" path.
+    /// </summary>
+    public static IReadOnlyList<string> DiscoverTexturesFolders(string packRoot)
+    {
+        if (!Directory.Exists(packRoot)) return Array.Empty<string>();
+
+        try
+        {
+            return Directory.GetDirectories(packRoot, "textures", SearchOption.AllDirectories);
+        }
+        catch (Exception)
+        {
+            // Directory.GetDirectories throws on access-denied subfolders - a partial
+            // result is still useful, so this intentionally doesn't rethrow.
+            return Array.Empty<string>();
+        }
+    }
+
     #endregion
 
     #region Name Sanitization

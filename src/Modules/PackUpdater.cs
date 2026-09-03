@@ -790,21 +790,7 @@ public class PackUpdater
                         RemoveEnhancementsFolder(finalDestination);
                     }
 
-                    try
-                    {
-                        Helpers.GenerateTexturesLists(finalDestination);
-                        var contentsPath = Path.Combine(finalDestination, "contents.json");
-                        if (File.Exists(contentsPath))
-                        {
-                            var attr = File.GetAttributes(contentsPath);
-                            if ((attr & System.IO.FileAttributes.ReadOnly) != 0)
-                                File.SetAttributes(contentsPath, attr & ~System.IO.FileAttributes.ReadOnly);
-
-                            File.Delete(contentsPath);
-                        }
-                        File.WriteAllText(contentsPath, "{}");
-                    }
-                    catch { Trace.WriteLine("Contents json or textures list creation failed."); }
+                    Helpers.GenerateBookkeepingFiles(finalDestination);
 
                     Trace.WriteLine($"✅ {pack.displayName} deployed successfully");
                     anyPackDeployed = true;

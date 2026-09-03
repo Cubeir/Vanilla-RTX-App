@@ -636,6 +636,118 @@ public static class Helpers
 
 
     /// <summary>
+    /// Every file the game writes into an installed pack for its own use - caches and
+    /// signatures, never authored content. Both spellings of the textures list (and of the
+    /// signature file) are here because packs in the wild carry either.
+    /// </summary>
+    private static readonly string[] BookkeepingFileNames =
+    {
+        "contents.json", "textures_list.json", "texture_list.json", "signatures.json", "signature.json",
+    };
+
+    /// <summary>
+    /// Strips every game-generated bookkeeping file out of a pack, recursively.
+    ///
+    /// Used when a pack leaves the app (export): the game treats these as authoritative
+    /// caches, so shipping a stale one is strictly worse than shipping none - anything it
+    /// fails to list simply doesn't load. Also the first half of RegenerateBookkeepingFiles,
+    /// since the singular "texture_list.json" and the signature files are never regenerated
+    /// and so have to be deleted rather than overwritten.
+    ///
+    /// contents.json is written read-only by the game, hence the attribute clearing. A file
+    /// that can't be deleted (locked by the game, AV, indexing) is logged and skipped rather
+    /// than aborting the sweep.
+    /// </summary>
+    public static void RemoveBookkeepingFiles(string packRoot)
+    {
+        if (!Directory.Exists(packRoot)) return;
+
+        foreach (var name in BookkeepingFileNames)
+        {
+            string[] matches;
+            try { matches = Directory.GetFiles(packRoot, name, SearchOption.AllDirectories); }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[Bookkeeping] Couldn't scan '{packRoot}' for '{name}': {ex.Message}");
+                continue;
+            }
+
+            foreach (var file in matches)
+                TryDeleteBookkeepingFile(file);
+        }
+    }
+
+    /// <summary>
+    /// Writes the bookkeeping files an *installed* pack is expected to have: a
+    /// textures_list.json in every textures folder (GenerateTexturesLists) plus an empty
+    /// contents.json next to manifest.json.
+    ///
+    /// Only ever for packs this app produced or deployed itself - Vanilla RTX installs
+    /// (PackUpdater) and Alchitex's generated RTX packs, where regenerating caches is part
+    /// of the job we were asked to do. Deliberately NOT done on plain imports: an imported
+    /// pack is somebody else's work, and rewriting its bookkeeping would be mutilating it
+    /// rather than importing it.
+    ///
+    /// contents.json is the game's own file-location cache and can't be authored by us; an
+    /// empty object is enough for the game to rebuild it, and is what keeps it from trusting
+    /// whatever stale one was there before.
+    ///
+    /// Each half is independently guarded - a failure to list textures shouldn't cost the
+    /// pack its contents.json, and neither is worth failing a whole install/generation over.
+    /// </summary>
+    public static void GenerateBookkeepingFiles(string packRoot)
+    {
+        try
+        {
+            GenerateTexturesLists(packRoot);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Bookkeeping] textures_list.json generation failed for '{packRoot}': {ex.Message}");
+        }
+
+        var contentsPath = Path.Combine(packRoot, "contents.json");
+        try
+        {
+            if (File.Exists(contentsPath)) TryDeleteBookkeepingFile(contentsPath);
+            File.WriteAllText(contentsPath, "{}");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Bookkeeping] Couldn't write '{contentsPath}': {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Clears out every stale bookkeeping file and then writes fresh ones. For packs whose
+    /// contents we just changed on disk (Alchitex): overwriting isn't enough on its own,
+    /// because the file names we no longer generate would otherwise survive and keep
+    /// pointing at a pack that no longer looks like that.
+    /// </summary>
+    public static void RegenerateBookkeepingFiles(string packRoot)
+    {
+        RemoveBookkeepingFiles(packRoot);
+        GenerateBookkeepingFiles(packRoot);
+    }
+
+    private static void TryDeleteBookkeepingFile(string path)
+    {
+        try
+        {
+            var attributes = File.GetAttributes(path);
+            if ((attributes & System.IO.FileAttributes.ReadOnly) != 0)
+                File.SetAttributes(path, attributes & ~System.IO.FileAttributes.ReadOnly);
+
+            File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Bookkeeping] Couldn't delete '{path}': {ex.Message}");
+        }
+    }
+
+
+    /// <summary>
     /// Checks if Minecraft.Windows process is running, returns true if so
     /// </summary>
     public static bool IsMinecraftRunning()

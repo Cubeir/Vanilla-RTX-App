@@ -758,165 +758,120 @@ public static class PostProcess
     #region Terrain Texture
 
     /// <summary>
-    /// Forces num_mip_levels/padding to 1, and flattens any "variations" arrays down to a
-    /// single texture path (highest-weight if weights are present, otherwise random or
-    /// first) - PBR texture sets can't represent per-variation MERS/normal/heightmap, so a
-    /// pack with texture variations needs exactly one winner per slot chosen up front.
+    /// Makes sure every terrain_texture.json in the pack (root pack + every subpack - see
+    /// AlchitexStaging.DiscoverTexturesFolders) has mipmaps fully disabled: num_mip_levels
+    /// forced to 0, not 1 - 0 is "off", and full-off is the goal, not merely reduced. It's
+    /// *set*, not adjusted: every field in this file is optional, so a pack that simply
+    /// never declared num_mip_levels is the common case, not an edge one - the rebuilt
+    /// object always seeds it and then copies the original's other fields in over the top.
+    /// "padding" is dropped the same way if present: Mojang has since removed that property
+    /// from the game entirely, so a pack still carrying it is just stale.
     ///
-    /// Wrapped in its own try/catch and parsed with the same comment/trailing-comma
-    /// tolerance as UpdateManifest (a pack's own terrain_texture.json is just as likely to
-    /// carry an author's "// note" as its manifest.json is) - this method used to have no
-    /// safety net at all, so a malformed file here escaped uncaught all the way to
-    /// AlchitexPipeline's outer catch and failed the *entire* pack.
+    /// No longer touches "variations"/texture selection. That existed in legacy only to
+    /// work around a game bug where texture-variation slots couldn't load PBR data -
+    /// Bedrock RTX can do that now, so forcibly collapsing variations here would just be
+    /// actively wrong.
+    ///
+    /// A textures/ folder with no terrain_texture.json at all (or one that's empty/doesn't
+    /// parse to a JSON object) gets a minimal one written from scratch, so every folder
+    /// PBR was generated into ends up with mipmaps disabled one way or another.
+    /// resourcePackName should be the pack's final header.name (AlchitexPipeline already
+    /// has it from UpdateManifest's return value); falls back to the pack's folder name,
+    /// then a random string, if that's unavailable.
+    ///
+    /// Each folder is handled independently in its own try/catch, parsed with the same
+    /// comment/trailing-comma/duplicate-key tolerance as UpdateManifest (see
+    /// SafeParseJsonObject) - this is one post-process step among several, so one folder's
+    /// malformed JSON must not fail the whole pack.
     /// </summary>
-    public static void UpdateTerrainTexture(string packRoot, bool removeVariations = true, bool randomize = true)
+    public static void UpdateTerrainTexture(string packRoot, string? resourcePackName = null)
     {
-        var path = Path.Combine(packRoot, "textures", "terrain_texture.json");
+        var texturesFolders = AlchitexStaging.DiscoverTexturesFolders(packRoot);
+        var fallbackName = ResolveResourcePackName(resourcePackName, packRoot);
 
-        try
+        foreach (var texturesFolder in texturesFolders)
         {
-            JsonObject root;
-            if (File.Exists(path))
+            var path = Path.Combine(texturesFolder, "terrain_texture.json");
+            try
             {
-                var text = File.ReadAllText(path);
-                if (string.IsNullOrWhiteSpace(text))
+                JsonObject? existing = null;
+                if (File.Exists(path))
                 {
-                    root = new JsonObject();
+                    var text = File.ReadAllText(path);
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        existing = SafeParseJsonObject(text);
+                        if (existing == null)
+                            Trace.WriteLine($"[ALCHITEX] '{path}' doesn't parse to a JSON object at its root - rebuilding it.");
+                    }
                 }
-                else if (SafeParseJsonObject(text) is JsonObject parsed)
+
+                JsonObject root;
+                if (existing != null)
                 {
-                    root = parsed;
+                    root = new JsonObject { ["num_mip_levels"] = 0 };
+                    foreach (var kvp in existing)
+                    {
+                        if (kvp.Key is "num_mip_levels" or "padding") continue;
+                        root[kvp.Key] = kvp.Value?.DeepClone();
+                    }
                 }
                 else
                 {
-                    Trace.WriteLine($"[ALCHITEX] '{path}' doesn't parse to a JSON object at its root - treating as empty.");
-                    root = new JsonObject();
-                }
-            }
-            else
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                root = new JsonObject();
-            }
-
-            var reordered = new JsonObject { ["num_mip_levels"] = 1, ["padding"] = 1 };
-            foreach (var kvp in root)
-            {
-                if (kvp.Key is "num_mip_levels" or "padding") continue;
-                reordered[kvp.Key] = kvp.Value?.DeepClone();
-            }
-            root = reordered;
-
-            if (removeVariations && root["texture_data"] is JsonObject textureData)
-            {
-                var random = new Random();
-
-                foreach (var entry in textureData)
-                {
-                    // entry.Value isn't guaranteed to be an object - a malformed entry
-                    // (e.g. a bare string instead of {"textures": ...}, or a duplicate
-                    // key that collapsed to something unexpected - see SafeParseJsonObject)
-                    // is real, and indexing a non-object JsonNode throws. Guard first.
-                    var texturesNode = entry.Value is JsonObject entryObj ? entryObj["textures"] : null;
-                    if (texturesNode == null) continue;
-
-                    if (texturesNode is JsonObject texturesObj)
+                    root = new JsonObject
                     {
-                        if (texturesObj["variations"] is JsonArray variations)
-                        {
-                            // Couldn't pick anything usable (empty/malformed array) -
-                            // leave this entry's textures untouched rather than guessing.
-                            if (SelectVariation(variations, randomize, random) is string selected)
-                                entry.Value!["textures"] = selected;
-                        }
-                        else
-                        {
-                            // Per-face variants (e.g. "up"/"down"/"side" each carrying
-                            // their own "variations" array): collapse each face
-                            // independently. Real packs mix plain string faces in with
-                            // object faces here, so sub.Value being a non-object (and
-                            // thus having nothing to flatten) is expected, not an error.
-                            foreach (var sub in texturesObj.ToList())
-                            {
-                                if (sub.Value is JsonObject subObj
-                                    && subObj["variations"] is JsonArray nestedVariations
-                                    && SelectVariation(nestedVariations, randomize, random) is string nestedSelected)
-                                {
-                                    texturesObj[sub.Key] = nestedSelected;
-                                }
-                            }
-                        }
-                    }
-                    else if (texturesNode is JsonArray texturesArray)
-                    {
-                        for (var i = 0; i < texturesArray.Count; i++)
-                        {
-                            if (texturesArray[i] is JsonObject item
-                                && item["variations"] is JsonArray itemVariations
-                                && SelectVariation(itemVariations, randomize, random) is string itemSelected)
-                            {
-                                texturesArray[i] = itemSelected;
-                            }
-                        }
-                    }
+                        ["resource_pack_name"] = fallbackName,
+                        ["texture_name"] = "atlas.terrain",
+                        ["num_mip_levels"] = 0,
+                    };
                 }
-            }
 
-            File.WriteAllText(path, root.ToJsonString(WriteOptions));
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[ALCHITEX] Failed to update terrain_texture.json at '{path}': {ex.Message}");
+                File.WriteAllText(path, root.ToJsonString(WriteOptions));
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[ALCHITEX] Failed to update terrain_texture.json at '{path}': {ex.Message}");
+            }
         }
     }
 
-    /// <summary>Picks one path out of a "variations" array - highest-weight if every
-    /// entry carries a (coercible) numeric "weight", otherwise random or first. Returns
-    /// null (leaving the caller's entry untouched) rather than throwing if nothing usable
-    /// could be picked - a missing/non-string "path", non-numeric "weight", or empty
-    /// array are all real things malformed/hand-edited packs do.</summary>
-    private static string? SelectVariation(JsonArray variations, bool randomize, Random random)
+    /// <summary>Best-effort "resource_pack_name" for a freshly-constructed
+    /// terrain_texture.json: the pack's real final name if the caller has it (from
+    /// UpdateManifest), else its folder name, else a random string - anything valid, since
+    /// the game doesn't treat this field as meaningful beyond being present.</summary>
+    private static string ResolveResourcePackName(string? resourcePackName, string packRoot)
     {
-        if (variations.Count == 0) return null;
+        if (!string.IsNullOrWhiteSpace(resourcePackName)) return resourcePackName;
 
-        var chosen = variations.All(v => TryGetWeight(v) != null)
-            ? variations.OrderByDescending(v => TryGetWeight(v)!.Value).First()
-            : randomize ? variations[random.Next(variations.Count)] : variations[0];
+        var folderName = Path.GetFileName(packRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (!string.IsNullOrWhiteSpace(folderName)) return folderName;
 
-        try { return (string?)chosen?["path"]; }
-        catch { return null; }
-    }
-
-    private static int? TryGetWeight(JsonNode? variation)
-    {
-        // A "variations" array entry that isn't itself an object (a bare string, say) has
-        // no "weight" to speak of - guard before indexing rather than throwing.
-        if (variation is not JsonObject obj) return null;
-        var node = obj["weight"];
-        if (node == null) return null;
-        try { return node.GetValue<int>(); }
-        catch { return null; }
+        return $"pack_{Guid.NewGuid():N}";
     }
 
     #endregion
 
     #region Housekeeping
 
-    private static readonly HashSet<string> StaleFileNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "contents.json", "signatures.json", "texture_list.json", "textures_list.json",
-    };
-
-    public static void DeleteStaleBookkeepingFiles(string packRoot)
+    /// <summary>
+    /// Clears out the pack's game-generated bookkeeping files and writes fresh ones - an
+    /// empty contents.json at the root plus a textures_list.json per textures folder (see
+    /// Helpers.RegenerateBookkeepingFiles, shared with the Vanilla RTX pack updater).
+    ///
+    /// Deleting alone isn't enough here: whatever the source pack shipped describes a pack
+    /// that no longer exists, since we've just added a MERS/normal/heightmap set beside
+    /// nearly every color texture, plus grey water and possibly fog. Regenerating is in
+    /// scope precisely because this pack is our output - contrast plain imports, which are
+    /// left exactly as their author built them.
+    ///
+    /// Must stay the last thing that touches the pack's files: it snapshots what's on disk,
+    /// so anything written afterwards would be missing from the list it just built.
+    /// </summary>
+    public static void RegenerateBookkeepingFiles(string packRoot)
     {
         if (!Directory.Exists(packRoot)) return;
 
-        foreach (var file in Directory.GetFiles(packRoot, "*", SearchOption.AllDirectories))
-        {
-            if (!StaleFileNames.Contains(Path.GetFileName(file))) continue;
-            try { File.Delete(file); }
-            catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed to delete stale file '{file}': {ex.Message}"); }
-        }
+        Helpers.RegenerateBookkeepingFiles(packRoot);
     }
 
     #endregion

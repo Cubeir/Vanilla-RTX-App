@@ -25,13 +25,9 @@ public static class ExpImpDel
         picker.SuggestedFileName = suggestedName;
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
 
-        var unneededFiles = new[] { "contents.json", "textures_list.json", "signatures.json", "texture_list.json", "signature.json" };
-        await Task.Run(() =>
-        {
-            foreach (var name in unneededFiles)
-                foreach (var file in Directory.GetFiles(packFolderPath, name, SearchOption.AllDirectories))
-                    File.Delete(file);
-        });
+        // A pack on its way out of the app ships without the game's own caches/signatures -
+        // see Helpers.RemoveBookkeepingFiles for why a stale one is worse than none.
+        await Task.Run(() => Helpers.RemoveBookkeepingFiles(packFolderPath));
 
         var file = await picker.PickSaveFileAsync();
         if (file == null) return null;

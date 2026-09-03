@@ -24,7 +24,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 ///      (PbrGeneration.TextureSetOrchestrator), then discover what actually needs
 ///      generating and generate MERS + normal-or-heightmap pixels for it.
 ///   3. Water & glass passes (PostProcess).
-///   4. Manifest, terrain_texture.json, and icon (PostProcess).
+///   4. Manifest, terrain_texture.json, icon, and bookkeeping files (PostProcess).
 ///   5. Promote the temp copy to its final name - only reached on full success.
 /// </summary>
 public static class AlchitexPipeline
@@ -83,9 +83,12 @@ public static class AlchitexPipeline
             // ── Phase 4: manifest, terrain data, icon ────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Finalizing manifest..."));
             var finalManifestName = PostProcess.UpdateManifest(workingPackPath, appVersion);
-            PostProcess.UpdateTerrainTexture(workingPackPath);
+            PostProcess.UpdateTerrainTexture(workingPackPath, finalManifestName);
             PostProcess.RegeneratePackIcon(workingPackPath, alchitexAssetsPath);
-            PostProcess.DeleteStaleBookkeepingFiles(workingPackPath);
+
+            // Last pass that touches the pack's files, by requirement - it lists what's on
+            // disk at the time it runs.
+            PostProcess.RegenerateBookkeepingFiles(workingPackPath);
 
             // Last chance to catch a token signaled during that last phase before the
             // folder becomes "real" - cooperative cancellation means it might not have
