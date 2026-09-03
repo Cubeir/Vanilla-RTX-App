@@ -27,8 +27,8 @@ public sealed class MerParams
     [JsonPropertyName("metal_max")] public int MetalMax { get; set; }
     [JsonPropertyName("emissive_min")] public int EmissiveMin { get; set; }
     [JsonPropertyName("emissive_max")] public int EmissiveMax { get; set; }
-    [JsonPropertyName("roughness_min")] public int RoughnessMin { get; set; } = 201;
-    [JsonPropertyName("roughness_max")] public int RoughnessMax { get; set; } = 249;
+    [JsonPropertyName("roughness_min")] public int RoughnessMin { get; set; } = 192;
+    [JsonPropertyName("roughness_max")] public int RoughnessMax { get; set; } = 255;
 
     [JsonPropertyName("invert_metal")] public bool InvertMetal { get; set; }
     [JsonPropertyName("invert_emissive")] public bool InvertEmissive { get; set; }
@@ -50,8 +50,7 @@ public sealed class SssParams
 
 /// <summary>
 /// One recursive/advanced MERS pass. `Channel` selects which channel of the *color*
-/// texture is used to extract a dominance mask (legacy RTX Reactor's AdjustColorChannels
-/// advanced-gen branch, generalized off of always-red/furnace-only). The masked region
+/// texture is used to extract a dominance mask. The masked region
 /// then gets its own independent MERS pass, alpha-blended back over the base MERS using
 /// the mask's per-pixel opacity.
 /// </summary>
