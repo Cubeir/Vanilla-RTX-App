@@ -310,102 +310,150 @@
                          the window background behind it, so it reads as its own
                          object rather than another card.
                          ═════════════════════════════════════════════════════ -->
-                    <Grid Grid.Row="0" Height="340">
+                    <Grid x:Name="AlchitexControlsArea"
+                          Grid.Row="0"
+                          Height="340"
+                          SizeChanged="AlchitexControlsArea_SizeChanged">
                         <Grid Margin="24,20,24,20">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
+                            <!-- Background only, spanning the button's column too: the
+                                 reactor is part of this area, not a thing parked beside
+                                 it. Its own art covers the acrylic completely, so this is
+                                 structural rather than something you can see. -->
                             <Border x:Name="AlchitexPanelBackground"
-                                    Grid.Column="0"
-                                    CornerRadius="8,0,0,8">
+                                    Grid.ColumnSpan="2"
+                                    CornerRadius="8">
                                 <Border.Background>
                                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                   TintOpacity="0.6"
                                                   FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                 </Border.Background>
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="260" />
-                                        <!-- options -->
-                                        <ColumnDefinition Width="Auto" />
-                                        <!-- divider -->
-                                        <ColumnDefinition Width="*" />
-                                        <!-- queued pack icons -->
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- ── Options ── -->
-                                    <StackPanel Grid.Column="0"
-                                                Margin="24,24,24,24"
-                                                Spacing="24"
-                                                VerticalAlignment="Top">
-
-                                        <ComboBox x:Name="SecondaryPbrModeComboBox"
-                                                  Header="Secondary PBR texture"
-                                                  HorizontalAlignment="Stretch"
-                                                  SelectedIndex="1"
-                                                  IsTextScaleFactorEnabled="False">
-                                            <ComboBoxItem Content="None" />
-                                            <ComboBoxItem Content="Auto" />
-                                            <ComboBoxItem Content="Normal map" />
-                                            <ComboBoxItem Content="Heightmap" />
-                                        </ComboBox>
-
-                                        <ToggleSwitch x:Name="AddFogToggle"
-                                                      Header="Add RTX compatible per-biome configs"
-                                                      IsOn="True"
-                                                      IsTextScaleFactorEnabled="False" />
-
-                                        <ToggleSwitch x:Name="DeleteOriginalToggle"
-                                                      Header="Uninstall the original pack"
-                                                      IsOn="False"
-                                                      IsTextScaleFactorEnabled="False"
-                                                      ToolTipService.ToolTip="Deletes each selected pack from your installed packs once its RTX version has been generated successfully. Nothing is deleted if generation fails." />
-
-                                        <!-- Temporary home for Abort: the giant button will
-                                             grow its own way to cancel a run once it's
-                                             animated. Hidden unless a run is in progress. -->
-                                        <Button x:Name="AbortButton"
-                                                Content="Abort generation"
-                                                Background="#B91C1C"
-                                                Foreground="White"
-                                                HorizontalAlignment="Stretch"
-                                                Padding="16,12,16,12"
-                                                Visibility="Collapsed"
-                                                IsTextScaleFactorEnabled="False"
-                                                Click="AbortButton_Click" />
-                                    </StackPanel>
-
-                                    <!-- ── Divider: two 6px rules, same brush as the
-                                         titlebar's bottom border ── -->
-                                    <StackPanel Grid.Column="1"
-                                                Orientation="Horizontal"
-                                                Spacing="6">
-                                        <Border Width="6"
-                                                Background="{ThemeResource HyperlinkButtonBorderThemeBrush}" />
-                                        <Border Width="6"
-                                                Background="{ThemeResource HyperlinkButtonBorderThemeBrush}" />
-                                    </StackPanel>
-
-                                    <!-- ── Queued packs' icons - built in code-behind
-                                         (RebuildPackIcons), relaid out on resize ── -->
-                                    <Grid x:Name="PackIconsHost"
-                                          Grid.Column="2"
-                                          Margin="24,24,24,24"
-                                          SizeChanged="PackIconsHost_SizeChanged" />
-                                </Grid>
                             </Border>
 
-                            <!-- ── The Generate button: the RTX Reactor mark itself,
-                                 full height, flush against the acrylic panel ── -->
+                            <Grid Grid.Column="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="260" />
+                                    <!-- options -->
+                                    <ColumnDefinition Width="3" />
+                                    <!-- bevel, light edge -->
+                                    <ColumnDefinition Width="3" />
+                                    <!-- bevel, dark edge -->
+                                    <ColumnDefinition Width="*" />
+                                    <!-- pack queue -->
+                                </Grid.ColumnDefinitions>
+
+                                <!-- ── Options ── -->
+                                <StackPanel Grid.Column="0"
+                                            Margin="24,24,24,24"
+                                            Spacing="24"
+                                            VerticalAlignment="Top">
+
+                                    <ComboBox x:Name="SecondaryPbrModeComboBox"
+                                              Header="Secondary PBR texture"
+                                              HorizontalAlignment="Stretch"
+                                              SelectedIndex="1"
+                                              IsTextScaleFactorEnabled="False">
+                                        <ComboBoxItem Content="None" />
+                                        <ComboBoxItem Content="Auto" />
+                                        <ComboBoxItem Content="Normal map" />
+                                        <ComboBoxItem Content="Heightmap" />
+                                    </ComboBox>
+
+                                    <ToggleSwitch x:Name="AddFogToggle"
+                                                  Header="Add RTX compatible per-biome configs"
+                                                  IsOn="True"
+                                                  IsTextScaleFactorEnabled="False" />
+
+                                    <ToggleSwitch x:Name="DeleteOriginalToggle"
+                                                  Header="Uninstall the original pack"
+                                                  IsOn="False"
+                                                  IsTextScaleFactorEnabled="False"
+                                                  ToolTipService.ToolTip="Deletes each selected pack from your installed packs once its RTX version has been generated successfully. Nothing is deleted if generation fails." />
+
+                                    <!-- Temporary home for Abort: the reactor will grow its
+                                         own way to cancel a run once it's animated. Hidden
+                                         unless a run is in progress. -->
+                                    <Button x:Name="AbortButton"
+                                            Content="Abort generation"
+                                            Background="#B91C1C"
+                                            Foreground="White"
+                                            HorizontalAlignment="Stretch"
+                                            Padding="16,12,16,12"
+                                            Visibility="Collapsed"
+                                            IsTextScaleFactorEnabled="False"
+                                            Click="AbortButton_Click" />
+                                </StackPanel>
+
+                                <!-- ── Bevel: light rule then dark rule, the same pairing
+                                     the titlebar and the main window's button groups use.
+                                     Two flat fills reading as one carved edge. ── -->
+                                <Border Grid.Column="1"
+                                        Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                                        Opacity="0.5"/>
+                                <Border Grid.Column="2"
+                                        Background="{ThemeResource SystemControlPageBackgroundListLowBrush}"
+                                        Opacity="0.5"/>
+
+                                <!-- ══ PACK QUEUE ═══════════════════════════════════
+                                     Two rows, both built in code-behind: what's waiting
+                                     to go into the reactor on top, what has come out of
+                                     it underneath. Each scrolls horizontally on its own,
+                                     so nothing is ever hidden behind a "+N" - every pack
+                                     stays reachable, which matters now that each tile
+                                     carries its own discard button.
+                                     ═══════════════════════════════════════════════ -->
+                                <Grid x:Name="PackQueueHost"
+                                      Grid.Column="3"
+                                      Margin="16,12,16,12"
+                                      SizeChanged="PackQueueHost_SizeChanged">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <ScrollViewer Grid.Row="0"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  HorizontalScrollMode="Auto"
+                                                  VerticalScrollBarVisibility="Disabled"
+                                                  VerticalScrollMode="Disabled">
+                                        <StackPanel x:Name="InputQueuePanel"
+                                                    Orientation="Horizontal"
+                                                    Spacing="12"
+                                                    VerticalAlignment="Center" />
+                                    </ScrollViewer>
+
+                                    <ScrollViewer Grid.Row="1"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  HorizontalScrollMode="Auto"
+                                                  VerticalScrollBarVisibility="Disabled"
+                                                  VerticalScrollMode="Disabled">
+                                        <StackPanel x:Name="OutputQueuePanel"
+                                                    Orientation="Horizontal"
+                                                    Spacing="12"
+                                                    VerticalAlignment="Center" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </Grid>
+
+                            <!-- ══ THE REACTOR ══════════════════════════════════════
+                                 Three stacked layers, driven by ReactorAnimator:
+                                   1. a 3x3 grid of tiles, built in code, whose colors
+                                      react to what generation is actually doing;
+                                   2. the static logo;
+                                   3. the same mark with its bloom, whose opacity is the
+                                      other half of the animation vocabulary.
+                                 Square by construction - its side is kept equal to the
+                                 panel's height in code, so changing the area's height is
+                                 all it takes to resize the reactor.
+                                 ═════════════════════════════════════════════════ -->
                             <Button x:Name="GenerateButton"
                                     Grid.Column="1"
                                     Width="300"
                                     Height="300"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Stretch"
                                     VerticalContentAlignment="Stretch"
                                     Background="Transparent"
@@ -415,10 +463,18 @@
                                     ToolTipService.ToolTip="Generate"
                                     IsTextScaleFactorEnabled="False"
                                     Click="GenerateButton_Click">
-                                <Image x:Name="GenerateButtonLogo"
-                                       Source="ms-appx:///Modules/Alchitex/Assets/background-300x-temp-test.png"
-                                       Stretch="UniformToFill"
-                                       IsHitTestVisible="False" />
+                                <Grid IsHitTestVisible="False">
+                                    <Grid x:Name="ReactorTileGrid" />
+
+                                    <Image x:Name="ReactorLogo"
+                                           Source="ms-appx:///Modules/Alchitex/Assets/reactor.logo.png"
+                                           Stretch="Uniform" />
+
+                                    <Image x:Name="ReactorBloom"
+                                           Source="ms-appx:///Modules/Alchitex/Assets/reactor.bloom.png"
+                                           Stretch="Uniform"
+                                           Opacity="0.35" />
+                                </Grid>
                             </Button>
                         </Grid>
                     </Grid>

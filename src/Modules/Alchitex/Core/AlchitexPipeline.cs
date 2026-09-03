@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +8,28 @@ using System.Threading.Tasks;
 using Vanilla_RTX_App.Modules.Alchitex.Tools; // PbrStripper
 
 namespace Vanilla_RTX_App.Modules.Alchitex.Core;
+
+/// <summary>
+/// Which part of the pipeline a progress report came from. Exists so the UI can react to
+/// what's actually happening (the reactor button's animation, ReactorAnimator) without
+/// pattern-matching on StatusText, which is display copy and free to change. A new stage in
+/// RunAsync gets a value here and a behavior in ReactorAnimator.Pulse.
+/// </summary>
+public enum AlchitexPhase
+{
+    Staging,
+    StrippingPbr,
+    ScanningTextures,
+    GeneratingTextures,
+    WaterAndGlass,
+    Fog,
+    Finalizing,
+    Bookkeeping,
+    /// <summary>Not reported by the pipeline - the window raises it while uninstalling an
+    /// original pack after a successful run, which is its own kind of work worth showing.</summary>
+    RemovingPack,
+    Done,
+}
 
 /// <summary>
 /// Single entry point for turning one selected candidate pack into its RTX-enabled
@@ -33,7 +55,11 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 /// </summary>
 public static class AlchitexPipeline
 {
-    public readonly record struct AlchitexProgress(int Completed, int Total, string StatusText);
+    public readonly record struct AlchitexProgress(
+        int Completed,
+        int Total,
+        string StatusText,
+        AlchitexPhase Phase = AlchitexPhase.Staging);
 
     public sealed record AlchitexResult(bool Success, string? OutputPackPath, string? ErrorMessage, string? FinalManifestName = null);
 
@@ -50,7 +76,7 @@ public static class AlchitexPipeline
 
         try
         {
-            progress?.Report(new AlchitexProgress(0, 0, "Staging working copy..."));
+            progress?.Report(new AlchitexProgress(0, 0, "Staging working copy...", AlchitexPhase.Staging));
             workingPackPath = await Task.Run(() => AlchitexStaging.CreateTempCopy(sourcePackPath), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -60,7 +86,7 @@ public static class AlchitexPipeline
             // writing, so agreeing to "regenerate" a pack can't cost them the original.
             if (options.StripExistingPbr)
             {
-                progress?.Report(new AlchitexProgress(0, 0, "Removing existing PBR textures..."));
+                progress?.Report(new AlchitexProgress(0, 0, "Removing existing PBR textures...", AlchitexPhase.StrippingPbr));
                 await Task.Run(() => PbrStripper.Strip(workingPackPath), cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
             }
@@ -69,7 +95,7 @@ public static class AlchitexPipeline
             var blacklist = PbrBlacklist.Load(Path.Combine(alchitexAssetsPath, "pbr_blacklist.json"));
 
             // ── Phase 2: texture sets ────────────────────────────────────────
-            progress?.Report(new AlchitexProgress(0, 0, "Scanning textures..."));
+            progress?.Report(new AlchitexProgress(0, 0, "Scanning textures...", AlchitexPhase.ScanningTextures));
             TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options, blacklist);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -81,27 +107,28 @@ public static class AlchitexPipeline
             cancellationToken.ThrowIfCancellationRequested();
 
             // ── Phase 3: water & glass ───────────────────────────────────────
-            progress?.Report(new AlchitexProgress(0, 0, "Processing water & glass..."));
+            progress?.Report(new AlchitexProgress(0, 0, "Processing water & glass...", AlchitexPhase.WaterAndGlass));
             await Task.Run(() => RunWaterGlassPass(workingPackPath, alchitexAssetsPath), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
             if (options.AddFog)
             {
-                progress?.Report(new AlchitexProgress(0, 0, "Adding fog..."));
+                progress?.Report(new AlchitexProgress(0, 0, "Adding fog...", AlchitexPhase.Fog));
                 await Task.Run(() => PostProcess.DeployFog(workingPackPath, alchitexAssetsPath), cancellationToken);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
             // ── Phase 4: manifest, terrain data, icon ────────────────────────
-            progress?.Report(new AlchitexProgress(0, 0, "Finalizing manifest..."));
+            progress?.Report(new AlchitexProgress(0, 0, "Finalizing manifest...", AlchitexPhase.Finalizing));
             var finalManifestName = PostProcess.UpdateManifest(workingPackPath, appVersion);
             PostProcess.UpdateTerrainTexture(workingPackPath, finalManifestName);
             PostProcess.RegeneratePackIcon(workingPackPath, alchitexAssetsPath);
 
             // Last pass that touches the pack's files, by requirement - it lists what's on
             // disk at the time it runs.
+            progress?.Report(new AlchitexProgress(0, 0, "Regenerating bookkeeping files...", AlchitexPhase.Bookkeeping));
             PostProcess.RegenerateBookkeepingFiles(workingPackPath);
 
             // Last chance to catch a token signaled during that last phase before the
@@ -111,7 +138,7 @@ public static class AlchitexPipeline
 
             var finalPath = AlchitexStaging.PromoteToFinalName(workingPackPath, packDisplayName);
 
-            progress?.Report(new AlchitexProgress(1, 1, "Done."));
+            progress?.Report(new AlchitexProgress(1, 1, "Done.", AlchitexPhase.Done));
             return new AlchitexResult(true, finalPath, null, finalManifestName);
         }
         catch (OperationCanceledException)
@@ -142,7 +169,7 @@ public static class AlchitexPipeline
 
         var total = toProcess.Count;
         var completed = 0;
-        progress?.Report(new AlchitexProgress(0, total, "Generating PBR textures..."));
+        progress?.Report(new AlchitexProgress(0, total, "Generating PBR textures...", AlchitexPhase.GeneratingTextures));
 
         if (total == 0) return;
 
@@ -175,7 +202,7 @@ public static class AlchitexPipeline
             }
 
             var done = Interlocked.Increment(ref completed);
-            progress?.Report(new AlchitexProgress(done, total, target.TextureName));
+            progress?.Report(new AlchitexProgress(done, total, target.TextureName, AlchitexPhase.GeneratingTextures));
         });
     }
 

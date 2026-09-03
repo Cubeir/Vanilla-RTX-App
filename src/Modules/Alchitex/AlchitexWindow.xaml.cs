@@ -11,7 +11,9 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Core;
@@ -110,6 +112,10 @@ public sealed partial class Alchitex : Window
     // close so the user has a record of what was removed on their behalf.
     private readonly List<string> _removedOriginalNames = new();
 
+    // Drives the Generate button's three layers. Built in ShowMainContent, since it needs
+    // the XAML to exist, and shut down with the window so no loop outlives it.
+    private ReactorAnimator? _reactor;
+
     private string AlchitexAssetsPath => System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets");
 
     private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
@@ -182,6 +188,8 @@ public sealed partial class Alchitex : Window
 
         if (_isClosing) return;
         _isClosing = true;
+
+        _reactor?.Shutdown();
 
         if (Content is FrameworkElement root)
             root.Loaded -= Alchitex_Loaded;
@@ -345,11 +353,52 @@ public sealed partial class Alchitex : Window
         AddFogToggle.IsOn = AlchitexVariables.Persistent.AddFogEnabled;
         DeleteOriginalToggle.IsOn = AlchitexVariables.Persistent.DeleteOriginalPackEnabled;
 
+        ResolveReactorArt();
+
+        _reactor = new ReactorAnimator(ReactorTileGrid, ReactorBloom);
+        _reactor.Initialize();
+
+        // Press-and-hold is a pointer state, not a click - the button's own Click event
+        // fires too late and only once, so the wind-up is driven from these three.
+        GenerateButton.AddHandler(UIElement.PointerPressedEvent,
+            new PointerEventHandler((s, e) => _reactor?.BeginPressHold()), handledEventsToo: true);
+        GenerateButton.AddHandler(UIElement.PointerReleasedEvent,
+            new PointerEventHandler((s, e) => _reactor?.EndPressHold()), handledEventsToo: true);
+        GenerateButton.AddHandler(UIElement.PointerCaptureLostEvent,
+            new PointerEventHandler((s, e) => _reactor?.EndPressHold()), handledEventsToo: true);
+
         _ = RebuildPackIconsAsync();
 
 #if DEBUG
         DevOnlyTitleBarActions.Visibility = Visibility.Visible;
 #endif
+    }
+
+    /// <summary>
+    /// Points the reactor's logo and bloom layers at whichever art is actually installed.
+    ///
+    /// The XAML asks for reactor.logo.png / reactor.bloom.png - the dedicated 1024px pair.
+    /// Until those are in Assets/, the logo layer falls back to logo.large.png (the same
+    /// mark, just without a matching bloom) so the button is never a bare grid of tiles,
+    /// and the bloom layer is hidden rather than left as a broken image. The tile
+    /// background is generated in code and never depends on a file at all.
+    /// </summary>
+    private void ResolveReactorArt()
+    {
+        var logoPath = System.IO.Path.Combine(AlchitexAssetsPath, "reactor.logo.png");
+        var bloomPath = System.IO.Path.Combine(AlchitexAssetsPath, "reactor.bloom.png");
+
+        if (!System.IO.File.Exists(logoPath))
+        {
+            Trace.WriteLine($"[ALCHITEX] '{logoPath}' not found - falling back to logo.large.png for the reactor's logo layer.");
+            ReactorLogo.Source = new BitmapImage(new Uri("ms-appx:///Modules/Alchitex/Assets/logo.large.png"));
+        }
+
+        if (!System.IO.File.Exists(bloomPath))
+        {
+            Trace.WriteLine($"[ALCHITEX] '{bloomPath}' not found - the reactor's bloom layer stays hidden until it's added.");
+            ReactorBloom.Source = null;
+        }
     }
 
     // ── Titlebar status line ─────────────────────────────────────────────────
@@ -397,119 +446,113 @@ public sealed partial class Alchitex : Window
         }, TaskScheduler.Default);
     }
 
-    // ── Queued pack icons ────────────────────────────────────────────────────
+    // ── Pack queue ───────────────────────────────────────────────────────────
+    //
+    // Two rows: what's still waiting to go into the reactor on top, what has come out of
+    // it underneath. Both scroll horizontally rather than collapsing into a "+N", because
+    // every tile now carries its own discard button and something you can't reach is
+    // something you can't discard.
 
-    private const int PackIconSize = 128;
-    private const int PackIconSpacing = 12;
-    private const int PackIconMaxRows = 2;
+    private const double PackTileMinSize = 64;
+    private const double PackTileMaxSize = 128;
+    private double _packTileSize = 112;
 
-    // Locations this window session has already generated for. They drop out of the queue
-    // display as they're processed, so the strip empties as a run progresses - which is
-    // also the hook the "pack flies into the button" animation will need later.
-    private readonly HashSet<string> _processedLocations = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Packs this window is ignoring for the rest of its lifetime: discarded by the user,
+    /// skipped at a confirmation dialog, or already run (successfully or not).
+    ///
+    /// Deliberately NOT a change to TunerVariables.SelectedPacks - that selection belongs
+    /// to the main window and the pack browser. Closing and reopening this window brings
+    /// everything back, which is exactly what "temporarily ignore" should mean. (The one
+    /// case where SelectedPacks does change is the "Uninstall the original pack" toggle,
+    /// and only because the folder genuinely stopped existing.)
+    /// </summary>
+    private readonly HashSet<string> _dismissedLocations = new(StringComparer.OrdinalIgnoreCase);
 
-    // Cached one-per-pack so a relayout (window resize) doesn't re-read every icon file.
+    /// <summary>Packs that made it through, in the order they came out.</summary>
+    private readonly List<(string Location, string Name)> _outputPacks = new();
+
+    // Cached per pack so a resize or a queue change doesn't re-read icon files.
     private readonly Dictionary<string, BitmapImage?> _packIconCache = new(StringComparer.OrdinalIgnoreCase);
 
-    private List<(string Location, string Name)> QueuedPacks() => TunerVariables.SelectedPacks
-        .Where(p => !_processedLocations.Contains(p.Location))
-        .Where(p => !string.IsNullOrEmpty(p.Location) && System.IO.Directory.Exists(p.Location))
+    private static bool AnimationsSuspended => TunerVariables.Persistent.SuspendUIAnimations;
+
+    private List<(string Location, string Name)> InputQueue() => TunerVariables.SelectedPacks
+        .Where(p => !string.IsNullOrEmpty(p.Location))
+        .Where(p => !_dismissedLocations.Contains(p.Location))
+        .Where(p => System.IO.Directory.Exists(p.Location))
         .Select(p => (p.Location, p.Name))
         .ToList();
 
     /// <summary>
-    /// Loads any icons not cached yet, then lays the strip out. Call after the queue
-    /// changes (window shown, a pack finished, a pack's folder deleted); plain resizes go
-    /// through LayoutPackIcons directly since nothing needs re-reading from disk.
+    /// Loads any icons that aren't cached yet, then redraws both rows. Call whenever the
+    /// queue's contents change; a plain resize goes straight to RenderQueues.
     /// </summary>
     private async Task RebuildPackIconsAsync()
     {
-        var packs = QueuedPacks();
-
-        foreach (var (location, _) in packs)
+        foreach (var (location, _) in InputQueue().Concat(_outputPacks))
         {
             if (_packIconCache.ContainsKey(location)) continue;
             _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
         }
 
-        LayoutPackIcons();
+        RenderQueues();
+    }
+
+    private void RenderQueues()
+    {
+        if (InputQueuePanel == null || OutputQueuePanel == null) return;
+
+        InputQueuePanel.Children.Clear();
+        OutputQueuePanel.Children.Clear();
+
+        foreach (var (location, name) in InputQueue())
+            InputQueuePanel.Children.Add(BuildPackTile(location, name, allowDiscard: true));
+
+        foreach (var (location, name) in _outputPacks)
+            OutputQueuePanel.Children.Add(BuildPackTile(location, name, allowDiscard: false));
     }
 
     /// <summary>
-    /// Fills the icon area with 128px tiles, as many per row as actually fit at the current
-    /// window width, up to two rows. If there are more packs than cells, the last cell
-    /// becomes a "+N" count instead of an icon - so the strip never silently hides packs
-    /// that are still queued.
+    /// One pack tile: the icon with the pack browser's rounded corners and drop shadow,
+    /// plus - for the input row - a discard button that fades in on hover, mirroring the
+    /// selection overlay in the pack browser but with the RemoveFrom glyph.
     /// </summary>
-    private void LayoutPackIcons()
+    private Grid BuildPackTile(string location, string packName, bool allowDiscard)
     {
-        if (PackIconsHost == null) return;
+        var size = _packTileSize;
 
-        PackIconsHost.Children.Clear();
-        PackIconsHost.RowDefinitions.Clear();
-        PackIconsHost.ColumnDefinitions.Clear();
-
-        var packs = QueuedPacks();
-        if (packs.Count == 0) return;
-
-        var availableWidth = PackIconsHost.ActualWidth;
-        if (availableWidth <= 0) return; // pre-layout; SizeChanged brings us back
-
-        var columns = Math.Max(1, (int)((availableWidth + PackIconSpacing) / (PackIconSize + PackIconSpacing)));
-        var capacity = columns * PackIconMaxRows;
-
-        // One cell has to be given up to the "+N" tile when the queue doesn't fit.
-        var iconCount = packs.Count <= capacity ? packs.Count : capacity - 1;
-        var overflow = packs.Count - iconCount;
-
-        var rows = (int)Math.Ceiling((iconCount + (overflow > 0 ? 1 : 0)) / (double)columns);
-
-        for (var r = 0; r < rows; r++)
-            PackIconsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        for (var c = 0; c < columns; c++)
-            PackIconsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        void Place(FrameworkElement element, int index)
+        var tile = new Grid
         {
-            Grid.SetRow(element, index / columns);
-            Grid.SetColumn(element, index % columns);
-            element.Margin = new Thickness(0, 0, PackIconSpacing, PackIconSpacing);
-            PackIconsHost.Children.Add(element);
-        }
-
-        for (var i = 0; i < iconCount; i++)
-        {
-            var (location, name) = packs[i];
-            _packIconCache.TryGetValue(location, out var icon);
-            Place(BuildPackIconTile(icon, name), i);
-        }
-
-        if (overflow > 0)
-            Place(BuildOverflowTile(overflow), iconCount);
-    }
-
-    private static Border BuildPackIconTile(BitmapImage? icon, string packName)
-    {
-        var tile = new Border
-        {
-            Width = PackIconSize,
-            Height = PackIconSize,
-            CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(96, 96, 96, 96)),
+            Width = size,
+            Height = size,
+            Tag = location, // how the generation loop finds this pack's tile again
+            RenderTransform = new CompositeTransform(),
+            RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
         };
 
-        ToolTipService.SetToolTip(tile, PackBrowserWindow.StripMinecraftFormatting(packName));
+        var iconBorder = new Border
+        {
+            Width = size,
+            Height = size,
+            CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(96, 96, 96, 96)),
+            Translation = new System.Numerics.Vector3(0, 0, 12),
+            Shadow = new ThemeShadow(),
+        };
+
+        _packIconCache.TryGetValue(location, out var icon);
 
         if (icon != null)
         {
-            tile.Child = new Image { Source = icon, Stretch = Stretch.UniformToFill };
+            iconBorder.Child = new Image { Source = icon, Stretch = Stretch.UniformToFill };
         }
         else
         {
             // Same fallback chain the pack browser uses for a pack with no readable icon.
             try
             {
-                tile.Child = new Image
+                iconBorder.Child = new Image
                 {
                     Source = new BitmapImage(new Uri("ms-appx:///Assets/missing.png")),
                     Stretch = Stretch.UniformToFill
@@ -517,47 +560,242 @@ public sealed partial class Alchitex : Window
             }
             catch
             {
-                tile.Child = new FontIcon
+                iconBorder.Child = new FontIcon
                 {
                     Glyph = "",
-                    FontSize = 40,
+                    FontSize = size * 0.32,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
             }
         }
 
-        return tile;
-    }
+        ToolTipService.SetToolTip(tile, PackBrowserWindow.StripMinecraftFormatting(packName));
+        tile.Children.Add(iconBorder);
 
-    private static Grid BuildOverflowTile(int count)
-    {
-        var tile = new Grid { Width = PackIconSize, Height = PackIconSize };
-
-        tile.Children.Add(new TextBlock
+        if (allowDiscard)
         {
-            Text = $"+{count}",
-            FontSize = 44,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        });
+            // A Border with a Tapped handler rather than a Button, mirroring the pack
+            // browser's selection overlay. A Button would be wrong here for a concrete
+            // reason: this overlay only exists while the pointer is over it, so it would
+            // spend its whole visible life in the "pointer over" visual state and paint
+            // that theme brush instead of the dark scrim it is supposed to be.
+            var discard = new Border
+            {
+                Width = size,
+                Height = size,
+                CornerRadius = new CornerRadius(5),
+                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(200, 0, 0, 0)),
+                Opacity = 0,
+                Child = new FontIcon
+                {
+                    Glyph = "", // RemoveFrom
+                    FontSize = size * 0.45,
+                    Foreground = new SolidColorBrush(Microsoft.UI.Colors.White),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
 
-        ToolTipService.SetToolTip(tile, $"{count} more pack{(count == 1 ? "" : "s")} queued");
+            ToolTipService.SetToolTip(discard, "Remove from this queue (stays selected in the main window)");
+
+            // Revealed by hovering the tile as a whole, so the target is the icon itself
+            // rather than a control you have to find before you can use it.
+            tile.PointerEntered += (s, e) => FadeTo(discard, 1.0, 120);
+            tile.PointerExited += (s, e) => FadeTo(discard, 0.0, 120);
+
+            discard.Tapped += async (s, e) =>
+            {
+                e.Handled = true;
+                await DiscardPackAsync(location, tile);
+            };
+
+            tile.Children.Add(discard);
+        }
+
         return tile;
     }
 
-    private void PackIconsHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    /// <summary>Drops a pack from the queue for this window's lifetime, with the same
+    /// send-off a skipped pack gets.</summary>
+    private async Task DiscardPackAsync(string location, FrameworkElement tile)
     {
-        if (e.NewSize.Width != e.PreviousSize.Width)
-            LayoutPackIcons();
+        if (!_dismissedLocations.Add(location)) return;
+
+        await AnimateDismissAsync(tile);
+        RenderQueues();
+    }
+
+    private void PackQueueHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Two rows split the host's height; a tile is a square that fits one of them with
+        // a little air. Recomputed rather than fixed so the reactor area's height stays
+        // the single thing that decides how big this all is.
+        var rowHeight = e.NewSize.Height / 2;
+        var size = Math.Clamp(Math.Floor(rowHeight - 10), PackTileMinSize, PackTileMaxSize);
+
+        if (Math.Abs(size - _packTileSize) < 1) return;
+
+        _packTileSize = size;
+        RenderQueues();
+    }
+
+    /// <summary>Keeps the reactor square and equal to the panel's height, so changing the
+    /// controls area's height is the only edit needed to resize it.</summary>
+    private void AlchitexControlsArea_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var side = Math.Max(0, e.NewSize.Height - 40); // the inner Grid's 20px top/bottom margins
+
+        GenerateButton.Width = side;
+        GenerateButton.Height = side;
+    }
+
+    // ── Queue animations ─────────────────────────────────────────────────────
+    //
+    // All of them no-op into their end state when SuspendUIAnimations is on - the queue
+    // still updates, it just stops moving.
+
+    private const double DismissAnimationMs = 180;
+    private const double IntoReactorAnimationMs = 320;
+    private const double ArrivalAnimationMs = 260;
+
+    /// <summary>Discarded or skipped: straight up and out.</summary>
+    private async Task AnimateDismissAsync(FrameworkElement tile)
+    {
+        if (AnimationsSuspended) return;
+
+        await RunStoryboardAsync(BuildTileStoryboard(tile, DismissAnimationMs,
+            translateY: -40, opacity: 0, easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
+    }
+
+    /// <summary>Accepted for generation: flies right, into the reactor, shrinking as it
+    /// goes. The tiles behind it then slide up into the gap (RenderQueues redraws them at
+    /// their new positions, and AnimateReflow covers the jump).</summary>
+    private async Task AnimateIntoReactorAsync(FrameworkElement tile)
+    {
+        if (AnimationsSuspended) return;
+
+        var distance = Math.Max(120, PackQueueHost.ActualWidth - tile.ActualOffset.X);
+
+        await RunStoryboardAsync(BuildTileStoryboard(tile, IntoReactorAnimationMs,
+            translateX: distance, opacity: 0, scale: 0.35,
+            easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
+    }
+
+    /// <summary>The tiles left in the input row closing the gap the departed one left.</summary>
+    private void AnimateReflow()
+    {
+        if (AnimationsSuspended) return;
+
+        foreach (var child in InputQueuePanel.Children.OfType<FrameworkElement>())
+        {
+            if (child.RenderTransform is not CompositeTransform transform) continue;
+
+            transform.TranslateX = _packTileSize + 12; // where it was before the gap closed
+            _ = RunStoryboardAsync(BuildTileStoryboard(child, 220, translateX: 0,
+                easing: new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+        }
+    }
+
+    /// <summary>A finished pack arriving in the output row, coming from the reactor's
+    /// side rather than just appearing.</summary>
+    private void AnimateArrival(FrameworkElement tile)
+    {
+        if (AnimationsSuspended) return;
+
+        if (tile.RenderTransform is not CompositeTransform transform) return;
+
+        transform.TranslateX = 60;
+        transform.ScaleX = transform.ScaleY = 0.6;
+        tile.Opacity = 0;
+
+        _ = RunStoryboardAsync(BuildTileStoryboard(tile, ArrivalAnimationMs,
+            translateX: 0, opacity: 1, scale: 1.0,
+            easing: new QuadraticEase { EasingMode = EasingMode.EaseOut }));
     }
 
     /// <summary>
-    /// Keeps the announcements panel filling whatever's left of the window under the fixed
-    /// 512px controls area. Without this the acrylic panel would stop at its last card and
-    /// leave the window background showing beneath it.
+    /// One storyboard covering any combination of translate/scale/opacity on a tile.
+    /// CompositeTransform properties are dependent animations (they run on the UI thread),
+    /// which is fine for the handful of tiles ever moving at once - and keeps this to one
+    /// small helper instead of a composition-animation layer.
+    /// </summary>
+    private static Storyboard BuildTileStoryboard(
+        FrameworkElement element,
+        double durationMs,
+        double? translateX = null,
+        double? translateY = null,
+        double? opacity = null,
+        double? scale = null,
+        EasingFunctionBase? easing = null)
+    {
+        var storyboard = new Storyboard();
+        var duration = TimeSpan.FromMilliseconds(durationMs);
+
+        void Add(double to, string property, DependencyObject target, bool dependent)
+        {
+            var animation = new DoubleAnimation
+            {
+                To = to,
+                Duration = duration,
+                EnableDependentAnimation = dependent,
+                EasingFunction = easing,
+            };
+            Storyboard.SetTarget(animation, target);
+            Storyboard.SetTargetProperty(animation, property);
+            storyboard.Children.Add(animation);
+        }
+
+        if (element.RenderTransform is CompositeTransform transform)
+        {
+            if (translateX.HasValue) Add(translateX.Value, "TranslateX", transform, true);
+            if (translateY.HasValue) Add(translateY.Value, "TranslateY", transform, true);
+            if (scale.HasValue)
+            {
+                Add(scale.Value, "ScaleX", transform, true);
+                Add(scale.Value, "ScaleY", transform, true);
+            }
+        }
+
+        if (opacity.HasValue) Add(opacity.Value, "Opacity", element, false);
+
+        return storyboard;
+    }
+
+    private static Task RunStoryboardAsync(Storyboard storyboard)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        storyboard.Completed += (s, e) => tcs.TrySetResult(true);
+        storyboard.Begin();
+        return tcs.Task;
+    }
+
+    private static void FadeTo(UIElement element, double opacity, double durationMs)
+    {
+        if (AnimationsSuspended)
+        {
+            element.Opacity = opacity;
+            return;
+        }
+
+        var animation = new DoubleAnimation
+        {
+            To = opacity,
+            Duration = TimeSpan.FromMilliseconds(durationMs),
+        };
+
+        Storyboard.SetTarget(animation, element);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
+    }
+
+    /// <summary>
+    /// Keeps the announcements panel filling whatever's left of the window under the
+    /// controls area. Without this the acrylic panel would stop at its last card and leave
+    /// the window background showing beneath it.
     /// </summary>
     private void MainScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
@@ -565,7 +803,7 @@ public sealed partial class Alchitex : Window
             ? GenerateProgressBar.ActualHeight
             : 0;
 
-        AnnouncementBackground.MinHeight = Math.Max(0, e.NewSize.Height - 512 - progressBarHeight);
+        AnnouncementBackground.MinHeight = Math.Max(0, e.NewSize.Height - AlchitexControlsArea.Height - progressBarHeight);
     }
 
     // ── PBR generation ───────────────────────────────────────────────────────
@@ -664,6 +902,7 @@ public sealed partial class Alchitex : Window
             await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
 
             SetStatus($"Preparing ({queue.Count} pack{(queue.Count == 1 ? "" : "s")})...");
+            _reactor?.BeginGeneration();
 
             for (var i = 0; i < queue.Count; i++)
             {
@@ -674,6 +913,10 @@ public sealed partial class Alchitex : Window
                 }
 
                 var (pack, stripExistingPbr) = queue[i];
+
+                // The pack visibly goes into the reactor before its run starts, and the
+                // rest of the queue closes the gap behind it.
+                await SendTileIntoReactorAsync(pack.Location);
                 var packIndex = i; // captured for the progress closure below
 
                 // Progress<T> captures this thread's SynchronizationContext at construction
@@ -690,6 +933,9 @@ public sealed partial class Alchitex : Window
                         GenerateProgressBar.Value = p.Completed;
                     }
                     SetStatus($"[{packIndex + 1}/{queue.Count}] {pack.Name}: {p.StatusText}");
+
+                    // The reactor reacts to the phase, not to the text - see AlchitexPhase.
+                    _reactor?.Pulse(p.Phase);
                 });
 
                 var result = await AlchitexPipeline.RunAsync(
@@ -711,8 +957,14 @@ public sealed partial class Alchitex : Window
                     if (deleteOriginals)
                     {
                         SetStatus($"[{packIndex + 1}/{queue.Count}] {pack.Name}: Uninstalling the original pack...");
+                        _reactor?.Pulse(AlchitexPhase.RemovingPack);
                         await DeleteOriginalPackAsync(pack.Location, pack.Name);
                     }
+
+                    // Out the bottom of the reactor and into the output row. Keyed on the
+                    // generated pack's own folder, so its icon is the NEW pack's icon -
+                    // and it still resolves when the original has just been uninstalled.
+                    AddToOutputRow(result.OutputPackPath ?? pack.Location, result.FinalManifestName ?? pack.Name);
                 }
                 else if (_generateCts.IsCancellationRequested) { aborted = true; break; }
                 else
@@ -721,10 +973,9 @@ public sealed partial class Alchitex : Window
                     _failedPackNames.Add(pack.Name);
                 }
 
-                // Whether it succeeded or not, this pack is done being queued - drop it
-                // from the icon strip so what's left on screen is what's still coming.
-                _processedLocations.Add(pack.Location);
-                await RebuildPackIconsAsync();
+                // Whether it succeeded or not, this pack is done: it stays out of the queue
+                // for the rest of this window's lifetime (but stays selected upstream).
+                _dismissedLocations.Add(pack.Location);
             }
 
             if (aborted)
@@ -753,13 +1004,63 @@ public sealed partial class Alchitex : Window
 
             GenerateProgressBar.IsIndeterminate = false;
             SetGenerationControlsEnabled(true);
+            _reactor?.EndGeneration();
             _generateCts?.Dispose();
             _generateCts = null;
+
+            // Skipped, failed and aborted packs all leave the queue here, so what's left
+            // on screen is only ever what a further click would actually act on.
+            await RebuildPackIconsAsync();
 
             // Refresh even on an exception mid-batch - whatever succeeded before the
             // exception is still worth reporting when the window closes.
             UpdateSessionSummary();
         }
+    }
+
+    // ── Queue hand-off ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Plays a pack's tile flying into the reactor, then redraws the input row without it
+    /// and slides the remaining tiles into the gap. Awaited by the batch loop so the
+    /// hand-off finishes before that pack's run starts - it's ~320ms against a run of
+    /// seconds to minutes, and it's what makes the reactor look like it's being fed.
+    /// </summary>
+    private async Task SendTileIntoReactorAsync(string location)
+    {
+        var tile = InputQueuePanel.Children
+            .OfType<FrameworkElement>()
+            .FirstOrDefault(t => t.Tag is string tagged &&
+                                 string.Equals(tagged, location, StringComparison.OrdinalIgnoreCase));
+
+        if (tile == null) return;
+
+        await AnimateIntoReactorAsync(tile);
+
+        InputQueuePanel.Children.Remove(tile);
+        AnimateReflow();
+    }
+
+    /// <summary>Adds a finished pack to the output row and plays its arrival.</summary>
+    private void AddToOutputRow(string location, string packName)
+    {
+        _outputPacks.Add((location, packName));
+
+        // The generated pack has its own regenerated icon; load it in the background and
+        // redraw once it's there, rather than holding the batch up for a file read.
+        _ = LoadOutputIconAsync(location);
+
+        var tile = BuildPackTile(location, packName, allowDiscard: false);
+        OutputQueuePanel.Children.Add(tile);
+        AnimateArrival(tile);
+    }
+
+    private async Task LoadOutputIconAsync(string location)
+    {
+        if (_packIconCache.ContainsKey(location)) return;
+
+        _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
+        RenderQueues();
     }
 
     // ── "Uninstall the original pack" ────────────────────────────────────────
@@ -850,7 +1151,26 @@ public sealed partial class Alchitex : Window
                 : await ConfirmUnsuitablePackAsync(pack.Name);
 
             if (confirmed)
+            {
                 queue.Add(new QueuedPack(pack, StripExistingPbr: alreadyDeclaresPbr));
+            }
+            else
+            {
+                // Declined: out of the queue for this window's lifetime, with the same
+                // send-off the discard button gives.
+                _dismissedLocations.Add(pack.Location);
+
+                var tile = InputQueuePanel.Children
+                    .OfType<FrameworkElement>()
+                    .FirstOrDefault(t => t.Tag is string tagged &&
+                                         string.Equals(tagged, pack.Location, StringComparison.OrdinalIgnoreCase));
+
+                if (tile != null)
+                {
+                    await AnimateDismissAsync(tile);
+                    InputQueuePanel.Children.Remove(tile);
+                }
+            }
         }
 
         return queue;
