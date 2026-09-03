@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Printing;
@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Tools;
@@ -32,7 +33,11 @@ public static class AlchitexVariables
         // LocalSettings needs a WinRT-projectable type, and int is the simplest one that
         // round-trips cleanly through the existing reflection-based Save/LoadSettings.
         public static int SecondaryPbrModeIndex = (int)SecondaryPbrMode.Auto;
-        public static bool AddFogEnabled = false;
+        // On by default: the fog configs are what make a generated pack look like it
+        // belongs in an RTX world rather than just having PBR textures bolted on.
+        public static bool AddFogEnabled = true;
+        // Off by default, and deliberately so - it deletes the user's own installed pack.
+        public static bool DeleteOriginalPackEnabled = false;
     }
     public static class Defaults
     {
@@ -101,6 +106,9 @@ public sealed partial class Alchitex : Window
     // most recent one - the user can click Generate more than once before closing.
     private readonly List<string> _succeededPackNames = new();
     private readonly List<string> _failedPackNames = new();
+    // Originals uninstalled by the "Uninstall the original pack" toggle - reported on
+    // close so the user has a record of what was removed on their behalf.
+    private readonly List<string> _removedOriginalNames = new();
 
     private string AlchitexAssetsPath => System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets");
 
@@ -328,17 +336,236 @@ public sealed partial class Alchitex : Window
     /// </summary>
     private void ShowMainContent()
     {
-        TitleBarText.Text = "RTX Reactor";
+        SetStatus(null);
 
         TitleBarActions.Visibility = Visibility.Visible;
         MainGrid.Visibility = Visibility.Visible;
 
         SecondaryPbrModeComboBox.SelectedIndex = AlchitexVariables.Persistent.SecondaryPbrModeIndex;
-        AddFogToggle.IsChecked = AlchitexVariables.Persistent.AddFogEnabled;
+        AddFogToggle.IsOn = AlchitexVariables.Persistent.AddFogEnabled;
+        DeleteOriginalToggle.IsOn = AlchitexVariables.Persistent.DeleteOriginalPackEnabled;
+
+        _ = RebuildPackIconsAsync();
 
 #if DEBUG
         DevOnlyTitleBarActions.Visibility = Visibility.Visible;
 #endif
+    }
+
+    // ── Titlebar status line ─────────────────────────────────────────────────
+
+    private const string DefaultTitleText = "RTX Reactor";
+
+    // Cancels a pending "revert the title back to RTX Reactor" when something else wants
+    // to write to the titlebar first (a new run, mostly).
+    private CancellationTokenSource? _titleRevertCts;
+
+    /// <summary>
+    /// Writes the generation status into the titlebar, which is where it lives now that
+    /// there's no status TextBlock in the content area. Passing null (or empty) restores
+    /// "RTX Reactor".
+    /// </summary>
+    private void SetStatus(string? text)
+    {
+        _titleRevertCts?.Cancel();
+        _titleRevertCts?.Dispose();
+        _titleRevertCts = null;
+
+        TitleBarText.Text = string.IsNullOrEmpty(text) ? DefaultTitleText : text;
+    }
+
+    /// <summary>
+    /// Leaves a run's final line up long enough to actually be read, then puts the title
+    /// back. Any SetStatus call in the meantime cancels the revert, so a second Generate
+    /// click never gets its status stomped by the previous run's timer.
+    /// </summary>
+    private void SetStatusThenRevert(string text, int millisecondsBeforeRevert = 8000)
+    {
+        SetStatus(text);
+
+        var cts = new CancellationTokenSource();
+        _titleRevertCts = cts;
+
+        _ = Task.Delay(millisecondsBeforeRevert, cts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled || _isClosing) return;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!cts.IsCancellationRequested && !_isClosing)
+                    TitleBarText.Text = DefaultTitleText;
+            });
+        }, TaskScheduler.Default);
+    }
+
+    // ── Queued pack icons ────────────────────────────────────────────────────
+
+    private const int PackIconSize = 128;
+    private const int PackIconSpacing = 12;
+    private const int PackIconMaxRows = 2;
+
+    // Locations this window session has already generated for. They drop out of the queue
+    // display as they're processed, so the strip empties as a run progresses - which is
+    // also the hook the "pack flies into the button" animation will need later.
+    private readonly HashSet<string> _processedLocations = new(StringComparer.OrdinalIgnoreCase);
+
+    // Cached one-per-pack so a relayout (window resize) doesn't re-read every icon file.
+    private readonly Dictionary<string, BitmapImage?> _packIconCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private List<(string Location, string Name)> QueuedPacks() => TunerVariables.SelectedPacks
+        .Where(p => !_processedLocations.Contains(p.Location))
+        .Where(p => !string.IsNullOrEmpty(p.Location) && System.IO.Directory.Exists(p.Location))
+        .Select(p => (p.Location, p.Name))
+        .ToList();
+
+    /// <summary>
+    /// Loads any icons not cached yet, then lays the strip out. Call after the queue
+    /// changes (window shown, a pack finished, a pack's folder deleted); plain resizes go
+    /// through LayoutPackIcons directly since nothing needs re-reading from disk.
+    /// </summary>
+    private async Task RebuildPackIconsAsync()
+    {
+        var packs = QueuedPacks();
+
+        foreach (var (location, _) in packs)
+        {
+            if (_packIconCache.ContainsKey(location)) continue;
+            _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
+        }
+
+        LayoutPackIcons();
+    }
+
+    /// <summary>
+    /// Fills the icon area with 128px tiles, as many per row as actually fit at the current
+    /// window width, up to two rows. If there are more packs than cells, the last cell
+    /// becomes a "+N" count instead of an icon - so the strip never silently hides packs
+    /// that are still queued.
+    /// </summary>
+    private void LayoutPackIcons()
+    {
+        if (PackIconsHost == null) return;
+
+        PackIconsHost.Children.Clear();
+        PackIconsHost.RowDefinitions.Clear();
+        PackIconsHost.ColumnDefinitions.Clear();
+
+        var packs = QueuedPacks();
+        if (packs.Count == 0) return;
+
+        var availableWidth = PackIconsHost.ActualWidth;
+        if (availableWidth <= 0) return; // pre-layout; SizeChanged brings us back
+
+        var columns = Math.Max(1, (int)((availableWidth + PackIconSpacing) / (PackIconSize + PackIconSpacing)));
+        var capacity = columns * PackIconMaxRows;
+
+        // One cell has to be given up to the "+N" tile when the queue doesn't fit.
+        var iconCount = packs.Count <= capacity ? packs.Count : capacity - 1;
+        var overflow = packs.Count - iconCount;
+
+        var rows = (int)Math.Ceiling((iconCount + (overflow > 0 ? 1 : 0)) / (double)columns);
+
+        for (var r = 0; r < rows; r++)
+            PackIconsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        for (var c = 0; c < columns; c++)
+            PackIconsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        void Place(FrameworkElement element, int index)
+        {
+            Grid.SetRow(element, index / columns);
+            Grid.SetColumn(element, index % columns);
+            element.Margin = new Thickness(0, 0, PackIconSpacing, PackIconSpacing);
+            PackIconsHost.Children.Add(element);
+        }
+
+        for (var i = 0; i < iconCount; i++)
+        {
+            var (location, name) = packs[i];
+            _packIconCache.TryGetValue(location, out var icon);
+            Place(BuildPackIconTile(icon, name), i);
+        }
+
+        if (overflow > 0)
+            Place(BuildOverflowTile(overflow), iconCount);
+    }
+
+    private static Border BuildPackIconTile(BitmapImage? icon, string packName)
+    {
+        var tile = new Border
+        {
+            Width = PackIconSize,
+            Height = PackIconSize,
+            CornerRadius = new CornerRadius(5),
+            Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(96, 96, 96, 96)),
+        };
+
+        ToolTipService.SetToolTip(tile, PackBrowserWindow.StripMinecraftFormatting(packName));
+
+        if (icon != null)
+        {
+            tile.Child = new Image { Source = icon, Stretch = Stretch.UniformToFill };
+        }
+        else
+        {
+            // Same fallback chain the pack browser uses for a pack with no readable icon.
+            try
+            {
+                tile.Child = new Image
+                {
+                    Source = new BitmapImage(new Uri("ms-appx:///Assets/missing.png")),
+                    Stretch = Stretch.UniformToFill
+                };
+            }
+            catch
+            {
+                tile.Child = new FontIcon
+                {
+                    Glyph = "",
+                    FontSize = 40,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+            }
+        }
+
+        return tile;
+    }
+
+    private static Grid BuildOverflowTile(int count)
+    {
+        var tile = new Grid { Width = PackIconSize, Height = PackIconSize };
+
+        tile.Children.Add(new TextBlock
+        {
+            Text = $"+{count}",
+            FontSize = 44,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTextScaleFactorEnabled = false
+        });
+
+        ToolTipService.SetToolTip(tile, $"{count} more pack{(count == 1 ? "" : "s")} queued");
+        return tile;
+    }
+
+    private void PackIconsHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Width != e.PreviousSize.Width)
+            LayoutPackIcons();
+    }
+
+    /// <summary>
+    /// Keeps the announcements panel filling whatever's left of the window under the fixed
+    /// 512px controls area. Without this the acrylic panel would stop at its last card and
+    /// leave the window background showing beneath it.
+    /// </summary>
+    private void MainScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var progressBarHeight = GenerateProgressBar.Visibility == Visibility.Visible
+            ? GenerateProgressBar.ActualHeight
+            : 0;
+
+        AnnouncementBackground.MinHeight = Math.Max(0, e.NewSize.Height - 512 - progressBarHeight);
     }
 
     // ── PBR generation ───────────────────────────────────────────────────────
@@ -352,7 +579,8 @@ public sealed partial class Alchitex : Window
         if (modeIndex < 0) modeIndex = (int)SecondaryPbrMode.Auto;
 
         AlchitexVariables.Persistent.SecondaryPbrModeIndex = modeIndex;
-        AlchitexVariables.Persistent.AddFogEnabled = AddFogToggle.IsChecked ?? false;
+        AlchitexVariables.Persistent.AddFogEnabled = AddFogToggle.IsOn;
+        AlchitexVariables.Persistent.DeleteOriginalPackEnabled = DeleteOriginalToggle.IsOn;
     }
 
     private AlchitexOptions ReadOptionsFromUI()
@@ -367,12 +595,14 @@ public sealed partial class Alchitex : Window
 
     private void SetGenerationControlsEnabled(bool enabled)
     {
+        // The Generate button stays on screen while disabled now that it's the giant logo -
+        // hiding the centrepiece of the window mid-run would read as the UI breaking.
         GenerateButton.IsEnabled = enabled;
-        GenerateButton.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         AbortButton.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         AbortButton.IsEnabled = !enabled;
         SecondaryPbrModeComboBox.IsEnabled = enabled;
         AddFogToggle.IsEnabled = enabled;
+        DeleteOriginalToggle.IsEnabled = enabled;
         GenerateMaterialsConfigButton.IsEnabled = enabled;
     }
 
@@ -383,15 +613,14 @@ public sealed partial class Alchitex : Window
         var selected = TunerVariables.SelectedPacks.ToList();
         if (selected.Count == 0)
         {
-            GenerateStatusText.Text = "No packs selected.";
-            GenerateStatusText.Visibility = Visibility.Visible;
+            SetStatusThenRevert("No packs selected.");
             return;
         }
 
         var options = ReadOptionsFromUI();
+        var deleteOriginals = AlchitexVariables.Persistent.DeleteOriginalPackEnabled;
 
         SetGenerationControlsEnabled(false);
-        GenerateStatusText.Visibility = Visibility.Visible;
 
         // Created *before* the confirmation dialogs rather than just before the batch:
         // SetGenerationControlsEnabled has already swapped Generate out for Abort, so the
@@ -413,28 +642,28 @@ public sealed partial class Alchitex : Window
 
             if (_generateCts.IsCancellationRequested)
             {
-                GenerateStatusText.Text = "Aborted before generating anything.";
+                SetStatusThenRevert("Aborted before generating anything.");
                 return;
             }
 
             if (queue.Count == 0)
             {
-                GenerateStatusText.Text = selected.Count == 1
+                SetStatusThenRevert(selected.Count == 1
                     ? "Skipped - nothing left to generate."
-                    : "Skipped every selected pack - nothing left to generate.";
+                    : "Skipped every selected pack - nothing left to generate.");
                 return;
             }
 
             GenerateProgressBar.Visibility = Visibility.Visible;
             GenerateProgressBar.IsIndeterminate = true;
-            GenerateStatusText.Text = "Cleaning up leftovers from any previous run...";
+            SetStatus("Cleaning up leftovers from any previous run...");
 
             // Every batch starts by sweeping any alchitex_temp_* folder left behind by a
             // previous run that didn't finish (crash, force-close, a prior Abort). Cheap,
             // and means debris never has a chance to accumulate across sessions.
             await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
 
-            GenerateStatusText.Text = $"Preparing ({queue.Count} pack{(queue.Count == 1 ? "" : "s")})...";
+            SetStatus($"Preparing ({queue.Count} pack{(queue.Count == 1 ? "" : "s")})...");
 
             for (var i = 0; i < queue.Count; i++)
             {
@@ -460,7 +689,7 @@ public sealed partial class Alchitex : Window
                         GenerateProgressBar.Maximum = p.Total;
                         GenerateProgressBar.Value = p.Completed;
                     }
-                    GenerateStatusText.Text = $"[{packIndex + 1}/{queue.Count}] {pack.Name}: {p.StatusText}";
+                    SetStatus($"[{packIndex + 1}/{queue.Count}] {pack.Name}: {p.StatusText}");
                 });
 
                 var result = await AlchitexPipeline.RunAsync(
@@ -476,6 +705,14 @@ public sealed partial class Alchitex : Window
                 {
                     succeeded++;
                     _succeededPackNames.Add(result.FinalManifestName ?? pack.Name);
+
+                    // Only ever after a fully successful run for this pack - a failed or
+                    // aborted one leaves the user's original exactly where it was.
+                    if (deleteOriginals)
+                    {
+                        SetStatus($"[{packIndex + 1}/{queue.Count}] {pack.Name}: Uninstalling the original pack...");
+                        await DeleteOriginalPackAsync(pack.Location, pack.Name);
+                    }
                 }
                 else if (_generateCts.IsCancellationRequested) { aborted = true; break; }
                 else
@@ -483,23 +720,28 @@ public sealed partial class Alchitex : Window
                     failedNames.Add(pack.Name);
                     _failedPackNames.Add(pack.Name);
                 }
+
+                // Whether it succeeded or not, this pack is done being queued - drop it
+                // from the icon strip so what's left on screen is what's still coming.
+                _processedLocations.Add(pack.Location);
+                await RebuildPackIconsAsync();
             }
 
             if (aborted)
             {
-                GenerateStatusText.Text = $"Aborted - {succeeded} pack(s) completed before stopping.";
+                SetStatusThenRevert($"Aborted - {succeeded} pack(s) completed before stopping.");
             }
             else
             {
-                GenerateStatusText.Text = failedNames.Count == 0
+                SetStatusThenRevert(failedNames.Count == 0
                     ? $"Done - {succeeded}/{queue.Count} pack(s) processed successfully."
-                    : $"Done - {succeeded}/{queue.Count} succeeded. Failed: {string.Join(", ", failedNames)}";
+                    : $"Done - {succeeded}/{queue.Count} succeeded. Failed: {string.Join(", ", failedNames)}");
             }
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[ALCHITEX] GenerateButton_Click failed: {ex}");
-            GenerateStatusText.Text = $"Something went wrong: {ex.Message}";
+            SetStatusThenRevert($"Something went wrong: {ex.Message}");
         }
         finally
         {
@@ -517,6 +759,47 @@ public sealed partial class Alchitex : Window
             // Refresh even on an exception mid-batch - whatever succeeded before the
             // exception is still worth reporting when the window closes.
             UpdateSessionSummary();
+        }
+    }
+
+    // ── "Uninstall the original pack" ────────────────────────────────────────
+
+    /// <summary>
+    /// Deletes the pack the RTX version was generated from, via the same
+    /// ExpImpDel.DeletePackAsync the main window's Delete button uses - including its
+    /// guard against deleting anything that isn't inside a real resource-packs folder.
+    /// No confirmation dialog: the toggle IS the confirmation, and it was answered before
+    /// the run started.
+    ///
+    /// Also drops the pack from TunerVariables.SelectedPacks. It's app-wide state and the
+    /// folder is gone, so leaving it selected would hand a dead path to Export/Tune/Delete
+    /// back in the main window.
+    ///
+    /// A failure here is reported but never fails the pack: its RTX version generated fine,
+    /// which is what the user actually asked for.
+    /// </summary>
+    private async Task DeleteOriginalPackAsync(string location, string packName)
+    {
+        try
+        {
+            if (await ExpImpDel.DeletePackAsync(location) != null)
+            {
+                _removedOriginalNames.Add(packName);
+
+                for (var i = TunerVariables.SelectedPacks.Count - 1; i >= 0; i--)
+                {
+                    if (string.Equals(TunerVariables.SelectedPacks[i].Location, location, StringComparison.OrdinalIgnoreCase))
+                        TunerVariables.SelectedPacks.RemoveAt(i);
+                }
+            }
+            else
+            {
+                Trace.WriteLine($"[ALCHITEX] Couldn't uninstall the original pack at '{location}' - its RTX version was still generated.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] Failed uninstalling the original pack at '{location}': {ex.Message}");
         }
     }
 
@@ -560,7 +843,7 @@ public sealed partial class Alchitex : Window
                 continue;
             }
 
-            GenerateStatusText.Text = $"Waiting for your decision on {pack.Name}...";
+            SetStatus($"Waiting for your decision on {pack.Name}...");
 
             var confirmed = alreadyDeclaresPbr
                 ? await ConfirmRegenerateExistingPbrAsync(pack.Name, pack.Type)
@@ -668,6 +951,14 @@ public sealed partial class Alchitex : Window
             sb.Append($"ℹ️ You can now activate {pronouns} in-game, you may also select {pronouns} from the Select other packs menu to Export or Tune {pronouns} from the main menu.");
         }
 
+        if (_removedOriginalNames.Count > 0)
+        {
+            if (sb.Length > 0) sb.AppendLine();
+            sb.AppendLine($"🗑️ Uninstalled the original pack{(_removedOriginalNames.Count == 1 ? "" : "s")} they were generated from:");
+            foreach (var name in _removedOriginalNames)
+                sb.AppendLine($"* {PackBrowserWindow.StripMinecraftFormatting(name)}");
+        }
+
         if (_failedPackNames.Count > 0)
         {
             if (sb.Length > 0) sb.AppendLine();
@@ -686,7 +977,7 @@ public sealed partial class Alchitex : Window
     {
         if (_generateCts == null || _generateCts.IsCancellationRequested) return;
 
-        GenerateStatusText.Text = "Aborting...";
+        SetStatus("Aborting...");
         AbortButton.IsEnabled = false; // avoid double-cancel; re-enabled by SetGenerationControlsEnabled once the run unwinds
         _generateCts.Cancel();
     }
@@ -704,19 +995,18 @@ public sealed partial class Alchitex : Window
         SetGenerationControlsEnabled(false);
         GenerateProgressBar.Visibility = Visibility.Visible;
         GenerateProgressBar.IsIndeterminate = true;
-        GenerateStatusText.Visibility = Visibility.Visible;
-        GenerateStatusText.Text = "Reading texture sets and deriving materials.json...";
+        SetStatus("Reading texture sets and deriving materials.json...");
 
         try
         {
             var result = await Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, outputPath));
-            GenerateStatusText.Text = $"materials.json updated: {result.EntriesWritten} new entries " +
-                                       $"({result.Skipped} skipped, {result.Failed} failed) -> {result.OutputPath}";
+            SetStatusThenRevert($"materials.json updated: {result.EntriesWritten} new entries " +
+                                $"({result.Skipped} skipped, {result.Failed} failed) -> {result.OutputPath}");
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[ALCHITEX] GenerateMaterialsConfigButton_Click failed: {ex}");
-            GenerateStatusText.Text = $"Failed to generate materials.json: {ex.Message}";
+            SetStatusThenRevert($"Failed to generate materials.json: {ex.Message}");
         }
         finally
         {

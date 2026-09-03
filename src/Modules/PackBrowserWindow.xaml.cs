@@ -1055,8 +1055,19 @@ public sealed partial class PackBrowserWindow : Window
     /// <summary>
     /// Loads a pack icon from disk, supports common types, but not Targa.
     /// </summary>
-    private async Task<BitmapImage?> LoadIconAsync(string packDir)
+    private Task<BitmapImage?> LoadIconAsync(string packDir) => LoadPackIconAsync(packDir);
+
+    /// <summary>
+    /// Loads a pack's pack_icon.* as a BitmapImage, or null if it has none / none of them
+    /// load. No manifest reading involved - just the icon file.
+    ///
+    /// Public and static because the Alchitex window shows the same icons for the packs
+    /// queued for generation, and that's the same question with the same answer.
+    /// </summary>
+    public static async Task<BitmapImage?> LoadPackIconAsync(string packDir)
     {
+        if (string.IsNullOrEmpty(packDir) || !Directory.Exists(packDir)) return null;
+
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
             .Where(f => Path.GetExtension(f).ToLowerInvariant() is ".png" or ".jpg" or ".jpeg")
             .ToArray();
