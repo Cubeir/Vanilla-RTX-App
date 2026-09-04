@@ -7,8 +7,10 @@
     "carried_*",
     "*_pottery_pattern",
     "*_chest_*",
+    "chest_*",
     "barrier",
     "bed_*",
     "decorated_pot_*",
-    "bubble_*"
+    "bubble_*",
+    "bell_*"
 ]
