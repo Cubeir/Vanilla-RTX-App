@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
@@ -106,8 +106,8 @@ public static class AlchitexPipeline
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // ── Phase 3: water & glass ───────────────────────────────────────
-            progress?.Report(new AlchitexProgress(0, 0, "Processing water & glass...", AlchitexPhase.WaterAndGlass));
+            // ── Phase 3: Texture post processing water & glass, etc.. ───────────────────────────────────────
+            progress?.Report(new AlchitexProgress(0, 0, "Post-processing...", AlchitexPhase.WaterAndGlass));
             await Task.Run(() => RunWaterGlassPass(workingPackPath, alchitexAssetsPath), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -121,7 +121,7 @@ public static class AlchitexPipeline
             cancellationToken.ThrowIfCancellationRequested();
 
             // ── Phase 4: manifest, terrain data, icon ────────────────────────
-            progress?.Report(new AlchitexProgress(0, 0, "Finalizing manifest...", AlchitexPhase.Finalizing));
+            progress?.Report(new AlchitexProgress(0, 0, "Finalizing...", AlchitexPhase.Finalizing));
             var finalManifestName = PostProcess.UpdateManifest(workingPackPath, appVersion);
             PostProcess.UpdateTerrainTexture(workingPackPath, finalManifestName);
             PostProcess.RegeneratePackIcon(workingPackPath, alchitexAssetsPath);
