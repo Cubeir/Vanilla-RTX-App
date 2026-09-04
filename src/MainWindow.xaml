@@ -1272,13 +1272,25 @@
                             CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="RTX Reactor is coming to the Vanilla RTX App later this year! (hopefully)">
+                            ToolTipService.ToolTip="RTX Reactor can generate RTX support for any regular Minecraft Bedrock Edition texture pack.
+                            &#x0a;It does so by generating PBR texture sets for each texture, adding RTX-specific configurations, and making adjustments to textures where needed for ray tacing.
+                            &#x0a;&#x0a;Ideally, packs tagged as RTX Reactor Candidates are most likely to benefit from this featurs.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
+                            <!-- RenderTransform, not the Rotation property: Rotation turns
+                                 around CenterPoint, which defaults to the top-left corner,
+                                 so it swings the glyph out of place. RenderTransformOrigin
+                                 is a fraction of the element's own bounds, so 0.5,0.5 is
+                                 its centre at any FontSize. -->
                             <FontIcon Glyph="&#xF4A5;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
-                                      VerticalAlignment="Center" />
+                                      VerticalAlignment="Center"
+                                      RenderTransformOrigin="0.5,0.5">
+                                <FontIcon.RenderTransform>
+                                    <RotateTransform Angle="180" />
+                                </FontIcon.RenderTransform>
+                            </FontIcon>
                             <TextBlock Text="RTX Reactor"
                                        VerticalAlignment="Center" />
                         </StackPanel>
