@@ -522,7 +522,11 @@
                                     Padding="0"
                                     ToolTipService.ToolTip="Begin the generation process."
                                     IsTextScaleFactorEnabled="False"
+                                    Translation="0,0,32"
                                     Click="GenerateButton_Click">
+                                <Button.Shadow>
+                                    <ThemeShadow />
+                                </Button.Shadow>
                                 <Grid IsHitTestVisible="False">
                                     <Grid x:Name="ReactorTileGrid" />
 
