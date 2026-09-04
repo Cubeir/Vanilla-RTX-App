@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
@@ -1068,7 +1068,7 @@ public sealed partial class Alchitex : Window
         // The reactor's tooltip says which of its two jobs a click would do right now.
         ToolTipService.SetToolTip(GenerateButton, enabled
             ? "Generate RTX support for every pack in the queue"
-            : "Stop generating - the pack being worked on is discarded, the rest stay queued");
+            : "Abort generation.");
     }
 
     private async void GenerateButton_Click(object sender, RoutedEventArgs e)
