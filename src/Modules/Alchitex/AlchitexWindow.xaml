@@ -384,52 +384,76 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- ── Options ── -->
-                                <StackPanel Grid.Column="0"
-                                            Margin="24,24,24,24"
-                                            Spacing="32"
-                                            VerticalAlignment="Top">
+                                <Border Grid.Column="0"
+                                        Grid.ColumnSpan="3"
+                                        CornerRadius="0"
+                                        BorderThickness="0"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Padding="0"
+                                        Translation="0,0,256">
+                                    <Border.Shadow>
+                                        <ThemeShadow />
+                                    </Border.Shadow>
 
-                                    <ComboBox x:Name="SecondaryPbrModeComboBox"
-                                              Header="Secondary PBR texture"
-                                              HorizontalAlignment="Stretch"
-                                              SelectedIndex="1"
-                                              IsTextScaleFactorEnabled="False"
-                                              ToolTipService.ToolTip="None: all textures will appear flat.
-                                              &#x0a;Automatic: automatically picks between Normal map and Heightmap depending on texture resolution.
-                                              &#x0a;Normal map: fakes depth on textures by defining how light bounces off of each individual pixel on textures + Parallax Occlusion Mapping data when supported.
-                                              &#x0a;Heightmap: uses height information to create depth perception on textures specifically for low resolution textures (Recommended only for texture packs lower than 32x).">
-                                        <ComboBoxItem Content="None (flat textures)" />
-                                        <ComboBoxItem Content="Automatic" />
-                                        <ComboBoxItem Content="Normal map" />
-                                        <ComboBoxItem Content="Heightmap" />
-                                    </ComboBox>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" MinWidth="260" />
+                                            <!-- options -->
+                                            <ColumnDefinition Width="3" />
+                                            <!-- bevel, light edge -->
+                                            <ColumnDefinition Width="3" />
+                                            <!-- bevel, dark edge -->
+                                        </Grid.ColumnDefinitions>
 
-                                    <ToggleSwitch x:Name="AddFogToggle"
-                                                  Header="Add per-biome RTX atmospheric configs"
-                                                  IsOn="True"
-                                                  Margin="0,6,0,0"
-                                                  IsTextScaleFactorEnabled="False"
-                                                  ToolTipService.ToolTip="Adds detailed per-biome fog settings to packs provided by Vanilla RTX, this may override their existing per-biome configurations.
-                                                  &#x0a;&#x0a;This is generally recommended for most packs, otherwise there likely won't be any fog, light shafts or other unique atmospheric treats across biomes such as different water colors." />
+                                        <StackPanel Grid.Column="0"
+                                                    Margin="24,24,24,24"
+                                                    Spacing="32"
+                                                    VerticalAlignment="Top">
 
-                                    <ToggleSwitch x:Name="DeleteOriginalToggle"
-                                                  Header="Uninstall the original pack"
-                                                  IsOn="False"
-                                                  Margin="0,-6,0,0"
-                                                  IsTextScaleFactorEnabled="False"
-                                                  ToolTipService.ToolTip="Deletes each pack from your installed packs once its RTX version is finished and installed.
-                                                  &#x0a;&#x0a;Nothing is deleted if generation fails or is otherwise stopped mid operation." />
-                                </StackPanel>
+                                            <ComboBox x:Name="SecondaryPbrModeComboBox"
+                                                      Header="Secondary PBR texture"
+                                                      HorizontalAlignment="Stretch"
+                                                      SelectedIndex="1"
+                                                      IsTextScaleFactorEnabled="False"
+                                                      ToolTipService.ToolTip="None: all textures will appear flat.
+                                                      &#x0a;Automatic: automatically picks between Normal map and Heightmap depending on texture resolution.
+                                                      &#x0a;Normal map: fakes depth on textures by defining how light bounces off of each individual pixel on textures + Parallax Occlusion Mapping data when supported.
+                                                      &#x0a;Heightmap: uses height information to create depth perception on textures specifically for low resolution textures (Recommended only for texture packs lower than 32x).">
+                                                <ComboBoxItem Content="None (flat textures)" />
+                                                <ComboBoxItem Content="Automatic" />
+                                                <ComboBoxItem Content="Normal map" />
+                                                <ComboBoxItem Content="Heightmap" />
+                                            </ComboBox>
 
-                                <!-- ── Bevel: light rule then dark rule, the same pairing
-                                     the titlebar and the main window's button groups use.
-                                     Two flat fills reading as one carved edge. ── -->
-                                <Border Grid.Column="1"
-                                        Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                                        Opacity="0.33"/>
-                                <Border Grid.Column="2"
-                                        Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                                        Opacity="0.66"/>
+                                            <ToggleSwitch x:Name="AddFogToggle"
+                                                          Header="Add per-biome RTX atmospheric configs"
+                                                          IsOn="True"
+                                                          Margin="0,6,0,0"
+                                                          IsTextScaleFactorEnabled="False"
+                                                          ToolTipService.ToolTip="Adds detailed per-biome fog settings to packs provided by Vanilla RTX, this may override their existing per-biome configurations.
+                                                          &#x0a;&#x0a;This is generally recommended for most packs, otherwise there likely won't be any fog, light shafts or other unique atmospheric treats across biomes such as different water colors." />
+
+                                            <ToggleSwitch x:Name="DeleteOriginalToggle"
+                                                          Header="Uninstall the original pack"
+                                                          IsOn="False"
+                                                          Margin="0,-6,0,0"
+                                                          IsTextScaleFactorEnabled="False"
+                                                          ToolTipService.ToolTip="Deletes each pack from your installed packs once its RTX version is finished and installed.
+                                                          &#x0a;&#x0a;Nothing is deleted if generation fails or is otherwise stopped mid operation." />
+                                        </StackPanel>
+
+                                        <!-- ── Bevel: light rule then dark rule, the same pairing
+                                             the titlebar and the main window's button groups use.
+                                             Two flat fills reading as one carved edge. ── -->
+                                        <Border Grid.Column="1"
+                                                Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                                                Opacity="0.33"/>
+                                        <Border Grid.Column="2"
+                                                Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                                                Opacity="0.66"/>
+                                    </Grid>
+                                </Border>
 
                                 <!-- ══ PACK QUEUE ═══════════════════════════════════
                                      Two rows, both built in code-behind: what's waiting
@@ -522,7 +546,7 @@
                                     Padding="0"
                                     ToolTipService.ToolTip="Begin the generation process."
                                     IsTextScaleFactorEnabled="False"
-                                    Translation="0,0,32"
+                                    Translation="0,0,256"
                                     Click="GenerateButton_Click">
                                 <Button.Shadow>
                                     <ThemeShadow />
