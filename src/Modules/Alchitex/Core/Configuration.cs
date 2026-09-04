@@ -59,10 +59,10 @@ public sealed class MerParams
 /// Min == Max == 0 means "no SSS", the right default for most blocks.
 ///
 /// `invert` flips which end of the texture's brightness gets which end of the range, so
-/// the darkest pixels scatter most instead of least. Unlike the MER invert flags - which
-/// exist to work around assets the game renders inverted - this one is a real artistic
-/// choice: plenty of materials have their translucency in the dark parts (thin dark
-/// leaves, resin in dark wood) rather than the bright ones.
+/// the darkest pixels scatter most instead of least - plenty of materials have their
+/// translucency in the dark parts (thin dark leaves, resin in dark wood) rather than the
+/// bright ones. An artistic choice, like the three MER inverts; the game-bug workarounds
+/// are the heightmap and normal inverts, and only those two.
 /// </summary>
 public sealed class SssParams
 {
