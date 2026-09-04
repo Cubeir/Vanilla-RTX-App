@@ -155,7 +155,14 @@ public static class AlchitexPipeline
 
     // ── Step 2b: pixel generation ────────────────────────────────────────────
 
-    private static void GenerateTexturePixels(
+    /// <summary>
+    /// Internal rather than private so the PBR test bench (Tools/PbrTestBench, debug-only)
+    /// can run this exact loop against a scratch folder of textures. It deliberately calls
+    /// this rather than keeping its own copy: the claim-tracking for shared PBR targets, the
+    /// already-generated skip, and ProcessOneTarget's MERS/normal/heightmap decision are all
+    /// things a second implementation would silently drift from.
+    /// </summary>
+    internal static void GenerateTexturePixels(
         string packRoot,
         MaterialsConfig materials,
         AlchitexOptions options,

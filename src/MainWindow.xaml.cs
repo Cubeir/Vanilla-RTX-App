@@ -2362,8 +2362,16 @@ public sealed partial class MainWindow : Window
             {
                 Log("RTX Reactor generates proper RTX support for texture packs, it works best on packs with no PBR textures of their own.", LogLevel.Alchitex);
             }
+#if DEBUG
+            // Debug builds open the window with an empty queue on purpose. RTX Reactor's
+            // dev-only tools - the materials.json bootstrapper and the PBR test bench - don't
+            // read the pack queue at all, so requiring a pack just to reach them is pure
+            // friction during development. Generate still refuses an empty queue on its own.
+            Log("No packs selected - opening RTX Reactor anyway (Debug build).", LogLevel.Alchitex);
+#else
             Log("You must select at least one resource pack to use this feature on.", LogLevel.Warning);
             return;
+#endif
         }
 
         if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))

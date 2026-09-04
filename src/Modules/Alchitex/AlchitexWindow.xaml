@@ -136,7 +136,9 @@
                                 Margin="4,6,4,6"
                                 Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                        <!-- Bootstrap materials.json from an already-PBR'd pack. -->
+                        <!-- PBR test bench: run loose textures through the generation path
+                             without building a pack around them. Also a drop target - files
+                             or folders dragged onto it skip the picker entirely. -->
                         <Button x:Name="PipelinePreviewDevToolButton"
                                 FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                 Style="{ThemeResource SubtleButtonStyle}"
@@ -146,7 +148,10 @@
                                 CornerRadius="0"
                                 FontSize="16"
                                 Click="PipelinePreviewDevToolButton_Click"
-                                ToolTipService.ToolTip="DEVELOPER TOOL FOR PREVIEWING AND TUNING PBR TEXTURE GENERATION PIPELINE"
+                                AllowDrop="True"
+                                DragOver="PipelinePreviewDevToolButton_DragOver"
+                                Drop="PipelinePreviewDevToolButton_Drop"
+                                ToolTipService.ToolTip="DEVELOPER TOOL: GENERATE PBR FOR LOOSE TEXTURES OR A WHOLE FOLDER, IN PLACE, WITHOUT BUILDING A PACK. DROP FILES OR FOLDERS HERE, OR CLICK TO PICK. EXISTING PBR IN THE TARGET FOLDERS IS STRIPPED AND REGENERATED."
                                 IsTextScaleFactorEnabled="False" />
                     </StackPanel>
                 </Grid>

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -18,6 +19,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Tools;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -188,6 +190,10 @@ public sealed partial class Alchitex : Window
 
         if (_isClosing) return;
         _isClosing = true;
+
+        // A test bench run holds no pack and writes only into folders the user pointed at,
+        // but there's no reason to let it keep going once the window is gone.
+        _testBenchCts?.Cancel();
 
         _reactor?.Shutdown();
 
@@ -876,6 +882,7 @@ public sealed partial class Alchitex : Window
     private static readonly string[] RunLockedControls =
     {
         "SecondaryPbrModeComboBox", "AddFogToggle", "DeleteOriginalToggle", "GenerateMaterialsConfigButton",
+        "PipelinePreviewDevToolButton",
     };
 
     private void SetGenerationControlsEnabled(bool enabled)
@@ -1468,9 +1475,226 @@ public sealed partial class Alchitex : Window
         return folder?.Path;
     }
 
+    // ── Debug: PBR test bench ───────────────────────────────────────────────
+    //
+    // Runs loose textures (or a folder of them) through the real generation path and writes
+    // the results next to the originals - see Tools/PbrTestBench for what it does and,
+    // more importantly, what it deliberately doesn't. Everything here is UI: pick or accept
+    // a drop, confirm the destructive part, run it off the UI thread, report.
+
+    private CancellationTokenSource? _testBenchCts;
+
+    /// <summary>Click opens a small menu rather than a picker, because the OS has separate
+    /// pickers for files and folders and this tool genuinely wants either. Dropping onto the
+    /// button skips this entirely.</summary>
     private void PipelinePreviewDevToolButton_Click(object sender, RoutedEventArgs e)
     {
+        var flyout = new MenuFlyout { Placement = FlyoutPlacementMode.Bottom };
 
+        var pickFiles = new MenuFlyoutItem { Text = "Pick texture files..." };
+        pickFiles.Click += async (_, _) =>
+        {
+            var picker = new FileOpenPicker();
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            picker.SuggestedStartLocation = PickerLocationId.Desktop;
+            foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
+                picker.FileTypeFilter.Add(ext);
+
+            var files = await picker.PickMultipleFilesAsync();
+            if (files is { Count: > 0 })
+                await RunPbrTestBenchAsync(files.Select(f => f.Path).ToList());
+        };
+
+        var pickFolder = new MenuFlyoutItem { Text = "Pick a folder..." };
+        pickFolder.Click += async (_, _) =>
+        {
+            var folder = await PickFolderAsync();
+            if (folder != null)
+                await RunPbrTestBenchAsync(new List<string> { folder });
+        };
+
+        flyout.Items.Add(pickFiles);
+        flyout.Items.Add(pickFolder);
+        flyout.ShowAt(PipelinePreviewDevToolButton);
+    }
+
+    private void PipelinePreviewDevToolButton_DragOver(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+
+        e.AcceptedOperation = DataPackageOperation.Copy;
+
+        // Null unless the drag came from outside the app, which is the only case here.
+        if (e.DragUIOverride != null)
+        {
+            e.DragUIOverride.Caption = "Generate PBR for these";
+            e.DragUIOverride.IsGlyphVisible = false;
+        }
+    }
+
+    private async void PipelinePreviewDevToolButton_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+
+        // Taken before the first await: the drop payload is only guaranteed readable while
+        // the deferral is held.
+        var deferral = e.GetDeferral();
+        List<string> paths;
+        try
+        {
+            var items = await e.DataView.GetStorageItemsAsync();
+            paths = items.Select(i => i.Path).Where(p => !string.IsNullOrEmpty(p)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't read the dropped items: {ex}");
+            SetStatusThenRevert($"Couldn't read what was dropped: {ex.Message}");
+            return;
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+
+        if (paths.Count > 0)
+            await RunPbrTestBenchAsync(paths);
+    }
+
+    private async Task RunPbrTestBenchAsync(IReadOnlyList<string> selectedPaths)
+    {
+        if (IsGenerating || _testBenchCts != null) return;
+
+        var plan = await Task.Run(() => PbrTestBench.Survey(selectedPaths));
+
+        if (plan.IsEmpty)
+        {
+            SetStatusThenRevert("Nothing to do - no .tga/.png/.jpg/.jpeg files in that selection.");
+            return;
+        }
+
+        if (!await ConfirmTestBenchRunAsync(plan)) return;
+
+        // Read the same way a real run reads them, so the Secondary PBR dropdown means
+        // exactly what it means for a pack.
+        var options = ReadOptionsFromUI();
+
+        _testBenchCts = new CancellationTokenSource();
+        SetGenerationControlsEnabled(false);
+        GenerateProgressBar.Visibility = Visibility.Visible;
+        GenerateProgressBar.IsIndeterminate = true;
+        SetStatus($"Test bench: generating PBR for {plan.Images.Count} texture(s)...");
+
+        try
+        {
+            var progress = new Progress<AlchitexPipeline.AlchitexProgress>(p =>
+            {
+                if (_isClosing) return;
+
+                if (p.Total > 0)
+                {
+                    GenerateProgressBar.IsIndeterminate = false;
+                    GenerateProgressBar.Maximum = p.Total;
+                    GenerateProgressBar.Value = p.Completed;
+                    SetStatus($"Test bench [{p.Completed}/{p.Total}]: {p.StatusText}");
+                }
+                else
+                {
+                    GenerateProgressBar.IsIndeterminate = true;
+                    SetStatus($"Test bench: {p.StatusText}");
+                }
+            });
+
+            var token = _testBenchCts.Token;
+            var result = await Task.Run(
+                () => PbrTestBench.Run(plan, options, AlchitexAssetsPath, progress, token),
+                token);
+
+            SetStatusThenRevert(DescribeTestBenchResult(result, plan));
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatusThenRevert("Test bench cancelled.");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] PbrTestBench run failed: {ex}");
+            SetStatusThenRevert($"Test bench failed: {ex.Message}");
+        }
+        finally
+        {
+            _testBenchCts?.Dispose();
+            _testBenchCts = null;
+
+            GenerateProgressBar.IsIndeterminate = false;
+            GenerateProgressBar.Visibility = Visibility.Collapsed;
+            SetGenerationControlsEnabled(true);
+        }
+    }
+
+    private static string DescribeTestBenchResult(PbrTestBench.Result result, PbrTestBench.Plan plan)
+    {
+        if (!result.Success) return $"Test bench: {result.Error}";
+
+        if (result.TextureSetsCreated == 0)
+            return $"Test bench: nothing was generated - all {result.ImagesStaged} file(s) looked like generated PBR output or were skipped.";
+
+        var text = $"Test bench: {result.TextureSetsCreated} texture set(s), {result.FilesWritten} file(s) written to {plan.Folders.Count} folder(s)";
+
+        if (result.StaleTextureSetsRemoved > 0 || result.StalePbrTexturesRemoved > 0)
+            text += $" (replaced {result.StaleTextureSetsRemoved} old set(s) and {result.StalePbrTexturesRemoved} old texture(s))";
+
+        if (result.SkippedJunk > 0) text += $", {result.SkippedJunk} skipped";
+        if (result.OrchestratorFailures > 0) text += $", {result.OrchestratorFailures} failed";
+
+        return text + ".";
+    }
+
+    /// <summary>
+    /// Asked before anything is deleted. Names the folders that will be written to, and is
+    /// explicit that removal is scoped to the listed textures rather than the whole folder -
+    /// which is what PbrTestBench actually does, and the difference matters when someone
+    /// picks one file out of a folder full of finished work. Defaults to Close, same as the
+    /// pack-regeneration dialog.
+    /// </summary>
+    private async Task<bool> ConfirmTestBenchRunAsync(PbrTestBench.Plan plan)
+    {
+        try
+        {
+            var mode = (SecondaryPbrMode)AlchitexVariables.Persistent.SecondaryPbrModeIndex;
+
+            var folders = new StringBuilder();
+            foreach (var folder in plan.Folders.Take(8))
+                folders.AppendLine($"    {folder}");
+            if (plan.Folders.Count > 8)
+                folders.AppendLine($"    ...and {plan.Folders.Count - 8} more");
+
+            var dialog = new ContentDialog
+            {
+                Title = "Generate PBR for these textures?",
+                Content =
+                    $"{plan.Images.Count} texture file(s) will be run through the PBR generation pipeline exactly " +
+                    $"as if they had been found inside a resource pack, with Secondary PBR set to \"{mode}\".\n\n" +
+                    "Results are written next to the originals, in:\n\n" +
+                    folders +
+                    "\nAny existing texture set and PBR maps belonging to those specific textures are replaced. " +
+                    "Other textures in those folders are left alone, and color textures are never deleted. " +
+                    "Nothing is touched until generation has succeeded.",
+                PrimaryButtonText = "Generate",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot,
+                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+            };
+
+            return await dialog.ShowAsync() == ContentDialogResult.Primary;
+        }
+        catch (Exception ex)
+        {
+            // Same rule as the pack-regeneration dialog: a dialog that couldn't be shown
+            // must never silently green-light a destructive pass.
+            Trace.WriteLine($"[ALCHITEX] Couldn't show the PBR test bench dialog: {ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
