@@ -14276,7 +14276,15 @@
             "max": 0,
             "invert": false
         },
-        "recursive": [],
+        "recursive": [
+            {
+                "channel": "R",
+                "mer": {
+                    "emissive_min": 64,
+                    "emissive_max": 255
+                }
+            }
+        ],
         "heightmap": {
             "intensity": 1,
             "invert": false
