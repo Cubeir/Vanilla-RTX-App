@@ -1468,44 +1468,10 @@ public sealed partial class Alchitex : Window
         return folder?.Path;
     }
 
-    /// <summary>
-    /// Opens the PBR pipeline preview dev tool - a separate window that runs a single
-    /// image through all three generators and shows every intermediate stage against
-    /// live-editable material and tuning values. See Tools/PipelinePreviewWindow.
-    ///
-    /// Deliberately not a child or dialog of this window: it's a workbench you leave open
-    /// beside everything else, and it never touches a pack, materials.json or the tuning
-    /// constants. Reachable only in Debug, since its button lives inside
-    /// DevOnlyTitleBarActions.
-    ///
-    /// One instance at a time - reopening just re-focuses the existing window, since
-    /// having two of them tuning different copies of the same constants is only confusing.
-    /// </summary>
     private void PipelinePreviewDevToolButton_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            if (_pipelinePreviewWindow != null)
-            {
-                _pipelinePreviewWindow.Activate();
-                return;
-            }
 
-            var window = new PipelinePreviewWindow();
-            _pipelinePreviewWindow = window;
-            window.Closed += (_, _) => _pipelinePreviewWindow = null;
-
-            window.AppWindow?.Resize(new Windows.Graphics.SizeInt32(1680, 1000));
-            window.Activate();
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[ALCHITEX] Couldn't open the pipeline preview dev tool: {ex}");
-            SetStatusThenRevert($"Couldn't open the pipeline preview: {ex.Message}");
-        }
     }
-
-    private PipelinePreviewWindow? _pipelinePreviewWindow;
 
     /// <summary>
     /// Save-file picker for the bootstrap button's output materials.json - lets the

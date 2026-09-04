@@ -299,13 +299,19 @@ public sealed record AlchitexOptions(
     bool AddFog,
     bool StripExistingPbr = false)
 {
-    // Auto mode's heightmap-vs-normal-map width rule, and the ceiling above which an
-    // *explicit* Heightmap request is overridden to a normal map, used to live here as
-    // consts. They moved to PipelineTuning (Core/PipelineInstrumentation.cs) alongside
-    // every other pipeline tuning number, so the Pipeline Preview dev tool can show what
-    // a given width resolves to under a modified set. TextureSetOrchestrator.
-    // ResolveSecondaryMode reads them from there now. Deliberately not left behind as
-    // forwarding consts - two copies of a threshold is exactly how the two drift apart.
+    /// <summary>
+    /// Auto mode's per-texture rule, decided once we know a given color texture's width:
+    /// <= 32px -> heightmap (too little resolution for normal-map detail to read as
+    /// anything but noise), > 32px -> normal map.
+    /// </summary>
+    public const int AutoModeHeightmapMaxWidth = 32;
+
+    /// <summary>
+    /// Ceiling for an *explicit* Heightmap selection (TextureSetOrchestrator.
+    /// ResolveSecondaryMode): above this width a normal map is generated instead - a
+    /// heightmap texture set above this size no longer manifests correctly in-game.
+    /// </summary>
+    public const int ExplicitHeightmapMaxWidth = 64;
 
     public static readonly AlchitexOptions Default = new(SecondaryPbrMode.Auto, AddFog: false);
 }
