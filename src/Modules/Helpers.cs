@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -9,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using ImageMagick;
+using Newtonsoft.Json.Linq;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using static Vanilla_RTX_App.MainWindow;
@@ -1818,3 +1820,552 @@ public static class MinecraftUserDataLocator
 }
 
 #endregion
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  TextureSetHelper  ──  parsing, resolution, and virtual-bitmap creation
+// ══════════════════════════════════════════════════════════════════════════════
+
+public static class TextureSetHelper
+{
+    public enum TextureKind { Color, Mer, Normal, Heightmap }
+
+    /// <summary>
+    /// Discriminated union: either a real file path or an inline colour value.
+    /// </summary>
+    public sealed class TextureLayerValue
+    {
+        public string? FilePath { get; }
+
+        public bool IsInline { get; }
+        /// <summary>Parsed RGBA components (0-255). Always length 4 internally.</summary>
+        public byte[] InlineRgba { get; } = Array.Empty<byte>();
+        /// <summary>Number of components as originally written (3 or 4).</summary>
+        public int InlineChannels { get; }
+        /// <summary>True when the source was a hex string (e.g. "#B48CBE").</summary>
+        public bool IsHex { get; }
+        public JToken SourceToken { get; }
+
+        private TextureLayerValue(JToken sourceToken, byte[] rgba, int originalChannels, bool isHex)
+        {
+            IsInline = true;
+            SourceToken = sourceToken;
+            InlineRgba = rgba;
+            InlineChannels = originalChannels;   // the count as it appeared in the file
+            IsHex = isHex;
+        }
+
+        private TextureLayerValue(string filePath)
+        {
+            FilePath = filePath;
+            SourceToken = JValue.CreateNull();
+        }
+
+        public static TextureLayerValue FromFile(string path) => new(path);
+
+        public static TextureLayerValue? TryParseInline(JToken token)
+        {
+            // Hex string
+            if (token.Type == JTokenType.String)
+            {
+                var s = token.Value<string>()!.Trim();
+                if (s.StartsWith('#') && TryParseHex(s, out var rgba, out var originalChannels))
+                    return new TextureLayerValue(token, rgba, originalChannels, isHex: true);
+                return null;
+            }
+
+            // Array of numbers (RGB triplet or RGBA quadruplet)
+            if (token is JArray arr && arr.Count is 3 or 4)
+            {
+                var originalChannels = arr.Count;
+                var comps = new byte[originalChannels];
+                for (var i = 0; i < originalChannels; i++)
+                {
+                    if (!TryGetByte(arr[i], out comps[i]))
+                        return null;
+                }
+                // Pad to 4 channels internally, but remember the original count
+                var rgba = originalChannels == 4
+                    ? comps
+                    : new[] { comps[0], comps[1], comps[2], (byte)255 };
+                return new TextureLayerValue(token, rgba, originalChannels, isHex: false);
+            }
+
+            return null;
+        }
+
+        private static bool TryParseHex(string hex, out byte[] rgba, out int originalChannels)
+        {
+            rgba = Array.Empty<byte>();
+            originalChannels = 0;
+            hex = hex.TrimStart('#');
+
+            if (hex.Length == 6)
+            {
+                if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v))
+                    return false;
+                rgba = new[] { (byte)(v >> 16), (byte)(v >> 8), (byte)v, (byte)255 };
+                originalChannels = 3;
+                return true;
+            }
+            if (hex.Length == 8)
+            {
+                if (!uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var v))
+                    return false;
+                rgba = new[] { (byte)(v >> 24), (byte)(v >> 16), (byte)(v >> 8), (byte)v };
+                originalChannels = 4;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool TryGetByte(JToken t, out byte b)
+        {
+            b = 0;
+            double d;
+            if (t.Type == JTokenType.Float || t.Type == JTokenType.Integer)
+                d = t.Value<double>();
+            else if (t.Type == JTokenType.String && double.TryParse(t.Value<string>(), out d))
+            { /* ok */ }
+            else return false;
+
+            b = (byte)Math.Clamp((int)Math.Round(d), 0, 255);
+            return true;
+        }
+
+        /// <summary>Creates a 1×1 virtual Bitmap from the inline colour value.</summary>
+        public Bitmap ToVirtualBitmap()
+        {
+            var bmp = new Bitmap(1, 1, PixelFormat.Format32bppArgb);
+            bmp.SetPixel(0, 0, Color.FromArgb(InlineRgba[3], InlineRgba[0], InlineRgba[1], InlineRgba[2]));
+            return bmp;
+        }
+
+        /// <summary>
+        /// Serialises the (possibly modified) 1×1 bitmap back to exactly the format
+        /// it was originally written in: RGB hex stays RGB hex, RGBA array stays RGBA
+        /// array, etc. The alpha channel is always preserved from the bitmap as-is.
+        /// </summary>
+        public JToken SerializeVirtual(Bitmap bmp)
+        {
+            var c = bmp.GetPixel(0, 0);
+            byte r = c.R, g = c.G, b = c.B, a = c.A;
+
+            if (IsHex)
+            {
+                return InlineChannels == 3
+                    ? new JValue($"#{r:X2}{g:X2}{b:X2}")
+                    : new JValue($"#{r:X2}{g:X2}{b:X2}{a:X2}");
+            }
+
+            return InlineChannels == 3
+                ? new JArray(r, g, b)
+                : new JArray(r, g, b, a);
+        }
+    }
+
+    public sealed class ResolvedTextureSet
+    {
+        public string JsonFilePath { get; init; } = "";
+        public JObject RootJson { get; init; } = new();
+        public JObject SetNode { get; init; } = new();
+
+        public TextureLayerValue Color { get; init; } = null!;
+        public TextureLayerValue? Mer { get; init; }
+        public TextureLayerValue? NormalOrHeight { get; init; }
+        public bool IsHeightmap { get; init; }
+    }
+
+    public sealed class LoadedTextureSet
+    {
+        public ResolvedTextureSet Resolved { get; init; } = null!;
+
+        public Bitmap ColorBmp { get; set; } = null!;
+        public bool ColorIsVirtual { get; init; }
+
+        public Bitmap? MerBmp { get; set; }
+        public bool MerIsVirtual { get; init; }
+
+        public Bitmap? NormalBmp { get; set; }
+        public bool NormalIsVirtual { get; init; }
+
+        public bool ColorDirty { get; set; }
+        public bool MerDirty { get; set; }
+        public bool NormalDirty { get; set; }
+    }
+
+    private static readonly string[] SupportedExtensions = { ".tga", ".png", ".jpg", ".jpeg" };
+
+    /// <summary>
+    /// Scans a pack root, parses all .texture_set.json files, validates them
+    /// per the Minecraft spec, and returns the valid resolved sets.
+    /// </summary>
+    public static IReadOnlyList<ResolvedTextureSet> ResolveTextureSets(string packRoot)
+    {
+        if (string.IsNullOrEmpty(packRoot) || !Directory.Exists(packRoot))
+            return Array.Empty<ResolvedTextureSet>();
+
+        var results = new List<ResolvedTextureSet>();
+
+        foreach (var jsonFile in Directory.GetFiles(packRoot, "*.texture_set.json", SearchOption.AllDirectories))
+        {
+            try
+            {
+                var text = File.ReadAllText(jsonFile);
+                var root = JObject.Parse(text);
+
+                if (root.SelectToken("minecraft:texture_set") is not JObject set)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': missing minecraft:texture_set node.");
+                    continue;
+                }
+
+                var folder = Path.GetDirectoryName(jsonFile)!;
+
+                var colorToken = set["color"];
+                if (colorToken == null)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': no color layer defined.");
+                    continue;
+                }
+
+                var colorLayer = ResolveLayer(folder, colorToken);
+                if (colorLayer == null)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': color layer could not be resolved.");
+                    continue;
+                }
+
+                var merToken = set["metalness_emissive_roughness"];
+                var mersToken = set["metalness_emissive_roughness_subsurface"];
+
+                if (merToken != null && mersToken != null)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': both MER and MERS defined (mutually exclusive).");
+                    continue;
+                }
+
+                var merLayer = ResolveLayer(folder, merToken ?? mersToken);
+
+                var normalToken = set["normal"];
+                var heightmapToken = set["heightmap"];
+
+                if (normalToken != null && heightmapToken != null)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': both normal and heightmap defined (mutually exclusive).");
+                    continue;
+                }
+
+                var normalLayer = ResolveLayer(folder, normalToken);
+                var heightmapLayer = ResolveLayer(folder, heightmapToken);
+                var isHeightmap = heightmapToken != null;
+
+                results.Add(new ResolvedTextureSet
+                {
+                    JsonFilePath = jsonFile,
+                    RootJson = root,
+                    SetNode = set,
+                    Color = colorLayer,
+                    Mer = merLayer,
+                    NormalOrHeight = normalLayer ?? heightmapLayer,
+                    IsHeightmap = isHeightmap,
+                });
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error resolving '{jsonFile}': {ex.Message}");
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Loads all bitmaps for a single resolved texture set. Virtual (inline) colours
+    /// become 1×1 bitmaps and are flagged accordingly. Returns null (and leaves nothing
+    /// allocated) if the color bitmap can't be loaded.
+    ///
+    /// This is deliberately a single-item operation rather than a batch: decoding an
+    /// image from disk is real, sometimes-slow I/O work, and the orchestrator pipelines
+    /// load → process → save per texture set (in parallel across texture sets) so that
+    /// progress reporting and cancellation are granular to "one texture", not "one pack".
+    /// </summary>
+    public static LoadedTextureSet? LoadTextureSet(ResolvedTextureSet rs)
+    {
+        // previously, if the color layer loaded fine but the MER or normal
+        // layer then *threw* while loading (rather than just returning null),
+        // the already-loaded colorBmp/merBmp were never disposed - a real (if rare)
+        // native GDI+ handle + memory leak. Track everything allocated here and
+        // dispose it on any failure path via `finally`.
+        Bitmap? colorBmp = null;
+        Bitmap? merBmp = null;
+        Bitmap? normalBmp = null;
+        var success = false;
+
+        try
+        {
+            colorBmp = LoadLayer(rs.Color);
+            if (colorBmp == null)
+            {
+                Trace.WriteLine($"[TUNER] Skipping texture set '{rs.JsonFilePath}': color bitmap could not be loaded.");
+                return null;
+            }
+
+            if (rs.Mer != null)
+            {
+                merBmp = LoadLayer(rs.Mer);
+                if (merBmp == null)
+                    Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': MER layer could not be loaded; MER processors will be skipped.");
+            }
+
+            if (rs.NormalOrHeight != null)
+            {
+                normalBmp = LoadLayer(rs.NormalOrHeight);
+                if (normalBmp == null)
+                    Trace.WriteLine($"[TUNER] Warning for '{rs.JsonFilePath}': normal/heightmap layer could not be loaded; normal processors will be skipped.");
+            }
+
+            var result = new LoadedTextureSet
+            {
+                Resolved = rs,
+                ColorBmp = colorBmp,
+                ColorIsVirtual = rs.Color.IsInline,
+                MerBmp = merBmp,
+                MerIsVirtual = rs.Mer?.IsInline ?? false,
+                NormalBmp = normalBmp,
+                NormalIsVirtual = rs.NormalOrHeight?.IsInline ?? false,
+            };
+            success = true;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[TUNER] Error loading texture set '{rs.JsonFilePath}': {ex.Message}");
+            return null;
+        }
+        finally
+        {
+            if (!success)
+            {
+                colorBmp?.Dispose();
+                merBmp?.Dispose();
+                normalBmp?.Dispose();
+            }
+        }
+    }
+
+    /// <summary>Batch convenience wrapper kept for any other callers - loads every
+    /// resolved set sequentially. Tuner's own pipeline calls LoadTextureSet directly
+    /// per-item instead, so it can parallelize and report progress per texture.</summary>
+    public static IReadOnlyList<LoadedTextureSet> LoadTextureSets(IReadOnlyList<ResolvedTextureSet> resolved)
+    {
+        var results = new List<LoadedTextureSet>(resolved.Count);
+        foreach (var rs in resolved)
+        {
+            var lts = LoadTextureSet(rs);
+            if (lts != null) results.Add(lts);
+        }
+        return results;
+    }
+
+    private static TextureLayerValue? ResolveLayer(string folder, JToken? token)
+    {
+        if (token == null) return null;
+
+        var inline = TextureLayerValue.TryParseInline(token);
+        if (inline != null) return inline;
+
+        if (token.Type != JTokenType.String) return null;
+
+        var name = token.Value<string>()!.Trim();
+        if (string.IsNullOrEmpty(name)) return null;
+
+        var filePath = FindTextureFile(folder, name);
+        return filePath != null ? TextureLayerValue.FromFile(filePath) : null;
+    }
+
+    private static Bitmap? LoadLayer(TextureLayerValue layer)
+    {
+        if (layer.IsInline)
+            return layer.ToVirtualBitmap();
+
+        if (!File.Exists(layer.FilePath!))
+            return null;
+
+        return Helpers.ReadImage(layer.FilePath!, false);
+    }
+
+    public static string? FindTextureFile(string folder, string textureName)
+    {
+        foreach (var ext in SupportedExtensions)
+        {
+            var target = Path.Combine(folder, textureName + ext);
+            if (File.Exists(target))
+                return target;
+
+            try
+            {
+                var matches = Directory.GetFiles(folder, textureName + ext, SearchOption.TopDirectoryOnly);
+                if (matches.Length > 0) return matches[0];
+            }
+            catch { /* access denied or directory missing */ }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Persists a loaded texture set's dirty bitmaps back to disk (or inline JSON).
+    /// For real files: writes in the source format (TGA stays TGA, PNG stays PNG, etc.).
+    /// For virtual bitmaps: patches the .texture_set.json in place.
+    /// </summary>
+    public static void SaveDirtyLayers(LoadedTextureSet lts)
+    {
+        var rs = lts.Resolved;
+        var jsonDirty = false;
+
+        if (lts.ColorDirty && lts.ColorBmp != null)
+        {
+            try
+            {
+                if (lts.ColorIsVirtual)
+                {
+                    rs.SetNode["color"] = rs.Color.SerializeVirtual(lts.ColorBmp);
+                    jsonDirty = true;
+                }
+                else
+                {
+                    WriteBackBitmap(lts.ColorBmp, rs.Color.FilePath!);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error saving color layer for '{rs.JsonFilePath}': {ex.Message}");
+            }
+        }
+
+        if (lts.MerDirty && lts.MerBmp != null && rs.Mer != null)
+        {
+            try
+            {
+                if (lts.MerIsVirtual)
+                {
+                    var merKey = rs.SetNode["metalness_emissive_roughness"] != null
+                        ? "metalness_emissive_roughness"
+                        : "metalness_emissive_roughness_subsurface";
+                    rs.SetNode[merKey] = rs.Mer.SerializeVirtual(lts.MerBmp);
+                    jsonDirty = true;
+                }
+                else
+                {
+                    WriteBackBitmap(lts.MerBmp, rs.Mer.FilePath!);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error saving MER layer for '{rs.JsonFilePath}': {ex.Message}");
+            }
+        }
+
+        if (lts.NormalDirty && lts.NormalBmp != null && rs.NormalOrHeight != null)
+        {
+            try
+            {
+                if (lts.NormalIsVirtual)
+                {
+                    var normalKey = rs.IsHeightmap ? "heightmap" : "normal";
+                    rs.SetNode[normalKey] = rs.NormalOrHeight.SerializeVirtual(lts.NormalBmp);
+                    jsonDirty = true;
+                }
+                else
+                {
+                    WriteBackBitmap(lts.NormalBmp, rs.NormalOrHeight.FilePath!);
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error saving normal/heightmap layer for '{rs.JsonFilePath}': {ex.Message}");
+            }
+        }
+
+        if (jsonDirty)
+        {
+            try
+            {
+                File.WriteAllText(rs.JsonFilePath, rs.RootJson.ToString(Newtonsoft.Json.Formatting.Indented));
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TUNER] Error writing JSON for '{rs.JsonFilePath}': {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes a bitmap back to disk preserving the original file format.
+    /// TGA  → TGA   PNG  → lossless 32-bpp ARGB PNG
+    /// JPG  → maximum-quality JPEG   Other → TGA fallback
+    /// </summary>
+    private static void WriteBackBitmap(Bitmap bmp, string originalPath)
+    {
+        var ext = Path.GetExtension(originalPath).ToLowerInvariant();
+
+        switch (ext)
+        {
+            case ".tga":
+                Helpers.WriteImageAsTGA(bmp, originalPath);
+                break;
+
+            case ".png":
+                {
+                    // EnsureArgb32 returns the *same* instance when bmp is already
+                    // Format32bppArgb (the common case). The old code wrapped that in a
+                    // `using`, which disposed the caller's bitmap here - and then the
+                    // orchestrator disposed it again a moment later. Bitmap.Dispose()
+                    // happens to tolerate double-dispose, but it's fragile to rely on
+                    // that; only dispose the canonical copy when it's actually a new object.
+                    var canonical = EnsureArgb32(bmp);
+                    try { canonical.Save(originalPath, ImageFormat.Png); }
+                    finally { if (!ReferenceEquals(canonical, bmp)) canonical.Dispose(); }
+                    break;
+                }
+
+            case ".jpg":
+            case ".jpeg":
+                {
+                    var jpegEncoder = GetEncoder(ImageFormat.Jpeg);
+                    if (jpegEncoder == null) goto default;
+
+                    var qualityParam = new EncoderParameters(1);
+                    qualityParam.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
+
+                    var canonical = EnsureArgb32(bmp);
+                    try { canonical.Save(originalPath, jpegEncoder, qualityParam); }
+                    finally { if (!ReferenceEquals(canonical, bmp)) canonical.Dispose(); }
+                    break;
+                }
+
+            default:
+                Helpers.WriteImageAsTGA(bmp, originalPath);
+                break;
+        }
+    }
+
+    private static Bitmap EnsureArgb32(Bitmap src)
+    {
+        if (src.PixelFormat == PixelFormat.Format32bppArgb)
+            return src;
+
+        var dst = new Bitmap(src.Width, src.Height, PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(dst);
+        g.DrawImage(src, 0, 0);
+        return dst;
+    }
+
+    private static ImageCodecInfo? GetEncoder(ImageFormat format)
+    {
+        foreach (var codec in ImageCodecInfo.GetImageEncoders())
+            if (codec.FormatID == format.Guid)
+                return codec;
+        return null;
+    }
+}

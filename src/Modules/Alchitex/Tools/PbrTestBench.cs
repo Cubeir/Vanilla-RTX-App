@@ -58,20 +58,19 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 /// the user first; Survey() exists to give that dialog real numbers rather than a vague
 /// warning.
 ///
-/// -- WHAT GETS REMOVED, AND WHY IT ISN'T PbrStripper -----------------------------------
+/// -- WHAT GETS REMOVED ------------------------------------------------------------------
 ///
-/// The removal pass is scoped to exactly the textures being regenerated: for each one, the
-/// texture set that claims it as its color layer, and the PBR layers that set references.
-/// Nothing else in the folder is touched.
+/// PbrStripper, scoped: this folder only (not below it), and only the texture sets whose
+/// *color* layer is one of the textures just regenerated. Everything else beside them is
+/// left alone.
 ///
-/// PbrStripper would have been the obvious reuse, and was what this originally called, but
-/// it strips a whole tree recursively - which is the right behavior for a pack and the wrong
-/// behavior here in two ways. Picking one file out of a folder would wipe the PBR of every
-/// other texture beside it, and with folder scanning no longer recursive (see
-/// ScanFoldersRecursively) it would reach into subfolders that aren't being regenerated at
-/// all. The resolution logic that actually matters is still reused: which files count as a
-/// set's PBR layers comes from TextureSetHelper, never from guessing at name suffixes -
-/// plenty of legitimate *color* textures are named sandstone_normal.png.
+/// That scoping lives in PbrStripper rather than here on purpose. This file briefly carried
+/// its own removal pass - including its own copy of the extension-variants rule - because
+/// the stripper only did whole trees, which would wipe a neighbour's PBR when one file is
+/// picked. Two implementations of "which files is it safe to delete" is a far worse problem
+/// than two optional parameters: the rule is subtle (a set's PBR layers come from
+/// TextureSetHelper's resolution, never from name suffixes, because sandstone_normal.png is
+/// a *color* texture) and the copy would go stale the first time it changed.
 /// </summary>
 public static class PbrTestBench
 {
@@ -286,9 +285,16 @@ public static class PbrTestBench
             var texturesRemoved = 0;
             foreach (var group in sourceGroups)
             {
-                var removed = StripPreviousResults(group.Key, group.ToList());
-                setsRemoved += removed.Sets;
-                texturesRemoved += removed.Textures;
+                // The production stripper, scoped: this folder only, and only the texture
+                // sets whose color layer is one of the textures we just regenerated. Its
+                // defaults are still the pack behaviour, so the real pipeline is unaffected.
+                var names = new HashSet<string>(
+                    group.Select(image => Path.GetFileNameWithoutExtension(image)),
+                    StringComparer.OrdinalIgnoreCase);
+
+                var removed = PbrStripper.Strip(group.Key, SearchOption.TopDirectoryOnly, names);
+                setsRemoved += removed.TextureSetsDeleted;
+                texturesRemoved += removed.TexturesDeleted;
             }
 
             progress?.Report(new AlchitexPipeline.AlchitexProgress(0, produced.Count, "Writing results...", AlchitexPhase.Finalizing));
@@ -346,133 +352,7 @@ public static class PbrTestBench
         }
     }
 
-    /// <summary>
-    /// Removes the previous run's results for <paramref name="images"/>, and only for those:
-    /// the texture set that claims each one as its color layer, plus the PBR layers that set
-    /// references. Everything else in the folder is left alone.
-    ///
-    /// Which files count as a set's PBR layers comes from TextureSetHelper's resolution, not
-    /// from name suffixes - the same rule PbrStripper documents at length, and for the same
-    /// reason: sandstone_normal.png and rail_turned_normal.png are color textures, and a
-    /// suffix sweep would delete them. On top of each resolved path, the same name under the
-    /// other supported extensions goes too, so a leftover foo_mers.png beside the foo_mers.tga
-    /// that resolved can't survive as an orphan and get treated as a color texture next run.
-    ///
-    /// Every color texture resolved in the folder is protected, not just the ones being
-    /// regenerated: a pack can legitimately name one texture as another set's normal or MER
-    /// layer, and art wins over cleanup.
-    /// </summary>
-    private static (int Sets, int Textures) StripPreviousResults(string folder, IReadOnlyList<string> images)
-    {
-        var setsDeleted = 0;
-        var texturesDeleted = 0;
-
-        var targetNames = new HashSet<string>(
-            images.Select(Path.GetFileNameWithoutExtension)!,
-            StringComparer.OrdinalIgnoreCase);
-
-        List<TextureSetHelper.ResolvedTextureSet> resolved;
-        try
-        {
-            // ResolveTextureSets globs recursively; this tool only ever writes into the one
-            // folder, so anything found below it belongs to textures we aren't touching.
-            resolved = TextureSetHelper.ResolveTextureSets(folder)
-                .Where(s => PathsEqual(Path.GetDirectoryName(s.JsonFilePath) ?? "", folder))
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't resolve texture sets in '{folder}': {ex.Message}");
-            return (0, 0);
-        }
-
-        // The sets being replaced: those whose *color* layer is one of the textures we just
-        // regenerated. Keyed off the color rather than the descriptor's own file name, so a
-        // set that claims one of our textures under a different name still gets replaced
-        // instead of surviving as a second claim on the same color.
-        var targets = resolved
-            .Where(s => s.Color is { IsInline: false, FilePath: not null }
-                        && targetNames.Contains(Path.GetFileNameWithoutExtension(s.Color.FilePath!)))
-            .ToList();
-
-        var pbrVariants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var set in targets)
-            foreach (var layer in new[] { set.Mer, set.NormalOrHeight })
-                if (layer is { IsInline: false, FilePath: not null } pbr)
-                    foreach (var variant in ExtensionVariants(pbr.FilePath))
-                        pbrVariants.Add(Path.GetFullPath(variant));
-
-        // Every color texture resolved in this folder is protected, ours or not - a pack can
-        // legitimately name one texture as another set's normal or MER layer, and art wins
-        // over cleanup.
-        var protectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var set in resolved)
-            if (set.Color is { IsInline: false, FilePath: not null } color)
-                foreach (var variant in ExtensionVariants(color.FilePath))
-                    protectedPaths.Add(Path.GetFullPath(variant));
-
-        // Source images get the same protection - but ONLY when they aren't themselves a PBR
-        // layer of a set being replaced. Survey selects by extension, so a folder that has
-        // been run before hands us the previous run's _mers.tga / _heightmap.tga as "source
-        // images"; blanket-protecting those meant the strip guarded precisely the orphans it
-        // exists to remove, and switching Secondary PBR left last run's map sitting beside
-        // this run's.
-        foreach (var image in images)
-        {
-            var full = Path.GetFullPath(image);
-            if (!pbrVariants.Contains(full)) protectedPaths.Add(full);
-        }
-
-        foreach (var candidate in pbrVariants)
-        {
-            if (protectedPaths.Contains(candidate) || !File.Exists(candidate)) continue;
-
-            try
-            {
-                File.Delete(candidate);
-                texturesDeleted++;
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't delete '{candidate}': {ex.Message}");
-            }
-        }
-
-        // The descriptors go too - fresh ones are written back moments later, and if this
-        // run's options changed which secondary layer they declare, keeping the old one
-        // would leave it pointing at a map that no longer exists.
-        foreach (var set in targets)
-        {
-            try
-            {
-                if (File.Exists(set.JsonFilePath))
-                {
-                    File.Delete(set.JsonFilePath);
-                    setsDeleted++;
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't delete '{set.JsonFilePath}': {ex.Message}");
-            }
-        }
-
-        return (setsDeleted, texturesDeleted);
-    }
-
     // ── Helpers ──────────────────────────────────────────────────────────────
-
-    /// <summary>The given file path under every extension the game (and this app) supports,
-    /// its own included - see StripPreviousResults for why the ones that don't exist are
-    /// worth trying anyway.</summary>
-    private static IEnumerable<string> ExtensionVariants(string path)
-    {
-        var folder = Path.GetDirectoryName(path)!;
-        var nameNoExt = Path.GetFileNameWithoutExtension(path);
-
-        foreach (var extension in TextureSetOrchestratorOptions.CandidateExtensions)
-            yield return Path.Combine(folder, nameNoExt + extension);
-    }
 
     private static IEnumerable<string> EnumerateCandidateImages(string root)
     {
@@ -541,12 +421,6 @@ public static class PbrTestBench
             Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't clear staged '{full}': {ex.Message}");
         }
     }
-
-    private static bool PathsEqual(string a, string b)
-        => string.Equals(
-            Path.GetFullPath(a).TrimEnd(Path.DirectorySeparatorChar),
-            Path.GetFullPath(b).TrimEnd(Path.DirectorySeparatorChar),
-            StringComparison.OrdinalIgnoreCase);
 
     private static void TryDeleteDirectory(string path)
     {
