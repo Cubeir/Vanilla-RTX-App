@@ -794,6 +794,79 @@ public static class MersGenerator
     }
 }
 
+/// <summary>
+/// Invisible emission: light coming out of pixels the player can't see.
+///
+/// Minecraft RTX reads emitted light's COLOUR from the colour texture and its STRENGTH from
+/// the MERS green channel, per pixel, without caring whether the pixel is visible. A fully
+/// transparent pixel that still carries RGB and emissive data therefore glows while drawing
+/// nothing at all. Vanilla RTX leans on this constantly - monster spawners, torches, trial
+/// spawners: anything whose lit interior is a hole in the artwork rather than painted
+/// surface. See InvisibleEmissionParams for the schema, and MaterialsBootstrapper for the
+/// pass that derives both values back out of a pack already using the trick.
+///
+/// Both edits have to agree on which pixels they touch, which is the entire reason this is
+/// one class and not two passes in two files: colour without strength emits nothing, and
+/// strength without colour emits black. The rule is "alpha is exactly 0 in the colour
+/// texture", nothing more - a pixel at alpha 1 is faintly visible and is the artist's to
+/// paint, not ours to overwrite.
+///
+/// Runs AFTER the MERS is otherwise finished (base pass, recursive passes, subsurface), and
+/// after it, deliberately: it's an override of a specific region rather than another layer
+/// to blend, and a recursive pass writing over it would defeat the point.
+///
+/// It also runs on the colour bitmap only AFTER that bitmap has been used to generate the
+/// MERS. Filling those pixels first would feed the emission colour into ColorField's
+/// real-colour-data domain (§4.11) - a padded texture whose alpha-0 pixels were pure black
+/// and thus excluded would suddenly have them counted, shifting the contrast domain of the
+/// whole visible material. The invisible region must not influence the visible one.
+/// </summary>
+public static class InvisibleEmission
+{
+    /// <summary>
+    /// Writes the emission colour into every alpha-0 pixel of <paramref name="colorBitmap"/>
+    /// and the emission strength into the same pixels' green channel in
+    /// <paramref name="mersBitmap"/>.
+    ///
+    /// Returns true if the colour bitmap was actually changed, so the caller knows whether
+    /// it needs writing back to disk - a texture with no transparent pixels at all is the
+    /// common case and shouldn't cost a file write.
+    /// </summary>
+    public static bool Apply(Bitmap colorBitmap, Bitmap mersBitmap, ResolvedInvisibleEmission emission)
+    {
+        if (!emission.IsEnabled) return false;
+
+        var w = Math.Min(colorBitmap.Width, mersBitmap.Width);
+        var h = Math.Min(colorBitmap.Height, mersBitmap.Height);
+
+        var changed = false;
+
+        using var colorFb = new FastBitmap(colorBitmap, writable: true);
+        using var mersFb = new FastBitmap(mersBitmap, writable: true);
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var c = colorFb[x, y];
+                if (c.A != 0) continue;
+
+                // Alpha stays 0 - the pixel must remain invisible. Only its RGB changes,
+                // and that RGB is never seen; it exists purely to tint the light.
+                colorFb[x, y] = Color.FromArgb(0, emission.R, emission.G, emission.B);
+
+                var m = mersFb[x, y];
+                mersFb[x, y] = Color.FromArgb(m.A, m.R, (byte)emission.Strength, m.B);
+
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+}
+
+
 #endregion
 
 #region Normal Map Generation
@@ -1127,12 +1200,21 @@ public static class NormalMapGenerator
             {
                 var maximized = clustered[x, y] * scale;
 
-                // Two independent reductions of the same recession, applied together:
-                // PomContrastReduction is the built-in one every texture gets, and
-                // heightmap.intensity is the artist saying how deep THIS block's relief
-                // should read. Scaling recession rather than the value keeps 255 (the
-                // surface) fixed, so intensity 0 flattens parallax out entirely instead of
-                // pulling the whole surface toward a midpoint.
+                // POM is ABSOLUTE recession from 255, not a relative height field - which is
+                // exactly what the ceiling-maximize above exists to establish. Weakening it
+                // therefore means pulling every pixel back toward 255, never rescaling
+                // around a midpoint. That is the same mechanic Tuner.ApplyNormalMapIntensity
+                // uses on this channel, and it can't overflow past 255 by construction.
+                //
+                // Two factors do that pulling. PomContrastReduction is the fixed one every
+                // texture gets, because the clustered heightmap still sinks very deep even
+                // after ceiling-maximizing. heightmap.intensity rides on top of it - it's
+                // the heightmap's own contrast reduction, and a block told to read flatter
+                // should read flatter here too.
+                //
+                // Note they compound. heightmap.intensity defaults to 1.0 so this changes
+                // nothing today, but if that default ever drops, PomContrastReduction
+                // probably wants loosening to compensate.
                 var recession = (255.0 - maximized)
                                 * (1.0 - PomContrastReduction)
                                 * Math.Clamp(heightmapIntensity, 0.0, 1.0);

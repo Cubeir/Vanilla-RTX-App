@@ -218,27 +218,54 @@ public static class AlchitexPipeline
         var material = materials.Resolve(target.TextureName);
         using var colorBitmap = Helpers.ReadImage(target.ColorPath, maxOpacity: false);
 
-        if (!File.Exists(target.MersPath))
+        // Held rather than written immediately: invisible emission is the last thing to
+        // touch it, and that can't happen until every generator has finished reading the
+        // colour bitmap (see below).
+        System.Drawing.Bitmap? mers = null;
+
+        try
         {
-            using var mers = MersGenerator.Generate(colorBitmap, material);
+            if (!File.Exists(target.MersPath))
+                mers = MersGenerator.Generate(colorBitmap, material);
+
+            if (target.SecondaryPath != null && !File.Exists(target.SecondaryPath))
+            {
+                if (target.IsHeightmap)
+                {
+                    using var heightmap = HeightmapGenerator.Generate(colorBitmap, material.Heightmap);
+                    Helpers.WriteImageAsTGA(heightmap, target.SecondaryPath);
+                }
+                else
+                {
+                    // Heightmap params too: the normal map's blue channel is POM, which is
+                    // the same surface relief the heightmap describes, so heightmap.intensity
+                    // has to reach it - see ApplyPomBlueChannel.
+                    using var normal = NormalMapGenerator.Generate(colorBitmap, material.Normal, material.Heightmap);
+                    Helpers.WriteImageAsTGA(normal, target.SecondaryPath);
+                }
+            }
+
+            if (mers == null) return;
+
+            // ── Invisible emission ───────────────────────────────────────────
+            // Deliberately dead last, and the only thing in generation that writes back to
+            // a colour texture. It fills the emission colour into alpha-0 pixels, which
+            // makes those pixels count as real colour data (§4.11) - so doing it any
+            // earlier would feed the invisible region into the MERS, heightmap and normal
+            // contrast domains and shift the *visible* material. Every generator above has
+            // read colorBitmap by this point; nothing else reads it after.
+            if (InvisibleEmission.Apply(colorBitmap, mers, material.InvisibleEmission))
+            {
+                // In place, keeping the filename, exactly like the glass pass (§4.4) - the
+                // texture set resolves this file by name, so the name must not change.
+                Helpers.WriteImageAsTGA(colorBitmap, target.ColorPath);
+            }
+
             Helpers.WriteImageAsTGA(mers, target.MersPath);
         }
-
-        if (target.SecondaryPath != null && !File.Exists(target.SecondaryPath))
+        finally
         {
-            if (target.IsHeightmap)
-            {
-                using var heightmap = HeightmapGenerator.Generate(colorBitmap, material.Heightmap);
-                Helpers.WriteImageAsTGA(heightmap, target.SecondaryPath);
-            }
-            else
-            {
-                // Heightmap params too: the normal map's blue channel is POM, which is the
-                // same surface relief the heightmap describes, so heightmap.intensity has
-                // to reach it - see ApplyPomBlueChannel.
-                using var normal = NormalMapGenerator.Generate(colorBitmap, material.Normal, material.Heightmap);
-                Helpers.WriteImageAsTGA(normal, target.SecondaryPath);
-            }
+            mers?.Dispose();
         }
     }
 

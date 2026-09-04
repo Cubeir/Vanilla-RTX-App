@@ -93,6 +93,36 @@ public sealed class RecursivePass
     [JsonPropertyName("mer")] public MerParams? Mer { get; set; }
 }
 
+/// <summary>
+/// "Invisible emission" - light emitted from pixels the player can never see.
+///
+/// Minecraft RTX takes emitted light's COLOUR from the colour texture and its STRENGTH from
+/// the MERS green channel, and it does that per pixel regardless of whether the pixel is
+/// visible. So a fully transparent pixel (alpha 0) that still carries RGB and emissive data
+/// glows without drawing anything. Vanilla RTX uses this heavily: monster spawners, torches,
+/// trial spawners - anything whose lit interior is a hole in the artwork rather than a
+/// painted surface.
+///
+/// Both halves are required and neither works alone, which is why they're one section:
+/// strength with no colour emits black (albedo x emissive = nothing), and colour with no
+/// strength emits nothing at all. Strength is what switches the feature on - 0 means off,
+/// which is the default for every texture that doesn't explicitly want it.
+///
+/// Applied to EVERY alpha-0 pixel in the texture (see PbrGeneration.InvisibleEmission), so
+/// it's per-texture art direction, not something to put on the "default" entry.
+/// </summary>
+public sealed class InvisibleEmissionParams
+{
+    /// <summary>RGB triplet, 0-255 each. Defaults to white, deliberately: if someone sets a
+    /// strength and forgets the colour, neutral light is a far better failure than the
+    /// silent nothing that black would emit.</summary>
+    [JsonPropertyName("color")] public List<int>? Color { get; set; }
+
+    /// <summary>0-255 emissive written into the MERS green channel of those pixels.
+    /// 0 disables the whole feature for this texture.</summary>
+    [JsonPropertyName("strength")] public int? Strength { get; set; }
+}
+
 public sealed class HeightmapParams
 {
     /// <summary>0.0 (fully flattened toward a neutral median - good for very smooth
@@ -127,6 +157,7 @@ public sealed class MaterialEntry
     [JsonPropertyName("mer")] public MerParams? Mer { get; set; }
     [JsonPropertyName("sss")] public SssParams? Sss { get; set; }
     [JsonPropertyName("recursive")] public List<RecursivePass>? Recursive { get; set; }
+    [JsonPropertyName("invisible_emission")] public InvisibleEmissionParams? InvisibleEmission { get; set; }
     [JsonPropertyName("heightmap")] public HeightmapParams? Heightmap { get; set; }
     [JsonPropertyName("normal")] public NormalParams? Normal { get; set; }
 }
@@ -141,6 +172,12 @@ public readonly record struct ResolvedMer(
 
 public readonly record struct ResolvedSss(int Min, int Max, bool Invert);
 
+public readonly record struct ResolvedInvisibleEmission(int R, int G, int B, int Strength)
+{
+    /// <summary>Strength is the switch - see InvisibleEmissionParams.</summary>
+    public bool IsEnabled => Strength > 0;
+}
+
 public readonly record struct ResolvedRecursivePass(string Channel, ResolvedMer Mer);
 
 public readonly record struct ResolvedHeightmap(double Intensity, bool Invert);
@@ -152,6 +189,7 @@ public sealed class ResolvedMaterial
     public ResolvedMer Mer { get; init; }
     public ResolvedSss Sss { get; init; }
     public IReadOnlyList<ResolvedRecursivePass> Recursive { get; init; } = Array.Empty<ResolvedRecursivePass>();
+    public ResolvedInvisibleEmission InvisibleEmission { get; init; }
     public ResolvedHeightmap Heightmap { get; init; }
     public ResolvedNormal Normal { get; init; }
 }
@@ -180,6 +218,13 @@ public static class MaterialDefaults
     public const int SssMin = 0;
     public const int SssMax = 0;
     public const bool SssInvert = false;
+
+    // White, so a strength set without a colour still emits neutral light instead of the
+    // nothing that black would give. Strength 0 = the feature is off, which is the default.
+    public const int InvisibleEmissionR = 255;
+    public const int InvisibleEmissionG = 255;
+    public const int InvisibleEmissionB = 255;
+    public const int InvisibleEmissionStrength = 0;
 
     public const double HeightmapIntensity = 1.0;
     public const bool HeightmapInvert = false;
@@ -220,6 +265,10 @@ public static class MaterialDefaults
 [JsonSerializable(typeof(Dictionary<string, MaterialEntry>))]
 [JsonSerializable(typeof(MaterialEntry))]
 [JsonSerializable(typeof(List<string>))]
+// InvisibleEmissionParams.Color is a List<int>. Nested types get picked up through
+// MaterialEntry, but this shape is listed explicitly for the same reason everything else
+// here is: a missing metadata entry fails silently, and only in a trimmed Release build.
+[JsonSerializable(typeof(List<int>))]
 internal partial class AlchitexJsonContext : JsonSerializerContext
 {
 }
@@ -342,6 +391,7 @@ public sealed class MaterialsConfig
                 Channel(sss?.Max ?? defSss?.Max, MaterialDefaults.SssMax, entryName, "sss.max"),
                 sss?.Invert ?? defSss?.Invert ?? MaterialDefaults.SssInvert),
             Recursive = MergeRecursive(entry, entryName),
+            InvisibleEmission = MergeInvisibleEmission(entry, entryName),
             Heightmap = new ResolvedHeightmap(
                 Unit(heightmap?.Intensity ?? defHeightmap?.Intensity, MaterialDefaults.HeightmapIntensity, entryName, "heightmap.intensity"),
                 heightmap?.Invert ?? defHeightmap?.Invert ?? MaterialDefaults.HeightmapInvert),
@@ -387,6 +437,47 @@ public sealed class MaterialsConfig
         }
 
         return resolved;
+    }
+
+    /// <summary>
+    /// Falls back per property like everything else, so an entry can set a strength and
+    /// inherit a colour. The one thing worth knowing: because it DOES fall back, putting an
+    /// enabled invisible_emission on the "default" entry would light the alpha-0 pixels of
+    /// every texture in the pack. Strength defaults to 0 precisely so that never happens by
+    /// accident - see InvisibleEmissionParams.
+    /// </summary>
+    private ResolvedInvisibleEmission MergeInvisibleEmission(MaterialEntry entry, string entryName)
+    {
+        var emission = entry.InvisibleEmission;
+        var defEmission = _default.InvisibleEmission;
+
+        var color = emission?.Color ?? defEmission?.Color;
+
+        var r = MaterialDefaults.InvisibleEmissionR;
+        var g = MaterialDefaults.InvisibleEmissionG;
+        var b = MaterialDefaults.InvisibleEmissionB;
+
+        if (color != null)
+        {
+            if (color.Count >= 3)
+            {
+                r = Channel(color[0], r, entryName, "invisible_emission.color[0]");
+                g = Channel(color[1], g, entryName, "invisible_emission.color[1]");
+                b = Channel(color[2], b, entryName, "invisible_emission.color[2]");
+            }
+            else
+            {
+                Trace.WriteLine($"[ALCHITEX] materials.json entry '{entryName}': invisible_emission.color needs 3 values, got {color.Count} - using white.");
+            }
+        }
+
+        var strength = Channel(
+            emission?.Strength ?? defEmission?.Strength,
+            MaterialDefaults.InvisibleEmissionStrength,
+            entryName,
+            "invisible_emission.strength");
+
+        return new ResolvedInvisibleEmission(r, g, b, strength);
     }
 
     private static string NormalizeChannel(string? channel, string entryName, int index)

@@ -300,6 +300,7 @@ public static class MaterialsBootstrapper
                 Invert = MaterialDefaults.SssInvert,
             },
             Recursive = new List<RecursivePass>(),
+            InvisibleEmission = DeriveInvisibleEmission(colorBmp, merBmp),
             Heightmap = new HeightmapParams
             {
                 Intensity = MaterialDefaults.HeightmapIntensity,
@@ -310,6 +311,78 @@ public static class MaterialsBootstrapper
                 Intensity = MaterialDefaults.NormalIntensity,
                 Invert = MaterialDefaults.NormalInvert,
             },
+        };
+    }
+
+    /// <summary>
+    /// Detects and measures the "invisible emission" trick (see InvisibleEmissionParams) in
+    /// a pack that already uses it, which is the only way these two numbers can be known -
+    /// nothing about a texture says "this hole should glow orange" except an artist having
+    /// already decided that once.
+    ///
+    /// Detection is simply: does any pixel that is fully transparent in the colour texture
+    /// carry emissive in the MERS? If a pack didn't use the trick, no such pixel exists and
+    /// this returns null so the section is omitted entirely.
+    ///
+    /// Both values are averaged over the alpha-0 pixels **that actually emit**, not over
+    /// every alpha-0 pixel. That's a deliberate departure from the plainest reading of
+    /// "average the transparent pixels", and it matters on real textures: transparent
+    /// regions are usually part lit hole and part ordinary padding, and padding is normally
+    /// flat black. Including it would drag the colour toward black (which emits nothing at
+    /// all, since emitted light is albedo x emissive) and halve the strength for no reason.
+    /// Generation applies one uniform strength to every alpha-0 pixel, so what's wanted here
+    /// is the level the artist chose for the lit part, not that level diluted by how much of
+    /// the texture happened to be padding.
+    ///
+    /// Requires matching dimensions - a MERS at a different resolution than its colour
+    /// texture can't be compared pixel for pixel, and guessing a correspondence would be
+    /// worse than skipping.
+    /// </summary>
+    private static InvisibleEmissionParams? DeriveInvisibleEmission(
+        System.Drawing.Bitmap colorBmp,
+        System.Drawing.Bitmap merBmp)
+    {
+        if (colorBmp.Width != merBmp.Width || colorBmp.Height != merBmp.Height) return null;
+
+        long sumR = 0, sumG = 0, sumB = 0, sumEmissive = 0, count = 0;
+
+        using (var colorFb = new FastBitmap(colorBmp, writable: false))
+        using (var merFb = new FastBitmap(merBmp, writable: false))
+        {
+            for (var y = 0; y < merBmp.Height; y++)
+            {
+                for (var x = 0; x < merBmp.Width; x++)
+                {
+                    var c = colorFb[x, y];
+                    if (c.A != 0) continue;
+
+                    // Green is emissive in MER/MERS.
+                    var emissive = merFb[x, y].G;
+                    if (emissive == 0) continue;
+
+                    sumR += c.R;
+                    sumG += c.G;
+                    sumB += c.B;
+                    sumEmissive += emissive;
+                    count++;
+                }
+            }
+        }
+
+        if (count == 0) return null;
+
+        var strength = (int)Math.Round(sumEmissive / (double)count);
+        if (strength <= 0) return null; // rounded away to nothing - not really using it
+
+        return new InvisibleEmissionParams
+        {
+            Color = new List<int>
+            {
+                (int)Math.Round(sumR / (double)count),
+                (int)Math.Round(sumG / (double)count),
+                (int)Math.Round(sumB / (double)count),
+            },
+            Strength = strength,
         };
     }
 
