@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -619,17 +619,17 @@ public sealed record AlchitexOptions(
 {
     /// <summary>
     /// Auto mode's per-texture rule, decided once we know a given color texture's width:
-    /// <= 32px -> heightmap (too little resolution for normal-map detail to read as
-    /// anything but noise), > 32px -> normal map.
+    /// <= 16px -> heightmap (too little resolution for normal-map detail to read as
+    /// anything but noise), > 16px -> normal map.
     /// </summary>
-    public const int AutoModeHeightmapMaxWidth = 32;
+    public const int AutoModeHeightmapMaxWidth = 16;
 
     /// <summary>
     /// Ceiling for an *explicit* Heightmap selection (TextureSetOrchestrator.
     /// ResolveSecondaryMode): above this width a normal map is generated instead - a
     /// heightmap texture set above this size no longer manifests correctly in-game.
     /// </summary>
-    public const int ExplicitHeightmapMaxWidth = 64;
+    public const int ExplicitHeightmapMaxWidth = 32;
 
     public static readonly AlchitexOptions Default = new(SecondaryPbrMode.Auto, AddFog: false);
 }
