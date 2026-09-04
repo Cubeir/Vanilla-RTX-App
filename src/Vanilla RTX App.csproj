@@ -11,6 +11,13 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+
+    <!-- Release publishes trimmed (see PublishTrimmed further down). Without these, code that
+         needs runtime reflection compiles clean in Debug and only fails once it's trimmed - in
+         front of the user. Running the trim analyzer on every build turns that into a normal
+         compile warning here instead. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>
