@@ -886,7 +886,10 @@ public static class NormalMapGenerator
     private const int GradientHistogramBins = 1024;
     private const double GradientHistogramMax = 2.0;
 
-    public static Bitmap Generate(Bitmap colorBitmap, ResolvedNormal normalParams)
+    public static Bitmap Generate(
+        Bitmap colorBitmap,
+        ResolvedNormal normalParams,
+        ResolvedHeightmap heightmapParams)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -941,7 +944,7 @@ public static class NormalMapGenerator
             }
         }
 
-        ApplyPomBlueChannel(output, clustered);
+        ApplyPomBlueChannel(output, clustered, heightmapParams.Intensity);
 
         if (normalParams.Invert)
             InvertRedGreenInPlace(output);
@@ -1105,7 +1108,7 @@ public static class NormalMapGenerator
     /// recession from 255 reduced by PomContrastReduction, since the ceiling-maximize
     /// alone still leaves some clusters sitting quite deep.
     /// </summary>
-    private static void ApplyPomBlueChannel(Bitmap normalBitmap, int[,] clustered)
+    private static void ApplyPomBlueChannel(Bitmap normalBitmap, int[,] clustered, double heightmapIntensity)
     {
         var w = normalBitmap.Width;
         var h = normalBitmap.Height;
@@ -1123,8 +1126,18 @@ public static class NormalMapGenerator
             for (var x = 0; x < w; x++)
             {
                 var maximized = clustered[x, y] * scale;
-                var recession = 255.0 - maximized;
-                var pom = (byte)Math.Clamp((int)Math.Round(255.0 - recession * (1.0 - PomContrastReduction)), 0, 255);
+
+                // Two independent reductions of the same recession, applied together:
+                // PomContrastReduction is the built-in one every texture gets, and
+                // heightmap.intensity is the artist saying how deep THIS block's relief
+                // should read. Scaling recession rather than the value keeps 255 (the
+                // surface) fixed, so intensity 0 flattens parallax out entirely instead of
+                // pulling the whole surface toward a midpoint.
+                var recession = (255.0 - maximized)
+                                * (1.0 - PomContrastReduction)
+                                * Math.Clamp(heightmapIntensity, 0.0, 1.0);
+
+                var pom = (byte)Math.Clamp((int)Math.Round(255.0 - recession), 0, 255);
                 var c = normalFb[x, y];
                 normalFb[x, y] = Color.FromArgb(c.A, c.R, c.G, pom);
             }

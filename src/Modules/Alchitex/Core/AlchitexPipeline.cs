@@ -233,7 +233,10 @@ public static class AlchitexPipeline
             }
             else
             {
-                using var normal = NormalMapGenerator.Generate(colorBitmap, material.Normal);
+                // Heightmap params too: the normal map's blue channel is POM, which is the
+                // same surface relief the heightmap describes, so heightmap.intensity has
+                // to reach it - see ApplyPomBlueChannel.
+                using var normal = NormalMapGenerator.Generate(colorBitmap, material.Normal, material.Heightmap);
                 Helpers.WriteImageAsTGA(normal, target.SecondaryPath);
             }
         }
