@@ -1,12 +1,14 @@
 [
-  "water_still_grey",
-  "water_flow_grey",
-  "*_carried",
-  "carried_*",
-  "*_pottery_pattern",
-  "*_chest_*",
-  "barrier",
-  "bed_*",
-  "decorated_pot_*",
-  "bubble_*"
+    "water_still_grey",
+    "water_flow_grey",
+    "water_still_*",
+    "water_flow_*",
+    "*_carried",
+    "carried_*",
+    "*_pottery_pattern",
+    "*_chest_*",
+    "barrier",
+    "bed_*",
+    "decorated_pot_*",
+    "bubble_*"
 ]
