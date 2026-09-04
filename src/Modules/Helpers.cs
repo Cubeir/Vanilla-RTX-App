@@ -6,6 +6,8 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -1821,6 +1823,8 @@ public static class MinecraftUserDataLocator
 
 #endregion
 
+# region TEXTURE SET TOOLS
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  TextureSetHelper  ──  parsing, resolution, and virtual-bitmap creation
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2335,6 +2339,8 @@ public static class TextureSetHelper
                     var jpegEncoder = GetEncoder(ImageFormat.Jpeg);
                     if (jpegEncoder == null) goto default;
 
+                    WarnIfAlphaWillBeLost(bmp, originalPath);
+
                     var qualityParam = new EncoderParameters(1);
                     qualityParam.Param[0] = new EncoderParameter(Encoder.Quality, 100L);
 
@@ -2348,6 +2354,27 @@ public static class TextureSetHelper
                 Helpers.WriteImageAsTGA(bmp, originalPath);
                 break;
         }
+    }
+
+    /// <summary>
+    /// JPEG has no alpha channel, so transparency in a layer written back as .jpg comes out
+    /// fully opaque. Nothing here changes that - the source file's format is preserved on
+    /// purpose, and a pack shipping .jpg usually has its reasons - this only makes the loss
+    /// visible instead of silent. Harmless for an opaque color texture; on a MERS layer it
+    /// means the subsurface channel is gone. Early-exits on the first non-opaque pixel, so
+    /// the common (fully opaque) case costs one pass and the bad case costs almost nothing.
+    /// </summary>
+    private static void WarnIfAlphaWillBeLost(Bitmap bmp, string originalPath)
+    {
+        using var fb = new FastBitmap(bmp, writable: false);
+
+        for (var y = 0; y < fb.Height; y++)
+            for (var x = 0; x < fb.Width; x++)
+                if (fb[x, y].A != 255)
+                {
+                    Trace.WriteLine($"[TUNER] '{Path.GetFileName(originalPath)}' has transparency but is a JPEG, which cannot store an alpha channel - it will be written back fully opaque. If this is a MERS layer, that is its subsurface data.");
+                    return;
+                }
     }
 
     private static Bitmap EnsureArgb32(Bitmap src)
@@ -2369,3 +2396,111 @@ public static class TextureSetHelper
         return null;
     }
 }
+
+#endregion
+
+
+# region FAST BITMAP
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  FastBitmap  ──  LockBits-based pixel accessor, drop-in for GetPixel/SetPixel
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Replaces Bitmap.GetPixel/SetPixel for bulk pixel work. Each GetPixel/SetPixel
+/// call on a System.Drawing.Bitmap round-trips through native GDI+ with format
+/// checks and marshalling on every single pixel; for a 512x512 image that's a
+/// quarter million native calls per full pass. FastBitmap instead locks the
+/// bitmap once, bulk-copies its raw bytes into a managed buffer with a single
+/// Marshal.Copy, and does all reads/writes against that plain byte[] (fast,
+/// bounds-checked, no native calls). On Dispose it copies the buffer back
+/// (only if opened writable) and unlocks.
+///
+/// Always requests Format32bppArgb regardless of the bitmap's real pixel
+/// format - this exactly mirrors what GetPixel/SetPixel already did (they always
+/// hand back/accept a plain ARGB Color regardless of underlying storage), so
+/// output is unaffected: GDI+ performs the same implicit conversion on lock/unlock
+/// that GetPixel/SetPixel performed internally per call.
+///
+/// No `unsafe` blocks are required, so no project/csproj changes are needed.
+/// </summary>
+public sealed class FastBitmap : IDisposable
+{
+    private readonly Bitmap _bitmap;
+    private readonly BitmapData _data;
+    private readonly byte[] _buffer;
+    private readonly int _stride;
+    private readonly bool _writable;
+    private bool _disposed;
+
+    public int Width { get; }
+    public int Height { get; }
+
+    public FastBitmap(Bitmap bitmap, bool writable)
+    {
+        _bitmap = bitmap;
+        _writable = writable;
+        Width = bitmap.Width;
+        Height = bitmap.Height;
+
+        _data = bitmap.LockBits(
+            new Rectangle(0, 0, Width, Height),
+            writable ? ImageLockMode.ReadWrite : ImageLockMode.ReadOnly,
+            PixelFormat.Format32bppArgb);
+
+        _stride = _data.Stride;
+        _buffer = new byte[_stride * Height];
+        Marshal.Copy(_data.Scan0, _buffer, 0, _buffer.Length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Color Get(int x, int y)
+    {
+        var i = y * _stride + x * 4;
+        // Format32bppArgb byte order in memory is B, G, R, A.
+        return Color.FromArgb(_buffer[i + 3], _buffer[i + 2], _buffer[i + 1], _buffer[i]);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Set(int x, int y, Color c)
+    {
+        var i = y * _stride + x * 4;
+        _buffer[i] = c.B;
+        _buffer[i + 1] = c.G;
+        _buffer[i + 2] = c.R;
+        _buffer[i + 3] = c.A;
+    }
+
+    /// <summary>
+    /// Deliberately named as an indexer rather than GetPixel/SetPixel: those names
+    /// read exactly like the slow Bitmap API this class replaces, which caused real
+    /// confusion during review even though the implementation underneath is entirely
+    /// different (plain array access, no GDI+ calls). fb[x, y] makes it visually
+    /// obvious it's not that.
+    /// </summary>
+    public Color this[int x, int y]
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Get(x, y);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => Set(x, y, value);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        try
+        {
+            if (_writable)
+                Marshal.Copy(_buffer, 0, _data.Scan0, _buffer.Length);
+        }
+        finally
+        {
+            _bitmap.UnlockBits(_data);
+        }
+    }
+}
+
+#endregion
