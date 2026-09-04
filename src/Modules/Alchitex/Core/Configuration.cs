@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -15,57 +15,82 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 
 #region Materials Schema (materials.json)
 
+// ══════════════════════════════════════════════════════════════════════════════════════
+// Two layers of types live here, and the split is load-bearing:
+//
+//   * The DTOs (MerParams, SssParams, ...) are what JSON deserializes into. EVERY property
+//     on them is nullable, and that is the whole point: without nullability there is no way
+//     to tell "the artist wrote 0" from "the artist wrote nothing", so a per-property
+//     fallback to the "default" entry is impossible. A non-nullable int silently reads as 0
+//     for both cases.
+//
+//   * The Resolved* types are what the generators consume. Every value is present, in
+//     range, and already merged. Nothing downstream of MaterialsConfig.Resolve ever has to
+//     null-check or clamp.
+//
+// The merge is: this entry's value, else the "default" entry's value, else a built-in
+// constant. So an entry can say nothing but {"mer": {"emissive_max": 200}} and inherit the
+// rest of the artist's own defaults rather than the code's - which is what makes
+// materials.json editable by hand without repeating every field on every block.
+// ══════════════════════════════════════════════════════════════════════════════════════
+
 /// <summary>
 /// Min/max/invert triple per output MERS channel. Values are 0-255 target ranges that
 /// the greyscaled color texture gets stretched into (see PbrGeneration.MersGenerator).
-/// Roughness min/max default to a fully-rough, non-reflective fallback so that
-/// forgetting to define a block never accidentally makes it look wet/metallic.
+/// All nullable - see the note above. Defaults live in MaterialDefaults.
 /// </summary>
 public sealed class MerParams
 {
-    [JsonPropertyName("metal_min")] public int MetalMin { get; set; }
-    [JsonPropertyName("metal_max")] public int MetalMax { get; set; }
-    [JsonPropertyName("emissive_min")] public int EmissiveMin { get; set; }
-    [JsonPropertyName("emissive_max")] public int EmissiveMax { get; set; }
-    [JsonPropertyName("roughness_min")] public int RoughnessMin { get; set; } = 192;
-    [JsonPropertyName("roughness_max")] public int RoughnessMax { get; set; } = 255;
+    [JsonPropertyName("metal_min")] public int? MetalMin { get; set; }
+    [JsonPropertyName("metal_max")] public int? MetalMax { get; set; }
+    [JsonPropertyName("emissive_min")] public int? EmissiveMin { get; set; }
+    [JsonPropertyName("emissive_max")] public int? EmissiveMax { get; set; }
+    [JsonPropertyName("roughness_min")] public int? RoughnessMin { get; set; }
+    [JsonPropertyName("roughness_max")] public int? RoughnessMax { get; set; }
 
-    [JsonPropertyName("invert_metal")] public bool InvertMetal { get; set; }
-    [JsonPropertyName("invert_emissive")] public bool InvertEmissive { get; set; }
-    [JsonPropertyName("invert_roughness")] public bool InvertRoughness { get; set; } = true;
+    [JsonPropertyName("invert_metal")] public bool? InvertMetal { get; set; }
+    [JsonPropertyName("invert_emissive")] public bool? InvertEmissive { get; set; }
+    [JsonPropertyName("invert_roughness")] public bool? InvertRoughness { get; set; }
 }
 
 /// <summary>
-/// Subsurface-scattering opacity range, written into the MERS alpha channel based on the
-/// *unaltered* luminosity of the color texture: darkest pixel of the block -> Min,
-/// brightest -> Max, everything else interpolated. Min == Max == 0 means "no SSS" - the
-/// correct default for the overwhelming majority of blocks. Always applied - there's no
-/// run-time toggle for this; whether a shader chooses to read it is downstream of us.
+/// Subsurface-scattering opacity range, written into the MERS alpha channel from the
+/// *unaltered* luminosity of the color texture: darkest pixel -> Min, brightest -> Max.
+/// Min == Max == 0 means "no SSS", the right default for most blocks.
+///
+/// `invert` flips which end of the texture's brightness gets which end of the range, so
+/// the darkest pixels scatter most instead of least. Unlike the MER invert flags - which
+/// exist to work around assets the game renders inverted - this one is a real artistic
+/// choice: plenty of materials have their translucency in the dark parts (thin dark
+/// leaves, resin in dark wood) rather than the bright ones.
 /// </summary>
 public sealed class SssParams
 {
-    [JsonPropertyName("min")] public int Min { get; set; }
-    [JsonPropertyName("max")] public int Max { get; set; }
+    [JsonPropertyName("min")] public int? Min { get; set; }
+    [JsonPropertyName("max")] public int? Max { get; set; }
+    [JsonPropertyName("invert")] public bool? Invert { get; set; }
 }
 
 /// <summary>
-/// One recursive/advanced MERS pass. `Channel` selects which channel of the *color*
-/// texture is used to extract a dominance mask. The masked region
-/// then gets its own independent MERS pass, alpha-blended back over the base MERS using
-/// the mask's per-pixel opacity.
+/// One recursive/advanced MERS pass. `channel` selects which channel of the *color*
+/// texture is tested for dominance; the pixels where it dominates get their own
+/// independent MER pass blended back over the base MERS, weighted per pixel by how
+/// strongly that channel actually dominates there (see MersGenerator.ApplyRecursivePass).
+///
+/// There is deliberately no `sss` here. Subsurface is the final pass over the finished
+/// MERS alpha, computed once from the whole texture's luminosity - a per-region override
+/// of it never had a real use, and having it invited the idea that recursion happens
+/// after subsurface rather than before.
+///
+/// Multiple passes are normal - one per channel, or several on the same channel with
+/// different ranges. They apply in file order, each blending over the result of the last.
 /// </summary>
 public sealed class RecursivePass
 {
-    /// <summary>"R", "G", or "B" - which channel of the color texture to extract a
-    /// local-dominance mask from.</summary>
-    [JsonPropertyName("channel")] public string Channel { get; set; } = "R";
+    /// <summary>"R", "G", or "B" - which channel of the color texture must dominate.</summary>
+    [JsonPropertyName("channel")] public string? Channel { get; set; }
 
-    [JsonPropertyName("mer")] public MerParams Mer { get; set; } = new();
-
-    /// <summary>Optional. If omitted, the base entry's SSS (if any) is left alone inside
-    /// the masked region as well - this only needs to be set when the recursive region
-    /// should scatter light differently than the rest of the block.</summary>
-    [JsonPropertyName("sss")] public SssParams? Sss { get; set; }
+    [JsonPropertyName("mer")] public MerParams? Mer { get; set; }
 }
 
 public sealed class HeightmapParams
@@ -73,37 +98,96 @@ public sealed class HeightmapParams
     /// <summary>0.0 (fully flattened toward a neutral median - good for very smooth
     /// blocks) .. 1.0 (full quantized contrast, the default). Applied as the last step
     /// of heightmap generation, after quantization.</summary>
-    [JsonPropertyName("intensity")] public double Intensity { get; set; } = 1.0;
+    [JsonPropertyName("intensity")] public double? Intensity { get; set; }
 
     /// <summary>Full color inversion. Workaround for the game-side bug where certain
     /// assets always render their heightmap inverted.</summary>
-    [JsonPropertyName("invert")] public bool Invert { get; set; }
+    [JsonPropertyName("invert")] public bool? Invert { get; set; }
 }
 
 public sealed class NormalParams
 {
     /// <summary>0.0 (fully flattened toward flat-up) .. 1.0 (full raw detail). Default
     /// 0.25 - the raw Sobel-derived normal is noticeably stronger than most blocks want.
-    /// Applied after blur, blending the computed normal toward flat-up (128,128,255) by
-    /// (1 - intensity). See PbrGeneration.NormalMapGenerator.</summary>
-    [JsonPropertyName("intensity")] public double Intensity { get; set; } = 0.25;
+    /// Scales the surface slope before the normal is built, so every value still produces
+    /// a true unit normal. See PbrGeneration.NormalMapGenerator.</summary>
+    [JsonPropertyName("intensity")] public double? Intensity { get; set; }
 
     /// <summary>Inverts the red and green channels post-generation. Workaround for the
     /// game-side bug where certain assets always render their normal map inverted. Never
     /// affects the blue channel - that's always parallax-occlusion height data, see
     /// PbrGeneration.NormalMapGenerator.</summary>
-    [JsonPropertyName("invert")] public bool Invert { get; set; }
+    [JsonPropertyName("invert")] public bool? Invert { get; set; }
 }
 
-/// <summary>One resolved entry - either an exact texture-name match, or the "default"
-/// fallback entry that's used for anything materials.json doesn't explicitly cover.</summary>
+/// <summary>One entry as written in materials.json - either an exact texture-name match or
+/// the "default" entry. Every member is optional; see the note at the top of this region.</summary>
 public sealed class MaterialEntry
 {
-    [JsonPropertyName("mer")] public MerParams Mer { get; set; } = new();
-    [JsonPropertyName("sss")] public SssParams Sss { get; set; } = new();
-    [JsonPropertyName("recursive")] public List<RecursivePass> Recursive { get; set; } = new();
-    [JsonPropertyName("heightmap")] public HeightmapParams Heightmap { get; set; } = new();
-    [JsonPropertyName("normal")] public NormalParams Normal { get; set; } = new();
+    [JsonPropertyName("mer")] public MerParams? Mer { get; set; }
+    [JsonPropertyName("sss")] public SssParams? Sss { get; set; }
+    [JsonPropertyName("recursive")] public List<RecursivePass>? Recursive { get; set; }
+    [JsonPropertyName("heightmap")] public HeightmapParams? Heightmap { get; set; }
+    [JsonPropertyName("normal")] public NormalParams? Normal { get; set; }
+}
+
+// ── Resolved forms: what the generators actually read ─────────────────────────────────
+
+public readonly record struct ResolvedMer(
+    int MetalMin, int MetalMax,
+    int EmissiveMin, int EmissiveMax,
+    int RoughnessMin, int RoughnessMax,
+    bool InvertMetal, bool InvertEmissive, bool InvertRoughness);
+
+public readonly record struct ResolvedSss(int Min, int Max, bool Invert);
+
+public readonly record struct ResolvedRecursivePass(string Channel, ResolvedMer Mer);
+
+public readonly record struct ResolvedHeightmap(double Intensity, bool Invert);
+
+public readonly record struct ResolvedNormal(double Intensity, bool Invert);
+
+public sealed class ResolvedMaterial
+{
+    public ResolvedMer Mer { get; init; }
+    public ResolvedSss Sss { get; init; }
+    public IReadOnlyList<ResolvedRecursivePass> Recursive { get; init; } = Array.Empty<ResolvedRecursivePass>();
+    public ResolvedHeightmap Heightmap { get; init; }
+    public ResolvedNormal Normal { get; init; }
+}
+
+/// <summary>
+/// The values used when neither the texture's own entry nor the "default" entry says
+/// anything. These are the last line of defence, not the expected source of values - a
+/// real materials.json defines "default" and these never come up.
+/// </summary>
+public static class MaterialDefaults
+{
+    public const int MetalMin = 0;
+    public const int MetalMax = 0;
+    public const int EmissiveMin = 0;
+    public const int EmissiveMax = 0;
+
+    // Fully rough and non-reflective, so a block nobody configured can never accidentally
+    // come out looking wet or metallic.
+    public const int RoughnessMin = 192;
+    public const int RoughnessMax = 255;
+
+    public const bool InvertMetal = false;
+    public const bool InvertEmissive = false;
+    public const bool InvertRoughness = true;
+
+    public const int SssMin = 0;
+    public const int SssMax = 0;
+    public const bool SssInvert = false;
+
+    public const double HeightmapIntensity = 1.0;
+    public const bool HeightmapInvert = false;
+
+    public const double NormalIntensity = 0.25;
+    public const bool NormalInvert = false;
+
+    public const string RecursiveChannel = "R";
 }
 
 // =====================================================================================
@@ -128,6 +212,10 @@ public sealed class MaterialEntry
     PropertyNameCaseInsensitive = true,
     ReadCommentHandling = JsonCommentHandling.Skip,
     AllowTrailingCommas = true,
+    // Now that every property is nullable, a null means "the artist didn't write this" -
+    // so writing it back out as an explicit null would turn every hand-written partial
+    // entry into a wall of nulls the first time MaterialsBootstrapper rewrites the file.
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = true)]
 [JsonSerializable(typeof(Dictionary<string, MaterialEntry>))]
 [JsonSerializable(typeof(MaterialEntry))]
@@ -136,13 +224,31 @@ internal partial class AlchitexJsonContext : JsonSerializerContext
 {
 }
 
-/// <summary>Loads materials.json and resolves exact-name-or-default.</summary>
+/// <summary>
+/// Loads materials.json and resolves a texture name to a fully-populated ResolvedMaterial.
+///
+/// Forgiving on purpose, in three separate ways, because this file is hand-edited across
+/// thousands of entries and a single typo must never cost a whole generation run:
+///
+///   1. A missing FILE, unparseable JSON, or an empty document degrades to the built-in
+///      defaults for everything, logged, never thrown.
+///   2. A missing PROPERTY falls through to the "default" entry, then to MaterialDefaults.
+///      Every level is per-property, so partial entries are normal and expected.
+///   3. An OUT-OF-RANGE value is clamped into range and logged, rather than rejected. A
+///      "roughness_max": 300 is obviously meant to be 255, and refusing to generate over
+///      it would help nobody.
+///
+/// Resolution is cached per texture name: the merge and its logging happen once per entry
+/// no matter how many textures resolve to it.
+/// </summary>
 public sealed class MaterialsConfig
 {
     private const string DefaultKey = "default";
 
     private readonly Dictionary<string, MaterialEntry> _entries;
     private readonly MaterialEntry _default;
+    private readonly Dictionary<string, ResolvedMaterial> _resolvedCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ResolvedMaterial _resolvedDefault;
 
     private MaterialsConfig(Dictionary<string, MaterialEntry> entries)
     {
@@ -150,17 +256,19 @@ public sealed class MaterialsConfig
 
         if (!_entries.TryGetValue(DefaultKey, out var def))
         {
-            Trace.WriteLine("[ALCHITEX] materials.json has no \"default\" entry - falling back to a built-in neutral default. Every block not explicitly listed will get a plain, fully-rough, non-metallic, non-emissive MERS.");
+            Trace.WriteLine("[ALCHITEX] materials.json has no \"default\" entry - falling back to built-in defaults. Every block not explicitly listed will get a plain, fully-rough, non-metallic, non-emissive MERS.");
             def = new MaterialEntry();
         }
+
         _default = def;
+        _resolvedDefault = Merge(_default, DefaultKey);
     }
 
     /// <summary>
     /// Loads and parses materials.json from disk. Never throws - on any failure this
-    /// logs and returns a config that only has the built-in neutral default, so a
-    /// malformed or missing materials.json degrades to "plain MERS for everything"
-    /// rather than crashing the whole run.
+    /// logs and returns a config that only has the built-in defaults, so a malformed or
+    /// missing materials.json degrades to "plain MERS for everything" rather than
+    /// crashing the whole run.
     /// </summary>
     public static MaterialsConfig Load(string materialsJsonPath)
     {
@@ -177,7 +285,7 @@ public sealed class MaterialsConfig
 
             if (parsed == null || parsed.Count == 0)
             {
-                Trace.WriteLine($"[ALCHITEX] materials.json at '{materialsJsonPath}' parsed to empty - using built-in neutral default only.");
+                Trace.WriteLine($"[ALCHITEX] materials.json at '{materialsJsonPath}' parsed to empty - using built-in defaults only.");
                 return new MaterialsConfig(new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase));
             }
 
@@ -186,22 +294,141 @@ public sealed class MaterialsConfig
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[ALCHITEX] Failed to load materials.json at '{materialsJsonPath}': {ex.Message}. Falling back to built-in neutral default for every texture.");
+            Trace.WriteLine($"[ALCHITEX] Failed to load materials.json at '{materialsJsonPath}': {ex.Message}. Falling back to built-in defaults for every texture.");
             return new MaterialsConfig(new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase));
         }
     }
 
     /// <summary>
-    /// Resolves the entry for one texture by its exact file name (no extension, no path,
-    /// case-insensitive). Falls back to the "default" entry - and if that's also missing,
-    /// to a hardcoded neutral entry - so this never returns null.
+    /// Resolves one texture by its exact file name (no extension, no path,
+    /// case-insensitive) into a fully-populated material. Never returns null, never throws.
     /// </summary>
-    public MaterialEntry Resolve(string textureNameWithoutExtension)
+    public ResolvedMaterial Resolve(string textureNameWithoutExtension)
     {
-        if (_entries.TryGetValue(textureNameWithoutExtension, out var entry))
-            return entry;
+        if (string.IsNullOrEmpty(textureNameWithoutExtension)) return _resolvedDefault;
 
-        return _default;
+        if (_resolvedCache.TryGetValue(textureNameWithoutExtension, out var cached))
+            return cached;
+
+        if (!_entries.TryGetValue(textureNameWithoutExtension, out var entry))
+            return _resolvedDefault;
+
+        var resolved = Merge(entry, textureNameWithoutExtension);
+        _resolvedCache[textureNameWithoutExtension] = resolved;
+        return resolved;
+    }
+
+    // ── Merge: entry value, else "default" entry's value, else MaterialDefaults ────────
+
+    private ResolvedMaterial Merge(MaterialEntry entry, string entryName)
+    {
+        var mer = entry.Mer;
+        var defMer = _default.Mer;
+
+        var sss = entry.Sss;
+        var defSss = _default.Sss;
+
+        var heightmap = entry.Heightmap;
+        var defHeightmap = _default.Heightmap;
+
+        var normal = entry.Normal;
+        var defNormal = _default.Normal;
+
+        return new ResolvedMaterial
+        {
+            Mer = MergeMer(mer, defMer, entryName, "mer"),
+            Sss = new ResolvedSss(
+                Channel(sss?.Min ?? defSss?.Min, MaterialDefaults.SssMin, entryName, "sss.min"),
+                Channel(sss?.Max ?? defSss?.Max, MaterialDefaults.SssMax, entryName, "sss.max"),
+                sss?.Invert ?? defSss?.Invert ?? MaterialDefaults.SssInvert),
+            Recursive = MergeRecursive(entry, entryName),
+            Heightmap = new ResolvedHeightmap(
+                Unit(heightmap?.Intensity ?? defHeightmap?.Intensity, MaterialDefaults.HeightmapIntensity, entryName, "heightmap.intensity"),
+                heightmap?.Invert ?? defHeightmap?.Invert ?? MaterialDefaults.HeightmapInvert),
+            Normal = new ResolvedNormal(
+                Unit(normal?.Intensity ?? defNormal?.Intensity, MaterialDefaults.NormalIntensity, entryName, "normal.intensity"),
+                normal?.Invert ?? defNormal?.Invert ?? MaterialDefaults.NormalInvert),
+        };
+    }
+
+    private ResolvedMer MergeMer(MerParams? mer, MerParams? defMer, string entryName, string path) => new(
+        Channel(mer?.MetalMin ?? defMer?.MetalMin, MaterialDefaults.MetalMin, entryName, $"{path}.metal_min"),
+        Channel(mer?.MetalMax ?? defMer?.MetalMax, MaterialDefaults.MetalMax, entryName, $"{path}.metal_max"),
+        Channel(mer?.EmissiveMin ?? defMer?.EmissiveMin, MaterialDefaults.EmissiveMin, entryName, $"{path}.emissive_min"),
+        Channel(mer?.EmissiveMax ?? defMer?.EmissiveMax, MaterialDefaults.EmissiveMax, entryName, $"{path}.emissive_max"),
+        Channel(mer?.RoughnessMin ?? defMer?.RoughnessMin, MaterialDefaults.RoughnessMin, entryName, $"{path}.roughness_min"),
+        Channel(mer?.RoughnessMax ?? defMer?.RoughnessMax, MaterialDefaults.RoughnessMax, entryName, $"{path}.roughness_max"),
+        mer?.InvertMetal ?? defMer?.InvertMetal ?? MaterialDefaults.InvertMetal,
+        mer?.InvertEmissive ?? defMer?.InvertEmissive ?? MaterialDefaults.InvertEmissive,
+        mer?.InvertRoughness ?? defMer?.InvertRoughness ?? MaterialDefaults.InvertRoughness);
+
+    /// <summary>
+    /// Recursive passes are taken whole from whichever entry defines them - this one, else
+    /// "default" - rather than merged element by element. A pass list is a description of
+    /// specific regions of a specific texture; splicing one entry's second pass into
+    /// another's list would produce something nobody wrote. Within a pass, though, the
+    /// individual mer values still fall back to "default".mer as usual.
+    /// </summary>
+    private IReadOnlyList<ResolvedRecursivePass> MergeRecursive(MaterialEntry entry, string entryName)
+    {
+        var passes = entry.Recursive ?? _default.Recursive;
+        if (passes == null || passes.Count == 0) return Array.Empty<ResolvedRecursivePass>();
+
+        var resolved = new List<ResolvedRecursivePass>(passes.Count);
+
+        for (var i = 0; i < passes.Count; i++)
+        {
+            var pass = passes[i];
+            if (pass == null) continue;
+
+            resolved.Add(new ResolvedRecursivePass(
+                NormalizeChannel(pass.Channel, entryName, i),
+                MergeMer(pass.Mer, _default.Mer, entryName, $"recursive[{i}].mer")));
+        }
+
+        return resolved;
+    }
+
+    private static string NormalizeChannel(string? channel, string entryName, int index)
+    {
+        var normalized = channel?.Trim().ToUpperInvariant();
+
+        if (normalized is "R" or "G" or "B") return normalized;
+
+        if (!string.IsNullOrEmpty(channel))
+        {
+            Trace.WriteLine($"[ALCHITEX] materials.json entry '{entryName}' recursive[{index}] has channel '{channel}', which isn't R, G or B - using {MaterialDefaults.RecursiveChannel}.");
+        }
+
+        return MaterialDefaults.RecursiveChannel;
+    }
+
+    /// <summary>A 0-255 channel value: absent falls back, out-of-range is clamped and
+    /// logged rather than treated as an error.</summary>
+    private static int Channel(int? value, int fallback, string entryName, string path)
+    {
+        if (value is not int v) return fallback;
+        if (v is >= 0 and <= 255) return v;
+
+        var clamped = Math.Clamp(v, 0, 255);
+        Trace.WriteLine($"[ALCHITEX] materials.json entry '{entryName}': {path} is {v}, outside 0-255 - clamped to {clamped}.");
+        return clamped;
+    }
+
+    /// <summary>Same, for the 0.0-1.0 intensities.</summary>
+    private static double Unit(double? value, double fallback, string entryName, string path)
+    {
+        if (value is not double v) return fallback;
+        if (double.IsNaN(v))
+        {
+            Trace.WriteLine($"[ALCHITEX] materials.json entry '{entryName}': {path} isn't a number - using {fallback}.");
+            return fallback;
+        }
+        if (v is >= 0.0 and <= 1.0) return v;
+
+        var clamped = Math.Clamp(v, 0.0, 1.0);
+        Trace.WriteLine($"[ALCHITEX] materials.json entry '{entryName}': {path} is {v}, outside 0.0-1.0 - clamped to {clamped}.");
+        return clamped;
     }
 }
 

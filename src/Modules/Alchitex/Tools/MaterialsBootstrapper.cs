@@ -265,6 +265,12 @@ public static class MaterialsBootstrapper
             }
         }
 
+        // Every property is written explicitly, including the ones this tool can't derive
+        // and simply fills with the built-in default. materials.json properties are all
+        // optional and fall back per-property (see MaterialsConfig), so a sparse entry
+        // would work fine - but the artist's job here is to open a new entry and adjust it,
+        // and adding a missing property by hand costs far more than editing one that's
+        // already sitting there with a sensible value in it.
         return new MaterialEntry
         {
             Mer = new MerParams
@@ -275,12 +281,30 @@ public static class MaterialsBootstrapper
                 EmissiveMax = maxG,
                 RoughnessMin = minB,
                 RoughnessMax = maxB,
-                // invert_* intentionally untouched - stays at MerParams' own defaults.
+
+                // Not derivable from a baked texture - a map that renders inverted in game
+                // looks identical to a correct one in the pixels. Defaults, for editing.
+                InvertMetal = MaterialDefaults.InvertMetal,
+                InvertEmissive = MaterialDefaults.InvertEmissive,
+                InvertRoughness = MaterialDefaults.InvertRoughness,
             },
-            Sss = includeSss ? new SssParams { Min = minA, Max = maxA } : new SssParams(),
+            Sss = new SssParams
+            {
+                Min = includeSss ? minA : MaterialDefaults.SssMin,
+                Max = includeSss ? maxA : MaterialDefaults.SssMax,
+                Invert = MaterialDefaults.SssInvert,
+            },
             Recursive = new List<RecursivePass>(),
-            Heightmap = new HeightmapParams(),
-            Normal = new NormalParams(),
+            Heightmap = new HeightmapParams
+            {
+                Intensity = MaterialDefaults.HeightmapIntensity,
+                Invert = MaterialDefaults.HeightmapInvert,
+            },
+            Normal = new NormalParams
+            {
+                Intensity = MaterialDefaults.NormalIntensity,
+                Invert = MaterialDefaults.NormalInvert,
+            },
         };
     }
 

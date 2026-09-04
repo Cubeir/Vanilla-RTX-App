@@ -435,13 +435,59 @@ public static class ColorField
 /// </summary>
 public static class MersGenerator
 {
-    // TODO(tuning): how strongly a fully-white pixel contributes to a recursive pass's
-    // dominance mask - white can't locally "dominate" any single channel the way a
-    // saturated color can, so it's capped well below full (255/3) rather than 0 or 255.
-    // Kept from the legacy heuristic this was ported from.
-    private const int WhitePixelMaskOpacity = 85;
+    // ── Recursive-pass dominance tuning ──────────────────────────────────────────────
+    //
+    // TODO(tuning): the ceiling on how much of a recursive pass ever replaces the base
+    // MERS at a single pixel. 128/255 means even a perfectly dominant pixel is a half-and-
+    // half blend, never a full overwrite - the pass is meant to tint a region, not to cut
+    // a hole in the base material and drop a different one in.
+    private const double MaxRecursiveOpacity = 128;
 
-    public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material)
+    // TODO(tuning): how hard desaturation is punished. Chroma (the gap between the target
+    // channel and the weakest one, so "how much of this pixel isn't grey") is raised to
+    // this power before it scales the score. This exponent is what separates a flame
+    // orange (237,135,10) from a dusty rose (237,135,128): both lead red by the same 102,
+    // but the rose is over 40% grey and the flame is barely 4%. At 1.0 they score within
+    // 2x of each other; at 3.0 they're 7x apart, which is what "the rose is not a flame"
+    // has to mean numerically.
+    private const double ChromaExponent = 3.0;
+
+    // TODO(tuning): how hard a pixel is punished for sharing its hue with a rival channel.
+    // Share is 1.0 when the target owns the hue outright and 0.5 at a dead tie, so squaring
+    // it turns a tie into quarter credit rather than half. Measured against real cases: at
+    // 1.0 a barely-leading colour (end stone, whose green beats red by 2) scored as high as
+    // a solidly green one, because its larger chroma cancelled its worse share out. Raising
+    // this is what restores the ordering, and 2.0 is as far as it can go before a genuine
+    // tie - a yellow flame asked about red - stops registering at all.
+    private const double ShareExponent = 2.0;
+
+    // TODO(tuning): the raw score at which a texture is considered to genuinely contain a
+    // strongly-dominant example of the channel. Pure red scores 1.0; a real flame orange
+    // lands around 0.5; the desaturated greens on an end portal frame score under 0.01.
+    private const double StrongDominanceReference = 0.35;
+
+    // TODO(tuning): the two ends of the falloff curve, chosen by whether a strong example
+    // exists (see ResolveFalloffExponent).
+    private const double WeakDominanceExponent = 0.90;
+    private const double StrongDominanceExponent = 1.35;
+
+    // TODO(tuning): what a neutral bright pixel gets, as a fraction of the strongest
+    // dominance in the same texture. A white-hot flame core has no dominant channel at
+    // all - white leads nothing - but excluding it would punch an unlit hole through the
+    // middle of a lit region. Expressed relative to the texture's own maximum rather than
+    // as a constant so it means the same thing on a faint texture and a vivid one.
+    private const double NeutralBrightShare = 0.5;
+
+    // Every channel at or above this, with no meaningful chroma, counts as neutral bright.
+    private const int NeutralBrightMinChannel = 250;
+
+    // A pixel has to be masked at least this much (0-255) before it gets a vote in the
+    // pass's own contrast domain. Without a floor, the thousands of pixels sitting at an
+    // opacity of 1 or 2 - which are visually not part of the region at all - would widen
+    // the domain and flatten the contrast of the pixels that actually are.
+    private const int DomainVoteMinOpacity = 8;
+
+    public static Bitmap Generate(Bitmap colorBitmap, ResolvedMaterial material)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -487,7 +533,7 @@ public static class MersGenerator
                     var r = Stretch(g, greyMin, greyMax, material.Mer.MetalMin, material.Mer.MetalMax, material.Mer.InvertMetal);
                     var gr = Stretch(g, greyMin, greyMax, material.Mer.EmissiveMin, material.Mer.EmissiveMax, material.Mer.InvertEmissive);
                     var b = Stretch(g, greyMin, greyMax, material.Mer.RoughnessMin, material.Mer.RoughnessMax, material.Mer.InvertRoughness);
-                    var alpha = Stretch(luminosity[x, y], lumMin, lumMax, material.Sss.Min, material.Sss.Max, invert: false);
+                    var alpha = Stretch(luminosity[x, y], lumMin, lumMax, material.Sss.Min, material.Sss.Max, material.Sss.Invert);
 
                     outFb[x, y] = Color.FromArgb(alpha, r, gr, b);
                 }
@@ -495,27 +541,47 @@ public static class MersGenerator
 
             foreach (var pass in material.Recursive)
             {
-                ApplyRecursivePass(colorBitmap, grey, greyMin, greyMax, luminosity, lumMin, lumMax, outFb, pass);
+                ApplyRecursivePass(colorBitmap, grey, outFb, pass);
             }
         }
 
         return output;
     }
 
+    /// <summary>
+    /// One recursive pass: find where this pass's channel dominates the color texture,
+    /// generate an independent MER over just those pixels, and blend it back over the base
+    /// MERS weighted by how strongly each pixel actually dominates.
+    ///
+    /// The whole difficulty is the weighting, because the question it answers is genuinely
+    /// relative. On a furnace front a pixel of (237,135,10) is flame and must come through
+    /// strongly; on some other texture that identical pixel might be the most red-ish thing
+    /// present and still not be a flame at all. So the mask is built in two stages: a raw,
+    /// absolute dominance score per pixel, then a normalization against the strongest score
+    /// this texture itself contains. Nothing is judged against a fixed threshold - a texture
+    /// is always measured against its own best example.
+    ///
+    /// See RawDominance for the score and ResolveFalloffExponent for the part that decides
+    /// how harshly the weak examples are punished for not being the strong one.
+    ///
+    /// A pass never touches alpha. Subsurface is computed once, from the whole texture, in
+    /// Generate - it's the final channel of the finished MERS, not something a region of it
+    /// gets its own version of.
+    /// </summary>
     private static void ApplyRecursivePass(
         Bitmap colorBitmap,
-        int[,] grey, int greyMin, int greyMax,
-        int[,] luminosity, int lumMin, int lumMax,
+        int[,] grey,
         FastBitmap outFb,
-        RecursivePass pass)
+        ResolvedRecursivePass pass)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
-        var mask = new int[w, h];
 
-        int subGreyMin = 255, subGreyMax = 0;
-        var anyMasked = false;
+        var raw = new double[w, h];
+        var neutralBright = new bool[w, h];
+        var dominanceMax = 0.0;
 
+        // ── Stage 1: raw scores, and the best one in this texture ────────────
         using (var colorFb = new FastBitmap(colorBitmap, writable: false))
         {
             for (var y = 0; y < h; y++)
@@ -523,12 +589,73 @@ public static class MersGenerator
                 for (var x = 0; x < w; x++)
                 {
                     var c = colorFb[x, y];
-                    var opacity = ComputeDominanceOpacity(c, pass.Channel);
-                    mask[x, y] = opacity;
-                    if (opacity <= 0) continue;
 
-                    anyMasked = true;
+                    // Padding under a collapsed alpha channel isn't part of the artwork and
+                    // must not light up - the same rule the base pass uses for its domain,
+                    // see ColorField.IsRealColorData.
                     if (!ColorField.IsRealColorData(c)) continue;
+
+                    if (IsNeutralBright(c))
+                    {
+                        neutralBright[x, y] = true;
+                        continue;
+                    }
+
+                    var d = RawDominance(c, pass.Channel);
+                    raw[x, y] = d;
+
+                    if (d > dominanceMax) dominanceMax = d;
+                }
+            }
+        }
+
+        // Nothing in this texture leads on this channel at all - the pass has no region to
+        // work on and leaves the base MERS exactly as it is.
+        if (dominanceMax <= 0) return;
+
+        var exponent = ResolveFalloffExponent(dominanceMax);
+        var neutralScore = dominanceMax * NeutralBrightShare;
+
+        // ── Stage 2: normalize into opacity, and collect the pass's own domain ──
+        var mask = new int[w, h];
+        int subGreyMin = 255, subGreyMax = 0;
+        var anyMasked = false;
+
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var score = neutralBright[x, y] ? neutralScore : raw[x, y];
+                if (score <= 0) continue;
+
+                var opacity = (int)Math.Round(
+                    Math.Pow(score / dominanceMax, exponent) * MaxRecursiveOpacity);
+
+                if (opacity <= 0) continue;
+
+                mask[x, y] = opacity;
+                anyMasked = true;
+
+                if (opacity < DomainVoteMinOpacity) continue;
+
+                var g = grey[x, y];
+                if (g < subGreyMin) subGreyMin = g;
+                if (g > subGreyMax) subGreyMax = g;
+            }
+        }
+
+        if (!anyMasked) return;
+
+        // Every masked pixel scored below the voting floor - a texture whose channel barely
+        // leads anywhere. Let them all vote rather than skip the pass: a flat domain is a
+        // better answer than no pass at all.
+        if (subGreyMax < subGreyMin)
+        {
+            for (var y = 0; y < h; y++)
+            {
+                for (var x = 0; x < w; x++)
+                {
+                    if (mask[x, y] <= 0) continue;
 
                     var g = grey[x, y];
                     if (g < subGreyMin) subGreyMin = g;
@@ -537,8 +664,7 @@ public static class MersGenerator
             }
         }
 
-        if (!anyMasked) return;
-
+        // ── Stage 3: the pass's own MER, blended in by mask opacity ──────────
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
@@ -554,69 +680,101 @@ public static class MersGenerator
                 var passB = Stretch(g, subGreyMin, subGreyMax, pass.Mer.RoughnessMin, pass.Mer.RoughnessMax, pass.Mer.InvertRoughness);
 
                 var baseColor = outFb[x, y];
-                var newR = Lerp(baseColor.R, passR, t);
-                var newG = Lerp(baseColor.G, passG, t);
-                var newB = Lerp(baseColor.B, passB, t);
 
-                var newAlpha = baseColor.A;
-                if (pass.Sss != null)
-                {
-                    var passAlpha = Stretch(luminosity[x, y], lumMin, lumMax, pass.Sss.Min, pass.Sss.Max, invert: false);
-                    newAlpha = Lerp(baseColor.A, passAlpha, t);
-                }
-
-                outFb[x, y] = Color.FromArgb(newAlpha, newR, newG, newB);
+                outFb[x, y] = Color.FromArgb(
+                    baseColor.A, // subsurface belongs to the whole texture, not to a pass
+                    Lerp(baseColor.R, passR, t),
+                    Lerp(baseColor.G, passG, t),
+                    Lerp(baseColor.B, passB, t));
             }
         }
     }
 
     /// <summary>
-    /// Legacy AdjustColorChannels's advanced-gen "is this channel locally dominant" test,
-    /// kept as-is - it's a solid heuristic. Returns 0-255 opacity, 0 meaning "this pixel
-    /// isn't part of the mask at all".
+    /// How much one pixel "is" its target channel, as an absolute 0-1 score. Two factors,
+    /// multiplied, because a pixel needs both and either one alone is misleading:
+    ///
+    ///   chroma^ChromaExponent - how far the pixel is from grey, measured as the target
+    ///     channel's lead over the WEAKEST channel. This is the dilution term, and it is
+    ///     the only thing separating a dusty rose (237,135,128) from a flame orange
+    ///     (237,135,10): both lead red by exactly 102, but the rose is half grey and the
+    ///     flame is barely a tenth. Raised to a power because a linear penalty leaves
+    ///     washed-out colors far too strong - see ChromaExponent.
+    ///
+    ///   share - of the color that ISN'T grey, how much belongs to the target channel
+    ///     rather than to its nearest rival. 1.0 when the target owns the hue outright
+    ///     (255,0,0); 0.5 at a dead tie (yellow asked about red is half red, and half
+    ///     credit is exactly right). A ratio rather than a difference so it stays
+    ///     continuous through the tie - a pixel leading by one scores barely more than one
+    ///     that ties, instead of jumping.
+    ///
+    /// A pixel whose target channel isn't the highest scores zero and isn't in the region
+    /// at all. Dominance means leading, and second place isn't leading.
     /// </summary>
-    private static int ComputeDominanceOpacity(Color c, string channel)
+    private static double RawDominance(Color c, string channel)
     {
-        int target, secondHighest, thirdValue;
-        bool accepted;
+        int target, rival, weakest;
 
-        switch (channel.ToUpperInvariant())
+        switch (channel)
         {
             case "G":
                 target = c.G;
-                secondHighest = Math.Max(c.R, c.B);
-                thirdValue = Math.Min(c.R, c.B);
-                accepted = (c.G > c.R && c.G > c.B)
-                           || (c.R == 255 && c.G == 255 && c.B == 255)
-                           || (c.G == c.R && c.G > c.B)
-                           || (c.G == c.B && c.G > c.R);
+                rival = Math.Max(c.R, c.B);
+                weakest = Math.Min(c.R, c.B);
                 break;
             case "B":
                 target = c.B;
-                secondHighest = Math.Max(c.R, c.G);
-                thirdValue = Math.Min(c.R, c.G);
-                accepted = (c.B > c.R && c.B > c.G)
-                           || (c.R == 255 && c.G == 255 && c.B == 255)
-                           || (c.B == c.R && c.B > c.G)
-                           || (c.B == c.G && c.B > c.R);
+                rival = Math.Max(c.R, c.G);
+                weakest = Math.Min(c.R, c.G);
                 break;
             default: // "R"
                 target = c.R;
-                secondHighest = Math.Max(c.G, c.B);
-                thirdValue = Math.Min(c.G, c.B);
-                accepted = (c.R > c.G && c.R > c.B)
-                           || (c.R == 255 && c.G == 255 && c.B == 255)
-                           || (c.R == c.G && c.R > c.B)
-                           || (c.R == c.B && c.R > c.G);
+                rival = Math.Max(c.G, c.B);
+                weakest = Math.Min(c.G, c.B);
                 break;
         }
 
-        if (!accepted) return 0;
+        if (target < rival) return 0;
 
-        if (c.R == 255 && c.G == 255 && c.B == 255) return WhitePixelMaskOpacity;
-        if (target == secondHighest) return (target - thirdValue) / 2;
-        return target - secondHighest;
+        var targetChroma = target - weakest;
+        if (targetChroma <= 0) return 0; // fully neutral: nothing leads anything
+
+        var rivalChroma = rival - weakest;
+
+        var chroma = targetChroma / 255.0;
+        var share = targetChroma / (double)(targetChroma + rivalChroma);
+
+        return Math.Pow(chroma, ChromaExponent) * Math.Pow(share, ShareExponent);
     }
+
+    /// <summary>
+    /// The curve applied to each pixel's score once it has been divided by the texture's
+    /// best score - the part that makes this adaptive instead of a fixed threshold.
+    ///
+    /// Above 1.0 the curve is convex: the gap between the best example and everything else
+    /// widens and weak candidates fade out. Below 1.0 it's concave, and weak candidates get
+    /// lifted instead.
+    ///
+    /// Which applies depends on whether the texture actually contains a strong example of
+    /// the channel. A furnace front does - the flames - so the merely-reddish stone around
+    /// them should fall away, and the exponent goes convex. An end portal frame does not:
+    /// its greens are all desaturated, they are the best it has, and punishing them for not
+    /// being a pure green would mean generating nothing for the one region the pass was
+    /// written for. There it goes concave and they come through.
+    ///
+    /// "Weak examples only matter when there are no strong ones" is the whole idea, and it
+    /// can only be expressed relative to the texture in hand.
+    /// </summary>
+    private static double ResolveFalloffExponent(double dominanceMax)
+    {
+        var strength = Math.Clamp(dominanceMax / StrongDominanceReference, 0.0, 1.0);
+        return WeakDominanceExponent + strength * (StrongDominanceExponent - WeakDominanceExponent);
+    }
+
+    /// <summary>A near-white pixel: no channel can lead, but it is far more likely to be
+    /// the hot core of whatever the pass targets than something to leave unlit.</summary>
+    private static bool IsNeutralBright(Color c)
+        => c.R >= NeutralBrightMinChannel && c.G >= NeutralBrightMinChannel && c.B >= NeutralBrightMinChannel;
 
     private static byte Lerp(byte a, int b, double t)
         => (byte)Math.Clamp((int)Math.Round(a * (1.0 - t) + b * t), 0, 255);
@@ -728,7 +886,7 @@ public static class NormalMapGenerator
     private const int GradientHistogramBins = 1024;
     private const double GradientHistogramMax = 2.0;
 
-    public static Bitmap Generate(Bitmap colorBitmap, NormalParams normalParams)
+    public static Bitmap Generate(Bitmap colorBitmap, ResolvedNormal normalParams)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -1119,7 +1277,7 @@ public static class HeightmapGenerator
     // once the bandwidth below was narrowed the guard had nothing left to catch anyway.
     // Narrowing the bandwidth is the real cure; the merge pass makes it safe.
 
-    public static Bitmap Generate(Bitmap colorBitmap, HeightmapParams heightmapParams)
+    public static Bitmap Generate(Bitmap colorBitmap, ResolvedHeightmap heightmapParams)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
