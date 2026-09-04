@@ -540,6 +540,17 @@
                                            Opacity="0.35" />
                                 </Grid>
                             </Button>
+
+                            <!-- Where a rejected pack gets thrown. It has to live outside
+                                 the queue rows: those are ScrollViewers, which clip, so a
+                                 tile flung toward the reactor would just vanish at the
+                                 panel's edge instead of being seen leaving through it.
+                                 Spans both columns and sits above the reactor so the tile
+                                 crosses over it on its way out. -->
+                            <Grid x:Name="QueueEjectionHost"
+                                  Grid.ColumnSpan="2"
+                                  IsHitTestVisible="False"
+                                  Canvas.ZIndex="50" />
                         </Grid>
                     </Grid>
 

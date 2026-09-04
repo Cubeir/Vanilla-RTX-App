@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Linq;
@@ -148,6 +149,10 @@ public sealed partial class Alchitex : Window
         // so it belongs with the rest of the chrome.
         TitleBarFocus.Attach(this, TitleBarActions, TitleBarText);
 
+        // The queue mirrors the app-wide selection, so it has to hear about edits made
+        // from the main window while this one is open - see SelectedPacks_CollectionChanged.
+        TunerVariables.SelectedPacks.CollectionChanged += SelectedPacks_CollectionChanged;
+
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
 
         this.Closed += Alchitex_Closed;
@@ -201,6 +206,8 @@ public sealed partial class Alchitex : Window
         _testBenchCts?.Cancel();
 
         _reactor?.Shutdown();
+
+        TunerVariables.SelectedPacks.CollectionChanged -= SelectedPacks_CollectionChanged;
 
         if (Content is FrameworkElement root)
             root.Loaded -= Alchitex_Loaded;
@@ -530,6 +537,112 @@ public sealed partial class Alchitex : Window
         RenderQueues();
     }
 
+    // ── Keeping the queue honest when the selection changes underneath it ────
+
+    // A redraw mid-animation destroys the tile being animated and rebuilds it in its
+    // final state, so the motion is over before it's visible. Anything that animates a
+    // tile holds this open, and a redraw asked for in the meantime is deferred rather
+    // than dropped.
+    private int _queueTransitionDepth;
+    private bool _queueRedrawPending;
+
+    private IDisposable BeginQueueTransition()
+    {
+        _queueTransitionDepth++;
+        return new QueueTransitionScope(this);
+    }
+
+    private sealed class QueueTransitionScope : IDisposable
+    {
+        private readonly Alchitex _owner;
+        public QueueTransitionScope(Alchitex owner) => _owner = owner;
+
+        public void Dispose()
+        {
+            if (--_owner._queueTransitionDepth > 0) return;
+            if (!_owner._queueRedrawPending) return;
+
+            _owner._queueRedrawPending = false;
+            _ = _owner.RebuildPackIconsAsync();
+        }
+    }
+
+    /// <summary>
+    /// The main window's Clear button (and anything else that edits the shared selection)
+    /// empties TunerVariables.SelectedPacks out from under this window. The queue is drawn
+    /// from that collection, so it follows along - no need for the main window to disable
+    /// its controls while this window is open just to keep the two in agreement.
+    ///
+    /// Generation follows too: the batch loop re-checks each pack against the live
+    /// selection before starting it (IsStillQueued), so a pack cleared mid-run is skipped
+    /// rather than generated for a selection the user has already emptied.
+    /// </summary>
+    private void SelectedPacks_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (_isClosing) return;
+
+        if (_queueTransitionDepth > 0)
+        {
+            _queueRedrawPending = true;
+            return;
+        }
+
+        _ = RebuildPackIconsAsync();
+    }
+
+    // ── Progress reporting rate limit ────────────────────────────────────────
+
+    // ~30 updates a second: past what anyone can read, and deliberately shorter than the
+    // reactor's own 70ms pulse throttle so this gate never becomes what paces the
+    // animation. It exists to spare the dispatcher, not to slow the reactor down.
+    private const double ProgressUiIntervalMs = 33;
+
+    private DateTime _lastProgressUiUtc = DateTime.MinValue;
+    private AlchitexPhase? _lastProgressPhase;
+
+    /// <summary>
+    /// Rate-limits what a progress report is allowed to do to the UI.
+    ///
+    /// GenerateTexturePixels reports once per texture from inside a Parallel.ForEach, which
+    /// on a real pack is thousands of reports a second. Progress&lt;T&gt; marshals every one
+    /// of them onto the UI thread as its own dispatcher work item, and each was rewriting
+    /// the titlebar text (a full measure/arrange) and touching the progress bar. That
+    /// saturates the dispatcher, and input - hovering the reactor, clicking to abort -
+    /// queues up behind the backlog, which is what a locked-up window looks like.
+    ///
+    /// The reactor's own throttle didn't cover this: it only limits the animation work it
+    /// does, not the cost of the callback around it.
+    ///
+    /// Two kinds of report always get through, because dropping either loses information
+    /// rather than just resolution: a phase change (the reactor's rarer, more deliberate
+    /// animations fire exactly once) and a batch's final report (otherwise the bar can
+    /// stop just short of full).
+    /// </summary>
+    private bool ShouldRenderProgress(AlchitexPipeline.AlchitexProgress p)
+    {
+        var isPhaseChange = _lastProgressPhase != p.Phase;
+        var isFinal = p.Total > 0 && p.Completed >= p.Total;
+        var now = DateTime.UtcNow;
+
+        if (!isPhaseChange && !isFinal &&
+            (now - _lastProgressUiUtc).TotalMilliseconds < ProgressUiIntervalMs)
+        {
+            return false;
+        }
+
+        _lastProgressPhase = p.Phase;
+        _lastProgressUiUtc = now;
+        return true;
+    }
+
+    /// <summary>Whether a pack queued at the start of a batch is still one the user wants
+    /// generated - it can leave the queue mid-run by being discarded here or cleared from
+    /// the selection upstream.</summary>
+    private static bool IsStillQueued(string location, HashSet<string> dismissed)
+        => !dismissed.Contains(location)
+           && TunerVariables.SelectedPacks.Any(p =>
+                  string.Equals(p.Location, location, StringComparison.OrdinalIgnoreCase));
+
     private void RenderQueues()
     {
         if (InputQueuePanel == null || OutputQueuePanel == null) return;
@@ -750,6 +863,60 @@ public sealed partial class Alchitex : Window
     /// Shared by the intake and the arrival so the two mirror each other exactly.</summary>
     private double ReactorTravelDistance(FrameworkElement tile)
         => Math.Max(120, PackQueueHost.ActualWidth - tile.ActualOffset.X);
+
+    private const double EjectAnimationMs = 480;
+
+    /// <summary>
+    /// A pack that errored out: thrown clear through the reactor and off the far side,
+    /// rather than coming back down the output row like a finished one. Three departures,
+    /// three directions - up and out for discarded, right into the reactor for accepted,
+    /// left back into the row for a result. Straight out the other side is the one that
+    /// was missing, and it's the one that shouldn't look like either of the others.
+    ///
+    /// The tile is built fresh here: the original left the input row when the pack was
+    /// handed over, so there's nothing left to animate by the time the failure is known.
+    /// It's parented to QueueEjectionHost (see the XAML) because the queue rows clip.
+    /// </summary>
+    private async Task EjectFailedPackAsync(string location, string packName)
+    {
+        if (AnimationsSuspended || QueueEjectionHost == null || _isClosing) return;
+
+        try
+        {
+            var tile = BuildPackTile(location, packName, allowDiscard: false);
+
+            // Start where the pack was last seen - the reactor's leading edge, on the
+            // input row's line - measured rather than assumed, so it stays right through
+            // any layout change.
+            var reactorEdge = GenerateButton.TransformToVisual(QueueEjectionHost)
+                .TransformPoint(new Windows.Foundation.Point(0, 0));
+            var rowLine = InputQueuePanel.TransformToVisual(QueueEjectionHost)
+                .TransformPoint(new Windows.Foundation.Point(0, 0));
+
+            tile.HorizontalAlignment = HorizontalAlignment.Left;
+            tile.VerticalAlignment = VerticalAlignment.Top;
+            tile.Margin = new Thickness(reactorEdge.X, rowLine.Y, 0, 0);
+
+            QueueEjectionHost.Children.Add(tile);
+
+            using (BeginQueueTransition())
+            {
+                await RunStoryboardAsync(BuildTileStoryboard(tile, EjectAnimationMs,
+                    translateX: GenerateButton.ActualWidth + _packTileSize,
+                    opacity: 0,
+                    scale: 0.6,
+                    easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
+            }
+
+            QueueEjectionHost.Children.Remove(tile);
+        }
+        catch (Exception ex)
+        {
+            // Cosmetic to the last: a failed pack is already being reported properly, and
+            // a broken flourish must not turn into a second failure.
+            Trace.WriteLine($"[ALCHITEX] Couldn't play the ejection animation for '{packName}': {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// One storyboard covering any combination of translate/scale/opacity on a tile.
@@ -995,7 +1162,7 @@ public sealed partial class Alchitex : Window
                 // discarded while an earlier one was running is simply skipped here - this
                 // check is what keeps "what the queue shows" and "what actually runs" the
                 // same thing, rather than two lists that agreed once at the start.
-                if (_dismissedLocations.Contains(pack.Location)) continue;
+                if (!IsStillQueued(pack.Location, _dismissedLocations)) continue;
 
                 // Dismissed the moment it's handed over - after the check above, so the two
                 // uses of this set don't collide. It also has to happen BEFORE the run, not
@@ -1016,6 +1183,8 @@ public sealed partial class Alchitex : Window
                 // back to the UI thread. Safe to touch controls directly below.
                 var progress = new Progress<AlchitexPipeline.AlchitexProgress>(p =>
                 {
+                    if (_isClosing || !ShouldRenderProgress(p)) return;
+
                     GenerateProgressBar.IsIndeterminate = p.Total == 0;
                     if (p.Total > 0)
                     {
@@ -1072,9 +1241,12 @@ public sealed partial class Alchitex : Window
                 else
                 {
                     // A genuine failure stays out of the queue: re-offering a pack that
-                    // just failed invites the same failure on the next click.
+                    // just failed invites the same failure on the next click. It leaves
+                    // visibly, and not the way a finished pack does.
                     failedNames.Add(pack.Name);
                     _failedPackNames.Add(pack.Name);
+
+                    await EjectFailedPackAsync(pack.Location, pack.Name);
                 }
             }
 
@@ -1162,7 +1334,8 @@ public sealed partial class Alchitex : Window
                                  string.Equals(tagged, location, StringComparison.OrdinalIgnoreCase));
 
         if (tile != null)
-            await AnimateArrivalAsync(tile);
+            using (BeginQueueTransition())
+                await AnimateArrivalAsync(tile);
     }
 
     /// <summary>
@@ -1183,7 +1356,8 @@ public sealed partial class Alchitex : Window
         var tile = BuildPackTile(location, packName, allowDiscard: false);
         OutputQueuePanel.Children.Add(tile);
 
-        await AnimateArrivalAsync(tile);
+        using (BeginQueueTransition())
+            await AnimateArrivalAsync(tile);
     }
 
     // ── "Uninstall the original pack" ────────────────────────────────────────
