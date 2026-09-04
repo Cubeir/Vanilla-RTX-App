@@ -193,8 +193,10 @@ public static class TextureSetOrchestrator
     /// generated normal maps), which thins out and stops reading as height at higher
     /// resolutions, so a normal map is generated instead.
     /// </summary>
-    private static SecondaryPbrMode ResolveSecondaryMode(SecondaryPbrMode requested, string colorPath)
+    public static SecondaryPbrMode ResolveSecondaryMode(SecondaryPbrMode requested, string colorPath, PipelineTuning? tuning = null)
     {
+        var tune = tuning ?? PipelineTuning.Default;
+
         if (requested == SecondaryPbrMode.None || requested == SecondaryPbrMode.Normal)
             return requested;
 
@@ -211,15 +213,15 @@ public static class TextureSetOrchestrator
 
         if (requested == SecondaryPbrMode.Auto)
         {
-            return width <= AlchitexOptions.AutoModeHeightmapMaxWidth
+            return width <= tune.AutoModeHeightmapMaxWidth
                 ? SecondaryPbrMode.Heightmap
                 : SecondaryPbrMode.Normal;
         }
 
         // requested == Heightmap (explicit).
-        if (width > AlchitexOptions.ExplicitHeightmapMaxWidth)
+        if (width > tune.ExplicitHeightmapMaxWidth)
         {
-            Trace.WriteLine($"[ALCHITEX] '{colorPath}' is {width}px wide - too large for a heightmap to render correctly in Minecraft RTX (>{AlchitexOptions.ExplicitHeightmapMaxWidth}px). Generating a normal map instead of the explicitly-requested heightmap.");
+            Trace.WriteLine($"[ALCHITEX] '{colorPath}' is {width}px wide - too large for a heightmap to render correctly in Minecraft RTX (>{tune.ExplicitHeightmapMaxWidth}px). Generating a normal map instead of the explicitly-requested heightmap.");
             return SecondaryPbrMode.Normal;
         }
 
@@ -366,6 +368,17 @@ public static class ColorField
         // full range so the stretch degenerates to identity instead of dividing by zero.
         if (!sawRealPixel) { min = 0; max = 255; }
 
+        // The shared derivations every generator starts from, published once here rather
+        // than three times downstream. Every PipelineTrace call is compiled out of Release
+        // entirely and is a single null check in Debug - see PipelineInstrumentation.cs.
+        PipelineTrace.Snapshot("shared.color", colorBitmap);
+        PipelineTrace.Derived("shared.realmask", colorBitmap,
+            c => IsRealColorData(c) ? Color.FromArgb(255, 255, 255, 255) : Color.FromArgb(255, 0, 0, 0), "Mask");
+        PipelineTrace.Field("shared.grey", grey);
+        PipelineTrace.Note("shared.grey", "domain min", min);
+        PipelineTrace.Note("shared.grey", "domain max", max);
+        PipelineTrace.Note("shared.grey", "any real pixels", sawRealPixel);
+
         return (grey, min, max);
     }
 
@@ -396,6 +409,9 @@ public static class ColorField
                 result[x, y] = (float)Math.Clamp(t, 0.0, 1.0);
             }
         }
+
+        PipelineTrace.Field("shared.contrastmax", result);
+        PipelineTrace.Note("shared.contrastmax", "stretched from", $"{min}..{max}");
 
         return result;
     }
@@ -435,14 +451,16 @@ public static class ColorField
 /// </summary>
 public static class MersGenerator
 {
-    // TODO(tuning): how strongly a fully-white pixel contributes to a recursive pass's
-    // dominance mask - white can't locally "dominate" any single channel the way a
-    // saturated color can, so it's capped well below full (255/3) rather than 0 or 255.
-    // Kept from the legacy heuristic this was ported from.
-    private const int WhitePixelMaskOpacity = 85;
-
-    public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material)
+    // Every tuning number this generator used to hold as a private const now lives in
+    // PipelineTuning (Core/PipelineInstrumentation.cs) so the Pipeline Preview dev tool
+    // can re-run one texture against a modified set. `tuning` is an optional trailing
+    // parameter defaulting to PipelineTuning.Default, so production call sites are
+    // unchanged. Values are hoisted into locals before any loop - keep doing that.
+    public static Bitmap Generate(Bitmap colorBitmap, MaterialEntry material, PipelineTuning? tuning = null)
     {
+        var tune = tuning ?? PipelineTuning.Default;
+        var whitePixelMaskOpacity = tune.WhitePixelMaskOpacity;
+
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
         var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
@@ -477,6 +495,11 @@ public static class MersGenerator
             }
         }
 
+        PipelineTrace.Field("mers.luminosity", luminosity);
+        PipelineTrace.Note("mers.luminosity", "domain min", lumMin);
+        PipelineTrace.Note("mers.luminosity", "domain max", lumMax);
+        PipelineTrace.Note("mers.luminosity", "sss target", $"{material.Sss.Min}..{material.Sss.Max}");
+
         using (var outFb = new FastBitmap(output, writable: true))
         {
             for (var y = 0; y < h; y++)
@@ -493,21 +516,39 @@ public static class MersGenerator
                 }
             }
 
-            foreach (var pass in material.Recursive)
+            // Snapshotting through the FastBitmap rather than the Bitmap: `output` is
+            // locked for the whole of this block, and the base result stops existing the
+            // moment the first recursive pass writes over it.
+            PipelineTrace.Snapshot("mers.base", outFb);
+            PipelineTrace.Note("mers.base", "grey domain", $"{greyMin}..{greyMax}");
+            PipelineTrace.Note("mers.base", "metal target", $"{material.Mer.MetalMin}..{material.Mer.MetalMax}{(material.Mer.InvertMetal ? " (inverted)" : "")}");
+            PipelineTrace.Note("mers.base", "emissive target", $"{material.Mer.EmissiveMin}..{material.Mer.EmissiveMax}{(material.Mer.InvertEmissive ? " (inverted)" : "")}");
+            PipelineTrace.Note("mers.base", "roughness target", $"{material.Mer.RoughnessMin}..{material.Mer.RoughnessMax}{(material.Mer.InvertRoughness ? " (inverted)" : "")}");
+            PipelineTrace.Note("mers.base", "recursive passes", material.Recursive.Count);
+
+            for (var i = 0; i < material.Recursive.Count; i++)
             {
-                ApplyRecursivePass(colorBitmap, grey, greyMin, greyMax, luminosity, lumMin, lumMax, outFb, pass);
+                ApplyRecursivePass(colorBitmap, grey, greyMin, greyMax, luminosity, lumMin, lumMax, outFb,
+                    material.Recursive[i], whitePixelMaskOpacity, i);
             }
+
+            PipelineTrace.Snapshot("mers.final", outFb);
         }
 
         return output;
     }
 
+    /// <param name="whitePixelMaskOpacity">Hoisted out of PipelineTuning by the caller.</param>
+    /// <param name="passIndex">Only used to name this pass's captured trace stages, so a
+    /// multi-pass block's steps stay distinguishable in the Pipeline Preview dev tool.</param>
     private static void ApplyRecursivePass(
         Bitmap colorBitmap,
         int[,] grey, int greyMin, int greyMax,
         int[,] luminosity, int lumMin, int lumMax,
         FastBitmap outFb,
-        RecursivePass pass)
+        RecursivePass pass,
+        int whitePixelMaskOpacity,
+        int passIndex)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -523,7 +564,7 @@ public static class MersGenerator
                 for (var x = 0; x < w; x++)
                 {
                     var c = colorFb[x, y];
-                    var opacity = ComputeDominanceOpacity(c, pass.Channel);
+                    var opacity = ComputeDominanceOpacity(c, pass.Channel, whitePixelMaskOpacity);
                     mask[x, y] = opacity;
                     if (opacity <= 0) continue;
 
@@ -536,6 +577,11 @@ public static class MersGenerator
                 }
             }
         }
+
+        PipelineTrace.Field($"mers.pass{passIndex}.mask", mask, "Opacity");
+        PipelineTrace.Note($"mers.pass{passIndex}.mask", "channel", pass.Channel);
+        PipelineTrace.Note($"mers.pass{passIndex}.mask", "any pixels masked", anyMasked);
+        PipelineTrace.Note($"mers.pass{passIndex}.mask", "masked grey domain", anyMasked ? $"{subGreyMin}..{subGreyMax}" : "-");
 
         if (!anyMasked) return;
 
@@ -568,6 +614,8 @@ public static class MersGenerator
                 outFb[x, y] = Color.FromArgb(newAlpha, newR, newG, newB);
             }
         }
+
+        PipelineTrace.Snapshot($"mers.pass{passIndex}.result", outFb);
     }
 
     /// <summary>
@@ -575,7 +623,7 @@ public static class MersGenerator
     /// kept as-is - it's a solid heuristic. Returns 0-255 opacity, 0 meaning "this pixel
     /// isn't part of the mask at all".
     /// </summary>
-    private static int ComputeDominanceOpacity(Color c, string channel)
+    private static int ComputeDominanceOpacity(Color c, string channel, int whitePixelMaskOpacity)
     {
         int target, secondHighest, thirdValue;
         bool accepted;
@@ -613,7 +661,7 @@ public static class MersGenerator
 
         if (!accepted) return 0;
 
-        if (c.R == 255 && c.G == 255 && c.B == 255) return WhitePixelMaskOpacity;
+        if (c.R == 255 && c.G == 255 && c.B == 255) return whitePixelMaskOpacity;
         if (target == secondHighest) return (target - thirdValue) / 2;
         return target - secondHighest;
     }
@@ -692,59 +740,59 @@ public static class MersGenerator
 /// </summary>
 public static class NormalMapGenerator
 {
-    // TODO(tuning): how much of the height field comes from the mean-shift clustered
-    // heightmap vs. a ceiling-maximized flat greyscale of the color texture itself.
-    // Higher favors the clean, banded clustered result; lower brings back more of the
-    // original texture's own shading detail.
-    private const double HeightmapBlendRatio = 0.75;
-
-    // TODO(tuning): the response curve. Exponent applied to each pixel's normalized
-    // gradient magnitude, interpolated by noise index: above 1 crushes small differences
-    // and rewards big ones, below 1 lifts small ones. If noisy textures come out too busy,
-    // raising NoisyTextureExponent toward 1.0 is the first lever to reach for.
-    private const double CleanTextureExponent = 2.2;  // noise index 0
-    private const double NoisyTextureExponent = 0.65; // noise index 100
-
-    // TODO(tuning): what counts as this texture's "full strength" edge - a percentile
-    // taken over its non-flat gradients only. Restricting the population that way matters:
-    // on a texture that's mostly empty space, including every flat pixel would drag the
-    // percentile down to nothing and then normalize the faint remainder up to full.
-    private const double GradientReferencePercentile = 0.95;
-    private const double GradientFlatThreshold = 1.0 / 255.0;
-    // Floor for that reference, so a genuinely flat texture's faint noise never gets
-    // normalized up into a full-strength normal map.
-    private const double MinGradientReference = 0.02;
-
-    // TODO(tuning): slope the shaped gradient reaches at normal.intensity = 1.0. At the
-    // 0.25 default that works out to a 45-degree tilt on a texture's strongest edges.
-    private const double MaxSlope = 4.0;
-
-    // TODO(tuning): calibration ceiling for GetNoiseIndex - what average per-pixel
-    // brightness delta counts as "maximally noisy" (index 100).
-    private const double NoiseCalibrationCeiling = 40.0;
-
-    // Magnitude histogram used to resolve the percentile above without sorting every
-    // pixel - fixed cost regardless of texture size (animation strips get enormous).
-    private const int GradientHistogramBins = 1024;
-    private const double GradientHistogramMax = 2.0;
-
-    public static Bitmap Generate(Bitmap colorBitmap, NormalParams normalParams)
+    // Every tuning number this generator used to hold as a private const now lives in
+    // PipelineTuning (Core/PipelineInstrumentation.cs), so the Pipeline Preview dev tool
+    // can re-run one texture against a modified set and show what each step did. The
+    // TODO(tuning) notes that used to sit here are now the `About` text on each [Knob],
+    // where the dev tool can actually show them. `tuning` is an optional trailing
+    // parameter defaulting to PipelineTuning.Default, so production call sites are
+    // unchanged, and every value is hoisted into a local before any loop runs - that
+    // convention is what keeps this exactly as fast as the consts were.
+    public static Bitmap Generate(Bitmap colorBitmap, NormalParams normalParams, PipelineTuning? tuning = null)
     {
+        var tune = tuning ?? PipelineTuning.Default;
+        var heightmapBlendRatio = tune.HeightmapBlendRatio;
+
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
 
-        var clustered = HeightmapGenerator.ComputeClusteredHeights(colorBitmap);
-        var height = BuildHeightField(colorBitmap, clustered);
+        var clustered = HeightmapGenerator.ComputeClusteredHeights(colorBitmap, tune);
+        PipelineTrace.Field("normal.clustered", clustered, "Height");
+
+        var height = BuildHeightField(colorBitmap, clustered, heightmapBlendRatio);
+        PipelineTrace.Field("normal.heightfield", height);
+        PipelineTrace.Note("normal.heightfield", "clustered share", $"{heightmapBlendRatio:P0}");
+        PipelineTrace.Note("normal.heightfield", "colour share", $"{1.0 - heightmapBlendRatio:P0}");
 
         var gradX = new float[w, h];
         var gradY = new float[w, h];
         ComputeSobelGradients(height, w, h, gradX, gradY);
 
-        var reference = ResolveGradientReference(gradX, gradY, w, h);
+        var reference = ResolveGradientReference(gradX, gradY, w, h, tune);
 
-        var noise = Math.Clamp(GetNoiseIndex(colorBitmap) / 100.0, 0.0, 1.0);
-        var exponent = Lerp(CleanTextureExponent, NoisyTextureExponent, noise);
-        var strength = MaxSlope * Math.Clamp(normalParams.Intensity, 0.0, 1.0);
+        var noise = Math.Clamp(GetNoiseIndex(colorBitmap, tune) / 100.0, 0.0, 1.0);
+        var exponent = Lerp(tune.CleanTextureExponent, tune.NoisyTextureExponent, noise);
+        var strength = tune.MaxSlope * Math.Clamp(normalParams.Intensity, 0.0, 1.0);
+
+        // The response curve, as a local function so the loop below, the traced field and
+        // the traced plot are all literally the same code - there is no second copy of
+        // this formula anywhere that could drift from it.
+        double Shape(double magnitude) => Math.Pow(Math.Clamp(magnitude / reference, 0.0, 1.0), exponent) * strength;
+
+        PipelineTrace.Gradients("normal.gradients", gradX, gradY, reference);
+        PipelineTrace.Note("normal.gradients", "strong-edge reference", reference);
+        PipelineTrace.Note("normal.gradients", "percentile", tune.GradientReferencePercentile);
+        PipelineTrace.Note("normal.response", "noise index", (int)Math.Round(noise * 100));
+        PipelineTrace.Note("normal.response", "exponent", exponent);
+        PipelineTrace.Note("normal.response", "slope at full strength", strength);
+        PipelineTrace.Note("normal.response", "normal.intensity", normalParams.Intensity);
+        PipelineTrace.Curve("normal.response", "gradient magnitude", "slope", 0.0, reference * 1.5, Shape);
+        PipelineTrace.Field("normal.shaped", w, h, (x, y) =>
+        {
+            double gx = gradX[x, y], gy = gradY[x, y];
+            var shaped = Shape(Math.Sqrt(gx * gx + gy * gy));
+            return (byte)Math.Clamp((int)Math.Round(shaped / Math.Max(strength, 1e-6) * 255.0), 0, 255);
+        }, "Slope");
 
         var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
@@ -762,7 +810,7 @@ public static class NormalMapGenerator
                     if (magnitude > 0)
                     {
                         // Shape the magnitude, keep the direction.
-                        var shaped = Math.Pow(Math.Clamp(magnitude / reference, 0.0, 1.0), exponent) * strength;
+                        var shaped = Shape(magnitude);
                         slopeX = gx / magnitude * shaped;
                         slopeY = gy / magnitude * shaped;
                     }
@@ -783,10 +831,16 @@ public static class NormalMapGenerator
             }
         }
 
-        ApplyPomBlueChannel(output, clustered);
+        PipelineTrace.Snapshot("normal.encoded", output, includeAlpha: false);
+
+        ApplyPomBlueChannel(output, clustered, tune.PomContrastReduction);
+        PipelineTrace.Snapshot("normal.withpom", output, includeAlpha: false);
 
         if (normalParams.Invert)
             InvertRedGreenInPlace(output);
+
+        PipelineTrace.Snapshot("normal.final", output, includeAlpha: false);
+        PipelineTrace.Note("normal.final", "red/green inverted", normalParams.Invert);
 
         return output;
     }
@@ -805,7 +859,7 @@ public static class NormalMapGenerator
     /// separate ceiling-maximize, for the POM blue channel, happens later in
     /// ApplyPomBlueChannel and has nothing to do with this blend.
     /// </summary>
-    private static float[,] BuildHeightField(Bitmap colorBitmap, int[,] clustered)
+    private static float[,] BuildHeightField(Bitmap colorBitmap, int[,] clustered, double heightmapBlendRatio)
     {
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
@@ -822,7 +876,7 @@ public static class NormalMapGenerator
             for (var x = 0; x < w; x++)
             {
                 var clusteredNormalized = clustered[x, y] / 255.0;
-                var blended = clusteredNormalized * HeightmapBlendRatio + maximizedGrey[x, y] * (1.0 - HeightmapBlendRatio);
+                var blended = clusteredNormalized * heightmapBlendRatio + maximizedGrey[x, y] * (1.0 - heightmapBlendRatio);
                 height[x, y] = (float)Math.Clamp(blended, 0.0, 1.0);
             }
         }
@@ -893,9 +947,15 @@ public static class NormalMapGenerator
     /// scale with the (occasionally enormous - animation strips run to hundreds of
     /// thousands of pixels) texture size.
     /// </summary>
-    private static double ResolveGradientReference(float[,] gradX, float[,] gradY, int w, int h)
+    private static double ResolveGradientReference(float[,] gradX, float[,] gradY, int w, int h, PipelineTuning tune)
     {
-        var histogram = new int[GradientHistogramBins];
+        var bins = Math.Max(2, tune.GradientHistogramBins);
+        var histogramMax = tune.GradientHistogramMax;
+        var flatThreshold = tune.GradientFlatThreshold;
+        var minReference = tune.MinGradientReference;
+        var percentile = tune.GradientReferencePercentile;
+
+        var histogram = new int[bins];
         var counted = 0;
 
         for (var y = 0; y < h; y++)
@@ -905,38 +965,32 @@ public static class NormalMapGenerator
                 double gx = gradX[x, y];
                 double gy = gradY[x, y];
                 var magnitude = Math.Sqrt(gx * gx + gy * gy);
-                if (magnitude <= GradientFlatThreshold) continue;
+                if (magnitude <= flatThreshold) continue;
 
-                var bin = (int)(magnitude / GradientHistogramMax * (GradientHistogramBins - 1));
-                histogram[Math.Clamp(bin, 0, GradientHistogramBins - 1)]++;
+                var bin = (int)(magnitude / histogramMax * (bins - 1));
+                histogram[Math.Clamp(bin, 0, bins - 1)]++;
                 counted++;
             }
         }
 
-        if (counted == 0) return MinGradientReference;
+        PipelineTrace.Note("normal.gradients", "non-flat pixels", counted);
 
-        var target = (long)Math.Ceiling(counted * GradientReferencePercentile);
+        if (counted == 0) return minReference;
+
+        var target = (long)Math.Ceiling(counted * percentile);
         long running = 0;
 
-        for (var i = 0; i < GradientHistogramBins; i++)
+        for (var i = 0; i < bins; i++)
         {
             running += histogram[i];
             if (running < target) continue;
 
-            var magnitude = (i + 0.5) / (GradientHistogramBins - 1) * GradientHistogramMax;
-            return Math.Max(magnitude, MinGradientReference);
+            var magnitude = (i + 0.5) / (bins - 1) * histogramMax;
+            return Math.Max(magnitude, minReference);
         }
 
-        return Math.Max(GradientHistogramMax, MinGradientReference);
+        return Math.Max(histogramMax, minReference);
     }
-
-    // Built-in (not a materials.json knob) default POM contrast reduction - the mean-shift
-    // heightmap can still sink quite deep even after ceiling-maximizing it, so every
-    // pixel's remaining distance from the surface (255) gets pulled in by this fraction.
-    // Same mechanic as Tuner.ApplyNormalMapIntensity's own blue-channel handling:
-    // recession = 255 - value; shrinking recession pulls pixels toward the surface and can
-    // never overflow past 255, so no separate compression pass is needed. TODO(tuning).
-    private const double PomContrastReduction = 0.67;
 
     /// <summary>
     /// POM height source: the mean-shift clustered heightmap (HeightmapGenerator.
@@ -947,7 +1001,7 @@ public static class NormalMapGenerator
     /// recession from 255 reduced by PomContrastReduction, since the ceiling-maximize
     /// alone still leaves some clusters sitting quite deep.
     /// </summary>
-    private static void ApplyPomBlueChannel(Bitmap normalBitmap, int[,] clustered)
+    private static void ApplyPomBlueChannel(Bitmap normalBitmap, int[,] clustered, double pomContrastReduction)
     {
         var w = normalBitmap.Width;
         var h = normalBitmap.Height;
@@ -959,16 +1013,29 @@ public static class NormalMapGenerator
 
         var scale = maxVal > 0 ? 255.0 / maxVal : 1.0;
 
+        // Local functions so the loop below and the traced views are the same code - the
+        // two halves of this (ceiling-maximize, then pull the remaining recession in) are
+        // separately visible in the dev tool without either being reimplemented there.
+        byte Maximized(int clusteredValue) => (byte)Math.Clamp((int)Math.Round(clusteredValue * scale), 0, 255);
+        byte Pom(int clusteredValue)
+        {
+            var recession = 255.0 - clusteredValue * scale;
+            return (byte)Math.Clamp((int)Math.Round(255.0 - recession * (1.0 - pomContrastReduction)), 0, 255);
+        }
+
+        PipelineTrace.Field("normal.pom.maximized", w, h, (x, y) => Maximized(clustered[x, y]), "Height");
+        PipelineTrace.Note("normal.pom.maximized", "brightest clustered value", maxVal);
+        PipelineTrace.Note("normal.pom.maximized", "ceiling scale", scale);
+        PipelineTrace.Field("normal.pom", w, h, (x, y) => Pom(clustered[x, y]), "POM");
+        PipelineTrace.Note("normal.pom", "contrast reduction", pomContrastReduction);
+
         using var normalFb = new FastBitmap(normalBitmap, writable: true);
         for (var y = 0; y < h; y++)
         {
             for (var x = 0; x < w; x++)
             {
-                var maximized = clustered[x, y] * scale;
-                var recession = 255.0 - maximized;
-                var pom = (byte)Math.Clamp((int)Math.Round(255.0 - recession * (1.0 - PomContrastReduction)), 0, 255);
                 var c = normalFb[x, y];
-                normalFb[x, y] = Color.FromArgb(c.A, c.R, c.G, pom);
+                normalFb[x, y] = Color.FromArgb(c.A, c.R, c.G, Pom(clustered[x, y]));
             }
         }
     }
@@ -980,8 +1047,10 @@ public static class NormalMapGenerator
     /// gradients (many unique colors, small per-pixel jumps) score low, while genuinely
     /// noisy/high-frequency textures (large abrupt jumps) score high.
     /// </summary>
-    public static int GetNoiseIndex(Bitmap image)
+    public static int GetNoiseIndex(Bitmap image, PipelineTuning? tuning = null)
     {
+        var noiseCalibrationCeiling = (tuning ?? PipelineTuning.Default).NoiseCalibrationCeiling;
+
         var w = image.Width;
         var h = image.Height;
         var grey = new int[w, h];
@@ -1019,7 +1088,8 @@ public static class NormalMapGenerator
         }
 
         var averageDelta = sampleCount > 0 ? totalDelta / sampleCount : 0;
-        return (int)Math.Clamp(averageDelta / NoiseCalibrationCeiling * 100.0, 0, 100);
+        PipelineTrace.Note("normal.response", "average per-pixel delta", averageDelta);
+        return (int)Math.Clamp(averageDelta / noiseCalibrationCeiling * 100.0, 0, 100);
     }
 
     private static void InvertRedGreenInPlace(Bitmap bitmap)
@@ -1062,54 +1132,18 @@ public static class NormalMapGenerator
 /// </summary>
 public static class HeightmapGenerator
 {
+    // Structural, not a tuning knob: the neutral level `intensity` flattens toward, and
+    // the value a single-cluster texture lands on. 128 is "no displacement either way",
+    // which is a definition rather than a number to try alternatives for.
     private const byte LevelMid = 128;
 
-    // TODO(tuning): how strongly a fully-transparent color-texture pixel's darkening
-    // overlay applies (0 = no darkening, 1 = full overlay strength) - see class doc
-    // comment above for why this exists (grass_side-style "read as beneath" regions).
-    private const double TransparencyOverlayStrength = 0.5;
-
-    // TODO(tuning): mean-shift filtering knobs - iteration count, spatial window radius,
-    // range (value) bandwidth, and the spatial sigma that shapes how much nearby pixels
-    // outweigh distant ones. Untested against a broad enough set of textures yet; wants
-    // an artist's eye once there's enough generated output to compare against.
-    private const int MeanShiftIterations = 5;
-    private const int SpatialRadius = 2;
-    private const double SpatialSigma = 1.5;
-
-    // TODO(tuning): how far apart two values can be and still get pulled together.
-    //
-    // This was briefly narrowed to 12 to stop mean-shift bridging a shallow mortar line
-    // into the plank above it. It did fix that in isolation, but on real packs the extra
-    // modes it produced - combined with the value-based placement tried alongside it -
-    // turned output into little more than a posterized greyscale: far too many distinct
-    // elevations, which is the defining trait of a heightmap that reads as a mess in game.
-    // Back at 24 the clustering stays coarse enough to produce real plateaus.
-    private const double RangeBandwidth = 24.0;
-
-    // Above this pixel count, ComputeClusteredHeights skips the spatial neighbor search
-    // (which scales with W*H*R^2*iterations) and falls back to range-only clustering off
-    // a 256-bin histogram instead - still mean-shift filtering, just position-independent
-    // and bounded regardless of texture size. Automatic, not a user-facing setting.
-    private const int SpatialFallbackPixelCount = 256 * 256;
-
-    // Converged values within this distance of each other are folded into the same
-    // cluster during ranking.
-    private const double ClusterMergeTolerance = 8.0;
-
-    // Hard cap on the final number of elevation levels a texture can produce, regardless
-    // of how many distinct clusters mean-shift converged to. A busy/high-color-count
-    // texture that would otherwise land on many clusters gets merged down harder to reach
-    // this; a calm texture that already converged to fewer is untouched. TODO(tuning).
-    // TODO(tuning): the hard ceiling on distinct elevations, and the single most direct
-    // lever on "this heightmap looks like a mess". Output has exactly this many distinct
-    // greys for an opaque texture (rank placement spreads them evenly across 0-255), so
-    // 4 means 0/85/170/255.
-    //
-    // Note this is only the ceiling on the *clustered ladder*. A cutout texture gets a
-    // second darkened variant of each level from the transparency overlay in Generate
-    // below, so the count a cutout texture actually shows is up to double this.
-    private const int MaxClusters = 4;
+    // Every other number this generator used to hold as a private const now lives in
+    // PipelineTuning (Core/PipelineInstrumentation.cs), so the Pipeline Preview dev tool
+    // can re-run one texture against a modified set and show what each step did. The
+    // reasoning that used to sit in the TODO(tuning) comments here is now the `About`
+    // text on each [Knob], where the dev tool can actually surface it next to the
+    // control - including why RangeBandwidth is 24 and not the 12 that was tried, and
+    // why MaxClusters is the single most direct lever on messy-looking output.
 
     // Pairing mean-shift with a fixed-step quantization of the same values, and keeping
     // only regions the two agree on, was tried here as a guard against mean-shift bridging
@@ -1119,13 +1153,18 @@ public static class HeightmapGenerator
     // once the bandwidth below was narrowed the guard had nothing left to catch anyway.
     // Narrowing the bandwidth is the real cure; the merge pass makes it safe.
 
-    public static Bitmap Generate(Bitmap colorBitmap, HeightmapParams heightmapParams)
+    public static Bitmap Generate(Bitmap colorBitmap, HeightmapParams heightmapParams, PipelineTuning? tuning = null)
     {
+        var tune = tuning ?? PipelineTuning.Default;
+        var transparencyOverlayStrength = tune.TransparencyOverlayStrength;
+        var intensity = Math.Clamp(heightmapParams.Intensity, 0.0, 1.0);
+        var invert = heightmapParams.Invert;
+
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
         var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
-        var clustered = ComputeClusteredHeights(colorBitmap);
+        var clustered = ComputeClusteredHeights(colorBitmap, tune);
         var alpha = new byte[w, h];
 
         using (var colorFb = new FastBitmap(colorBitmap, writable: false))
@@ -1135,31 +1174,47 @@ public static class HeightmapGenerator
                     alpha[x, y] = colorFb[x, y].A;
         }
 
+        // The three artist-facing steps, each as a local function chained onto the last.
+        // Written this way so the loop below and the traced views of each step are the
+        // same code - the dev tool can show "after the overlay" and "after intensity"
+        // separately without either being reimplemented (and able to drift) over there.
+        byte WithOverlay(int x, int y)
+        {
+            var clusteredValue = (byte)clustered[x, y];
+            var transparencyAmount = 255 - alpha[x, y];
+            var overlayStrength = transparencyAmount * transparencyOverlayStrength / 255.0;
+            if (overlayStrength <= 0) return clusteredValue;
+            return Lerp(clusteredValue, OverlayBlendWithBlack(clusteredValue), overlayStrength);
+        }
+
+        byte WithIntensity(int x, int y) => Lerp(LevelMid, WithOverlay(x, y), intensity);
+
+        byte Final(int x, int y)
+        {
+            var value = WithIntensity(x, y);
+            return invert ? (byte)(255 - value) : value;
+        }
+
+        PipelineTrace.Field("height.alpha", w, h, (x, y) => alpha[x, y], "Alpha");
+        PipelineTrace.Field("height.overlay", w, h, WithOverlay, "Height");
+        PipelineTrace.Note("height.overlay", "overlay strength", transparencyOverlayStrength);
+        PipelineTrace.Field("height.intensity", w, h, WithIntensity, "Height");
+        PipelineTrace.Note("height.intensity", "heightmap.intensity", intensity);
+
         using (var outFb = new FastBitmap(output, writable: true))
         {
             for (var y = 0; y < h; y++)
             {
                 for (var x = 0; x < w; x++)
                 {
-                    var clusteredValue = (byte)clustered[x, y];
-
-                    var transparencyAmount = 255 - alpha[x, y];
-                    var overlayStrength = transparencyAmount * TransparencyOverlayStrength / 255.0;
-
-                    var withOverlay = clusteredValue;
-                    if (overlayStrength > 0)
-                    {
-                        var blended = OverlayBlendWithBlack(clusteredValue);
-                        withOverlay = Lerp(clusteredValue, blended, overlayStrength);
-                    }
-
-                    var withIntensity = Lerp(LevelMid, withOverlay, Math.Clamp(heightmapParams.Intensity, 0.0, 1.0));
-                    var final = heightmapParams.Invert ? (byte)(255 - withIntensity) : withIntensity;
-
+                    var final = Final(x, y);
                     outFb[x, y] = Color.FromArgb(255, final, final, final);
                 }
             }
         }
+
+        PipelineTrace.Snapshot("height.final", output, includeAlpha: false);
+        PipelineTrace.Note("height.final", "inverted", invert);
 
         return output;
     }
@@ -1169,8 +1224,10 @@ public static class HeightmapGenerator
     /// own height-field input, and separately as its POM blue-channel source). Returns
     /// raw clustered grey values (0-255) with no artist-facing post-processing applied.
     /// </summary>
-    public static int[,] ComputeClusteredHeights(Bitmap colorBitmap)
+    public static int[,] ComputeClusteredHeights(Bitmap colorBitmap, PipelineTuning? tuning = null)
     {
+        var tune = tuning ?? PipelineTuning.Default;
+
         var w = colorBitmap.Width;
         var h = colorBitmap.Height;
 
@@ -1186,11 +1243,19 @@ public static class HeightmapGenerator
             for (var x = 0; x < w; x++)
                 grey[x, y] = normalized[x, y] * 255.0;
 
-        var converged = (long)w * h <= SpatialFallbackPixelCount
-            ? ConvergeSpatial(grey, w, h)
-            : ConvergeRangeOnly(grey, w, h);
+        var useSpatial = (long)w * h <= tune.SpatialFallbackPixelCount;
+        var converged = useSpatial
+            ? ConvergeSpatial(grey, w, h, tune)
+            : ConvergeRangeOnly(grey, w, h, tune);
 
-        return ClusterAndPlace(converged, grey, w, h);
+        PipelineTrace.Field("height.converged", converged, "Converged");
+        PipelineTrace.Note("height.converged", "mode", useSpatial ? "joint spatial + range" : "range-only (256-bin histogram)");
+        PipelineTrace.Note("height.converged", "pixels", (long)w * h);
+        PipelineTrace.Note("height.converged", "spatial fallback above", tune.SpatialFallbackPixelCount);
+        PipelineTrace.Note("height.converged", "iterations", tune.MeanShiftIterations);
+        PipelineTrace.Note("height.converged", "range bandwidth", tune.RangeBandwidth);
+
+        return ClusterAndPlace(converged, grey, w, h, tune);
     }
 
     /// <summary>Full joint spatial+range mean-shift filtering: each pixel's value is
@@ -1198,11 +1263,16 @@ public static class HeightmapGenerator
     /// weighted by both spatial closeness and value closeness. Neighbors are sampled with
     /// wraparound/modulo indexing so results stay seamless-tileable without needing a full
     /// 3x tiled copy at this small radius.</summary>
-    private static double[,] ConvergeSpatial(double[,] grey, int w, int h)
+    private static double[,] ConvergeSpatial(double[,] grey, int w, int h, PipelineTuning tune)
     {
+        var iterations = tune.MeanShiftIterations;
+        var spatialRadius = tune.SpatialRadius;
+        var spatialSigma = tune.SpatialSigma;
+        var rangeBandwidth = tune.RangeBandwidth;
+
         var current = grey;
 
-        for (var iter = 0; iter < MeanShiftIterations; iter++)
+        for (var iter = 0; iter < iterations; iter++)
         {
             var next = new double[w, h];
 
@@ -1213,9 +1283,9 @@ public static class HeightmapGenerator
                     var centerValue = current[x, y];
                     double weightSum = 0, valueSum = 0;
 
-                    for (var dy = -SpatialRadius; dy <= SpatialRadius; dy++)
+                    for (var dy = -spatialRadius; dy <= spatialRadius; dy++)
                     {
-                        for (var dx = -SpatialRadius; dx <= SpatialRadius; dx++)
+                        for (var dx = -spatialRadius; dx <= spatialRadius; dx++)
                         {
                             var nx = ((x + dx) % w + w) % w;
                             var ny = ((y + dy) % h + h) % h;
@@ -1223,8 +1293,8 @@ public static class HeightmapGenerator
 
                             var spatialDist2 = dx * dx + dy * dy;
                             var rangeDist = neighborValue - centerValue;
-                            var weight = Math.Exp(-spatialDist2 / (2 * SpatialSigma * SpatialSigma))
-                                       * Math.Exp(-(rangeDist * rangeDist) / (2 * RangeBandwidth * RangeBandwidth));
+                            var weight = Math.Exp(-spatialDist2 / (2 * spatialSigma * spatialSigma))
+                                       * Math.Exp(-(rangeDist * rangeDist) / (2 * rangeBandwidth * rangeBandwidth));
 
                             weightSum += weight;
                             valueSum += weight * neighborValue;
@@ -1246,8 +1316,11 @@ public static class HeightmapGenerator
     /// grey-value histogram (position-independent), which is O(256^2*iterations)
     /// regardless of texture size, then looks each pixel's converged value up by its
     /// rounded grey value.</summary>
-    private static double[,] ConvergeRangeOnly(double[,] grey, int w, int h)
+    private static double[,] ConvergeRangeOnly(double[,] grey, int w, int h, PipelineTuning tune)
     {
+        var iterations = tune.MeanShiftIterations;
+        var rangeBandwidth = tune.RangeBandwidth;
+
         var histogram = new int[256];
         for (var y = 0; y < h; y++)
             for (var x = 0; x < w; x++)
@@ -1256,7 +1329,7 @@ public static class HeightmapGenerator
         var representative = new double[256];
         for (var i = 0; i < 256; i++) representative[i] = i;
 
-        for (var iter = 0; iter < MeanShiftIterations; iter++)
+        for (var iter = 0; iter < iterations; iter++)
         {
             var next = new double[256];
 
@@ -1268,7 +1341,7 @@ public static class HeightmapGenerator
                 {
                     if (histogram[j] == 0) continue;
                     var rangeDist = j - representative[i];
-                    var weight = histogram[j] * Math.Exp(-(rangeDist * rangeDist) / (2 * RangeBandwidth * RangeBandwidth));
+                    var weight = histogram[j] * Math.Exp(-(rangeDist * rangeDist) / (2 * rangeBandwidth * rangeBandwidth));
                     weightSum += weight;
                     valueSum += weight * j;
                 }
@@ -1294,8 +1367,11 @@ public static class HeightmapGenerator
     /// then places each surviving cluster at its own mean brightness - see the comment at
     /// the placement step for why placing by value rather than by rank is what makes
     /// plank/mortar-style textures come out right.</summary>
-    private static int[,] ClusterAndPlace(double[,] converged, double[,] original, int w, int h)
+    private static int[,] ClusterAndPlace(double[,] converged, double[,] original, int w, int h, PipelineTuning tune)
     {
+        var clusterMergeTolerance = tune.ClusterMergeTolerance;
+        var maxClusters = tune.MaxClusters;
+
         var distinctValues = new SortedSet<double>();
         for (var y = 0; y < h; y++)
             for (var x = 0; x < w; x++)
@@ -1308,7 +1384,7 @@ public static class HeightmapGenerator
 
         foreach (var v in distinctValues)
         {
-            if (first || v - clusterAnchor > ClusterMergeTolerance)
+            if (first || v - clusterAnchor > clusterMergeTolerance)
             {
                 if (!first) clusterId++;
                 clusterAnchor = v;
@@ -1337,6 +1413,14 @@ public static class HeightmapGenerator
         for (var i = 0; i < clusterCount; i++)
             clusterMeanBrightness[i] = brightnessCount[i] > 0 ? brightnessSum[i] / brightnessCount[i] : 0;
 
+        // What mean-shift actually found, before any capping or merging. Shown as a region
+        // map rather than a height map because at this point what matters is which pixels
+        // grouped together, not what value the group will end up sitting at.
+        PipelineTrace.Labels("height.clusters.raw", w, h, (x, y) => pixelCluster[x, y]);
+        PipelineTrace.Note("height.clusters.raw", "clusters found", clusterCount);
+        PipelineTrace.Note("height.clusters.raw", "merge tolerance", clusterMergeTolerance);
+        PipelineTrace.Note("height.clusters.raw", "max clusters", maxClusters);
+
         // Brightness-sorted list of surviving buckets, each carrying which original region
         // ids it absorbed. Starts as one bucket per region; merging two adjacent buckets
         // (always adjacent in this sorted order, since nothing ever reorders) is just a
@@ -1360,7 +1444,7 @@ public static class HeightmapGenerator
             // are near enough that keeping them apart would just be two nearly-identical
             // heights sitting next to each other - which is the definition of a heightmap
             // that reads as a mess in game. Under the cap AND well separated means done.
-            if (bucketMeans.Count <= MaxClusters && smallestGap > ClusterMergeTolerance) break;
+            if (bucketMeans.Count <= maxClusters && smallestGap > clusterMergeTolerance) break;
 
             var combinedCount = bucketCounts[mergeAt] + bucketCounts[mergeAt + 1];
             bucketMeans[mergeAt] = combinedCount > 0
@@ -1378,6 +1462,14 @@ public static class HeightmapGenerator
         for (var bucket = 0; bucket < bucketMembers.Count; bucket++)
             foreach (var originalId in bucketMembers[bucket])
                 bucketOf[originalId] = bucket;
+
+        PipelineTrace.Labels("height.clusters.merged", w, h, (x, y) => bucketOf[pixelCluster[x, y]]);
+        PipelineTrace.Note("height.clusters.merged", "levels surviving", bucketMeans.Count);
+        PipelineTrace.Note("height.clusters.merged", "merged away", clusterCount - bucketMeans.Count);
+        PipelineTrace.Note("height.clusters.merged", "mean brightness per level",
+            string.Join(", ", bucketMeans.Select(m => m.ToString("0"))));
+        PipelineTrace.Note("height.clusters.merged", "pixels per level",
+            string.Join(", ", bucketCounts));
 
         // Buckets are placed at evenly spaced slots by brightness RANK, not at their own
         // mean brightness.
@@ -1408,6 +1500,10 @@ public static class HeightmapGenerator
                 result[x, y] = placed[bucketOf[pixelCluster[x, y]]];
             }
         }
+
+        PipelineTrace.Field("height.ladder", result, "Height");
+        PipelineTrace.Note("height.ladder", "placement", "evenly spaced by brightness rank");
+        PipelineTrace.Note("height.ladder", "levels", string.Join(", ", placed));
 
         return result;
     }

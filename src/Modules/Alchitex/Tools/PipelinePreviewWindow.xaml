@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window x:Class="Vanilla_RTX_App.Modules.Alchitex.Tools.PipelinePreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Vanilla_RTX_App.Modules.Alchitex.Tools"
+        Title="PBR Pipeline Preview">
+
+    <!--
+        DEVELOPER TOOL. Never reachable in a Release build - the titlebar button that opens
+        this window lives inside Alchitex's DevOnlyTitleBarActions group, which is only made
+        visible under #if DEBUG.
+
+        Layout is deliberately plain compared to the rest of the app: no background art, no
+        acrylic islands, no reactor. Everything here competes with the previews for
+        attention, and the previews are the entire point.
+
+        Structure:
+          row 0  titlebar
+          row 1  [ controls rail | results ]
+                 results = outputs strip (the three finals, always visible)
+                         + one horizontally-scrolling filmstrip per chain, in execution
+                           order, so a chain reads left-to-right like the pipeline does.
+    -->
+
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid"
+          AllowDrop="True"
+          DragOver="RootGrid_DragOver"
+          Drop="RootGrid_Drop">
+
+        <!-- Tile chrome lives here as styles rather than being built in code-behind:
+             pulling a brush out of Application.Current.Resources resolves against the
+             *app's* theme, not this window's RequestedTheme, so tiles would keep their
+             old colours after a theme switch. {ThemeResource} in a style resolves per
+             element, which is what actually follows the theme. -->
+        <Grid.Resources>
+            <Style x:Key="StageTileStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="Padding" Value="10" />
+                <Setter Property="VerticalAlignment" Value="Top" />
+            </Style>
+
+            <Style x:Key="FeaturedStageTileStyle" TargetType="Border" BasedOn="{StaticResource StageTileStyle}">
+                <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+
+            <!-- Frame around each preview image. Many stages are near-black or near-white
+                 fields; without an edge you can't tell where the texture stops. -->
+            <Style x:Key="StageImageFrameStyle" TargetType="Border">
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrongStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Margin" Value="0,4,0,0" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+            </Style>
+        </Grid.Resources>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ══ TITLEBAR ═══════════════════════════════════════════════════════════ -->
+        <Grid x:Name="TitleBarDragArea"
+              Grid.Row="0"
+              Height="38"
+              Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+            <TextBlock Text="PBR Pipeline Preview  ·  developer tool"
+                       FontSize="13"
+                       Opacity="0.85"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsTextScaleFactorEnabled="False" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="410" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ══ CONTROLS RAIL ══════════════════════════════════════════════════ -->
+            <Border Grid.Column="0"
+                    BorderThickness="0,0,1,0"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}">
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollMode="Disabled"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="16,12,16,24" Spacing="10">
+
+                        <!-- ── Source ─────────────────────────────────────────── -->
+                        <TextBlock Text="Source texture"
+                                   FontWeight="SemiBold"
+                                   FontSize="13" />
+
+                        <Button x:Name="ChooseImageButton"
+                                Content="Choose an image..."
+                                HorizontalAlignment="Stretch"
+                                Click="ChooseImageButton_Click" />
+
+                        <TextBlock x:Name="SourcePathText"
+                                   Text="Drop any image onto this window, or use the button above."
+                                   FontSize="11"
+                                   Opacity="0.7"
+                                   TextWrapping="Wrap" />
+
+                        <TextBox x:Name="TextureNameBox"
+                                 Header="Texture name (for the materials.json lookup)"
+                                 PlaceholderText="e.g. stone_bricks"
+                                 HorizontalAlignment="Stretch" />
+
+                        <Button x:Name="LoadMaterialButton"
+                                Content="Load this name's entry from materials.json"
+                                HorizontalAlignment="Stretch"
+                                Click="LoadMaterialButton_Click" />
+
+                        <ComboBox x:Name="SecondaryModeCombo"
+                                  Header="Secondary PBR texture (what the real run would pick)"
+                                  HorizontalAlignment="Stretch"
+                                  SelectedIndex="1"
+                                  SelectionChanged="SecondaryModeCombo_SelectionChanged"
+                                  ToolTipService.ToolTip="All three chains are always generated and shown here regardless of this. This only decides what the resolved-mode readout reports the real pipeline would have written.">
+                            <ComboBoxItem Content="None" />
+                            <ComboBoxItem Content="Automatic" />
+                            <ComboBoxItem Content="Normal map" />
+                            <ComboBoxItem Content="Heightmap" />
+                        </ComboBox>
+
+                        <!-- ── Material entry ─────────────────────────────────── -->
+                        <Expander Header="Material — materials.json entry"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  IsExpanded="True">
+                            <StackPanel Spacing="6" Margin="0,6,0,6">
+                                <StackPanel x:Name="MaterialEditorPanel" Spacing="2" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                                    <Button x:Name="CopyMaterialButton"
+                                            Content="Copy entry"
+                                            Click="CopyMaterialButton_Click"
+                                            ToolTipService.ToolTip="Copies this entry as a materials.json fragment - the quoted texture name plus its object, ready to paste straight into the file." />
+                                    <Button x:Name="PasteMaterialButton"
+                                            Content="Paste entry"
+                                            Click="PasteMaterialButton_Click" />
+                                    <Button x:Name="ResetMaterialButton"
+                                            Content="Reset"
+                                            Click="ResetMaterialButton_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- ── Pipeline tuning ────────────────────────────────── -->
+                        <Expander Header="Pipeline tuning — PbrGeneration constants"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  IsExpanded="True">
+                            <StackPanel Spacing="6" Margin="0,6,0,6">
+                                <TextBlock Text="These are the shipping constants every generated pack is built with. Nothing here is written anywhere - use 'Copy as C#' once a value is settled."
+                                           FontSize="11"
+                                           Opacity="0.7"
+                                           TextWrapping="Wrap" />
+
+                                <StackPanel x:Name="KnobEditorPanel" Spacing="2" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                                    <Button x:Name="CopyTuningButton"
+                                            Content="Copy as C#"
+                                            Click="CopyTuningButton_Click"
+                                            ToolTipService.ToolTip="Copies only the values that differ from the shipping defaults, as field initializers to paste back into PipelineTuning." />
+                                    <Button x:Name="ResetTuningButton"
+                                            Content="Reset all"
+                                            Click="ResetTuningButton_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- ── View ───────────────────────────────────────────── -->
+                        <Expander Header="View"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  IsExpanded="False">
+                            <StackPanel Spacing="8" Margin="0,6,0,6">
+                                <TextBlock Text="Tile size" FontSize="12" Opacity="0.85" />
+                                <Slider x:Name="TileSizeSlider"
+                                        Minimum="96"
+                                        Maximum="384"
+                                        StepFrequency="16"
+                                        Value="176"
+                                        ValueChanged="TileSizeSlider_ValueChanged" />
+
+                                <ToggleSwitch x:Name="LiveUpdateToggle"
+                                              Header="Live update"
+                                              IsOn="True"
+                                              OnContent="On"
+                                              OffContent="Off" />
+
+                                <Button x:Name="RerunButton"
+                                        Content="Re-run now"
+                                        HorizontalAlignment="Stretch"
+                                        Click="RerunButton_Click" />
+
+                                <Button x:Name="ExportStagesButton"
+                                        Content="Export every stage as PNG..."
+                                        HorizontalAlignment="Stretch"
+                                        Click="ExportStagesButton_Click" />
+                            </StackPanel>
+                        </Expander>
+
+                        <TextBlock x:Name="StatusText"
+                                   Text=""
+                                   FontSize="11"
+                                   Opacity="0.75"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ══ RESULTS ════════════════════════════════════════════════════════ -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- The three finals, pinned. These are what you're actually judging;
+                     everything below is how they got there. -->
+                <Border Grid.Row="0"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                        Padding="16,12,16,12">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Auto"
+                                  VerticalScrollMode="Disabled"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="OutputsStrip"
+                                    Orientation="Horizontal"
+                                    Spacing="12" />
+                    </ScrollViewer>
+                </Border>
+
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollMode="Disabled"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="ChainsPanel"
+                                Margin="16,12,16,32"
+                                Spacing="10" />
+                </ScrollViewer>
+
+                <TextBlock x:Name="EmptyHint"
+                           Grid.RowSpan="2"
+                           Text="Choose or drop an image to see what the PBR pipeline does to it."
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Opacity="0.5"
+                           IsHitTestVisible="False" />
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
