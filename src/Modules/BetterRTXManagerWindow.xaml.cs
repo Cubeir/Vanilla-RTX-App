@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -145,6 +145,10 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         ThemeService.ThemeChanged += ApplyTheme;
         ApplyTheme(ThemeService.ResolveInitialTheme());
+
+        // The centered title dims with the window, same as the system's caption buttons
+        // beside it - this window has no titlebar controls of its own to include.
+        TitleBarFocus.Attach(this, WindowTitle);
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.brtx.ico"));
 

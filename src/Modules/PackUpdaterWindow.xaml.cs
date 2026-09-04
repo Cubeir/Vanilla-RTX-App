@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
@@ -88,6 +88,10 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
 
         ThemeService.ThemeChanged += ApplyTheme;
         ApplyTheme(ThemeService.ResolveInitialTheme());
+
+        // The centered title dims with the window, same as the system's caption buttons
+        // beside it - this window has no titlebar controls of its own to include.
+        TitleBarFocus.Attach(this, WindowTitle);
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.update.ico"));
 

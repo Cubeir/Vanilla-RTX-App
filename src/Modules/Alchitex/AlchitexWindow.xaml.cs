@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Printing;
@@ -142,6 +142,11 @@ public sealed partial class Alchitex : Window
 
         ThemeService.ThemeChanged += ApplyTheme;
         ApplyTheme(ThemeService.ResolveInitialTheme());
+
+        // Titlebar buttons and the title both dim with the window. Unlike the main
+        // window's, this title isn't an identity label - it's the generation status line -
+        // so it belongs with the rest of the chrome.
+        TitleBarFocus.Attach(this, TitleBarActions, TitleBarText);
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
 

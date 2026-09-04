@@ -450,7 +450,13 @@ public sealed partial class MainWindow : Window
                 // Mirror every SetShiftText call above...
             }
         };
-        // Tie in colors of these special fake titlebar buttons
+        // Our own titlebar buttons dim with the window, matching the system's caption
+        // buttons beside them. The whole group goes over as one container - see
+        // TitleBarFocus for why that beats naming each button here. The centered
+        // "Vanilla RTX App" title is deliberately NOT included: it's the app's identity,
+        // and it stays at full strength whether the window is focused or not.
+        TitleBarFocus.Attach(this, TitleBarActions);
+
         this.Activated += (s, e) =>
         {
             if (e.WindowActivationState == WindowActivationState.Deactivated && _shiftPressed)
@@ -460,15 +466,6 @@ public sealed partial class MainWindow : Window
                 RestoreShiftText(LaunchButtonText, LaunchButtonFontIcon);
                 // Mirror KeyUp, copy paste here, so buttons go back to normal if window is unfocused but shift is still held.
             }
-
-            var isFocused = e.WindowActivationState != WindowActivationState.Deactivated;
-            var opacity = isFocused ? 1.0 : 0.5;
-
-            ChatButton.Opacity = opacity;
-            HelpButton.Opacity = opacity;
-            DonateButton.Opacity = opacity;
-            CycleThemeButton.Opacity = opacity;
-            SuspendUIAnimationsToggle.Opacity = opacity;
         };
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)

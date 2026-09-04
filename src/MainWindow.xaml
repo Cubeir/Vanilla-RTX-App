@@ -195,8 +195,13 @@
                        IsHitTestVisible="True" />
         </Grid>
 
-        <!-- Titlebar Buttons -->
-        <Border Margin="-2,-2,16,0"
+        <!-- ══ Titlebar Buttons ═════════════════════════════════════════════════
+             Named so TitleBarFocus can fade the whole group with the window rather
+             than each button being listed by hand in the Activated handler. A new
+             titlebar button dropped in here inherits that automatically.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="TitleBarActions"
+                Margin="-2,-2,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 Height="34"
