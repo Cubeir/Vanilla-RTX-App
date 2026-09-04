@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI;
@@ -58,7 +58,7 @@ public sealed class ReactorAnimator
     // cell top-right and the darkest bottom-left, matching the reference art.
     private static readonly int[,] RestLayout =
     {
-        { 1, 1, 0 },
+        { 2, 1, 0 },
         { 3, 2, 1 },
         { 4, 3, 2 },
     };
@@ -76,9 +76,9 @@ public sealed class ReactorAnimator
     // opposite of "this is dangerous, and it is definitely still here".
     private static readonly Color[] AbortReds =
     {
-        ColorHelper.FromArgb(255, 0xFF, 0x3B, 0x3B), // hot
-        ColorHelper.FromArgb(255, 0xC8, 0x1E, 0x1E), // mid
-        ColorHelper.FromArgb(255, 0x8A, 0x0E, 0x0E), // deep, still clearly red
+        ColorHelper.FromArgb(255, 255, 0, 0), // hot
+        ColorHelper.FromArgb(255, 205, 0, 0), // mid
+        ColorHelper.FromArgb(255, 155, 0, 0), // deep, still clearly red
     };
 
     // The backdrop the cross is read against - dark enough to disappear, and the darkest
@@ -91,8 +91,8 @@ public sealed class ReactorAnimator
     // hammers Pulse. 70ms still reads as "flickering fast" to the eye.
     private const double MinPulseIntervalMs = 70;
 
-    private const double RestBloomMin = 0.25;
-    private const double RestBloomMax = 0.50;
+    private const double RestBloomMin = 0.3;
+    private const double RestBloomMax = 0.6;
 
     private readonly Grid _tileGrid;
     private readonly Image? _bloom;

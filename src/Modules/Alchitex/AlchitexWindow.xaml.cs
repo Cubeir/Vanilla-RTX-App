@@ -1075,13 +1075,13 @@ public sealed partial class Alchitex : Window
 
             if (aborted)
             {
-                SetStatusThenRevert($"Aborted - {succeeded} pack(s) completed before stopping.");
+                SetStatusThenRevert($"Aborted - {succeeded} pack{(succeeded == 1 ? "" : "s")} completed before stopping.");
             }
             else
             {
                 SetStatusThenRevert(failedNames.Count == 0
-                    ? $"Done - {succeeded}/{queue.Count} pack(s) processed successfully!"
-                    : $"Done - {succeeded}/{queue.Count} succeeded. Failed: {string.Join(", ", failedNames)}");
+                    ? $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} processed successfully!"
+                    : $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} succeeded. Failed: {string.Join(", ", failedNames)}");
             }
         }
         catch (Exception ex)

@@ -424,9 +424,9 @@
                                      Two flat fills reading as one carved edge. ── -->
                                 <Border Grid.Column="1"
                                         Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                                        Opacity="0.5"/>
+                                        Opacity="0.25"/>
                                 <Border Grid.Column="2"
-                                        Background="{ThemeResource SystemControlPageBackgroundListLowBrush}"
+                                        Background="{ThemeResource CardBackgroundFillColorSecondary}"
                                         Opacity="0.5"/>
 
                                 <!-- ══ PACK QUEUE ═══════════════════════════════════
@@ -455,9 +455,10 @@
                                               ToolTipService.ToolTip="Packs queued for RTX generation"
                                               Glyph="&#xE72A;"
                                               FontSize="64"
-                                              Opacity="0.15"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
+                                              Foreground="{ThemeResource CardBackgroundFillColorSecondary}"
+                                              Opacity="1.0"
                                               IsHitTestVisible="False"
                                               IsTextScaleFactorEnabled="False" />
 
@@ -465,7 +466,8 @@
                                               ToolTipService.ToolTip="Packs that have finished generating"
                                               Glyph="&#xE72B;"
                                               FontSize="64"
-                                              Opacity="0.15"
+                                              Foreground="{ThemeResource CardBackgroundFillColorSecondary}"
+                                              Opacity="1.0"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               IsHitTestVisible="False"
