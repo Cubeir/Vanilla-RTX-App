@@ -130,6 +130,24 @@
                                 Click="GenerateMaterialsConfigButton_Click"
                                 ToolTipService.ToolTip="DEVELOPER TOOL FOR APPENDING OR GENERATING A BOOTSTRAP FOR MATERIALS.JSON FILE FROM AN EXISTING PBR TEXTURE PACK."
                                 IsTextScaleFactorEnabled="False" />
+                        
+                        <!-- Separator -->
+                        <Border Width="1"
+                                Margin="4,6,4,6"
+                                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                        <!-- Bootstrap materials.json from an already-PBR'd pack. -->
+                        <Button x:Name="PipelinePreviewDevToolButton"
+                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                Style="{ThemeResource SubtleButtonStyle}"
+                                Content="&#xED5E;"
+                                Width="40"
+                                Height="35"
+                                CornerRadius="0"
+                                FontSize="16"
+                                Click="PipelinePreviewDevToolButton_Click"
+                                ToolTipService.ToolTip="DEVELOPER TOOL FOR PREVIEWING AND TUNING PBR TEXTURE GENERATION PIPELINE"
+                                IsTextScaleFactorEnabled="False" />
                     </StackPanel>
                 </Grid>
             </Border>

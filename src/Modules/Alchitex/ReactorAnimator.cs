@@ -97,7 +97,6 @@ public sealed class ReactorAnimator
     private readonly Grid _tileGrid;
     private readonly Image? _bloom;
 
-    private readonly Border[,] _tiles = new Border[GridSize, GridSize];
     private readonly SolidColorBrush[,] _brushes = new SolidColorBrush[GridSize, GridSize];
 
     private readonly Random _random = new();
@@ -146,7 +145,6 @@ public sealed class ReactorAnimator
                 Grid.SetColumn(tile, col);
 
                 _brushes[row, col] = brush;
-                _tiles[row, col] = tile;
                 _tileGrid.Children.Add(tile);
             }
         }
@@ -391,12 +389,6 @@ public sealed class ReactorAnimator
                 for (var row = 0; row < GridSize; row++)
                     for (var col = 0; col < GridSize; col++)
                         AnimateTile(row, col, _random.Next(Palette.Length), 90);
-
-                // Now and then one cell drops out entirely for a beat. At this speed the
-                // grid can otherwise read as flat noise; a hole punched through it every
-                // so often gives the eye something with depth to catch on.
-                if (_random.NextDouble() < 0.12)
-                    DipTile(_random.Next(GridSize), _random.Next(GridSize), 0.35, 280);
                 break;
 
             case Core.AlchitexPhase.StrippingPbr:
@@ -459,11 +451,6 @@ public sealed class ReactorAnimator
         // The head itself: hard cut to the darkest value, no easing in - erasure is not
         // a fade, it's a removal.
         AnimateTile(headRow, headCol, Palette.Length - 1, 0);
-
-        // ...and the tile briefly goes see-through, so the acrylic panel behind the reactor
-        // shows through the hole. Erasing shouldn't just darken a cell, it should look like
-        // something was taken out of it.
-        DipTile(headRow, headCol, 0.15, 420);
 
         // Two cells behind it, recovering at different rates so the trail has depth.
         var behind1 = (head - 1 + GridSize * GridSize) % (GridSize * GridSize);
@@ -552,43 +539,6 @@ public sealed class ReactorAnimator
 
     private void AnimateTile(int row, int col, int paletteIndex, double durationMs, double delayMs = 0)
         => SetTileColor(row, col, Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)], durationMs, delayMs);
-
-    /// <summary>
-    /// Fades one tile down to <paramref name="toOpacity"/> and back over the given total
-    /// duration, punching a temporary hole in the reactor's face that the acrylic panel
-    /// behind it shows through.
-    ///
-    /// Cheaper than any of the color work: Opacity is an independent animation, so this
-    /// runs on the compositor and never touches the UI thread after it starts.
-    /// </summary>
-    private void DipTile(int row, int col, double toOpacity, double totalMs)
-    {
-        var tile = _tiles[row, col];
-
-        if (AnimationsSuspended) return; // a flicker that only ever ends where it started
-
-        var animation = new DoubleAnimationUsingKeyFrames();
-        animation.KeyFrames.Add(new EasingDoubleKeyFrame { KeyTime = TimeSpan.Zero, Value = 1.0 });
-        animation.KeyFrames.Add(new EasingDoubleKeyFrame
-        {
-            KeyTime = TimeSpan.FromMilliseconds(totalMs * 0.35),
-            Value = toOpacity,
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-        });
-        animation.KeyFrames.Add(new EasingDoubleKeyFrame
-        {
-            KeyTime = TimeSpan.FromMilliseconds(totalMs),
-            Value = 1.0,
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
-        });
-
-        Storyboard.SetTarget(animation, tile);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
-    }
 
     /// <summary>
     /// The one place a tile's color ever changes. Takes a Color rather than a palette index

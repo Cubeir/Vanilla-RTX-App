@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing.Printing;
@@ -823,13 +823,18 @@ public sealed partial class Alchitex : Window
     /// controls area. Without this the acrylic panel would stop at its last card and leave
     /// the window background showing beneath it.
     /// </summary>
-    private void MainScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void MainScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => SyncAnnouncementMinHeight();
+
+    /// <summary>Also called whenever the progress bar is shown or hidden, since its height
+    /// is part of the sum.</summary>
+    private void SyncAnnouncementMinHeight()
     {
         var progressBarHeight = GenerateProgressBar.Visibility == Visibility.Visible
             ? GenerateProgressBar.ActualHeight
             : 0;
 
-        AnnouncementBackground.MinHeight = Math.Max(0, e.NewSize.Height - AlchitexControlsArea.Height - progressBarHeight);
+        AnnouncementBackground.MinHeight = Math.Max(
+            0, MainScrollViewer.ActualHeight - AlchitexControlsArea.Height - progressBarHeight);
     }
 
     // ── PBR generation ───────────────────────────────────────────────────────
@@ -1085,7 +1090,13 @@ public sealed partial class Alchitex : Window
             // half-done pack doesn't linger in the resource_packs folder in the meantime.
             await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
 
+            // Back out of sight until the next run. It doubles as the seam between the
+            // controls and the announcements while it's up, so leaving it behind reads as
+            // a permanent divider that appeared out of nowhere.
             GenerateProgressBar.IsIndeterminate = false;
+            GenerateProgressBar.Visibility = Visibility.Collapsed;
+            SyncAnnouncementMinHeight();
+
             SetGenerationControlsEnabled(true);
             _reactor?.EndGeneration();
             _generateCts?.Dispose();
@@ -1455,6 +1466,11 @@ public sealed partial class Alchitex : Window
 
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
+    }
+
+    private void PipelinePreviewDevToolButton_Click(object sender, RoutedEventArgs e)
+    {
+
     }
 
     /// <summary>
