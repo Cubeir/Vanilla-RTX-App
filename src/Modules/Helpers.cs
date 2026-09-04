@@ -630,6 +630,12 @@ public static class Helpers
                 filteredPaths.Add("textures/" + pathWithoutExtension);
             }
 
+            // Distinct AFTER stripping extensions, not just on file paths: the same texture
+            // name can legitimately exist under two extensions, and the game resolves that
+            // to one texture (.tga > .png > .jpg > .jpeg). Alchitex creates exactly this
+            // situation when it rewrites a colour texture as .tga next to the original -
+            // without this the list carries the same entry twice.
+            filteredPaths = filteredPaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             filteredPaths.Sort();
 
             File.WriteAllText(
