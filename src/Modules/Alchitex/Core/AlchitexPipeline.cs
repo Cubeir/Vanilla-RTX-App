@@ -256,9 +256,19 @@ public static class AlchitexPipeline
             // read colorBitmap by this point; nothing else reads it after.
             if (InvisibleEmission.Apply(colorBitmap, mers, material.InvisibleEmission))
             {
-                // In place, keeping the filename, exactly like the glass pass (§4.4) - the
-                // texture set resolves this file by name, so the name must not change.
-                Helpers.WriteImageAsTGA(colorBitmap, target.ColorPath);
+                // Always written as a real .tga alongside the source, NEVER as TGA bytes
+                // shoved into whatever extension the source happened to use - that produces
+                // a corrupt file, nothing sniffs its way out of it.
+                //
+                // The extension priority rule (§4.4) is what makes this work without any
+                // cleanup: a texture set names a texture, and the game takes the first of
+                // .tga > .png > .jpg > .jpeg that exists. Writing our .tga therefore wins
+                // outright, and the original is simply never read by the game again.
+                //
+                // The original is deliberately left in place rather than deleted: the rest
+                // of generation resolved its paths before this ran and may still be holding
+                // them, and an already-.tga source is just overwritten here anyway.
+                Helpers.WriteImageAsTGA(colorBitmap, Path.ChangeExtension(target.ColorPath, ".tga"));
             }
 
             Helpers.WriteImageAsTGA(mers, target.MersPath);

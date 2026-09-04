@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -317,19 +317,38 @@ public static class PostProcess
     /// name, same rules legacy RTX Reactor applied inline during its main loop. No-op for
     /// anything that isn't glass-like.
     /// </summary>
+    /// <summary>
+    /// Reads the texture once, applies whichever glass passes its name calls for, and writes
+    /// the result once - as a real .tga beside the original (§4.4: .tga outranks .png/.jpg/
+    /// .jpeg, so the game reads ours and the source is simply never loaded again; the source
+    /// stays put for anything in this app still holding its path).
+    ///
+    /// The single read/write is not just tidiness. Plain glass runs through BOTH modifiers,
+    /// and when each one owned its own read-modify-write they chained only because each was
+    /// writing back into the file the next one read. Writing .tga while still reading the
+    /// original would have left the second pass reading the untouched source and silently
+    /// discarding the first's work. Passing one bitmap through both removes the hazard
+    /// rather than working around it.
+    /// </summary>
     public static void ProcessColorTextureIfGlassLike(string imagePath)
     {
         var nameLower = Path.GetFileNameWithoutExtension(imagePath).ToLowerInvariant();
 
-        if (nameLower.Contains("glass"))
+        var isGlass = nameLower.Contains("glass");
+        var isBasicGlassLike = isGlass || nameLower.Contains("copper_grate");
+
+        if (!isBasicGlassLike) return;
+
+        using var bitmap = Helpers.ReadImage(imagePath, maxOpacity: false);
+
+        // Scoped so the writable view is released before WriteImageAsTGA reads the bitmap.
+        using (var fb = new FastBitmap(bitmap, writable: true))
         {
-            ApplyGlassModifier(imagePath);
+            if (isGlass) ApplyGlassModifier(fb);
+            if (isBasicGlassLike) ApplyBasicGlassModifier(fb);
         }
 
-        if (nameLower.Contains("copper_grate") || nameLower.Contains("glass"))
-        {
-            ApplyBasicGlassModifier(imagePath);
-        }
+        Helpers.WriteImageAsTGA(bitmap, Path.ChangeExtension(imagePath, ".tga"));
     }
 
     /// <summary>
@@ -337,11 +356,10 @@ public static class PostProcess
     /// glass reads correctly under RTX's refraction model. Ported unchanged from legacy
     /// GlassModifier.
     /// </summary>
-    public static void ApplyGlassModifier(string imagePath)
+    /// <remarks>Operates on a bitmap rather than a path: see ProcessColorTextureIfGlassLike
+    /// for why the read and the write belong to the caller.</remarks>
+    private static void ApplyGlassModifier(FastBitmap fb)
     {
-        using var bitmap = Helpers.ReadImage(imagePath, maxOpacity: false);
-        using var fb = new FastBitmap(bitmap, writable: true);
-
         var coefficient = ((GlassMidAlpha - GlassMinOpacity) * Math.Pow(255, 2)) / GlassMidAlpha;
 
         for (var y = 0; y < fb.Height; y++)
@@ -361,8 +379,6 @@ public static class PostProcess
                 fb[x, y] = Color.FromArgb(reduced, boosted.R, boosted.G, boosted.B);
             }
         }
-
-        Helpers.WriteImageAsTGA(bitmap, imagePath);
     }
 
     /// <summary>
@@ -370,11 +386,10 @@ public static class PostProcess
     /// required for regular/tinted glass and copper grate to display correctly under RTX.
     /// Ported unchanged from legacy BasicGlassModifier.
     /// </summary>
-    public static void ApplyBasicGlassModifier(string imagePath)
+    /// <remarks>Operates on a bitmap rather than a path: see ProcessColorTextureIfGlassLike
+    /// for why the read and the write belong to the caller.</remarks>
+    private static void ApplyBasicGlassModifier(FastBitmap fb)
     {
-        using var bitmap = Helpers.ReadImage(imagePath, maxOpacity: false);
-        using var fb = new FastBitmap(bitmap, writable: true);
-
         for (var y = 0; y < fb.Height; y++)
         {
             for (var x = 0; x < fb.Width; x++)
@@ -384,8 +399,6 @@ public static class PostProcess
                     fb[x, y] = Color.FromArgb(0, 255, 255, 255);
             }
         }
-
-        Helpers.WriteImageAsTGA(bitmap, imagePath);
     }
 
     private static (float h, float s, float v) RgbToHsv(byte r, byte g, byte b)
