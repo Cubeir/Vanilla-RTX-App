@@ -250,6 +250,10 @@ public static class Helpers
 
         while (retries-- > 0)
         {
+            // Set once the destination is known and cleared once the file is complete, so
+            // the finally below can tell a finished download from an abandoned one.
+            string? partialPath = null;
+
             using var timeoutCts = timeout.HasValue
                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                 : null;
@@ -328,6 +332,8 @@ public static class Helpers
                 }
 
                 // === DOWNLOAD WITH PROGRESS TRACKING ===
+                partialPath = savingLocation;
+
                 using var contentStream = await response.Content.ReadAsStreamAsync();
                 using var fileStream = new FileStream(savingLocation, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true);
 
@@ -362,6 +368,8 @@ public static class Helpers
                     }
                 }
 
+                partialPath = null;
+
                 Report("Download finished successfully.", LogLevel.Success);
                 return (true, savingLocation);
             }
@@ -389,6 +397,17 @@ public static class Helpers
             {
                 Report($"Error during download: {ex.Message}", LogLevel.Error);
                 return (false, null);
+            }
+            finally
+            {
+                // A dropped connection leaves a half-written file behind, and the naming pass
+                // above uniquifies around whatever already exists - so without this, retrying
+                // a download that keeps failing leaves foo.json, foo-1.json, foo-2.json... in
+                // the Downloads folder forever.
+                if (partialPath is not null)
+                {
+                    try { File.Delete(partialPath); } catch { }
+                }
             }
         }
 

@@ -199,6 +199,9 @@ public static class AssetUpdater
 
             if (!succeeded || downloaded is null) return false;
 
+            // The destination name comes from the manifest, never from what came back:
+            // Helpers.Download uniquifies around anything already sitting in its folder, so
+            // this can arrive as materials-1.json and still has to land as materials.json.
             File.Move(downloaded, Path.Combine(cacheFolder, asset.FileName), overwrite: true);
             downloaded = null;
 
