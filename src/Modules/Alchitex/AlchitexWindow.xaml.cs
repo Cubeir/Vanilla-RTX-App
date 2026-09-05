@@ -90,11 +90,19 @@ public sealed partial class Alchitex : Window
     private CancellationTokenSource? _generateCts;
 
     /// <summary>
-    /// Set by MainWindow right after constructing this window (mirroring how it already
-    /// sets size/position in LaunchAlchitexButton_Click) so orphaned-temp-folder cleanup
-    /// scans the correct edition's resource-pack folders. Defaults to false (stable).
+    /// Which edition's resource-pack folders orphaned-temp-folder cleanup sweeps.
+    ///
+    /// Snapshotted at construction rather than read live, because it has to match the
+    /// edition the queued packs were selected under - a temp folder left behind by this
+    /// session is in that edition's tree, wherever the toggle points later. MainWindow
+    /// disables the Preview toggle for as long as this window is open, so today the two can
+    /// never diverge; the snapshot is what keeps that from being load-bearing.
+    ///
+    /// It defaults to the current target instead of to false, so opening the window is
+    /// enough - this used to require MainWindow to remember to assign it, and it never did,
+    /// which left every Preview user's sweep looking in the stable folders.
     /// </summary>
-    public bool IsTargetingPreview { get; set; }
+    public bool IsTargetingPreview { get; set; } = TunerVariables.Persistent.IsTargetingPreview;
 
     /// <summary>
     /// Mirrors the sibling modules' report-on-close convention (BetterRTX/DLSS/LUT
