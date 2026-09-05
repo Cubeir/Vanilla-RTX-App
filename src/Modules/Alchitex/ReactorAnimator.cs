@@ -35,11 +35,10 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///     orbits the eight perimeter tiles with a fading tail behind it, which is the one
 ///     stance here that reads as "this is not finished, and it is not your turn yet".
 ///
-/// Most of the running behaviors are travelling gradients rather than random flicker (see
-/// StepGradientWave). The resting arrangement is already a gradient along one diagonal, so
-/// rolling that same gradient across the grid keeps every frame a thing the mark could
-/// legitimately look like, and gives each phase its own direction to move in - which is far
-/// more legible than nine tiles picking new colors independently.
+/// Running behaviors are built from two ingredients: tiles firing at random, and a
+/// travelling gradient (StepGradientWave) - the resting arrangement's own diagonal ramp
+/// rolled across the grid. Phases that mean a direction are pure gradient and keep theirs;
+/// GeneratingTextures mixes both (StepBusyWork).
 ///
 /// Everything routes through AnimateTile/SetBloom, which honor
 /// TunerVariables.Persistent.SuspendUIAnimations: with it on, every transition is applied
@@ -524,11 +523,8 @@ public sealed class ReactorAnimator
 
         switch (phase)
         {
-            // The busiest thing the pipeline does, and the only phase whose gradient is
-            // free to change direction: it re-rolls its axis at the end of every cycle, so
-            // a long run keeps finding new ways to move instead of settling into one.
             case Core.AlchitexPhase.GeneratingTextures:
-                StepGradientWave();
+                StepBusyWork();
                 break;
 
             case Core.AlchitexPhase.StrippingPbr:
@@ -604,6 +600,45 @@ public sealed class ReactorAnimator
     private bool _waveForward = true;
     private int _wavePhase;
 
+    // Pulses left in the current sweep. Zero means back to firing at random.
+    private int _waveBurstRemaining;
+
+    // In pulses rather than seconds, since the pulse rate is the pipeline's own throughput.
+    // Works out to a sweep every couple of seconds, lasting about one.
+    private const double WaveBurstChance = 0.04;
+    private const int MinWaveBurstSteps = 8;
+    private const int MaxWaveBurstSteps = 15;
+
+    /// <summary>
+    /// Textures being written: mostly every tile firing at once, with a sweep cutting
+    /// through every couple of seconds.
+    ///
+    /// The mix is deliberate. Pure noise reads as static and stops meaning anything after a
+    /// second of watching, and a pure gradient is far too orderly for a phase that means
+    /// "flat out, in no particular order".
+    /// </summary>
+    private void StepBusyWork()
+    {
+        if (_waveBurstRemaining > 0)
+        {
+            _waveBurstRemaining--;
+            StepGradientWave();
+            return;
+        }
+
+        for (var row = 0; row < GridSize; row++)
+            for (var col = 0; col < GridSize; col++)
+                AnimateTile(row, col, _random.Next(Palette.Length), 90);
+
+        if (_random.NextDouble() >= WaveBurstChance) return;
+
+        // Phase 0 so the sweep leaves the resting arrangement rather than cutting in
+        // halfway through a ramp.
+        RerollWave();
+        _wavePhase = 0;
+        _waveBurstRemaining = _random.Next(MinWaveBurstSteps, MaxWaveBurstSteps + 1);
+    }
+
     /// <summary>
     /// Advances a gradient one step along its axis. Every tile is repainted every step, but
     /// from a single ramp rather than independently, so what moves is the arrangement -
@@ -629,11 +664,7 @@ public sealed class ReactorAnimator
             _wavePhase = 0;
 
             // Only a wave that wasn't given a direction gets to pick a new one.
-            if (!axis.HasValue)
-            {
-                _waveAxis = (WaveAxis)_random.Next(4);
-                _waveForward = _random.NextDouble() < 0.5;
-            }
+            if (!axis.HasValue) RerollWave();
         }
 
         var offset = _waveForward ? _wavePhase : -_wavePhase;
@@ -641,6 +672,12 @@ public sealed class ReactorAnimator
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
                 AnimateTile(row, col, RampIndex(WaveRank(_waveAxis, row, col) + offset), WaveStepMs);
+    }
+
+    private void RerollWave()
+    {
+        _waveAxis = (WaveAxis)_random.Next(4);
+        _waveForward = _random.NextDouble() < 0.5;
     }
 
     /// <summary>Where a tile sits along an axis, on the palette's own 0..4 scale. The
