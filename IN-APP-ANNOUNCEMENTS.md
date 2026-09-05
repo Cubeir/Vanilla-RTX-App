@@ -151,8 +151,9 @@ Diligently working on it! Expect its initial arrival later next month. I'm tryin
 
 # AlchitexAnnouncements [glyph:"F1D6"]
 RTX Reactor can add full RTX support to any texture pack. Results may vary and not all texture packs or all textures will be perfect.
+Select the packs you want first from the main menu, then come here and press the giant RTX Reactor button.
 Packs that are marked as "RTX Reactor Candidate" in the pack selection menu are more likely to be suitable for gaining RTX support through RTX Reactor.
-Marketplace resource packs are also not supported. You can temporarily dismiss any resource pack from the queue by clicking it.
+Marketplace resource packs are not supported.
 
 ### Info [glyph:"F167"]
 Difference of Secondary PBR texture options:
@@ -160,4 +161,13 @@ Difference of Secondary PBR texture options:
 - Automatic: automatically picks between Normal Maps, Heightmaps or Both
 - Heightmap: Suitable only for low-resolution texture packs, fakes depth by providing relief around some pixels. Can only be selected for texture packs that are 32x or lower, otherwise it falls back to generating Normal map.
 - Normal map: Suitable for any resolution, can be selected for any texture pack, defines the direction that light bounces off of each individual pixel, faking curvature and depth on surfaces. Also adds Parallax Occlusion Mapping data (for BetterRTX 1.5+)
-- Both (like Opus): generates both heightmaps and normal maps and combine them together, just like how Vanilla RTX Opus is the composition of regular Vanilla RTX + Vanilla RTX Normals. Suitable for 64x or lower resolution textures.
+- Both (like Opus): generates both heightmaps and normal maps and combine them together, just like how Vanilla RTX Opus is the composition of regular Vanilla RTX + Vanilla RTX Normals. Suitable for 64x or lower resolution texture packs.
+
+### Info 2 [glyph:"F167"]
+Add per-biome RTX atmospheric configs: if toggled on, adds the same per-biome atmospheric variation as Vanilla RTX into the packs.
+This is needed for fog, light shafts, and unique per-biome water color and atmospher colors to appear, since most packs don't define these features (especially not for RTX) it is recommended that you leave this on.
+If it causes issues for a certain texture pack or takes away from its art direction, turn it off.
+
+You can temporarily dismiss any resource pack from the queue by clicking it.
+
+Uninstall the original pack toggle: If on, the original pack is deleted once and only if the RTX-capable version of the pack is finalized and installed. Convenient to leave on if you repeatedly come back here to re-add RTX support to your favorite texture pack's updates.

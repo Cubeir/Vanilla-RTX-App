@@ -458,7 +458,7 @@
                                             <ToggleSwitch x:Name="AddFogToggle"
                                                           Header="Add per-biome RTX atmospheric configs"
                                                           IsOn="True"
-                                                          Margin="0,6,0,0"
+                                                          Margin="0,4,0,0"
                                                           IsTextScaleFactorEnabled="False"
                                                           ToolTipService.ToolTip="Adds detailed per-biome fog settings to packs provided by Vanilla RTX, this may override their existing per-biome configurations.
                                                           &#x0a;&#x0a;This is generally recommended for most packs, otherwise there likely won't be any fog, light shafts or other unique atmospheric treats across biomes such as different water colors." />
@@ -466,7 +466,7 @@
                                             <ToggleSwitch x:Name="DeleteOriginalToggle"
                                                           Header="Uninstall the original pack"
                                                           IsOn="False"
-                                                          Margin="0,-6,0,0"
+                                                          Margin="0,-8,0,0"
                                                           IsTextScaleFactorEnabled="False"
                                                           ToolTipService.ToolTip="Deletes each pack from your installed packs once its RTX version is finished and installed.
                                                           &#x0a;&#x0a;Nothing is deleted if generation fails or is otherwise stopped mid operation." />
