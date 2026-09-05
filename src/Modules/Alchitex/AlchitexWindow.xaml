@@ -561,7 +561,7 @@
                                     <Image x:Name="ReactorBloom"
                                            Source="ms-appx:///Modules/Alchitex/Assets/reactor.bloom.png"
                                            Stretch="Uniform"
-                                           Opacity="0.35" />
+                                           Opacity="0.6" />
                                 </Grid>
                             </Button>
 

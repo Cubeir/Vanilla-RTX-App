@@ -30,6 +30,16 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///     to near zero - the reactor visibly winding up under the finger.
 ///   - Generating: one behavior per phase (see Pulse). Underneath all of them the bloom
 ///     breathes on a loop, which is what separates "running" from "idle" at a glance.
+///   - Waiting: the reactor is powered but blocked on something outside itself - a
+///     confirmation dialog, a pack being uninstalled, a folder sweep. A single bright cell
+///     orbits the eight perimeter tiles with a fading tail behind it, which is the one
+///     stance here that reads as "this is not finished, and it is not your turn yet".
+///
+/// Most of the running behaviors are travelling gradients rather than random flicker (see
+/// StepGradientWave). The resting arrangement is already a gradient along one diagonal, so
+/// rolling that same gradient across the grid keeps every frame a thing the mark could
+/// legitimately look like, and gives each phase its own direction to move in - which is far
+/// more legible than nine tiles picking new colors independently.
 ///
 /// Everything routes through AnimateTile/SetBloom, which honor
 /// TunerVariables.Persistent.SuspendUIAnimations: with it on, every transition is applied
@@ -85,14 +95,34 @@ public sealed class ReactorAnimator
     // thing the reactor's own palette contains.
     private static readonly Color AbortBackdrop = Palette[Palette.Length - 1];
 
+    // The eight perimeter tiles in clockwise order, starting top-left. The waiting stance
+    // walks a bright head around this ring; the centre tile is deliberately not part of it,
+    // so the ring reads as a ring rather than as nine tiles taking turns.
+    private static readonly (int Row, int Col)[] OrbitRing =
+    {
+        (0, 0), (0, 1), (0, 2), (1, 2), (2, 2), (2, 1), (2, 0), (1, 0),
+    };
+
     private const int GridSize = 3;
 
     // Nothing reaches the compositor more often than this, however hard the pipeline
     // hammers Pulse. 70ms still reads as "flickering fast" to the eye.
     private const double MinPulseIntervalMs = 70;
 
-    private const double RestBloomMin = 0.3;
-    private const double RestBloomMax = 0.6;
+    // How fast the waiting stance's head moves around the ring. Slow enough to read as one
+    // travelling cell rather than a flicker, fast enough to look impatient.
+    private const double OrbitStepMs = 110;
+
+    // A travelling gradient's cycle length: the palette walked out and back again, so the
+    // brightest and darkest ends each come round once per cycle with no seam between them.
+    private static readonly int WavePeriod = (Palette.Length - 1) * 2;
+
+    // Slightly longer than the pulse throttle, so consecutive steps overlap and the band
+    // slides instead of stepping.
+    private const double WaveStepMs = 150;
+
+    private const double RestBloomMin = 0.45;
+    private const double RestBloomMax = 0.85;
 
     private readonly Grid _tileGrid;
     private readonly Image? _bloom;
@@ -103,11 +133,13 @@ public sealed class ReactorAnimator
 
     private Storyboard? _bloomLoop;
     private DispatcherTimer? _pressHoldTimer;
+    private DispatcherTimer? _orbitTimer;
     private DispatcherTimer? _abortHintTimer;
     private DispatcherTimer? _abortHintEndTimer;
     private DateTime _lastPulseUtc = DateTime.MinValue;
     private bool _isGenerating;
     private bool _isAbortHintActive;
+    private bool _isWaiting;
     private bool _isInitialized;
 
     private static bool AnimationsSuspended => TunerVariables.Persistent.SuspendUIAnimations;
@@ -161,6 +193,7 @@ public sealed class ReactorAnimator
         if (!_isInitialized) return;
 
         StopPressHold();
+        StopOrbit();
         StopBloomLoop();
         _isGenerating = false;
 
@@ -224,10 +257,117 @@ public sealed class ReactorAnimator
 
         _isGenerating = false;
 
-        // The pointer may still be sitting on the button when the run ends. Drop the abort
-        // stance explicitly, or its flag would keep swallowing every later pulse.
+        // The pointer may still be sitting on the button when the run ends, and a wait can
+        // still be up if the run ended out from under one. Drop both explicitly, or their
+        // flags would keep swallowing every later pulse.
         EndAbortHintImmediate();
+        StopOrbit();
         EnterRest();
+    }
+
+    // ── Waiting stance ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The reactor is powered and blocked on something it doesn't control: a confirmation
+    /// dialog the user hasn't answered, a pack being uninstalled, a folder sweep. A single
+    /// bright cell orbits the eight perimeter tiles with a fading tail behind it - the one
+    /// unmistakably "still going, nothing to show yet" shape a 3x3 grid can make.
+    ///
+    /// Like the abort stance it claims the whole grid, so Pulse is ignored while it's up.
+    /// Unlike the abort stance it is not a warning, so it keeps the bloom alive underneath -
+    /// during a run that's the loop already breathing, and outside one it starts it, because
+    /// a wait outside a run is still the machine doing something.
+    ///
+    /// Safe to call twice; the second call is a no-op rather than a restart, so nesting
+    /// waits (a dialog inside a batch, say) can't reset the orbit halfway round.
+    /// </summary>
+    public void BeginWaiting()
+    {
+        if (!_isInitialized || _isWaiting) return;
+
+        _isWaiting = true;
+        StopPressHold();
+
+        _orbitHead = 0;
+        PaintOrbit(220);
+
+        // Outside a run there's no loop yet; inside one it's already going and this is a
+        // no-op that just re-arms it after a suspended-animations toggle.
+        StartBloomLoop();
+
+        if (AnimationsSuspended) return;
+
+        StopOrbitTimer();
+        _orbitTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(OrbitStepMs) };
+        _orbitTimer.Tick += (s, e) =>
+        {
+            _orbitHead = (_orbitHead + 1) % OrbitRing.Length;
+            PaintOrbit(OrbitStepMs * 2);
+        };
+        _orbitTimer.Start();
+    }
+
+    /// <summary>Whatever the reactor was waiting on has happened. A run in progress goes
+    /// back to being repainted by its pulses; otherwise the reactor settles.</summary>
+    public void EndWaiting()
+    {
+        if (!_isInitialized || !_isWaiting) return;
+
+        StopOrbit();
+
+        if (_isGenerating)
+        {
+            // The next pulse repaints the grid properly; this just gets the orbit off it in
+            // the meantime, the same way EndAbortHintImmediate does.
+            for (var row = 0; row < GridSize; row++)
+                for (var col = 0; col < GridSize; col++)
+                    AnimateTile(row, col, RestLayout[row, col], 220);
+
+            return;
+        }
+
+        EnterRest();
+    }
+
+    // Which ring tile the bright head is currently on, as an index into OrbitRing.
+    private int _orbitHead;
+
+    /// <summary>
+    /// Draws the orbit as it stands: the head at its brightest, the three tiles behind it
+    /// stepping down through the palette, the rest of the ring dark. The centre holds its
+    /// resting value so there's something for the ring to be read against.
+    /// </summary>
+    private void PaintOrbit(double durationMs)
+    {
+        // The abort stance outranks this - the user is hovering a button that stops the run,
+        // and that has to win. The orbit repaints itself on its next tick once the red drops.
+        if (_isAbortHintActive) return;
+
+        for (var i = 0; i < OrbitRing.Length; i++)
+        {
+            var (row, col) = OrbitRing[i];
+
+            // How far behind the head this tile sits, walking backwards around the ring.
+            var trail = (_orbitHead - i + OrbitRing.Length) % OrbitRing.Length;
+
+            AnimateTile(row, col, Math.Min(trail, Palette.Length - 1), durationMs);
+        }
+
+        AnimateTile(1, 1, RestLayout[1, 1], durationMs);
+    }
+
+    private void StopOrbit()
+    {
+        StopOrbitTimer();
+        _isWaiting = false;
+    }
+
+    private void StopOrbitTimer()
+    {
+        if (_orbitTimer == null) return;
+
+        _orbitTimer.Stop();
+        _orbitTimer = null;
     }
 
     // ── Abort stance ─────────────────────────────────────────────────────────
@@ -372,8 +512,9 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
-        // The abort stance owns the whole grid while it's up - see BeginAbortHint.
-        if (_isAbortHintActive) return;
+        // The abort stance and the waiting orbit each own the whole grid while they're up -
+        // see BeginAbortHint / BeginWaiting.
+        if (_isAbortHintActive || _isWaiting) return;
 
         // Throttle everything. GeneratingTextures alone can arrive thousands of times a
         // second; the rest are rare but there's no reason to special-case them.
@@ -383,12 +524,11 @@ public sealed class ReactorAnimator
 
         switch (phase)
         {
-            // Every tile jumps at once, fast: the busiest thing the pipeline does, and it
-            // should look like it.
+            // The busiest thing the pipeline does, and the only phase whose gradient is
+            // free to change direction: it re-rolls its axis at the end of every cycle, so
+            // a long run keeps finding new ways to move instead of settling into one.
             case Core.AlchitexPhase.GeneratingTextures:
-                for (var row = 0; row < GridSize; row++)
-                    for (var col = 0; col < GridSize; col++)
-                        AnimateTile(row, col, _random.Next(Palette.Length), 90);
+                StepGradientWave();
                 break;
 
             case Core.AlchitexPhase.StrippingPbr:
@@ -399,17 +539,32 @@ public sealed class ReactorAnimator
                 PlayImplosion();
                 break;
 
-            // Staging and scanning: nothing is being written yet. A single tile lifts
-            // toward the bright end, like a needle twitching before the machine spins up.
+            // Staging: nothing is being written yet. A single tile lifts toward the bright
+            // end, like a needle twitching before the machine spins up.
             case Core.AlchitexPhase.Staging:
-            case Core.AlchitexPhase.ScanningTextures:
                 AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(0, 2), 260);
                 break;
 
-            // The finishing passes each walk a bright cell one step along a random path,
-            // so the last stretch of a run reads as something tracing its way out.
+            // Reading the pack's folders top to bottom - so does the gradient. Locked
+            // downward, because a scan that reversed direction would be a lie about what
+            // the pass is doing.
+            case Core.AlchitexPhase.ScanningTextures:
+                StepGradientWave(WaveAxis.Vertical, forward: true);
+                break;
+
+            // Water and glass sweep sideways, the way a pass over a surface does.
             case Core.AlchitexPhase.WaterAndGlass:
+                StepGradientWave(WaveAxis.Horizontal, forward: true);
+                break;
+
+            // Fog rises.
             case Core.AlchitexPhase.Fog:
+                StepGradientWave(WaveAxis.Vertical, forward: false);
+                break;
+
+            // The last two passes each walk a bright cell one step along a random path, so
+            // the end of a run reads as something tracing its way out rather than another
+            // sweep - these are bookkeeping over a finished pack, not work across it.
             case Core.AlchitexPhase.Finalizing:
             case Core.AlchitexPhase.Bookkeeping:
                 StepTrail();
@@ -428,6 +583,84 @@ public sealed class ReactorAnimator
     {
         for (var i = 0; i < count; i++)
             AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(Palette.Length), durationMs);
+    }
+
+    /// <summary>The four axes a gradient can travel along. Ranks are scaled so every axis
+    /// spans the whole palette across the grid, whether it crosses three tiles or five.</summary>
+    private enum WaveAxis
+    {
+        /// <summary>Left to right.</summary>
+        Horizontal,
+        /// <summary>Top to bottom.</summary>
+        Vertical,
+        /// <summary>Top-left to bottom-right.</summary>
+        Diagonal,
+        /// <summary>Top-right to bottom-left - the axis the resting arrangement itself sits
+        /// on, so a wave along it is literally the logo's own gradient set moving.</summary>
+        AntiDiagonal,
+    }
+
+    private WaveAxis _waveAxis = WaveAxis.AntiDiagonal;
+    private bool _waveForward = true;
+    private int _wavePhase;
+
+    /// <summary>
+    /// Advances a gradient one step along its axis. Every tile is repainted every step, but
+    /// from a single ramp rather than independently, so what moves is the arrangement -
+    /// which is why this reads as the mark itself flowing instead of nine tiles flickering.
+    ///
+    /// Driven by Pulse, not by a timer: the wave's speed is the pipeline's actual
+    /// throughput, so a pack full of tiny textures visibly races and a slow one crawls.
+    ///
+    /// A caller that names an axis owns it for as long as its phase lasts (see Pulse's phase
+    /// map). Called with no axis, the wave re-rolls its own direction at the end of each
+    /// cycle - that's the "keeps finding new ways to move" behavior, and it belongs only to
+    /// the phase that runs long enough to need it.
+    /// </summary>
+    private void StepGradientWave(WaveAxis? axis = null, bool? forward = null)
+    {
+        if (axis.HasValue) _waveAxis = axis.Value;
+        if (forward.HasValue) _waveForward = forward.Value;
+
+        _wavePhase++;
+
+        if (_wavePhase >= WavePeriod)
+        {
+            _wavePhase = 0;
+
+            // Only a wave that wasn't given a direction gets to pick a new one.
+            if (!axis.HasValue)
+            {
+                _waveAxis = (WaveAxis)_random.Next(4);
+                _waveForward = _random.NextDouble() < 0.5;
+            }
+        }
+
+        var offset = _waveForward ? _wavePhase : -_wavePhase;
+
+        for (var row = 0; row < GridSize; row++)
+            for (var col = 0; col < GridSize; col++)
+                AnimateTile(row, col, RampIndex(WaveRank(_waveAxis, row, col) + offset), WaveStepMs);
+    }
+
+    /// <summary>Where a tile sits along an axis, on the palette's own 0..4 scale. The
+    /// anti-diagonal case is exactly RestLayout, which is the whole trick: at phase 0 an
+    /// anti-diagonal wave IS the resting arrangement.</summary>
+    private static int WaveRank(WaveAxis axis, int row, int col) => axis switch
+    {
+        WaveAxis.Horizontal => col * 2,
+        WaveAxis.Vertical => row * 2,
+        WaveAxis.Diagonal => row + col,
+        _ => row + (GridSize - 1 - col),
+    };
+
+    /// <summary>Walks the palette out and back again rather than wrapping it, so the cycle
+    /// has no seam where the darkest tile snaps back to the brightest.</summary>
+    private static int RampIndex(int position)
+    {
+        var wrapped = ((position % WavePeriod) + WavePeriod) % WavePeriod;
+
+        return wrapped <= Palette.Length - 1 ? wrapped : WavePeriod - wrapped;
     }
 
     // Where the erasure head currently is, as a flat 0..8 index in row-major order.
@@ -599,27 +832,40 @@ public sealed class ReactorAnimator
         storyboard.Begin();
     }
 
-    /// <summary>The bloom breathing under everything else for as long as a run lasts.</summary>
+    // The breath, as (millisecond, opacity) pairs. Uneven on purpose: two of the three
+    // peaks go all the way to 1.0 and the troughs never fully collapse, so the reactor reads
+    // as something with a lot of light in it being modulated - not something being switched
+    // on and off. An even sine would loop invisibly; this one you notice.
+    private static readonly (double AtMs, double Opacity)[] BloomBreath =
+    {
+        (0, 0.35),
+        (760, 1.00),
+        (1500, 0.50),
+        (2200, 0.88),
+        (2900, 0.40),
+        (3500, 1.00),
+        (4200, 0.35),
+    };
+
+    /// <summary>The bloom breathing under everything else for as long as a run - or a wait -
+    /// lasts. Calling it while it's already running restarts it, which is why every caller
+    /// checks that it isn't.</summary>
     private void StartBloomLoop()
     {
         if (_bloom == null || AnimationsSuspended) return;
-
-        StopBloomLoop();
+        if (_bloomLoop != null) return;
 
         var animation = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever };
-        animation.KeyFrames.Add(new EasingDoubleKeyFrame { KeyTime = TimeSpan.Zero, Value = 0.15 });
-        animation.KeyFrames.Add(new EasingDoubleKeyFrame
+
+        foreach (var (atMs, opacity) in BloomBreath)
         {
-            KeyTime = TimeSpan.FromMilliseconds(900),
-            Value = 0.70,
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-        });
-        animation.KeyFrames.Add(new EasingDoubleKeyFrame
-        {
-            KeyTime = TimeSpan.FromMilliseconds(1800),
-            Value = 0.15,
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-        });
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame
+            {
+                KeyTime = TimeSpan.FromMilliseconds(atMs),
+                Value = opacity,
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            });
+        }
 
         Storyboard.SetTarget(animation, _bloom);
         Storyboard.SetTargetProperty(animation, "Opacity");
@@ -650,6 +896,7 @@ public sealed class ReactorAnimator
     public void Shutdown()
     {
         StopPressHold();
+        StopOrbit();
         StopAbortHint();
         StopBloomLoop();
     }

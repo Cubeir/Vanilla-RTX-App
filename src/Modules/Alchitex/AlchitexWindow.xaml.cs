@@ -1143,7 +1143,7 @@ public sealed partial class Alchitex : Window
             // Every batch starts by sweeping any alchitex_temp_* folder left behind by a
             // previous run that didn't finish (crash, force-close, a prior Abort). Cheap,
             // and means debris never has a chance to accumulate across sessions.
-            await Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview));
+            await WhileWaitingAsync(() => Task.Run(() => AlchitexStaging.CleanupOrphanedTempFolders(IsTargetingPreview)));
 
             SetStatus($"Preparing ({queue.Count} pack{(queue.Count == 1 ? "" : "s")})...");
             _reactor?.BeginGeneration();
@@ -1217,7 +1217,7 @@ public sealed partial class Alchitex : Window
                     {
                         SetStatus($"[{packIndex + 1}/{queue.Count}] {pack.Name}: Uninstalling the original pack...");
                         _reactor?.Pulse(AlchitexPhase.RemovingPack);
-                        await DeleteOriginalPackAsync(pack.Location, pack.Name);
+                        await WhileWaitingAsync(() => DeleteOriginalPackAsync(pack.Location, pack.Name));
                     }
 
                     // Out the bottom of the reactor and into the output row. Keyed on the
@@ -1443,9 +1443,9 @@ public sealed partial class Alchitex : Window
 
             SetStatus($"Waiting for your decision on {pack.Name}...");
 
-            var confirmed = alreadyDeclaresPbr
-                ? await ConfirmRegenerateExistingPbrAsync(pack.Name, pack.Type)
-                : await ConfirmUnsuitablePackAsync(pack.Name);
+            var confirmed = await WhileWaitingAsync(() => alreadyDeclaresPbr
+                ? ConfirmRegenerateExistingPbrAsync(pack.Name, pack.Type)
+                : ConfirmUnsuitablePackAsync(pack.Name));
 
             if (confirmed)
             {
@@ -1471,6 +1471,43 @@ public sealed partial class Alchitex : Window
         }
 
         return queue;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="work"/> with the reactor in its waiting stance (see
+    /// ReactorAnimator.BeginWaiting) and drops the stance however the work ends.
+    ///
+    /// For anything the user is blocked on with nothing else to look at: a confirmation
+    /// dialog, a pack being uninstalled, a folder sweep. Nesting is safe - BeginWaiting is a
+    /// no-op while a wait is already up - but the inner wait's End would drop the outer
+    /// one's stance early, so keep these calls flat, one per blocking step.
+    /// </summary>
+    private async Task<T> WhileWaitingAsync<T>(Func<Task<T>> work)
+    {
+        _reactor?.BeginWaiting();
+
+        try
+        {
+            return await work();
+        }
+        finally
+        {
+            _reactor?.EndWaiting();
+        }
+    }
+
+    private async Task WhileWaitingAsync(Func<Task> work)
+    {
+        _reactor?.BeginWaiting();
+
+        try
+        {
+            await work();
+        }
+        finally
+        {
+            _reactor?.EndWaiting();
+        }
     }
 
     /// <summary>Asked once per already-PBR pack. Defaults to Skip - the destructive option
@@ -1621,7 +1658,8 @@ public sealed partial class Alchitex : Window
 
         try
         {
-            var result = await Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, outputPath));
+            var result = await WhileWaitingAsync(
+                () => Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, outputPath)));
             SetStatusThenRevert($"materials.json updated: {result.EntriesWritten} new entries " +
                                 $"({result.Skipped} skipped, {result.Failed} failed) -> {result.OutputPath}");
         }
@@ -1743,7 +1781,7 @@ public sealed partial class Alchitex : Window
     {
         if (IsGenerating || _testBenchCts != null) return;
 
-        var plan = await Task.Run(() => PbrTestBench.Survey(selectedPaths));
+        var plan = await WhileWaitingAsync(() => Task.Run(() => PbrTestBench.Survey(selectedPaths)));
 
         if (plan.IsEmpty)
         {
@@ -1751,7 +1789,7 @@ public sealed partial class Alchitex : Window
             return;
         }
 
-        if (!await ConfirmTestBenchRunAsync(plan)) return;
+        if (!await WhileWaitingAsync(() => ConfirmTestBenchRunAsync(plan))) return;
 
         // Read the same way a real run reads them, so the Secondary PBR dropdown means
         // exactly what it means for a pack.
