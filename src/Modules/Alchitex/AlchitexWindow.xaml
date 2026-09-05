@@ -411,6 +411,26 @@
                                                     Spacing="32"
                                                     VerticalAlignment="Top">
 
+                                            <!-- ── Secondary PBR mode ──────────────────────────────
+                                                 The closed box is acrylic rather than the default
+                                                 flat grey, so it matches its own dropdown and the
+                                                 panel it sits on instead of being the one opaque
+                                                 slab in an otherwise translucent window.
+
+                                                 Done as lightweight styling - overriding the four
+                                                 ComboBoxBackground* keys inside the control's own
+                                                 Resources - rather than by retemplating or by
+                                                 setting Background directly: the template swaps
+                                                 that brush per visual state, so anything set on
+                                                 the control itself survives only until the pointer
+                                                 touches it. Same tint colour and the same brush as
+                                                 every other surface in this window
+                                                 (OverlayBackgroundColor, which is itself
+                                                 theme-swapped app-wide), with only TintOpacity
+                                                 moving between states - so hover and press still
+                                                 read as hover and press, they just do it by
+                                                 thickening the material instead of replacing it.
+                                                 ──────────────────────────────────────────────── -->
                                             <ComboBox x:Name="SecondaryPbrModeComboBox"
                                                       Header="Secondary PBR texture"
                                                       HorizontalAlignment="Stretch"
@@ -420,6 +440,25 @@
                                                       &#x0a;Automatic: automatically picks between Normal map and Heightmap depending on texture resolution.
                                                       &#x0a;Normal map: fakes depth on textures by defining how light bounces off of each individual pixel on textures + Parallax Occlusion Mapping data when supported.
                                                       &#x0a;Heightmap: uses height information to create depth perception on textures specifically for low resolution textures (Recommended only for texture packs lower than 32x).">
+                                                <ComboBox.Resources>
+                                                    <AcrylicBrush x:Key="ComboBoxBackground"
+                                                                  TintColor="{ThemeResource OverlayBackgroundColor}"
+                                                                  TintOpacity="0.3"
+                                                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                    <AcrylicBrush x:Key="ComboBoxBackgroundPointerOver"
+                                                                  TintColor="{ThemeResource OverlayBackgroundColor}"
+                                                                  TintOpacity="0.45"
+                                                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                    <AcrylicBrush x:Key="ComboBoxBackgroundPressed"
+                                                                  TintColor="{ThemeResource OverlayBackgroundColor}"
+                                                                  TintOpacity="0.6"
+                                                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                    <AcrylicBrush x:Key="ComboBoxBackgroundDisabled"
+                                                                  TintColor="{ThemeResource OverlayBackgroundColor}"
+                                                                  TintOpacity="0.15"
+                                                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                </ComboBox.Resources>
+
                                                 <ComboBoxItem Content="None (flat textures)" />
                                                 <ComboBoxItem Content="Automatic" />
                                                 <ComboBoxItem Content="Normal map" />
