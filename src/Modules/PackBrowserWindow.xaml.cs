@@ -940,15 +940,19 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
+
         bool potentiallySuitable = false;
-        if (packType == "Incompatible")
+        if (packType == "Incompatible" || packType == "Vibrant Visuals")
         {
             if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
             {
                 potentiallySuitable = true;
                 capabilityTags.Add(AlchitexCandidateTag);
             }
-            capabilityTags.Add("Incompatible");
+            if (packType == "Incompatible" && packType != "Vibrant Visuals")
+            {
+                capabilityTags.Add("Incompatible");
+            }
         }
 
         string version = ResolveVersion(root["header"]?["version"]);
