@@ -55,28 +55,28 @@ public static class AssetUpdater
     // ── Manifest ─────────────────────────────────────────────────────────────
     //
     // Cooldowns are per asset and set by how often the file actually changes. That also
-    // desynchronises them: after the first run they come due on different days, so a heavy
-    // user rarely makes more than one request per launch.
+    // desynchronises them: after the first run they come due on different days,
+    // so a frequent user rarely makes more than one request per launch.
 
     public static readonly ManagedAsset MaterialsJson = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "materials.json"),
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/materials.json",
-        TimeSpan.FromDays(1));
+        TimeSpan.FromDays(2));
 
     public static readonly ManagedAsset PbrBlacklistJson = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "pbr_blacklist.json"),
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/pbr_blacklist.json",
-        TimeSpan.FromDays(7));
+        TimeSpan.FromDays(6));
 
     public static readonly ManagedAsset WaterFallbackZip = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "water-fallback.zip"),
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/water-fallback.zip",
-        TimeSpan.FromDays(14));
+        TimeSpan.FromDays(18));
 
     public static readonly ManagedAsset FogZip = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "vanilla-rtx-fog.zip"),
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/vanilla-rtx-fog.zip",
-        TimeSpan.FromDays(7));
+        TimeSpan.FromDays(9));
 
     private static readonly ManagedAsset[] Managed =
     {
