@@ -67,7 +67,7 @@ internal static class PackBrowserBadgeVFX
                     ApplyChemistryBlobs(badge);
                     break;
                 case PackBrowserWindow.UnknownCapabilityTag:
-                    ApplyUnknownScan(badge);
+                    ApplyUnknownGlitch(badge);
                     break;
             }
         }
@@ -154,7 +154,8 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  RTX — Swapped breathing glow effect for a VV-like one cause that one looks cooler
+    //  RTX — Swapped breathing glow effect for a VV-like one cause that one looks cooler,
+    //  plus a shine passing over the top of it, because it is the ray traced one
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyRtxGlow(Border badge)
     {
@@ -173,7 +174,7 @@ internal static class PackBrowserBadgeVFX
         brush.GradientStops.Add(stopA);
         brush.GradientStops.Add(stopB);
 
-        var overlay = new Border { Background = brush, CornerRadius = badge.CornerRadius };
+        var glow = new Border { Background = brush, CornerRadius = badge.CornerRadius };
 
         var drift = new PointAnimationUsingKeyFrames
         {
@@ -217,14 +218,30 @@ internal static class PackBrowserBadgeVFX
             RepeatBehavior = RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
         };
-        Storyboard.SetTarget(opacityPulse, overlay);
+        Storyboard.SetTarget(opacityPulse, glow);
         Storyboard.SetTargetProperty(opacityPulse, "Opacity");
 
         var sb = new Storyboard();
         sb.Children.Add(drift); sb.Children.Add(origin); sb.Children.Add(hueShift); sb.Children.Add(opacityPulse);
 
+        var storyboards = new List<Storyboard> { sb };
+
+        var host = new Grid();
+        host.Children.Add(glow);
+
+        // Over the top of the breathing glow rather than instead of it: a bright, quick pass
+        // with a long wait either side, so it reads as light catching the badge rather than
+        // as one more thing pulsing. Brighter than anything in the glow underneath, because a
+        // highlight that sits inside the range it crosses is not a highlight.
+        host.Children.Add(BuildShineSweep(badge, storyboards,
+            band: ColorHelper.FromArgb(105, 225, 255, 190),
+            fastestPass: 0.7, slowestPass: 1.4,
+            shortestRest: 5.0, longestRest: 13.0));
+
+        var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
+
         LayerOverlay(badge, overlay);
-        BeginOnLoaded(overlay, sb);
+        BeginOnLoaded(overlay, storyboards);
     }
 
 
@@ -649,36 +666,55 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Chemistry — a violet reagent diffusing through the teal base
+    //  Chemistry — three reagents diffusing through the teal base
     // ════════════════════════════════════════════════════════════════════
 
-    /// <summary>#BE5DEC, the reagent. The badge's own flat teal is the solvent it is being
-    /// dropped into, which is why every blob fades to fully transparent at its rim rather
-    /// than to a second colour of its own.</summary>
-    private static readonly Color ChemistryReagent = ColorHelper.FromArgb(255, 190, 93, 236);
-
-    /// <summary>Where the violet reads as having taken up some of the teal around it.</summary>
-    private static readonly Color ChemistryReacted = ColorHelper.FromArgb(235, 128, 110, 230);
+    /// <summary>
+    /// The three reagents: #39ABBF cyan, #CC39AE magenta, #7741BF purple. The badge's own
+    /// flat teal is the solvent they are being dropped into, which is why every blob fades to
+    /// fully transparent at its rim rather than to a colour of its own.
+    ///
+    /// The purple is also what the other two turn into: it sits between them on the wheel, so
+    /// using it as the colour each of them drifts toward is what makes the drift read as the
+    /// two of them reacting rather than as two lights independently changing hue. It then
+    /// gets a blob of its own as well, which is how the mixture ends up somewhere the two
+    /// source colours alone could not put it.
+    /// </summary>
+    private static readonly Color ChemistryCyan = ColorHelper.FromArgb(255, 57, 171, 191);
+    private static readonly Color ChemistryMagenta = ColorHelper.FromArgb(255, 204, 57, 174);
+    private static readonly Color ChemistryPurple = ColorHelper.FromArgb(255, 119, 65, 191);
 
     private static void ApplyChemistryBlobs(Border badge)
     {
         var host = new Grid();
         var storyboards = new List<Storyboard>();
 
-        // Two blobs on deliberately unrelated periods: one large and slow, one small and
-        // quicker. Where they cross, the violet doubles up; where they part, the teal comes
-        // back through. That is the whole "two fluids not yet mixed" read — a single blob
-        // just looks like a moving light.
+        // Three blobs on deliberately unrelated periods: large and slow, middling, small and
+        // quick. Where they cross, their colours stack; where they part, the teal comes back
+        // through. That is the whole "fluids not yet mixed" read — one blob on its own just
+        // looks like a moving light, and three beat two because with three the overlaps stop
+        // repeating on any period short enough to notice.
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
-            radius: 0.85, radiusSwing: 0.18, lowOpacity: 0.55,
+            reagent: ChemistryCyan, reacted: ChemistryPurple,
+            radius: 0.85, radiusSwing: 0.18, lowOpacity: 0.50,
             centerPath: new[] { new Point(0.22, 0.62), new Point(0.55, 0.28), new Point(0.82, 0.66), new Point(0.48, 0.80) },
             originPath: new[] { new Point(0.30, 0.45), new Point(0.62, 0.60), new Point(0.40, 0.30) },
             slowest: 5.0, fastest: 8.0));
 
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
-            radius: 0.50, radiusSwing: 0.14, lowOpacity: 0.30,
+            reagent: ChemistryMagenta, reacted: ChemistryPurple,
+            radius: 0.62, radiusSwing: 0.16, lowOpacity: 0.38,
             centerPath: new[] { new Point(0.78, 0.30), new Point(0.40, 0.72), new Point(0.15, 0.35), new Point(0.60, 0.20) },
             originPath: new[] { new Point(0.60, 0.55), new Point(0.35, 0.40), new Point(0.65, 0.35) },
+            slowest: 4.0, fastest: 6.5));
+
+        // The purple one drifts back toward magenta rather than onward to anything new, so
+        // the three of them stay a closed loop instead of wandering off the palette.
+        host.Children.Add(BuildChemistryBlob(badge, storyboards,
+            reagent: ChemistryPurple, reacted: ChemistryMagenta,
+            radius: 0.45, radiusSwing: 0.12, lowOpacity: 0.28,
+            centerPath: new[] { new Point(0.45, 0.20), new Point(0.18, 0.58), new Point(0.68, 0.78), new Point(0.88, 0.42) },
+            originPath: new[] { new Point(0.42, 0.38), new Point(0.55, 0.66), new Point(0.30, 0.52) },
             slowest: 3.0, fastest: 5.5));
 
         var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
@@ -689,13 +725,15 @@ internal static class PackBrowserBadgeVFX
 
     private static Border BuildChemistryBlob(
         Border badge, List<Storyboard> storyboards,
+        Color reagent, Color reacted,
         double radius, double radiusSwing, double lowOpacity,
         Point[] centerPath, Point[] originPath,
         double slowest, double fastest)
     {
-        var core = ColorHelper.FromArgb(235, ChemistryReagent.R, ChemistryReagent.G, ChemistryReagent.B);
-        var halo = ColorHelper.FromArgb(120, ChemistryReagent.R, ChemistryReagent.G, ChemistryReagent.B);
-        var rim = ColorHelper.FromArgb(0, ChemistryReagent.R, ChemistryReagent.G, ChemistryReagent.B);
+        var core = ColorHelper.FromArgb(235, reagent.R, reagent.G, reagent.B);
+        var halo = ColorHelper.FromArgb(120, reagent.R, reagent.G, reagent.B);
+        var rim = ColorHelper.FromArgb(0, reagent.R, reagent.G, reagent.B);
+        var mixed = ColorHelper.FromArgb(235, reacted.R, reacted.G, reacted.B);
 
         var brush = new RadialGradientBrush
         {
@@ -739,7 +777,7 @@ internal static class PackBrowserBadgeVFX
         var react = new ColorAnimation
         {
             From = core,
-            To = ChemistryReacted,
+            To = mixed,
             Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
             AutoReverse = true,
             RepeatBehavior = RepeatBehavior.Forever,
@@ -794,45 +832,33 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Unknown — a label being scanned that never resolves
-    //
-    //  The one tag here that says nothing about the pack, so the effect says nothing
-    //  either: something passes over the badge looking for a reading, the badge
-    //  stutters, and neither ever arrives anywhere. Grey, slow and easy to ignore —
-    //  it is the least important badge in the row and should look it.
+    //  Shared — the shine sweep
     // ════════════════════════════════════════════════════════════════════
-    private static void ApplyUnknownScan(Border badge)
-    {
-        var host = new Grid();
-        var storyboards = new List<Storyboard>();
-
-        host.Children.Add(BuildUnknownSweep(badge, storyboards));
-        host.Children.Add(BuildUnknownGlitch(badge, storyboards));
-
-        var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
-
-        LayerOverlay(badge, overlay);
-        BeginOnLoaded(overlay, storyboards);
-    }
 
     /// <summary>
-    /// A pale band crossing the badge, over and over, reading nothing.
+    /// A band of light crossing the badge once, then waiting a good while before doing it
+    /// again. Layer it over whatever the badge already does; it contributes nothing of its
+    /// own between passes.
     ///
-    /// It is a narrow gradient window — transparent, pale, transparent — whose whole span is
-    /// slid across the badge, rather than stops animated within a fixed span. Both ends of
+    /// It is a narrow gradient window — transparent, bright, transparent — whose whole span
+    /// is slid across the badge, rather than stops animated within a fixed span. Both ends of
     /// the window are transparent and the default pad extend repeats those ends outward, so
     /// the band is genuinely absent everywhere the window is not, and it starts and finishes
     /// each pass entirely off the badge. That means the loop needs no seam handling, no
     /// SpreadMethod, and no stop offsets outside 0..1 — none of which a gradient brush is
     /// obliged to render the way you would hope.
+    ///
+    /// Pass length, rest length and start offset are all rolled per badge, so a menu full of
+    /// the same tag doesn't flash in unison.
     /// </summary>
-    private static Border BuildUnknownSweep(Border badge, List<Storyboard> storyboards)
+    private static Border BuildShineSweep(
+        Border badge, List<Storyboard> storyboards, Color band,
+        double fastestPass, double slowestPass, double shortestRest, double longestRest)
     {
-        var clear = ColorHelper.FromArgb(0, 190, 190, 190);
-        var band = ColorHelper.FromArgb(70, 190, 190, 190);
+        var clear = ColorHelper.FromArgb(0, band.R, band.G, band.B);
 
         // The window's width, in badge widths. The travel below is padded by this on each
-        // side so the band is fully off the badge at both ends of a pass.
+        // side, so the band is fully off the badge at both ends of a pass.
         const double windowWidth = 0.7;
 
         var brush = new LinearGradientBrush
@@ -846,36 +872,76 @@ internal static class PackBrowserBadgeVFX
 
         var sweep = new Border { Background = brush, CornerRadius = badge.CornerRadius };
 
-        // One period, shared by both halves of the slide so they cannot drift apart.
-        var period = Jitter(4.5, 9.0);
+        // Rolled once and shared by both halves of the slide — roll them separately and the
+        // window stretches and shears instead of travelling.
+        var pass = Jitter(fastestPass, slowestPass);
+        var cycle = pass + Jitter(shortestRest, longestRest);
+        var begin = TimeSpan.FromSeconds(Jitter(0, longestRest));
 
         var sb = new Storyboard();
-        sb.Children.Add(BuildUnknownSlide(brush, "StartPoint",
-            new Point(-windowWidth, 0), new Point(1.0, 0), period));
-        sb.Children.Add(BuildUnknownSlide(brush, "EndPoint",
-            new Point(0, 0), new Point(1.0 + windowWidth, 0), period));
+        sb.Children.Add(BuildSweepSlide(brush, "StartPoint",
+            new Point(-windowWidth, 0), new Point(1.0, 0), pass, cycle, begin));
+        sb.Children.Add(BuildSweepSlide(brush, "EndPoint",
+            new Point(0, 0), new Point(1.0 + windowWidth, 0), pass, cycle, begin));
         storyboards.Add(sb);
 
         return sweep;
     }
 
-    private static PointAnimation BuildUnknownSlide(
-        LinearGradientBrush brush, string property, Point from, Point to, double period)
+    private static PointAnimationUsingKeyFrames BuildSweepSlide(
+        LinearGradientBrush brush, string property,
+        Point from, Point to, double pass, double cycle, TimeSpan begin)
     {
-        var slide = new PointAnimation
+        var slide = new PointAnimationUsingKeyFrames
         {
-            From = from,
-            To = to,
-            Duration = TimeSpan.FromSeconds(period),
+            Duration = TimeSpan.FromSeconds(cycle),
             RepeatBehavior = RepeatBehavior.Forever,
-
-            // No easing, on purpose: a scan that eased in and out would look like it was
-            // considering something, and this one never is.
+            BeginTime = begin,
             EnableDependentAnimation = true
         };
+
+        // Linear across the pass — a shine that eased in and out would look like it was
+        // considering something — then parked off the far edge for the rest of the cycle.
+        // The snap back at the loop point is invisible because both ends of the travel are
+        // entirely off the badge, which is the same property that lets the band arrive and
+        // leave cleanly in the first place.
+        slide.KeyFrames.Add(new LinearPointKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero),
+            Value = from
+        });
+        slide.KeyFrames.Add(new LinearPointKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(pass)),
+            Value = to
+        });
+        slide.KeyFrames.Add(new LinearPointKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(cycle)),
+            Value = to
+        });
+
         Storyboard.SetTarget(slide, brush);
         Storyboard.SetTargetProperty(slide, property);
         return slide;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Unknown — a badge that will not hold still
+    //
+    //  The one tag here that says nothing about the pack, so its effect says as
+    //  little as it can get away with: no colour, no travel, no shine — just the
+    //  badge intermittently failing. It is the least important thing in the row and
+    //  is meant to look it. The sweep it used to carry now belongs to RTX, where
+    //  looking special is the entire point.
+    // ════════════════════════════════════════════════════════════════════
+    private static void ApplyUnknownGlitch(Border badge)
+    {
+        var storyboards = new List<Storyboard>();
+        var overlay = BuildUnknownGlitch(badge, storyboards);
+
+        LayerOverlay(badge, overlay);
+        BeginOnLoaded(overlay, storyboards);
     }
 
     /// <summary>

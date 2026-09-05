@@ -37,11 +37,27 @@ public sealed partial class PackBrowserWindow : Window
     private const bool AlchitexLegacyPacksEligible = false;
 
     /// <summary>
-    /// Purely cosmetic capability tags. Unlike RTX / Vibrant Visuals / Incompatible, these
-    /// two feed nothing: not PackType, not Tuner eligibility, not the Alchitex candidate
-    /// check, not the SelectedPacks tuple. They exist so the browser stops silently
-    /// swallowing capabilities a manifest actually declared. Internal rather than public
-    /// because only BuildTagBadge and PackBrowserBadgeVFX ever name them.
+    /// Purely cosmetic capability tags, and deliberately confined to this window: they get a
+    /// badge and a VFX, and nothing else in the app ever learns a pack declared them.
+    ///
+    /// They are NOT candidates for PackType, and the reason is worth writing down, because
+    /// they look like they should be. PackType is not a bucket for whatever a manifest
+    /// declares — it is a scale of how close a pack is to being ray traced: RTX at the top,
+    /// Vibrant Visuals as the step in between (some PBR, but not the whole thing), and
+    /// Incompatible as the absence of both. A pack declaring "raytraced" and "pbr" is still
+    /// simply an RTX pack, which is why the two are a priority pick rather than a set.
+    /// Chemistry and an unrecognised capability say nothing about that scale, so they cannot
+    /// be points on it — and since Incompatible is the only slot they could ever win,
+    /// admitting them would turn a pack Tuner currently skips into one it tries to tune.
+    ///
+    /// Nor do they reach the SelectedPacks tuple. IsAlchitexCandidate is a bool there because
+    /// it has no root in the capabilities at all — it is decided by AlchitexSuitabilityScanner
+    /// scanning the pack's own contents — whereas every other fact in that tuple is derived
+    /// from the tags. These two are derived from the tags and still don't belong, because
+    /// nothing outside this window has any use for them.
+    ///
+    /// Internal rather than public because only BuildTagBadge, TagDisplayRank and
+    /// PackBrowserBadgeVFX ever name them.
     /// </summary>
     internal const string ChemistryTag = "Chemistry";
     internal const string UnknownCapabilityTag = "Unknown";
@@ -624,7 +640,7 @@ public sealed partial class PackBrowserWindow : Window
             VerticalAlignment = VerticalAlignment.Bottom,
             Spacing = 6
         };
-        foreach (var tag in pack.CapabilityTags)
+        foreach (var tag in pack.CapabilityTags.OrderBy(TagDisplayRank))
             tagsPanel.Children.Add(BuildTagBadge(tag));
         Grid.SetRow(tagsPanel, 2);
         rightPanel.Children.Add(tagsPanel);
@@ -673,6 +689,27 @@ public sealed partial class PackBrowserWindow : Window
         };
         return badge;
     }
+
+    /// <summary>
+    /// Where a tag sits in the badge row: least important leftmost, most important hard up
+    /// against the right edge of the card, which is where the eye lands first. So the two
+    /// cosmetic tags lead, the pack's own type closes, and the Alchitex offer sits just
+    /// inside it.
+    ///
+    /// This is display order only — CapabilityTags stays in the order the parser built it,
+    /// which is what the "Include all with X tag" menu is listed in. OrderBy is stable, so
+    /// anything unranked keeps the order it arrived in.
+    /// </summary>
+    private static int TagDisplayRank(string tag) => tag switch
+    {
+        UnknownCapabilityTag => 0,
+        ChemistryTag => 1,
+        AlchitexCandidateTag => 2,
+        "Incompatible" => 3,
+        "Vibrant Visuals" => 4,
+        "RTX" => 5,
+        _ => 0
+    };
 
     private static Border BuildTagBadge(string tag)
     {
