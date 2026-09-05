@@ -1300,10 +1300,9 @@ public static class NormalMapGenerator
 ///   1. ComputeClusteredHeights groups the texture's grey values into however many
 ///      distinct height bands it actually has via mean-shift filtering (iterated joint
 ///      spatial+range weighted averaging, which converges to the same piecewise-flat
-///      result as literal mode-seeking mean-shift), then assigns each band an
-///      evenly-spaced output level by brightness rank - this replaces the old flat
-///      contrast-stretch + fixed-3-level quantization. Shared with NormalMapGenerator,
-///      which uses this same clustering as its own height-field basis.
+///      result as literal mode-seeking mean-shift), then places each band at the spacing
+///      the texture's own composition implies, normalized to span 0-255. Shared with
+///      NormalMapGenerator, which uses this same clustering as its own height-field basis.
 ///   2. Transparent regions of the color texture get darkened using an overlay blend
 ///      (not linear) - preserves midtone detail on the darkened side, which matters for
 ///      cases like grass_side where the dirt portion is transparent in the color texture
@@ -1322,23 +1321,38 @@ public static class HeightmapGenerator
     // comment above for why this exists (grass_side-style "read as beneath" regions).
     private const double TransparencyOverlayStrength = 0.5;
 
-    // TODO(tuning): mean-shift filtering knobs - iteration count, spatial window radius,
-    // range (value) bandwidth, and the spatial sigma that shapes how much nearby pixels
-    // outweigh distant ones. Untested against a broad enough set of textures yet; wants
-    // an artist's eye once there's enough generated output to compare against.
+    // Mean-shift filtering knobs, tuned against a real corpus (28 textures across an 8x,
+    // a 16x and a 32x pack) rather than guessed - see the measurements in CLAUDE.md 9.7.
+    // The objective was "speckle": the share of pixels whose level disagrees with the
+    // majority of their 8 neighbours. Clustering exists to produce plateaus, and speckle
+    // is precisely the absence of one. Baseline 16.2%, these settings 8.5%.
     private const int MeanShiftIterations = 5;
-    private const int SpatialRadius = 2;
-    private const double SpatialSigma = 1.5;
 
-    // TODO(tuning): how far apart two values can be and still get pulled together.
+    // A 3x3 window, NOT the 5x5 it used to be. Measured across every combination, a
+    // smaller window won on every texture type: a wide window reaches across a mortar line
+    // into the face on the other side and averages the two together, and five iterations
+    // propagate a 3x3 far enough anyway. Radius 2 measured 10.6% against radius 1's 8.5%.
+    private const int SpatialRadius = 1;
+
+    // Large relative to a radius of 1, which makes the spatial term nearly flat across the
+    // 3x3 (weights 1.00 / 0.92 / 0.85) - deliberately so. What separates features here is
+    // value distance, not pixel distance, and letting position discriminate as well was
+    // measurably worse. Kept as a knob rather than removed because it regains its meaning
+    // the moment SpatialRadius goes back up.
+    private const double SpatialSigma = 2.5;
+
+    // How far apart two values can be and still get pulled together.
     //
-    // This was briefly narrowed to 12 to stop mean-shift bridging a shallow mortar line
-    // into the plank above it. It did fix that in isolation, but on real packs the extra
-    // modes it produced - combined with the value-based placement tried alongside it -
-    // turned output into little more than a posterized greyscale: far too many distinct
-    // elevations, which is the defining trait of a heightmap that reads as a mess in game.
-    // Back at 24 the clustering stays coarse enough to produce real plateaus.
-    private const double RangeBandwidth = 24.0;
+    // Once narrowed to 12, to stop mean-shift bridging a shallow mortar line into the plank
+    // above it. That fixed the bridging but produced far too many modes, and combined with
+    // the value placement tried alongside it the output became a posterized greyscale.
+    //
+    // Measured across the corpus the pressure runs the other way: speckle falls
+    // monotonically as this rises (24 -> 16.2%, 32 -> 14.4%, 40 -> 12.7%, 48 -> 12.2%),
+    // while the mortar lines that motivated narrowing it stay fully intact at 48 - verified
+    // by rendering planks and stonebrick at each step. Past 48 the returns flatten and the
+    // risk of bridging real features grows, so this is where it sits.
+    private const double RangeBandwidth = 48.0;
 
     // Above this pixel count, ComputeClusteredHeights skips the spatial neighbor search
     // (which scales with W*H*R^2*iterations) and falls back to range-only clustering off
@@ -1350,14 +1364,25 @@ public static class HeightmapGenerator
     // cluster during ranking.
     private const double ClusterMergeTolerance = 8.0;
 
+    // Below this total brightness span across all surviving buckets, composition-derived
+    // placement has nothing real to work from and falls back to even spacing - see the
+    // placement step in ClusterAndPlace.
+    private const double MinPlacementSpan = 1.0;
+
     // Hard cap on the final number of elevation levels a texture can produce, regardless
     // of how many distinct clusters mean-shift converged to. A busy/high-color-count
     // texture that would otherwise land on many clusters gets merged down harder to reach
     // this; a calm texture that already converged to fewer is untouched. TODO(tuning).
     // TODO(tuning): the hard ceiling on distinct elevations, and the single most direct
-    // lever on "this heightmap looks like a mess". Output has exactly this many distinct
-    // greys for an opaque texture (rank placement spreads them evenly across 0-255), so
-    // 4 means 0/85/170/255.
+    // lever on "this heightmap looks like a mess". Output has at most this many distinct
+    // greys for an opaque texture; WHERE they sit is the texture's business now (see the
+    // placement step), but how many there can be is this.
+    //
+    // Raising it does keep lowering speckle (4 -> 8.5%, 6 -> 6.9%, 8 -> 6.2% across the
+    // corpus), but for the wrong reason: the gain comes from declining to merge noise into
+    // its neighbours, and every extra rung is another elevation competing with the ones
+    // that describe real structure. Four still reads as distinct flat surfaces in game,
+    // which is the whole point.
     //
     // Note this is only the ceiling on the *clustered ladder*. A cutout texture gets a
     // second darkened variant of each level from the transparency overlay in Generate
@@ -1544,9 +1569,9 @@ public static class HeightmapGenerator
     /// ClusterMergeTolerance of their neighbor in sorted order are folded together), caps
     /// the result at MaxClusters by repeatedly merging whichever two brightness-adjacent
     /// clusters are closest together (weighted by pixel count) until at or under the cap,
-    /// then places each surviving cluster at its own mean brightness - see the comment at
-    /// the placement step for why placing by value rather than by rank is what makes
-    /// plank/mortar-style textures come out right.</summary>
+    /// then places the survivors at their own relative spacing, normalized to span 0-255 -
+    /// see the comment at the placement step for why the texture rather than the rank
+    /// decides how far apart two elevations sit.</summary>
     private static int[,] ClusterAndPlace(double[,] converged, double[,] original, int w, int h)
     {
         var distinctValues = new SortedSet<double>();
@@ -1632,26 +1657,59 @@ public static class HeightmapGenerator
             foreach (var originalId in bucketMembers[bucket])
                 bucketOf[originalId] = bucket;
 
-        // Buckets are placed at evenly spaced slots by brightness RANK, not at their own
-        // mean brightness.
+        // Buckets are placed at the spacing the TEXTURE'S OWN COMPOSITION implies, then
+        // normalized so the ladder always spans the full 0-255 range.
         //
-        // Placing by value is the more faithful of the two, and measurably so - on a plank
-        // texture it reproduced the real mortar-gap-to-grain ratio almost exactly where
-        // ranking inverted it. But faithful to brightness turns out to be the wrong target,
-        // because brightness isn't height: preserving true brightness relationships also
-        // preserves every bit of wood grain and surface mottling as real elevation, and the
-        // output stops being a heightmap and becomes a posterized greyscale of the colour
-        // texture. Ranking's "inaccuracy" is doing useful work - it collapses each cluster
-        // onto a discrete step and pushes the steps apart, which is what reads as distinct
-        // flat surfaces in game.
+        // Each bucket already knows its mean brightness on the contrast-maximized source
+        // (bucketMeans, accumulated above), so the gaps between those means are a real
+        // measurement of how far apart the texture's own materials sit. Placing at evenly
+        // spaced slots by rank - which this used to do - throws that measurement away and
+        // asserts that every step is the same size. It never is. On a plank texture that
+        // put a board's internal edge shading exactly as far below its face (85 levels) as
+        // the mortar gap between boards, which is the single most obvious thing a heightmap
+        // has to get right.
         //
-        // The honest limitation underneath: brightness is only a proxy for height, so no
-        // placement rule can be right in general. Ranking just fails more gracefully.
+        // Normalizing rather than using the means directly is what keeps this from being
+        // the value-based placement that was tried and reverted (CLAUDE.md 9.3). Anchoring
+        // the darkest bucket at 0 and the brightest at 255 guarantees full contrast no
+        // matter how narrow the source's range was, so a low-contrast texture can't come
+        // out as a flat grey smear; only the RELATIVE spacing in between is the texture's
+        // to decide. The other half of why 9.3 failed - dozens of surviving levels, each
+        // faithfully reproducing wood grain as elevation - is handled by MaxClusters, which
+        // caps the ladder at four rungs before any of this runs.
+        //
+        // Measured on the same 28-texture corpus as the constants above: the resulting
+        // ladder departs from even spacing by a median of 22 levels and up to 72, with over
+        // half the corpus moving more than 20 - so this is a real change in output, not a
+        // rounding difference. Planks go from [0,85,170,255] to [0,95,220,255]: the two
+        // board levels close ranks near the top while the mortar gap stays far below,
+        // which is exactly the shape the texture actually has.
         var placed = new int[bucketMeans.Count];
-        for (var i = 0; i < bucketMeans.Count; i++)
-            placed[i] = bucketMeans.Count > 1
-                ? (int)Math.Clamp(Math.Round(i / (double)(bucketMeans.Count - 1) * 255.0), 0, 255)
-                : LevelMid;
+
+        if (bucketMeans.Count == 1)
+        {
+            placed[0] = LevelMid;
+        }
+        else
+        {
+            var lowest = bucketMeans[0];
+            var span = bucketMeans[^1] - lowest;
+
+            if (span < MinPlacementSpan)
+            {
+                // Every surviving bucket sits at essentially the same brightness, so there
+                // are no meaningful relative distances to preserve and normalizing would
+                // amplify noise into a full-range ladder. Fall back to even spacing, which
+                // at least keeps the levels distinct and ordered.
+                for (var i = 0; i < placed.Length; i++)
+                    placed[i] = (int)Math.Clamp(Math.Round(i / (double)(placed.Length - 1) * 255.0), 0, 255);
+            }
+            else
+            {
+                for (var i = 0; i < placed.Length; i++)
+                    placed[i] = (int)Math.Clamp(Math.Round((bucketMeans[i] - lowest) / span * 255.0), 0, 255);
+            }
+        }
 
         var result = new int[w, h];
         for (var y = 0; y < h; y++)
