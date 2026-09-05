@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -472,7 +473,9 @@ public static class OnlineTexts
                     var now = DateTime.UtcNow;
                     var result = new Dictionary<string, DateTime>(StringComparer.Ordinal);
                     foreach (var (k, v) in dict)
-                        if (DateTime.TryParse(v, out var dt) && dt > now) // prune expired on load
+                        // RoundtripKind: these were written as UTC with "O", and without it
+                        // they parse back as local time - see IsCooldownExpired.
+                        if (DateTime.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt) && dt > now)
                             result[k] = dt;
                     return result;
                 }
@@ -555,7 +558,13 @@ public static class OnlineTexts
                 return true;
             }
 
-            if (DateTime.TryParse(val, out var last))
+            // RoundtripKind matters: the stamp is written as UTC with "O", and the default
+            // styles convert it to local time on the way back. Comparing that against
+            // DateTime.UtcNow is off by the machine's offset, which meant the cooldown never
+            // held for anyone not sitting on UTC - west of it every check looked older than
+            // an hour, east of it every check looked like it came from the future and hit the
+            // reset below. Either way the cache was refetched on every launch.
+            if (DateTime.TryParse(val, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last))
             {
                 var age = DateTime.UtcNow - last;
                 if (age < TimeSpan.Zero)
