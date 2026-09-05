@@ -1199,9 +1199,6 @@
     <None Update="Modules\Alchitex\Assets\horizontal_line.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Modules\Alchitex\Assets\huge_background.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Modules\Alchitex\Assets\logo.halo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

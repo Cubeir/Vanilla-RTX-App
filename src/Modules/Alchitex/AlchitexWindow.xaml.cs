@@ -119,6 +119,11 @@ public sealed partial class Alchitex : Window
     // the XAML to exist, and shut down with the window so no loop outlives it.
     private ReactorAnimator? _reactor;
 
+    // Generates the window's tile field. Unlike the reactor this isn't gated on the license
+    // being accepted - the background is behind the license screen too, and was when it was
+    // still a bitmap.
+    private ReactorBackdrop? _backdrop;
+
     private string AlchitexAssetsPath => System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets");
 
     private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
@@ -171,6 +176,9 @@ public sealed partial class Alchitex : Window
 
             SetTitleBar(TitleBarDragArea);
 
+            _backdrop = new ReactorBackdrop(AlchitexBackdropHost);
+            _backdrop.Start();
+
             AlchitexVariables.LoadSettings();
             PopulateAlchitexAnnouncements();
 
@@ -206,6 +214,7 @@ public sealed partial class Alchitex : Window
         _testBenchCts?.Cancel();
 
         _reactor?.Shutdown();
+        _backdrop?.Shutdown();
 
         TunerVariables.SelectedPacks.CollectionChanged -= SelectedPacks_CollectionChanged;
 
