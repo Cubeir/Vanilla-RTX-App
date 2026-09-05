@@ -161,7 +161,6 @@ Difference of Secondary PBR texture options:
 - Automatic: automatically picks between Normal Maps, Heightmaps or Both
 - Heightmap: Suitable only for low-resolution texture packs, fakes depth by providing relief around some pixels. Can only be selected for texture packs that are 32x or lower, otherwise it falls back to generating Normal map.
 - Normal map: Suitable for any resolution, can be selected for any texture pack, defines the direction that light bounces off of each individual pixel, faking curvature and depth on surfaces. Also adds Parallax Occlusion Mapping data (for BetterRTX 1.5+)
-- Both (like Opus): generates both heightmaps and normal maps and combine them together, just like how Vanilla RTX Opus is the composition of regular Vanilla RTX + Vanilla RTX Normals. Suitable for 64x or lower resolution texture packs.
 
 ### Info 2 [glyph:"F167"]
 Add per-biome RTX atmospheric configs: if toggled on, adds the same per-biome atmospheric variation as Vanilla RTX into the packs.
