@@ -36,6 +36,16 @@ public sealed partial class PackBrowserWindow : Window
     public const string AlchitexCandidateTag = "RTX Reactor Candidate";
     private const bool AlchitexLegacyPacksEligible = false;
 
+    /// <summary>
+    /// Purely cosmetic capability tags. Unlike RTX / Vibrant Visuals / Incompatible, these
+    /// two feed nothing: not PackType, not Tuner eligibility, not the Alchitex candidate
+    /// check, not the SelectedPacks tuple. They exist so the browser stops silently
+    /// swallowing capabilities a manifest actually declared. Internal rather than public
+    /// because only BuildTagBadge and PackBrowserBadgeVFX ever name them.
+    /// </summary>
+    internal const string ChemistryTag = "Chemistry";
+    internal const string UnknownCapabilityTag = "Unknown";
+
     private static readonly string VibrantVisualsPoopJoke =
         $"Vibrant Visuals{(Random.Shared.Next(100) == 49 ? " 💩" : "")}";
 
@@ -699,6 +709,14 @@ public sealed partial class PackBrowserWindow : Window
                 text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
                 badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 0, 72, 138));
                 break;
+            case ChemistryTag:
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 0, 165, 143));
+                break;
+            case UnknownCapabilityTag:
+                text.Foreground = new SolidColorBrush(ColorHelper.FromArgb(255, 255, 255, 255));
+                badge.Background = new SolidColorBrush(ColorHelper.FromArgb(244, 43, 43, 43));
+                break;
             default:
                 text.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
                 badge.Background = new SolidColorBrush(Microsoft.UI.Colors.Black);
@@ -918,6 +936,10 @@ public sealed partial class PackBrowserWindow : Window
         var capabilityTags = new List<string>();
         var packType = "Incompatible";
 
+        // Hoisted out of the capabilities block below so the cosmetic tags can be appended
+        // after the functional ones, without reordering anything that already works.
+        bool hasChemistry = false, hasUnknownCapability = false;
+
         var capabilities = root["capabilities"];
         if (capabilities != null && capabilities.Type == JTokenType.Array)
         {
@@ -925,9 +947,15 @@ public sealed partial class PackBrowserWindow : Window
 
             foreach (var cap in capabilities)
             {
-                var capLower = cap.ToString().ToLowerInvariant();
+                var capLower = cap.ToString().Trim().ToLowerInvariant();
+                if (capLower.Length == 0) continue;
+
                 if (capLower == "raytraced") hasRaytraced = true;
                 else if (capLower == "pbr") hasPbr = true;
+                else if (capLower == "chemistry") hasChemistry = true;
+                // Anything else is a capability we genuinely don't model — experimental_custom_ui
+                // today, whatever Mojang adds next. Say so rather than render it as nothing.
+                else hasUnknownCapability = true;
             }
             if (hasRaytraced)
             {
@@ -954,6 +982,11 @@ public sealed partial class PackBrowserWindow : Window
                 capabilityTags.Add("Incompatible");
             }
         }
+
+        // Last, deliberately: these never touch packType, so every functional tag keeps both
+        // its meaning and its position in the badge row.
+        if (hasChemistry) capabilityTags.Add(ChemistryTag);
+        if (hasUnknownCapability) capabilityTags.Add(UnknownCapabilityTag);
 
         string version = ResolveVersion(root["header"]?["version"]);
 

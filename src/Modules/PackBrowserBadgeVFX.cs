@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -7,6 +8,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
+using Windows.UI;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -26,6 +28,12 @@ namespace Vanilla_RTX_App.Modules;
 /// code that happens to collide with an unrelated SetupAPI error code, hence the
 /// misleading text). So every Storyboard here is started lazily via
 /// BeginOnLoaded, once its overlay is actually rooted in the tree.
+///
+/// Not everything here is a Storyboard. The reactor field is driven by one shared
+/// DispatcherTimer that steps a few cells per tick, mirroring the real ReactorBackdrop
+/// in the Alchitex module — see the block comment above ApplyReactorRain for why. It
+/// registers and unregisters on the same Loaded/Unloaded pair, so the same rule holds:
+/// nothing animates until it is in the tree, and nothing survives leaving it.
 ///
 /// Kept in its own file so BuildTagBadge's color switch stays a color switch —
 /// call BadgeVFX.Apply(badge, tag) once at the end and move on.
@@ -55,6 +63,12 @@ internal static class PackBrowserBadgeVFX
                 case PackBrowserWindow.AlchitexCandidateTag:
                     ApplyReactorRain(badge);
                     break;
+                case PackBrowserWindow.ChemistryTag:
+                    ApplyChemistryBlobs(badge);
+                    break;
+                case PackBrowserWindow.UnknownCapabilityTag:
+                    ApplyUnknownScan(badge);
+                    break;
             }
         }
         catch (Exception ex)
@@ -77,7 +91,12 @@ internal static class PackBrowserBadgeVFX
         {
             element.Loaded -= OnLoaded;
             element.Unloaded += OnUnloaded;
-            storyboard.Begin();
+
+            // Apply()'s try/catch is long gone by the time this runs, and the flat badge
+            // colour underneath is still a perfectly good badge — so a Begin() that throws
+            // here costs the animation, never the window.
+            try { storyboard.Begin(); }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"[BadgeVFX] Begin failed: {ex.Message}"); }
         }
 
         void OnUnloaded(object sender, RoutedEventArgs e)
@@ -95,7 +114,9 @@ internal static class PackBrowserBadgeVFX
         {
             element.Loaded -= OnLoaded;
             element.Unloaded += OnUnloaded;
-            foreach (var sb in storyboards) sb.Begin();
+
+            try { foreach (var sb in storyboards) sb.Begin(); }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"[BadgeVFX] Begin failed: {ex.Message}"); }
         }
 
         void OnUnloaded(object sender, RoutedEventArgs e)
@@ -340,58 +361,571 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Alchitex candidate — RTX Reactor-style flickering pixel grid
+    //  Alchitex candidate — a miniature ReactorBackdrop field
+    //
+    //  Built to the same two rules as the real one in Alchitex/ReactorBackdrop.cs,
+    //  for the same reasons:
+    //
+    //    - Nothing is animated. Colour never eases between two values; a cell is on
+    //      one rung of the ramp or the next, and it gets there in one step. That is
+    //      the visual language the reactor window speaks, and matching it is most of
+    //      the point of this effect.
+    //    - Every cell is one quad filled from one of seven shared brushes, and a
+    //      single slow timer steps a handful of cells per tick across every live
+    //      badge at once. The storyboard version this replaced ran 96 ColorAnimations
+    //      per badge, each evaluated every frame for as long as the window was open.
+    //
+    //  The cadence is unchanged — a cell still moves about as often as it used to.
+    //  Only the smoothness is gone, deliberately.
     // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// ReactorBackdrop's palette: six blues darkest-to-brightest, then one accent that sits
+    /// outside that ramp. Copied rather than shared — the backdrop is an Alchitex internal
+    /// and these are constants measured off the original artwork, with no reason to move. If
+    /// they ever do, both places change together.
+    /// </summary>
+    private static readonly Color[] ReactorPalette =
+    {
+        ColorHelper.FromArgb(255, 0, 35, 66),
+        ColorHelper.FromArgb(255, 0, 41, 78),
+        ColorHelper.FromArgb(255, 0, 48, 91),
+        ColorHelper.FromArgb(255, 0, 53, 102),
+        ColorHelper.FromArgb(255, 0, 59, 114),
+        ColorHelper.FromArgb(255, 0, 72, 138),
+
+        ColorHelper.FromArgb(255, 44, 154, 255), // accent
+    };
+
+    /// <summary>How likely each colour is to be a cell's own, relative to the others.</summary>
+    private static readonly int[] ReactorPaletteWeights = { 2, 2, 2, 2, 2, 2, 1 };
+    private static readonly int ReactorTotalWeight = ReactorPaletteWeights.Sum();
+
+    /// <summary>Palette entries below this form the ordered ramp a cell steps along; anything
+    /// from here up is an accent with no neighbours on it (see StepReactorShade).</summary>
+    private const int ReactorRampLength = 6;
+
+    /// <summary>Six rungs where ReactorBackdrop has three. A badge is four rows tall and a
+    /// couple of pixels per cell, so a coarse ladder reads as cells blinking on and off
+    /// rather than as rain thinning out.</summary>
+    private static readonly double[] ReactorFadeRungs = { 0.0, 0.2, 0.4, 0.6, 0.8, 1.0 };
+
+    private const int ReactorColumns = 24;
+    private const int ReactorRows = 4;
+
+    /// <summary>The tick rate is the frame rate — see the block comment above.</summary>
+    private const double ReactorTickMs = 200;
+
+    /// <summary>How often a given cell takes a step, which is what sets how many of them each
+    /// tick touches. Matched to the half-cycle of the ColorAnimation this replaced, so the
+    /// effect turns over at the speed it always did.</summary>
+    private const double ReactorCellStepSeconds = 1.2;
+
+    /// <summary>Chance that a cell in the top row disperses rather than holding a shade,
+    /// falling to zero at the bottom row: the badge's own version of the backdrop's field
+    /// thinning out toward the top. Convex, for the same reason — a linear falloff spends too
+    /// long at "half the cells are missing", which reads as damage rather than dispersion.</summary>
+    private const double ReactorTopRowDispersion = 0.55;
+    private const double ReactorDispersionCurve = 1.6;
+
+    /// <summary>
+    /// Brushes are DependencyObjects and so have thread affinity. Built on first use rather
+    /// than in a static initialiser, so they are created on whichever UI thread is actually
+    /// building badges — the same thread the ticker below binds itself to.
+    /// </summary>
+    private static SolidColorBrush[]? _reactorBrushes;
+
+    private static SolidColorBrush[] ReactorBrushes =>
+        _reactorBrushes ??= ReactorPalette.Select(c => new SolidColorBrush(c)).ToArray();
+
+    private sealed class ReactorCell
+    {
+        public required Rectangle Shape;
+        public required int BaseShade;
+        public required bool Dispersing;
+        public int Shade;
+        public int Rung;
+        public bool Rising;
+    }
+
+    private sealed class ReactorField
+    {
+        public required ReactorCell[] Cells;
+        public required int CellsPerTick;
+    }
+
+    // Every live reactor badge in the app, ticked together. Only ever touched on the UI
+    // thread — from Loaded/Unloaded and from the timer — so no locking is needed.
+    private static readonly List<ReactorField> ReactorFields = new();
+    private static DispatcherTimer? _reactorTimer;
+
     private static void ApplyReactorRain(Border badge)
     {
-        var baseColor = ColorHelper.FromArgb(244, 0, 72, 138);
-        var dark = ColorHelper.FromArgb(244, 0, 40, 78);
-        var bright = ColorHelper.FromArgb(244, 40, 130, 210);
-
-        const int columns = 24;
-        const int rows = 4;
+        var brushes = ReactorBrushes;
 
         var pixelGrid = new Grid();
-        for (int i = 0; i < columns; i++) pixelGrid.ColumnDefinitions.Add(new ColumnDefinition());
-        for (int i = 0; i < rows; i++) pixelGrid.RowDefinitions.Add(new RowDefinition());
+        for (int i = 0; i < ReactorColumns; i++) pixelGrid.ColumnDefinitions.Add(new ColumnDefinition());
+        for (int i = 0; i < ReactorRows; i++) pixelGrid.RowDefinitions.Add(new RowDefinition());
 
-        var cellStoryboards = new List<Storyboard>();
+        var shades = new int[ReactorColumns, ReactorRows];
+        var cells = new ReactorCell[ReactorColumns * ReactorRows];
+        var next = 0;
 
-        for (int r = 0; r < rows; r++)
+        for (int r = 0; r < ReactorRows; r++)
         {
-            for (int c = 0; c < columns; c++)
+            // Row 0 is the top of the badge, so that is the sparse end.
+            var dispersionChance = ReactorTopRowDispersion *
+                Math.Pow(1.0 - r / (double)(ReactorRows - 1), ReactorDispersionCurve);
+
+            for (int c = 0; c < ReactorColumns; c++)
             {
-                var targetColor = Desync.NextDouble() < 0.5 ? dark : bright;
-                var cellBrush = new SolidColorBrush(baseColor);
+                // One re-roll away from the neighbours already placed, exactly as the
+                // backdrop's PickShade does: repeats allowed, just not favoured.
+                var shade = PickReactorShade();
+                var left = c > 0 ? shades[c - 1, r] : -1;
+                var above = r > 0 ? shades[c, r - 1] : -1;
+                if (shade == left || shade == above) shade = PickReactorShade();
+                shades[c, r] = shade;
 
-                var cell = new Rectangle { Fill = cellBrush };
-                Grid.SetRow(cell, r);
-                Grid.SetColumn(cell, c);
-                pixelGrid.Children.Add(cell);
+                var dispersing = Desync.NextDouble() < dispersionChance;
 
-                var flicker = new ColorAnimation
+                var cell = new ReactorCell
                 {
-                    From = baseColor,
-                    To = targetColor,
-                    Duration = TimeSpan.FromSeconds(Jitter(0.7, 1.8)),
-                    AutoReverse = true,
-                    RepeatBehavior = RepeatBehavior.Forever,
-                    BeginTime = TimeSpan.FromSeconds(Jitter(0, 3))
+                    Shape = new Rectangle { Fill = brushes[shade] },
+                    BaseShade = shade,
+                    Dispersing = dispersing,
+                    Shade = shade,
+                    // Dispersing cells start scattered along the ladder rather than all lit,
+                    // so a badge that has only just appeared is already mid-rain.
+                    Rung = dispersing ? Desync.Next(ReactorFadeRungs.Length) : ReactorFadeRungs.Length - 1,
+                    Rising = Desync.NextDouble() < 0.5
                 };
-                Storyboard.SetTarget(flicker, cellBrush);
-                Storyboard.SetTargetProperty(flicker, "Color");
 
-                var cellStoryboard = new Storyboard();
-                cellStoryboard.Children.Add(flicker);
-                cellStoryboards.Add(cellStoryboard);
+                if (dispersing) cell.Shape.Opacity = ReactorFadeRungs[cell.Rung];
+
+                Grid.SetRow(cell.Shape, r);
+                Grid.SetColumn(cell.Shape, c);
+                pixelGrid.Children.Add(cell.Shape);
+
+                cells[next++] = cell;
             }
         }
 
-        // Kept at half opacity so the flat fallback blue always reads through as
-        // the "base" of the badge, with the pixel flicker as a texture on top.
+        var field = new ReactorField
+        {
+            Cells = cells,
+            CellsPerTick = Math.Max(1,
+                (int)Math.Round(cells.Length * (ReactorTickMs / 1000.0) / ReactorCellStepSeconds))
+        };
+
+        // Kept at half opacity so the flat fallback blue always reads through as the
+        // "base" of the badge, with the pixel field as a texture on top.
         var overlay = new Border { Child = pixelGrid, CornerRadius = badge.CornerRadius, Opacity = 0.5 };
 
         LayerOverlay(badge, overlay);
-        BeginOnLoaded(overlay, cellStoryboards);
+        TickWhileLoaded(overlay, field);
     }
+
+    private static int PickReactorShade()
+    {
+        var target = Desync.NextDouble() * ReactorTotalWeight;
+        var running = 0;
+
+        for (var i = 0; i < ReactorPaletteWeights.Length; i++)
+        {
+            running += ReactorPaletteWeights[i];
+            if (target < running) return i;
+        }
+
+        return ReactorPalette.Length - 1;
+    }
+
+    /// <summary>
+    /// Registers a field with the shared ticker for as long as its overlay is in the tree.
+    /// The same lazily-on-Loaded discipline as BeginOnLoaded, for a related reason: Apply
+    /// runs before the badge is rooted, and a field whose badge was never shown would
+    /// otherwise be ticked forever.
+    /// </summary>
+    private static void TickWhileLoaded(FrameworkElement element, ReactorField field)
+    {
+        void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            element.Loaded -= OnLoaded;
+            element.Unloaded += OnUnloaded;
+
+            ReactorFields.Add(field);
+            StartReactorTicker();
+        }
+
+        void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            element.Unloaded -= OnUnloaded;
+
+            ReactorFields.Remove(field);
+            if (ReactorFields.Count == 0) StopReactorTicker();
+        }
+
+        element.Loaded += OnLoaded;
+    }
+
+    private static void StartReactorTicker()
+    {
+        if (_reactorTimer != null) return;
+
+        // Created on first use so it binds to the dispatcher of the thread the badges live
+        // on, and dropped again when the last badge goes, so nothing outlives the window.
+        _reactorTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ReactorTickMs) };
+        _reactorTimer.Tick += (s, e) => ReactorTick();
+        _reactorTimer.Start();
+    }
+
+    private static void StopReactorTicker()
+    {
+        if (_reactorTimer == null) return;
+
+        _reactorTimer.Stop();
+        _reactorTimer = null;
+    }
+
+    /// <summary>
+    /// One frame of every live field's life: a few cells each take a single step. A solid
+    /// cell moves one rung along the blue ramp and back; a dispersing one moves one rung
+    /// along the fade ladder. Nothing interpolates — every cell is always on a rung.
+    /// </summary>
+    private static void ReactorTick()
+    {
+        try
+        {
+            // Indexed rather than foreach'd: an Unloaded handler is free to mutate the list
+            // between ticks, and this way one running during a tick wouldn't invalidate an
+            // enumerator either.
+            for (var f = 0; f < ReactorFields.Count; f++)
+            {
+                var field = ReactorFields[f];
+
+                for (var i = 0; i < field.CellsPerTick; i++)
+                {
+                    var cell = field.Cells[Desync.Next(field.Cells.Length)];
+
+                    if (cell.Dispersing) StepReactorFade(cell);
+                    else StepReactorShade(cell);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Same bargain as everywhere else here: the badges keep their flat colours and
+            // whatever shade they last landed on. Stop, rather than throw once per tick.
+            System.Diagnostics.Trace.WriteLine($"[BadgeVFX] Reactor ticker stopped: {ex.Message}");
+            StopReactorTicker();
+        }
+    }
+
+    private static void StepReactorShade(ReactorCell cell)
+    {
+        // Back to its own colour if it has wandered, otherwise one step off it — never
+        // further, so the field keeps the arrangement it was built with. An accent cell has
+        // no neighbours on the ramp, so it steps against the ramp's bright end instead;
+        // stepping it by index would land on an unrelated colour.
+        var target = cell.Shade != cell.BaseShade
+            ? cell.BaseShade
+            : cell.BaseShade >= ReactorRampLength
+                ? ReactorRampLength - 1
+                : Math.Clamp(cell.BaseShade + (Desync.NextDouble() < 0.5 ? -1 : 1), 0, ReactorRampLength - 1);
+
+        if (target == cell.Shade) return;
+
+        cell.Shade = target;
+        cell.Shape.Fill = ReactorBrushes[target];
+    }
+
+    private static void StepReactorFade(ReactorCell cell)
+    {
+        if (cell.Rung == 0) cell.Rising = true;
+        else if (cell.Rung == ReactorFadeRungs.Length - 1) cell.Rising = false;
+
+        cell.Rung += cell.Rising ? 1 : -1;
+        cell.Shape.Opacity = ReactorFadeRungs[cell.Rung];
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Chemistry — a violet reagent diffusing through the teal base
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>#BE5DEC, the reagent. The badge's own flat teal is the solvent it is being
+    /// dropped into, which is why every blob fades to fully transparent at its rim rather
+    /// than to a second colour of its own.</summary>
+    private static readonly Color ChemistryReagent = ColorHelper.FromArgb(255, 190, 93, 236);
+
+    /// <summary>Where the violet reads as having taken up some of the teal around it.</summary>
+    private static readonly Color ChemistryReacted = ColorHelper.FromArgb(235, 128, 110, 230);
+
+    private static void ApplyChemistryBlobs(Border badge)
+    {
+        var host = new Grid();
+        var storyboards = new List<Storyboard>();
+
+        // Two blobs on deliberately unrelated periods: one large and slow, one small and
+        // quicker. Where they cross, the violet doubles up; where they part, the teal comes
+        // back through. That is the whole "two fluids not yet mixed" read — a single blob
+        // just looks like a moving light.
+        host.Children.Add(BuildChemistryBlob(badge, storyboards,
+            radius: 0.85, radiusSwing: 0.18, lowOpacity: 0.55,
+            centerPath: new[] { new Point(0.22, 0.62), new Point(0.55, 0.28), new Point(0.82, 0.66), new Point(0.48, 0.80) },
+            originPath: new[] { new Point(0.30, 0.45), new Point(0.62, 0.60), new Point(0.40, 0.30) },
+            slowest: 5.0, fastest: 8.0));
+
+        host.Children.Add(BuildChemistryBlob(badge, storyboards,
+            radius: 0.50, radiusSwing: 0.14, lowOpacity: 0.30,
+            centerPath: new[] { new Point(0.78, 0.30), new Point(0.40, 0.72), new Point(0.15, 0.35), new Point(0.60, 0.20) },
+            originPath: new[] { new Point(0.60, 0.55), new Point(0.35, 0.40), new Point(0.65, 0.35) },
+            slowest: 3.0, fastest: 5.5));
+
+        var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
+
+        LayerOverlay(badge, overlay);
+        BeginOnLoaded(overlay, storyboards);
+    }
+
+    private static Border BuildChemistryBlob(
+        Border badge, List<Storyboard> storyboards,
+        double radius, double radiusSwing, double lowOpacity,
+        Point[] centerPath, Point[] originPath,
+        double slowest, double fastest)
+    {
+        var core = ColorHelper.FromArgb(235, ChemistryReagent.R, ChemistryReagent.G, ChemistryReagent.B);
+        var halo = ColorHelper.FromArgb(120, ChemistryReagent.R, ChemistryReagent.G, ChemistryReagent.B);
+        var rim = ColorHelper.FromArgb(0, ChemistryReagent.R, ChemistryReagent.G, ChemistryReagent.B);
+
+        var brush = new RadialGradientBrush
+        {
+            RadiusX = radius,
+            RadiusY = radius,
+            Center = centerPath[0],
+            GradientOrigin = centerPath[0]
+        };
+        var coreStop = new GradientStop { Offset = 0.0, Color = core };
+        brush.GradientStops.Add(coreStop);
+        brush.GradientStops.Add(new GradientStop { Offset = 0.45, Color = halo });
+        brush.GradientStops.Add(new GradientStop { Offset = 1.0, Color = rim });
+
+        var blob = new Border { Background = brush, CornerRadius = badge.CornerRadius };
+
+        var drift = new PointAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3.0))
+        };
+        AddLoop(drift, centerPath);
+        Storyboard.SetTarget(drift, brush);
+        Storyboard.SetTargetProperty(drift, "Center");
+
+        var origin = new PointAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.5))
+        };
+        AddLoop(origin, originPath);
+        Storyboard.SetTarget(origin, brush);
+        Storyboard.SetTargetProperty(origin, "GradientOrigin");
+
+        // Swelling out of step on the two axes is what turns a drifting disc into something
+        // being stirred; on their own, Center and GradientOrigin only slide it around.
+        var swellX = BuildChemistrySwell(brush, "RadiusX", radius, radiusSwing, slowest, fastest);
+        var swellY = BuildChemistrySwell(brush, "RadiusY", radius, radiusSwing, slowest, fastest);
+
+        var react = new ColorAnimation
+        {
+            From = core,
+            To = ChemistryReacted,
+            Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.0))
+        };
+        Storyboard.SetTarget(react, coreStop);
+        Storyboard.SetTargetProperty(react, "Color");
+
+        var diffuse = new DoubleAnimation
+        {
+            From = lowOpacity,
+            To = 1.0,
+            Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        Storyboard.SetTarget(diffuse, blob);
+        Storyboard.SetTargetProperty(diffuse, "Opacity");
+
+        var sb = new Storyboard();
+        sb.Children.Add(drift); sb.Children.Add(origin);
+        sb.Children.Add(swellX); sb.Children.Add(swellY);
+        sb.Children.Add(react); sb.Children.Add(diffuse);
+        storyboards.Add(sb);
+
+        return blob;
+    }
+
+    private static DoubleAnimation BuildChemistrySwell(
+        RadialGradientBrush brush, string property,
+        double radius, double swing, double slowest, double fastest)
+    {
+        var swell = new DoubleAnimation
+        {
+            From = radius - swing,
+            To = radius + swing,
+            Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 2.0)),
+
+            // A brush radius is not one of the properties the compositor can drive on its
+            // own, so it has to be opted in explicitly or Begin() refuses it outright.
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(swell, brush);
+        Storyboard.SetTargetProperty(swell, property);
+        return swell;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Unknown — a label being scanned that never resolves
+    //
+    //  The one tag here that says nothing about the pack, so the effect says nothing
+    //  either: something passes over the badge looking for a reading, the badge
+    //  stutters, and neither ever arrives anywhere. Grey, slow and easy to ignore —
+    //  it is the least important badge in the row and should look it.
+    // ════════════════════════════════════════════════════════════════════
+    private static void ApplyUnknownScan(Border badge)
+    {
+        var host = new Grid();
+        var storyboards = new List<Storyboard>();
+
+        host.Children.Add(BuildUnknownSweep(badge, storyboards));
+        host.Children.Add(BuildUnknownGlitch(badge, storyboards));
+
+        var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
+
+        LayerOverlay(badge, overlay);
+        BeginOnLoaded(overlay, storyboards);
+    }
+
+    /// <summary>
+    /// A pale band crossing the badge, over and over, reading nothing.
+    ///
+    /// It is a narrow gradient window — transparent, pale, transparent — whose whole span is
+    /// slid across the badge, rather than stops animated within a fixed span. Both ends of
+    /// the window are transparent and the default pad extend repeats those ends outward, so
+    /// the band is genuinely absent everywhere the window is not, and it starts and finishes
+    /// each pass entirely off the badge. That means the loop needs no seam handling, no
+    /// SpreadMethod, and no stop offsets outside 0..1 — none of which a gradient brush is
+    /// obliged to render the way you would hope.
+    /// </summary>
+    private static Border BuildUnknownSweep(Border badge, List<Storyboard> storyboards)
+    {
+        var clear = ColorHelper.FromArgb(0, 190, 190, 190);
+        var band = ColorHelper.FromArgb(70, 190, 190, 190);
+
+        // The window's width, in badge widths. The travel below is padded by this on each
+        // side so the band is fully off the badge at both ends of a pass.
+        const double windowWidth = 0.7;
+
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(-windowWidth, 0),
+            EndPoint = new Point(0, 0)
+        };
+        brush.GradientStops.Add(new GradientStop { Offset = 0.0, Color = clear });
+        brush.GradientStops.Add(new GradientStop { Offset = 0.5, Color = band });
+        brush.GradientStops.Add(new GradientStop { Offset = 1.0, Color = clear });
+
+        var sweep = new Border { Background = brush, CornerRadius = badge.CornerRadius };
+
+        // One period, shared by both halves of the slide so they cannot drift apart.
+        var period = Jitter(4.5, 9.0);
+
+        var sb = new Storyboard();
+        sb.Children.Add(BuildUnknownSlide(brush, "StartPoint",
+            new Point(-windowWidth, 0), new Point(1.0, 0), period));
+        sb.Children.Add(BuildUnknownSlide(brush, "EndPoint",
+            new Point(0, 0), new Point(1.0 + windowWidth, 0), period));
+        storyboards.Add(sb);
+
+        return sweep;
+    }
+
+    private static PointAnimation BuildUnknownSlide(
+        LinearGradientBrush brush, string property, Point from, Point to, double period)
+    {
+        var slide = new PointAnimation
+        {
+            From = from,
+            To = to,
+            Duration = TimeSpan.FromSeconds(period),
+            RepeatBehavior = RepeatBehavior.Forever,
+
+            // No easing, on purpose: a scan that eased in and out would look like it was
+            // considering something, and this one never is.
+            EnableDependentAnimation = true
+        };
+        Storyboard.SetTarget(slide, brush);
+        Storyboard.SetTargetProperty(slide, property);
+        return slide;
+    }
+
+    /// <summary>
+    /// The badge occasionally failing to hold still: two or three flashes of wash at odd
+    /// intervals, with a long quiet stretch either side of them. Discrete key frames, so
+    /// nothing here interpolates — it is either glitching or it is not, which is also what
+    /// makes it nearly free between blinks.
+    /// </summary>
+    private static Border BuildUnknownGlitch(Border badge, List<Storyboard> storyboards)
+    {
+        var glitch = new Border
+        {
+            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 210, 210, 210)),
+            CornerRadius = badge.CornerRadius,
+            Opacity = 0
+        };
+
+        var cycle = Jitter(5.0, 11.0);
+        var blink = new DoubleAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromSeconds(cycle),
+            RepeatBehavior = RepeatBehavior.Forever,
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 6.0))
+        };
+
+        // Placed as fractions of the cycle rather than in seconds, so the jittered period
+        // stretches the stutter instead of detaching its parts from one another.
+        AddBlink(blink, cycle, 0.00, 0.00);
+        AddBlink(blink, cycle, 0.62, 0.16);
+        AddBlink(blink, cycle, 0.65, 0.00);
+        AddBlink(blink, cycle, 0.71, 0.09);
+        AddBlink(blink, cycle, 0.73, 0.00);
+        AddBlink(blink, cycle, 0.76, 0.20);
+        AddBlink(blink, cycle, 0.80, 0.00);
+        AddBlink(blink, cycle, 1.00, 0.00);
+
+        Storyboard.SetTarget(blink, glitch);
+        Storyboard.SetTargetProperty(blink, "Opacity");
+
+        var sb = new Storyboard();
+        sb.Children.Add(blink);
+        storyboards.Add(sb);
+
+        return glitch;
+    }
+
+    private static void AddBlink(DoubleAnimationUsingKeyFrames anim, double cycle, double atFraction, double opacity) =>
+        anim.KeyFrames.Add(new DiscreteDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(cycle * atFraction)),
+            Value = opacity
+        });
 }
