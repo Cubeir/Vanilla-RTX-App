@@ -33,7 +33,7 @@ public static class AlchitexVariables
 {
     public static class Persistent
     {
-        // Mirrors SecondaryPbrModeComboBox.SelectedIndex 1:1 (0=None, 1=Auto,
+        // Mirrors SecondaryPbrMode 1:1 (0=None, 1=Auto,
         // 2=Normal, 3=Heightmap) rather than storing the enum directly - ApplicationData
         // LocalSettings needs a WinRT-projectable type, and int is the simplest one that
         // round-trips cleanly through the existing reflection-based Save/LoadSettings.
@@ -376,7 +376,8 @@ public sealed partial class Alchitex : Window
         TitleBarActions.Visibility = Visibility.Visible;
         MainGrid.Visibility = Visibility.Visible;
 
-        SecondaryPbrModeComboBox.SelectedIndex = AlchitexVariables.Persistent.SecondaryPbrModeIndex;
+        BuildSecondaryPbrMenu();
+        SelectSecondaryPbrMode(AlchitexVariables.Persistent.SecondaryPbrModeIndex);
         AddFogToggle.IsOn = AlchitexVariables.Persistent.AddFogEnabled;
         DeleteOriginalToggle.IsOn = AlchitexVariables.Persistent.DeleteOriginalPackEnabled;
 
@@ -1026,15 +1027,55 @@ public sealed partial class Alchitex : Window
 
     // ── PBR generation ───────────────────────────────────────────────────────
 
+    /// <summary>Labels for SecondaryPbrMode, in enum order - the button's text and its menu
+    /// both come from here, so there's one list rather than one per surface.</summary>
+    private static readonly string[] SecondaryPbrModeLabels =
+    {
+        "None (flat textures)", "Automatic", "Normal map", "Heightmap",
+    };
+
+    private int _secondaryPbrModeIndex = (int)SecondaryPbrMode.Auto;
+
+    private void BuildSecondaryPbrMenu()
+    {
+        if (SecondaryPbrModeButton.Flyout is not MenuFlyout flyout) return;
+
+        flyout.Items.Clear();
+
+        for (var i = 0; i < SecondaryPbrModeLabels.Length; i++)
+        {
+            var index = i;
+            var item = new RadioMenuFlyoutItem
+            {
+                Text = SecondaryPbrModeLabels[i],
+                GroupName = "SecondaryPbrMode",
+                IsTextScaleFactorEnabled = false,
+            };
+
+            item.Click += (s, e) => SelectSecondaryPbrMode(index);
+            flyout.Items.Add(item);
+        }
+    }
+
+    private void SelectSecondaryPbrMode(int index)
+    {
+        if (index < 0 || index >= SecondaryPbrModeLabels.Length) index = (int)SecondaryPbrMode.Auto;
+
+        _secondaryPbrModeIndex = index;
+        SecondaryPbrModeButton.Content = SecondaryPbrModeLabels[index];
+
+        if (SecondaryPbrModeButton.Flyout is not MenuFlyout flyout) return;
+
+        for (var i = 0; i < flyout.Items.Count; i++)
+            if (flyout.Items[i] is RadioMenuFlyoutItem item) item.IsChecked = i == index;
+    }
+
     /// <summary>Reads the live control values into AlchitexVariables.Persistent. Shared by
     /// ReadOptionsFromUI (on Generate) and Alchitex_Closed (on window close) so a
     /// toggle/dropdown change is captured regardless of which one happens first.</summary>
     private void SyncPersistentSettingsFromControls()
     {
-        var modeIndex = SecondaryPbrModeComboBox.SelectedIndex;
-        if (modeIndex < 0) modeIndex = (int)SecondaryPbrMode.Auto;
-
-        AlchitexVariables.Persistent.SecondaryPbrModeIndex = modeIndex;
+        AlchitexVariables.Persistent.SecondaryPbrModeIndex = _secondaryPbrModeIndex;
         AlchitexVariables.Persistent.AddFogEnabled = AddFogToggle.IsOn;
         AlchitexVariables.Persistent.DeleteOriginalPackEnabled = DeleteOriginalToggle.IsOn;
     }
@@ -1062,7 +1103,7 @@ public sealed partial class Alchitex : Window
     /// </summary>
     private static readonly string[] RunLockedControls =
     {
-        "SecondaryPbrModeComboBox", "AddFogToggle", "DeleteOriginalToggle", "GenerateMaterialsConfigButton",
+        "SecondaryPbrModeButton", "AddFogToggle", "DeleteOriginalToggle", "GenerateMaterialsConfigButton",
         "PipelinePreviewDevToolButton",
     };
 
