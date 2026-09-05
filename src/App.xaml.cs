@@ -31,6 +31,7 @@ public partial class App : Application
         InitializeComponent();
         TraceManager.Initialize();
         _ = OnlineTexts.TriggerUpdateAsync(); // Silent PSA Update, hopefully by the time the startup sequence is finished, we have new PSAs to show!
+        Modules.Alchitex.Core.AlchitexAssets.TriggerUpdate(); // Silent, heavily rate-limited refresh of RTX Reactor's data assets. Falls back to the packaged ones.
 
 
         // 1. Catches unhandled exceptions on the UI thread from any window

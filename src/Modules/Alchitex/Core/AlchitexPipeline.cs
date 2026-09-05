@@ -91,8 +91,8 @@ public static class AlchitexPipeline
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            var materials = MaterialsConfig.Load(Path.Combine(alchitexAssetsPath, "materials.json"));
-            var blacklist = PbrBlacklist.Load(Path.Combine(alchitexAssetsPath, "pbr_blacklist.json"));
+            var materials = MaterialsConfig.Load(AlchitexAssets.Resolve(alchitexAssetsPath, "materials.json"));
+            var blacklist = PbrBlacklist.Load(AlchitexAssets.Resolve(alchitexAssetsPath, "pbr_blacklist.json"));
 
             // ── Phase 2: texture sets ────────────────────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Scanning textures...", AlchitexPhase.ScanningTextures));
