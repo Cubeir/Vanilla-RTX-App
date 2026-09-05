@@ -233,7 +233,7 @@ public sealed partial class Alchitex : Window
     }
     private void PopulateAlchitexAnnouncements()
     {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.AlchitexDevProgressUpdates);
+        var items = OnlineTexts.GetFiltered(OnlineTextsContent.AlchitexAnnouncements);
         if (items is null) return;
         foreach (var item in items)
             AlchitexAnnouncementsPanel.Children.Add(new PsaCard(item));

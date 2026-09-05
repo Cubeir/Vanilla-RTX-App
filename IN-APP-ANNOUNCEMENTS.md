@@ -140,8 +140,6 @@ Use the clear selection button in the main window to clear your selections or by
 
 
 
-
-
 # AlchitexDevProgressUpdates [glyph:"EC24"]
 The redstone circuits for this feature are still being laid down.
 That said, you can come back here anytime to check on the development news.
@@ -149,3 +147,17 @@ That said, you can come back here anytime to check on the development news.
 ## [cd:"10000"] [glyph:"E823"]
 September News:
 Diligently working on it! Expect its initial arrival later next month. I'm trying to make sure the implementation of RTX Reactor into the app is complete as to not require too many updates afterwards. Also as mentioned in the past, this won't be a simple codebase migration, but also a large rewrite, deploying more modern, advanced approaches to per-block procedural PBR texture generation for Minecraft RTX.
+
+
+# AlchitexAnnouncements [glyph:"F1D6"]
+RTX Reactor can add full RTX support to any texture pack. Results may vary and not all texture packs or all textures will be perfect.
+Packs that are marked as "RTX Reactor Candidate" in the pack selection menu are more likely to be suitable for gaining RTX support through RTX Reactor.
+Marketplace resource packs are also not supported. You can temporarily dismiss any resource pack from the queue by clicking it.
+
+### Info [glyph:"F167"]
+Difference of Secondary PBR texture options:
+- None: leaves the textures flat and only adds roughness, emissive and metalness properties to textures.
+- Automatic: automatically picks between Normal Maps, Heightmaps or Both
+- Heightmap: Suitable only for low-resolution texture packs, fakes depth by providing relief around some pixels. Can only be selected for texture packs that are 32x or lower, otherwise it falls back to generating Normal map.
+- Normal map: Suitable for any resolution, can be selected for any texture pack, defines the direction that light bounces off of each individual pixel, faking curvature and depth on surfaces. Also adds Parallax Occlusion Mapping data (for BetterRTX 1.5+)
+- Both (like Opus): generates both heightmaps and normal maps and combine them together, just like how Vanilla RTX Opus is the composition of regular Vanilla RTX + Vanilla RTX Normals. Suitable for 64x or lower resolution textures.

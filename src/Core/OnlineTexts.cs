@@ -59,7 +59,7 @@ public static class OnlineTextsContent
     public static PsaItem[]? LutManagerAnnouncements { get; set; }
     public static PsaItem[]? DLSSAnnouncements { get; set; }
     public static PsaItem[]? ResourcePackSelectionAnnouncements { get; set; }
-    public static PsaItem[]? AlchitexDevProgressUpdates { get; set; }
+    public static PsaItem[]? AlchitexAnnouncements { get; set; }
 }
 
 
