@@ -47,8 +47,9 @@ internal sealed class ReactorBackdrop
 
     private const float TileSize = 40f;
 
-    // Darkest first. Five of these are ReactorAnimator's palette exactly; #00305B is the
-    // extra step between its two darkest.
+    // The six blues from the art, darkest to brightest, then one accent that is not part of
+    // that ramp. Five of the six are ReactorAnimator's palette exactly; #00305B is the extra
+    // step between its two darkest.
     private static readonly Color[] Palette =
     {
         ColorHelper.FromArgb(255, 0, 35, 66),
@@ -58,17 +59,33 @@ internal sealed class ReactorBackdrop
         ColorHelper.FromArgb(255, 0, 59, 114),
         ColorHelper.FromArgb(255, 0, 72, 138),
 
-        // Duplicate the above to double their chance overall
-        ColorHelper.FromArgb(255, 0, 35, 66),
-        ColorHelper.FromArgb(255, 0, 41, 78),
-        ColorHelper.FromArgb(255, 0, 48, 91),
-        ColorHelper.FromArgb(255, 0, 53, 102),
-        ColorHelper.FromArgb(255, 0, 59, 114),
-        ColorHelper.FromArgb(255, 0, 72, 138),
-
-        // A unique, rarer bright color
-        ColorHelper.FromArgb(255, 44, 154, 255),
+        ColorHelper.FromArgb(255, 44, 154, 255), // accent
     };
+
+    // How likely each colour is to be a tile's own, relative to the others. Raise the last
+    // number to see more of the accent.
+    private static readonly int[] PaletteWeights = { 2, 2, 2, 2, 2, 2, 1 };
+
+    // Palette entries below this form the ordered ramp a tile steps along; anything from here
+    // up is an accent that sits outside it (see StepShade).
+    private const int RampLength = 6;
+
+    private static readonly int[] CumulativeWeights = BuildCumulativeWeights();
+    private static readonly int TotalWeight = CumulativeWeights[^1];
+
+    private static int[] BuildCumulativeWeights()
+    {
+        var cumulative = new int[PaletteWeights.Length];
+        var running = 0;
+
+        for (var i = 0; i < PaletteWeights.Length; i++)
+        {
+            running += PaletteWeights[i];
+            cumulative[i] = running;
+        }
+
+        return cumulative;
+    }
 
     // The field spans the window in whole rows - dispersion has to finish on screen, or it is
     // just a field that got cut off, which is what the fixed-height bitmap did.
@@ -432,10 +449,14 @@ internal sealed class ReactorBackdrop
     private void StepShade(Tile tile)
     {
         // Back to its own colour if it has wandered, otherwise one step off it - never
-        // further, so the field keeps the arrangement it was generated with.
+        // further, so the field keeps the arrangement it was generated with. An accent tile
+        // has no neighbours on the ramp, so it pulses against the ramp's brightest end
+        // instead; stepping it by index would land on an unrelated colour.
         var target = tile.Shade != tile.BaseShade
             ? tile.BaseShade
-            : Math.Clamp(tile.BaseShade + (_random.NextDouble() < 0.5 ? -1 : 1), 0, Palette.Length - 1);
+            : tile.BaseShade >= RampLength
+                ? RampLength - 1
+                : Math.Clamp(tile.BaseShade + (_random.NextDouble() < 0.5 ? -1 : 1), 0, RampLength - 1);
 
         if (target == tile.Shade) return;
 
@@ -481,7 +502,14 @@ internal sealed class ReactorBackdrop
     }
 
     private int ShadeRoll(int col, int row, int salt)
-        => Math.Min((int)(Roll(col, row, salt) * Palette.Length), Palette.Length - 1);
+    {
+        var target = Roll(col, row, salt) * TotalWeight;
+
+        for (var i = 0; i < CumulativeWeights.Length; i++)
+            if (target < CumulativeWeights[i]) return i;
+
+        return Palette.Length - 1;
+    }
 
     private double Roll(int col, int row, int salt) => Hash(col, row, salt) / (double)uint.MaxValue;
 
