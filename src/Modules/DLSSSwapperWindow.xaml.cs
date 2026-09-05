@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -113,10 +113,7 @@ public sealed partial class DLSSSwapperWindow : Window
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
-    private void PopulateDLSSAnnouncements()
-    {
-        PsaCard.Populate(DLSSAnnouncementsPanel, OnlineTextsContent.DLSSAnnouncements);
-    }
+
     // ======================= Initialization =======================
     private async Task InitializeAsync()
     {
@@ -232,7 +229,7 @@ public sealed partial class DLSSSwapperWindow : Window
 
         LoadingPanel.Visibility = Visibility.Collapsed;
         DllSelectionPanel.Visibility = Visibility.Visible;
-        PopulateDLSSAnnouncements();
+        PsaCard.Populate(DLSSAnnouncementsPanel, OnlineTextsContent.DLSSAnnouncements);
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)

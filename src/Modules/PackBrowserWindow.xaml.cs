@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -93,7 +93,7 @@ public sealed partial class PackBrowserWindow : Window
             AddPackDescriptionText.Text =
                 $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip)";
 
-            PopulatePackBrowserAnnouncements();
+            PsaCard.Populate(PackBrowserAnnouncementsPanel, OnlineTextsContent.ResourcePackSelectionAnnouncements);
 
             if (this.Content is UIElement contentRoot)
             {
@@ -131,10 +131,6 @@ public sealed partial class PackBrowserWindow : Window
         if (this.Content is FrameworkElement root)
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
-    }
-    private void PopulatePackBrowserAnnouncements()
-    {
-        PsaCard.Populate(PackBrowserAnnouncementsPanel, OnlineTextsContent.ResourcePackSelectionAnnouncements);
     }
 
     // ════════════════════════════════════════════════════════════════════════

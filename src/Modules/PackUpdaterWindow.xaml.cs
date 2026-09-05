@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
@@ -147,10 +147,6 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
-    private void PopulatePackUpdateAnnouncements()
-    {
-        PsaCard.Populate(PackUpdateAnnouncementsPanel, OnlineTextsContent.PackUpdateAnnouncements, cardFontSize: 13);
-    }
 
     // INITIALIZATION =================================
     private void InitializeHoverEffects()
@@ -216,7 +212,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
 
     private async Task InitializePackInformation()
     {
-        PopulatePackUpdateAnnouncements();
+        PsaCard.Populate(PackUpdateAnnouncementsPanel, OnlineTextsContent.PackUpdateAnnouncements, cardFontSize: 13);
         UpdateInstalledVersionDisplays();
         await FetchAndDisplayRemoteVersions();
     }

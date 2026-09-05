@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -218,10 +218,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
-    private void PopulateBetterRTXAnnouncements()
-    {
-        PsaCard.Populate(BetterRTXAnnouncementsPanel, OnlineTextsContent.BetterRTXAnnouncements);
-    }
+
     private async Task<bool> ShowDisclaimerDialogAsync()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -543,7 +540,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Initialize PSAs
         if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure psas dont clip into fallback background
         {
-            PopulateBetterRTXAnnouncements();
+            PsaCard.Populate(BetterRTXAnnouncementsPanel, OnlineTextsContent.BetterRTXAnnouncements);
         }
 
         // Show disclaimer -- background work is done, but try to gate the UI

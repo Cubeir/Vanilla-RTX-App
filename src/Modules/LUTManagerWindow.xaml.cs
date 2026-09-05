@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -136,10 +136,7 @@ public sealed partial class LUTManagerWindow : Window
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
         ApplyInstallButtonBevel(_isPresetInstalled);
     }
-    private void PopulateLutAnnouncements()
-    {
-        PsaCard.Populate(LutAnnouncementsPanel, OnlineTextsContent.LutManagerAnnouncements);
-    }
+
     // -------------------------------------------------------------------------
     // Initialization
     // -------------------------------------------------------------------------
@@ -238,7 +235,7 @@ public sealed partial class LUTManagerWindow : Window
         {
             LoadingPanel.Visibility = Visibility.Collapsed;
             MainPanel.Visibility = Visibility.Visible;
-            PopulateLutAnnouncements();
+            PsaCard.Populate(LutAnnouncementsPanel, OnlineTextsContent.LutManagerAnnouncements);
         });
     }
 

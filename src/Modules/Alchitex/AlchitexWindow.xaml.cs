@@ -188,7 +188,7 @@ public sealed partial class Alchitex : Window
             _backdrop.Start();
 
             AlchitexVariables.LoadSettings();
-            PopulateAlchitexAnnouncements();
+            PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements);
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -238,10 +238,6 @@ public sealed partial class Alchitex : Window
         if (this.Content is FrameworkElement root)
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
-    }
-    private void PopulateAlchitexAnnouncements()
-    {
-        PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements);
     }
 
     // ── Init ────────────────────────────────────────────
