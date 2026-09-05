@@ -2379,7 +2379,7 @@ public sealed partial class MainWindow : Window
 
         string[] ToDisable =
         [
-         "LaunchMinecraftButton", "TargetPreviewToggle",
+         "LaunchMinecraftButton", "TargetPreviewToggle", "ClearButton", "LaunchPackUpdateButton",
         "BrowsePacksButton", "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
         ];
 
