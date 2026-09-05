@@ -1225,7 +1225,7 @@ public sealed partial class PackBrowserWindow : Window
     // You'll figure it out when you get there, for now, 20 textures in all block dirs gives good confidence, combined with the not-being-legacy checks
     private static class AlchitexSuitabilityScanner
     {
-        private const int MinimumQualifyingImageCount = 20;
+        private const int MinimumQualifyingImageCount = 32;
 
         private static readonly HashSet<string> QualifyingExtensions =
             new(StringComparer.OrdinalIgnoreCase) { ".png", ".jpg", ".jpeg", ".tga" };
