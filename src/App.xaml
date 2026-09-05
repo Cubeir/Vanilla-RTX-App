@@ -44,6 +44,7 @@
                     <Color x:Key="OverlayBackgroundColor">#C0202020</Color>
                     <SolidColorBrush x:Key="OverlayTextBrush"
                                      Color="#FFFFFFFF" />
+                    <x:Double x:Key="AlchitexBackdropStaticColorOpacity">0.6</x:Double>
 
                 </ResourceDictionary>
 
@@ -59,6 +60,7 @@
                     <SolidColorBrush x:Key="OverlayTextBrush"
                                      Color="#FF000000" />
                     <x:Double x:Key="TintLuminosityOpacity">0.5</x:Double>
+                    <x:Double x:Key="AlchitexBackdropStaticColorOpacity">0.9</x:Double>
 
                 </ResourceDictionary>
 

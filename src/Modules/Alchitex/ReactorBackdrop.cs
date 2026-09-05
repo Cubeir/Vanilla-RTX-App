@@ -99,18 +99,18 @@ internal sealed class ReactorBackdrop
     // -- Motion ---------------------------------------------------------------
 
     // Fraction of solid tiles that slowly drift one step along the palette and back.
-    private const double ColorDriftShare = 0.16;
+    private const double ColorDriftShare = 0.25;
 
-    private const double ColorDriftMinSeconds = 9;
-    private const double ColorDriftMaxSeconds = 22;
+    private const double ColorDriftMinSeconds = 3;
+    private const double ColorDriftMaxSeconds = 16;
 
-    private const double ShimmerMinSeconds = 6;
-    private const double ShimmerMaxSeconds = 16;
+    private const double ShimmerMinSeconds = 1;
+    private const double ShimmerMaxSeconds = 8;
 
     // A ceiling on the whole thing. A maximised window on a large display works out around
     // 1500 cells; this only bites on something far larger, and losing the top of the field -
     // the sparsest part - is the least visible way to stop.
-    private const int MaxTiles = 3000;
+    private const int MaxTiles = 5000;
 
     // -- State ----------------------------------------------------------------
 

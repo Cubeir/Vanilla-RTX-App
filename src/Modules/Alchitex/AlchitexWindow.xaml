@@ -22,6 +22,14 @@
                 IsHitTestVisible="False"
                 Canvas.ZIndex="-2" />
 
+        <Border x:Name="AlchitexBackdropStaticColor"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Background="#FF00244A"
+                Opacity="{ThemeResource AlchitexBackdropStaticColorOpacity}"
+                IsHitTestVisible="False"
+                Canvas.ZIndex="-3" />
+
         <!-- Light theme tint overlay -->
         <Border x:Name="LightThemeOverlay"
                 Grid.ColumnSpan="2"
@@ -43,15 +51,25 @@
 
             <!-- Titlebar Background -->
             <Border x:Name="TitleBarBackground"
-                    Height="38"
+                    Height="37"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
-                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
-                    BorderThickness="0,0,0,6"
+                    BorderThickness="0,0,0,5"
                     CornerRadius="0"
                     Translation="0,0,256"
                     IsHitTestVisible="False">
+                <Border.Background>
+                    <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                                  TintOpacity="1.0"
+                                  Opacity="1.0"
+                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                </Border.Background>
+                <Border.BorderBrush>
+                    <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                                  TintOpacity="0.5"
+                                  Opacity="0.5"
+                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                </Border.BorderBrush>
                 <Border.Shadow>
                     <ThemeShadow />
                 </Border.Shadow>
