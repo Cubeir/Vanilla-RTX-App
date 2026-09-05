@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -36,6 +36,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 ///     MER sets (Vanilla RTX, being an existing pack, may still have MER-only entries -
 ///     Alchitex's own generator always produces MERS going forward, but this tool reads
 ///     whatever's actually there).
+///   - Invisible Emission data (has its own algorithm derived from color texture + MER(s))
 ///
 /// What's deliberately left at MaterialEntry's built-in defaults, because none of it is
 /// something you can objectively reverse-engineer from a single baked texture:

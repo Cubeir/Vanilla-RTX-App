@@ -61,13 +61,13 @@
                 <Border.Background>
                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                   TintOpacity="1.0"
-                                  Opacity="1.0"
+                                  Opacity="0.9"
                                   FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                 </Border.Background>
                 <Border.BorderBrush>
                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                   TintOpacity="0.5"
-                                  Opacity="0.5"
+                                  Opacity="0.6"
                                   FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                 </Border.BorderBrush>
                 <Border.Shadow>
@@ -377,7 +377,7 @@
                                  object instead of stopping at the button's edge. -->
                             <Border x:Name="AlchitexPanelBackground"
                                     Grid.ColumnSpan="2"
-                                    CornerRadius="8"
+                                    CornerRadius="0"
                                     Translation="0,0,64">
                                 <Border.Background>
                                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -438,7 +438,8 @@
                                                  the button's own text are built in
                                                  BuildSecondaryPbrMenu. -->
                                             <StackPanel Spacing="4">
-                                                <TextBlock Text="Secondary PBR texture"
+                                                <TextBlock x:Name="SecondaryPbrModeLabel"
+                                                           Text="Secondary PBR texture"
                                                            IsTextScaleFactorEnabled="False" />
 
                                                 <DropDownButton x:Name="SecondaryPbrModeButton"

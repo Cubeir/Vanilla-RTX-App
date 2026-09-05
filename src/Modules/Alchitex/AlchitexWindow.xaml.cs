@@ -1115,6 +1115,11 @@ public sealed partial class Alchitex : Window
         // can't restore a control early.
         WindowControlsManager.ToggleSpecificControls(this, enabled, RunLockedControls);
 
+        // A ComboBox dimmed its own Header when disabled; a DropDownButton has no header, so
+        // its label is a separate TextBlock and has to be dimmed here - otherwise it stays
+        // bright during a run while the toggle headers below it grey out.
+        SecondaryPbrModeLabel.Opacity = enabled ? 1.0 : 0.4;
+
         // The reactor's tooltip says which of its two jobs a click would do right now.
         ToolTipService.SetToolTip(GenerateButton, enabled
             ? "Generate RTX support for every pack in the queue"

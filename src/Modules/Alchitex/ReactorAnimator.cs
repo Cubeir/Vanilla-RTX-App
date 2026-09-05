@@ -72,8 +72,7 @@ public sealed class ReactorAnimator
         { 4, 3, 2 },
     };
 
-    // The abort stance. Four corners plus the middle: on a 3x3 grid that reads as an X,
-    // which is the whole point - the button has to say "this stops it" without a label.
+    // The abort stance. Four corners plus the middle: on a 3x3 grid that reads as an X for example.
     private static readonly (int Row, int Col)[] AbortCross =
     {
         (0, 0), (0, 2), (1, 1), (2, 0), (2, 2),
@@ -85,9 +84,11 @@ public sealed class ReactorAnimator
     // opposite of "this is dangerous, and it is definitely still here".
     private static readonly Color[] AbortReds =
     {
-        ColorHelper.FromArgb(255, 255, 0, 0), // hot
-        ColorHelper.FromArgb(255, 205, 0, 0), // mid
-        ColorHelper.FromArgb(255, 155, 0, 0), // deep, still clearly red
+        ColorHelper.FromArgb(255, 255, 0, 0),
+        ColorHelper.FromArgb(255, 192, 0, 0), 
+        ColorHelper.FromArgb(255, 128, 0, 0),
+        ColorHelper.FromArgb(255, 96, 0, 0), 
+        ColorHelper.FromArgb(255, 64, 0, 0),
     };
 
     // The backdrop the cross is read against - dark enough to disappear, and the darkest

@@ -51,12 +51,23 @@ internal sealed class ReactorBackdrop
     // extra step between its two darkest.
     private static readonly Color[] Palette =
     {
-        ColorHelper.FromArgb(255, 0x00, 0x22, 0x42),
-        ColorHelper.FromArgb(255, 0x00, 0x29, 0x4E),
-        ColorHelper.FromArgb(255, 0x00, 0x30, 0x5B),
-        ColorHelper.FromArgb(255, 0x00, 0x35, 0x66),
-        ColorHelper.FromArgb(255, 0x00, 0x3B, 0x72),
-        ColorHelper.FromArgb(255, 0x00, 0x48, 0x8A),
+        ColorHelper.FromArgb(255, 0, 35, 66),
+        ColorHelper.FromArgb(255, 0, 41, 78),
+        ColorHelper.FromArgb(255, 0, 48, 91),
+        ColorHelper.FromArgb(255, 0, 53, 102),
+        ColorHelper.FromArgb(255, 0, 59, 114),
+        ColorHelper.FromArgb(255, 0, 72, 138),
+
+        // Duplicate the above to double their chance overall
+        ColorHelper.FromArgb(255, 0, 35, 66),
+        ColorHelper.FromArgb(255, 0, 41, 78),
+        ColorHelper.FromArgb(255, 0, 48, 91),
+        ColorHelper.FromArgb(255, 0, 53, 102),
+        ColorHelper.FromArgb(255, 0, 59, 114),
+        ColorHelper.FromArgb(255, 0, 72, 138),
+
+        // A unique, rarer bright color
+        ColorHelper.FromArgb(255, 44, 154, 255),
     };
 
     // The field spans the window in whole rows - dispersion has to finish on screen, or it is
@@ -80,18 +91,18 @@ internal sealed class ReactorBackdrop
 
     // Static tiles are close to free, so this is about scene size rather than frame cost.
     // Rows are dropped from the top, the sparsest part of the field.
-    private const int MaxTiles = 4000;
+    private const int MaxTiles = 5000;
 
     // -- Motion ---------------------------------------------------------------
 
     // The tick rate is the frame rate. See the class remarks for why it is this low.
-    private const double TickMs = 240;
+    private const double TickMs = 200;
 
     // A tick costs one composition frame whatever it touches, so this is about how fast the
     // field turns over, not about cost. It scales with the field so a large window doesn't
     // look frozen.
-    private const int MinTilesPerTick = 4;
-    private const int MaxTilesPerTick = 16;
+    private const int MinTilesPerTick = 8;
+    private const int MaxTilesPerTick = 32;
     private const int TilesPerTickDivisor = 100;
 
     // Dispersing tiles step through these rather than jumping, so the edge dissolves.
@@ -149,7 +160,7 @@ internal sealed class ReactorBackdrop
             if (Windows.System.Power.PowerManager.EnergySaverStatus == Windows.System.Power.EnergySaverStatus.On)
                 return false;
 
-            return Environment.ProcessorCount >= 6;
+            return Environment.ProcessorCount >= 4;
         }
         catch
         {
