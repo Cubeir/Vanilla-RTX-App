@@ -228,13 +228,23 @@ public static class Helpers
     /// Downloads a file with progress tracking and retry logic.
     /// Uses the shared HttpClient which is pre-configured.
     /// For custom timeout/headers, pass a custom HttpClient.
+    /// Pass quiet: true to keep progress out of the UI log and send it to Trace instead.
     /// </summary>
     public static async Task<(bool, string?)> Download(
             string url,
             CancellationToken cancellationToken = default,
             HttpClient? httpClient = null,
-            TimeSpan? timeout = null)
+            TimeSpan? timeout = null,
+            bool quiet = false)
     {
+        // Background callers (AssetUpdater) download things the user never asked for and
+        // shouldn't have to read about; everything else keeps reporting to the UI log.
+        void Report(string message, LogLevel level)
+        {
+            if (quiet) Trace.WriteLine($"[Download] {message}");
+            else Log(message, level);
+        }
+
         var client = httpClient ?? SharedHttpClient;
         var retries = 3;
 
@@ -251,11 +261,11 @@ public static class Helpers
                 // === DOWNLOAD ===
                 using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
                 response.EnsureSuccessStatusCode();
-                Log("Starting Download.", LogLevel.Lengthy);
+                Report("Starting Download.", LogLevel.Lengthy);
 
                 var totalBytes = response.Content.Headers.ContentLength;
                 if (!totalBytes.HasValue)
-                    Log("Total file size unknown. Progress will be logged as total downloaded (in MegaBytes).", LogLevel.Informational);
+                    Report("Total file size unknown. Progress will be logged as total downloaded (in MegaBytes).", LogLevel.Informational);
 
                 // === FILENAME EXTRACTION AND SANITIZATION ===
                 string fileName;
@@ -269,11 +279,11 @@ public static class Helpers
                     if (string.IsNullOrEmpty(fileName))
                     {
                         fileName = $"download_{Guid.NewGuid():N}";
-                        Log($"No valid filename found, using random name: {fileName}", LogLevel.Informational);
+                        Report($"No valid filename found, using random name: {fileName}", LogLevel.Informational);
                     }
                     else
                     {
-                        Log("File name: " + fileName, LogLevel.Informational);
+                        Report("File name: " + fileName, LogLevel.Informational);
                     }
                 }
 
@@ -303,17 +313,17 @@ public static class Helpers
                     }
 
                     savingLocation = finalPath;
-                    Log($"Save location: {savingLocation}", LogLevel.Cache);
+                    Report($"Save location: {savingLocation}", LogLevel.Cache);
                 }
                 catch (Exception ex)
                 {
-                    Log($"Failed to establish save location: {ex.Message}", LogLevel.Error);
+                    Report($"Failed to establish save location: {ex.Message}", LogLevel.Error);
                     savingLocation = null;
                 }
 
                 if (savingLocation == null)
                 {
-                    Log("No writable location found for download.", LogLevel.Error);
+                    Report("No writable location found for download.", LogLevel.Error);
                     return (false, null);
                 }
 
@@ -338,7 +348,7 @@ public static class Helpers
                         if (progress - lastLoggedProgress >= 10 || progress >= 100)
                         {
                             lastLoggedProgress = progress;
-                            Log($"Download Progress: {progress:0}%", LogLevel.Informational);
+                            Report($"Download Progress: {progress:0}%", LogLevel.Informational);
                         }
                     }
                     else
@@ -347,42 +357,42 @@ public static class Helpers
                         if (currentMB > lastLoggedMB)
                         {
                             lastLoggedMB = currentMB;
-                            Log($"Download Progress: {currentMB} MB", LogLevel.Informational);
+                            Report($"Download Progress: {currentMB} MB", LogLevel.Informational);
                         }
                     }
                 }
 
-                Log("Download finished successfully.", LogLevel.Success);
+                Report("Download finished successfully.", LogLevel.Success);
                 return (true, savingLocation);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                Log("Download cancelled by the caller.", LogLevel.Informational);
+                Report("Download cancelled by the caller.", LogLevel.Informational);
                 return (false, null);
             }
             catch (HttpRequestException ex) when (retries > 0)
             {
-                Log($"Transient error: {ex.Message}. Retrying...", LogLevel.Warning);
+                Report($"Transient error: {ex.Message}. Retrying...", LogLevel.Warning);
                 await Task.Delay(1000, cancellationToken);
             }
             catch (OperationCanceledException) when (retries > 0)
             {
-                Log("Request timed out. Retrying...", LogLevel.Warning);
+                Report("Request timed out. Retrying...", LogLevel.Warning);
                 await Task.Delay(1000, cancellationToken);
             }
             catch (OperationCanceledException)
             {
-                Log("Request timed out after all retries.", LogLevel.Error);
+                Report("Request timed out after all retries.", LogLevel.Error);
                 return (false, null);
             }
             catch (Exception ex)
             {
-                Log($"Error during download: {ex.Message}", LogLevel.Error);
+                Report($"Error during download: {ex.Message}", LogLevel.Error);
                 return (false, null);
             }
         }
 
-        Log("Download failed after multiple attempts.", LogLevel.Error);
+        Report("Download failed after multiple attempts.", LogLevel.Error);
         return (false, null);
     }
 

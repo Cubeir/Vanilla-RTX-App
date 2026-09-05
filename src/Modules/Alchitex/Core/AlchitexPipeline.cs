@@ -91,8 +91,8 @@ public static class AlchitexPipeline
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            var materials = MaterialsConfig.Load(AlchitexAssets.Resolve(alchitexAssetsPath, "materials.json"));
-            var blacklist = PbrBlacklist.Load(AlchitexAssets.Resolve(alchitexAssetsPath, "pbr_blacklist.json"));
+            var materials = MaterialsConfig.Load(AssetUpdater.Resolve(AssetUpdater.MaterialsJson));
+            var blacklist = PbrBlacklist.Load(AssetUpdater.Resolve(AssetUpdater.PbrBlacklistJson));
 
             // ── Phase 2: texture sets ────────────────────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Scanning textures...", AlchitexPhase.ScanningTextures));
@@ -108,14 +108,14 @@ public static class AlchitexPipeline
 
             // ── Phase 3: Texture post processing water & glass, etc.. ───────────────────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Post-processing...", AlchitexPhase.WaterAndGlass));
-            await Task.Run(() => RunWaterGlassPass(workingPackPath, alchitexAssetsPath), cancellationToken);
+            await Task.Run(() => RunWaterGlassPass(workingPackPath), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
             if (options.AddFog)
             {
                 progress?.Report(new AlchitexProgress(0, 0, "Adding fog...", AlchitexPhase.Fog));
-                await Task.Run(() => PostProcess.DeployFog(workingPackPath, alchitexAssetsPath), cancellationToken);
+                await Task.Run(() => PostProcess.DeployFog(workingPackPath), cancellationToken);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -281,7 +281,7 @@ public static class AlchitexPipeline
 
     // ── Step 3: water & glass ────────────────────────────────────────────────
 
-    private static void RunWaterGlassPass(string packRoot, string alchitexAssetsPath)
+    private static void RunWaterGlassPass(string packRoot)
     {
         // Root-pack blocks folder(s) first: if the zip fallback ends up needed anywhere,
         // it only ever gets deployed once (see the loop below) - a subpack that doesn't
@@ -308,7 +308,7 @@ public static class AlchitexPipeline
 
             if (!hasCompleteGreyWater && !zipFallbackDeployed)
             {
-                zipFallbackDeployed = PostProcess.DeployFallbackWaterZip(blocksFolder, alchitexAssetsPath);
+                zipFallbackDeployed = PostProcess.DeployFallbackWaterZip(blocksFolder);
             }
         }
 

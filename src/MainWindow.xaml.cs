@@ -580,6 +580,11 @@ public sealed partial class MainWindow : Window
 
             _ = LocatePacksTask(); // Trigger finding packs
 
+            // Same split as OnlineTexts: this only refreshes the cache, and whoever reads an
+            // asset takes whatever is there at the time. Nothing waits on it, and the packaged
+            // copies mean nothing breaks if it never finishes.
+            Modules.Alchitex.Core.AssetUpdater.TriggerUpdate();
+
             // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
             // The whole idea is, there is separation of concerns, on this side, we only show what's in the cache, the app tries to update the cache sometimes
             // we deal with cache, for showing things, another task deals with updating sometimes it at App start

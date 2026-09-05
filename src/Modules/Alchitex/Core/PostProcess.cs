@@ -23,11 +23,13 @@ public static class PostProcess
 {
     #region Required Assets
 
-    // Every binary asset this file depends on, under the Alchitex module's own Assets
-    // folder (passed in as alchitexAssetsPath by every method below - see
-    // AlchitexPipeline). None of these can be generated or faked by code; they need to
-    // actually be placed here by hand. Every method that needs one checks for it
-    // explicitly and logs the exact expected path rather than silently no-op'ing.
+    // Every binary asset this file depends on. None can be generated or faked by code; they
+    // have to be placed in the module's Assets folder by hand, and every method that needs
+    // one checks for it and logs the exact expected path rather than silently no-op'ing.
+    //
+    // The two zips are online-updatable, so they come from AssetUpdater.Resolve rather than
+    // from a path - see AssetUpdater. badge_42x.png isn't, so it still resolves against the
+    // assets folder the pipeline passes in.
     //
     //   Assets/water-fallback.zip
     //     -> four flat files, no folders inside: water_flow_grey.tga + .texture_set.json,
@@ -39,9 +41,9 @@ public static class PostProcess
     //   Assets/vanilla-rtx-fog.zip
     //     -> top-level "biomes/" and "fogs/" folders, deployed into the pack root and
     //        every subpack root when the (opt-in, off-by-default) fog toggle is enabled.
-    private const string WaterFallbackZipFileName = "water-fallback.zip";
+
     private const string IconBadgeFileName = "badge_42x.png";
-    private const string FogZipFileName = "vanilla-rtx-fog.zip";
+
 
     #endregion
 
@@ -221,9 +223,9 @@ public static class PostProcess
     /// the pack without fallback water rather than pretending to have handled it. Returns
     /// true only on a successful extraction.
     /// </summary>
-    public static bool DeployFallbackWaterZip(string blocksFolder, string alchitexAssetsPath)
+    public static bool DeployFallbackWaterZip(string blocksFolder)
     {
-        var zipPath = AlchitexAssets.Resolve(alchitexAssetsPath, WaterFallbackZipFileName);
+        var zipPath = AssetUpdater.Resolve(AssetUpdater.WaterFallbackZip);
         if (!File.Exists(zipPath))
         {
             Trace.WriteLine($"[ALCHITEX] Water fallback asset missing - expected '{zipPath}'. Skipping fallback deployment for '{blocksFolder}'.");
@@ -262,9 +264,9 @@ public static class PostProcess
     /// packaged zip isn't present under Assets/, this logs exactly what's missing and
     /// leaves the pack without fog rather than pretending to have handled it.
     /// </summary>
-    public static void DeployFog(string packRoot, string alchitexAssetsPath)
+    public static void DeployFog(string packRoot)
     {
-        var zipPath = AlchitexAssets.Resolve(alchitexAssetsPath, FogZipFileName);
+        var zipPath = AssetUpdater.Resolve(AssetUpdater.FogZip);
         if (!File.Exists(zipPath))
         {
             Trace.WriteLine($"[ALCHITEX] Fog asset missing - expected '{zipPath}'. Copy the fog distribution zip (top-level 'biomes/' and 'fogs/' folders) there. Skipping fog deployment for '{packRoot}'.");

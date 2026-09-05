@@ -1886,7 +1886,7 @@ public sealed partial class Alchitex : Window
 
             var token = _testBenchCts.Token;
             var result = await Task.Run(
-                () => PbrTestBench.Run(plan, options, AlchitexAssetsPath, progress, token),
+                () => PbrTestBench.Run(plan, options, progress, token),
                 token);
 
             SetStatusThenRevert(DescribeTestBenchResult(result, plan));

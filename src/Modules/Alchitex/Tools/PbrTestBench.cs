@@ -186,7 +186,6 @@ public static class PbrTestBench
     public static Result Run(
         Plan plan,
         AlchitexOptions options,
-        string alchitexAssetsPath,
         IProgress<AlchitexPipeline.AlchitexProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -239,8 +238,8 @@ public static class PbrTestBench
             cancellationToken.ThrowIfCancellationRequested();
 
             // ── The real pipeline, phases 2a and 2b, unmodified ──────────────
-            var materials = MaterialsConfig.Load(AlchitexAssets.Resolve(alchitexAssetsPath, "materials.json"));
-            var blacklist = PbrBlacklist.Load(AlchitexAssets.Resolve(alchitexAssetsPath, "pbr_blacklist.json"));
+            var materials = MaterialsConfig.Load(AssetUpdater.Resolve(AssetUpdater.MaterialsJson));
+            var blacklist = PbrBlacklist.Load(AssetUpdater.Resolve(AssetUpdater.PbrBlacklistJson));
 
             progress?.Report(new AlchitexPipeline.AlchitexProgress(0, 0, "Scanning textures...", AlchitexPhase.ScanningTextures));
             var orchestrated = TextureSetOrchestrator.GenerateMissingTextureSets(benchRoot, options, blacklist);
