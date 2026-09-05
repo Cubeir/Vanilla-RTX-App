@@ -18,7 +18,7 @@ Ensuring ray tracing is accessible to new players, and frictionless for existing
 # Overview
 <!-- Second Cover Image -->
 <p align="center">
-   <img alt="vanilla-rtx-app-cover" src="https://github.com/user-attachments/assets/8a7a07b3-f241-4e20-9cfb-c5355c310b80"/>
+  <img alt="vanilla-rtx-app-cover" src="https://github.com/user-attachments/assets/64882d50-a751-4e6b-a46d-5becb9fe190a" />
 </p>
 <!-- Badges -->
 <p align="center">
@@ -179,10 +179,12 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune â€
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/022acfe7-6b5e-4135-a11d-acfaea4d9f11" />
 
 - `RTX LUT manager`
-  A simpler way to modify and improve Minecraft RTX's appearance that works reliably across all game versions and Minecraft Preview. You can select from a growing list of pre-bundled presets. Currently, 4 distinct LUT presets are provided:
+  Another way to alter Minecraft RTX's appearance that works reliably across all game versions and Minecraft Preview. You can select from a growing list of pre-bundled presets. Currently, several distinct presets are provided:
   >  - Gamescom 2019 Demo V2: attempts to restore Minecraft RTX's graphics from its early demos shown to the public, a viable alternative to the default preset.
+  >  - Inverted Day-Night Cycle: day becomes night, and night becomes day.
   >  - Matrix Fever: based on [Matrix Fever](https://www.curseforge.com/minecraft-bedrock/texture-packs/matrix).
   >  - Night Night: features extremely dark nights, great for a horror vibe.
+  >  - RTX Beta 1.15 Era: look up tables from 1.15 RTX Betas.
   >  - Whimsical Bright: the opposite of Night Night â€” whimsically colorful and bright!
 
   With more coming soon. Have an idea for one? Make a suggestion!
