@@ -220,10 +220,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
     private void PopulateBetterRTXAnnouncements()
     {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.BetterRTXAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            BetterRTXAnnouncementsPanel.Children.Add(new PsaCard(item));
+        PsaCard.Populate(BetterRTXAnnouncementsPanel, OnlineTextsContent.BetterRTXAnnouncements);
     }
     private async Task<bool> ShowDisclaimerDialogAsync()
     {

@@ -47,8 +47,11 @@ public record PsaItem(
 // null always means "nothing to show" — absent section, empty content, or fetch failed.
 //
 // READING VALUES:
-//   Always call OnlineTexts.GetFiltered(OnlineTextsContent.YourProperty).
-//   GetFiltered strips dismissed entries automatically according to each item's PsaKind.
+//   For a PsaCard panel, call PsaCard.Populate(panel, OnlineTextsContent.YourProperty) - it
+//   filters, and shows a "couldn't retrieve" notice rather than leaving the panel empty when
+//   the fetch failed or the .md has no section for that module.
+//   Anywhere else, call OnlineTexts.GetFiltered(OnlineTextsContent.YourProperty), which
+//   strips dismissed entries according to each item's PsaKind.
 // =====================================================================================================================
 
 public static class OnlineTextsContent

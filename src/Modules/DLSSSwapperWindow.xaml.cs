@@ -115,10 +115,7 @@ public sealed partial class DLSSSwapperWindow : Window
     }
     private void PopulateDLSSAnnouncements()
     {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.DLSSAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            DLSSAnnouncementsPanel.Children.Add(new PsaCard(item));
+        PsaCard.Populate(DLSSAnnouncementsPanel, OnlineTextsContent.DLSSAnnouncements);
     }
     // ======================= Initialization =======================
     private async Task InitializeAsync()

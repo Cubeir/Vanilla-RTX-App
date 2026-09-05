@@ -149,10 +149,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
     }
     private void PopulatePackUpdateAnnouncements()
     {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.PackUpdateAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            PackUpdateAnnouncementsPanel.Children.Add(new PsaCard(item) { CardFontSize = 13 });
+        PsaCard.Populate(PackUpdateAnnouncementsPanel, OnlineTextsContent.PackUpdateAnnouncements, cardFontSize: 13);
     }
 
     // INITIALIZATION =================================

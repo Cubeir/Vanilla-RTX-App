@@ -23,6 +23,57 @@ public sealed partial class PsaCard : UserControl
         set => ContentText.FontSize = value;
     }
 
+    /// <summary>
+    /// Shown in place of a module's announcements when we couldn't get any. Pinned, so it
+    /// carries no dismiss button - there is nothing for the user to dismiss, it goes away on
+    /// its own the next time the fetch works.
+    /// </summary>
+    private static readonly PsaItem RetrievalFailedNotice = new(
+        "An error occurred when trying to retrieve the texts for this module, please try again " +
+        "later and make sure the app has internet access. Some features may not work without internet.",
+        PsaKind.Pinned,
+        Glyph: "EB5E");
+
+    /// <summary>
+    /// Fills a module's announcement panel, falling back to a single notice card when there
+    /// was nothing to fill it with.
+    ///
+    /// Several windows carve out a fixed space for these, and an empty one reads as a broken
+    /// layout rather than as "no news" - which is what the user sees whenever the .md fetch
+    /// fails outright.
+    ///
+    /// The fallback keys off the **source** array, not the filtered result, and that
+    /// distinction is the whole rule:
+    ///
+    ///   - source null or empty  - the .md never arrived, or arrived without a section for
+    ///                             this module. Both are our failure, so: notice card.
+    ///   - source has items but GetFiltered returns null - the user dismissed them all.
+    ///     That's their choice and an empty panel is the correct answer.
+    ///
+    /// Deliberately lives here rather than on OnlineTexts: this is a card, and the log-facing
+    /// PSA feed reads OnlineTexts directly, so it can't pick this up by accident.
+    /// </summary>
+    public static void Populate(Panel host, PsaItem[]? source, double? cardFontSize = null)
+    {
+        if (host is null) return;
+
+        host.Children.Clear();
+
+        var items = source is null || source.Length == 0
+            ? new[] { RetrievalFailedNotice }
+            : OnlineTexts.GetFiltered(source);
+
+        if (items is null) return;
+
+        foreach (var item in items)
+        {
+            var card = new PsaCard(item);
+            if (cardFontSize is { } size) card.CardFontSize = size;
+
+            host.Children.Add(card);
+        }
+    }
+
     public PsaCard(PsaItem item)
     {
         InitializeComponent();

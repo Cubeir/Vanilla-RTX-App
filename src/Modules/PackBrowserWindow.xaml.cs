@@ -134,10 +134,7 @@ public sealed partial class PackBrowserWindow : Window
     }
     private void PopulatePackBrowserAnnouncements()
     {
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.ResourcePackSelectionAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            PackBrowserAnnouncementsPanel.Children.Add(new PsaCard(item));
+        PsaCard.Populate(PackBrowserAnnouncementsPanel, OnlineTextsContent.ResourcePackSelectionAnnouncements);
     }
 
     // ════════════════════════════════════════════════════════════════════════

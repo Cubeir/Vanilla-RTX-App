@@ -138,11 +138,7 @@ public sealed partial class LUTManagerWindow : Window
     }
     private void PopulateLutAnnouncements()
     {
-        LutAnnouncementsPanel.Children.Clear();
-        var items = OnlineTexts.GetFiltered(OnlineTextsContent.LutManagerAnnouncements);
-        if (items is null) return;
-        foreach (var item in items)
-            LutAnnouncementsPanel.Children.Add(new PsaCard(item));
+        PsaCard.Populate(LutAnnouncementsPanel, OnlineTextsContent.LutManagerAnnouncements);
     }
     // -------------------------------------------------------------------------
     // Initialization
