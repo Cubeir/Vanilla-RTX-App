@@ -17,7 +17,7 @@ using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.TunerVariables;
+using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -364,7 +364,7 @@ public sealed partial class PackBrowserWindow : Window
             if (packs.Count == 0)
             {
                 EmptyStatePanel.Visibility = Visibility.Visible;
-                EmptyStateText.Text = TunerVariables.Persistent.IsTargetingPreview
+                EmptyStateText.Text = EnvironmentVariables.Persistent.IsTargetingPreview
                     ? "No packs found in Minecraft Preview data directory."
                     : "No packs found in Minecraft data directory.";
                 RebuildSelectAllDropdown();
@@ -795,12 +795,12 @@ public sealed partial class PackBrowserWindow : Window
 
     private void ConfirmButton_Click(object sender, RoutedEventArgs e)
     {
-        TunerVariables.SelectedPacks.Clear();
+        EnvironmentVariables.SelectedPacks.Clear();
 
         foreach (var path in _selectedPaths.Where(p => _packButtonMap.ContainsKey(p)))
         {
             var pack = (PackData)_packButtonMap[path].Tag;
-            TunerVariables.SelectedPacks.Add(
+            EnvironmentVariables.SelectedPacks.Add(
                 (pack.PackPath, pack.PackName, pack.PackType, pack.PotentiallySuitableForPBRGen));
         }
 
@@ -849,7 +849,7 @@ public sealed partial class PackBrowserWindow : Window
     private async Task<List<PackData>> ScanForCompatiblePacksAsync()
     {
         var packs = new List<PackData>();
-        var isTargetingPreview = TunerVariables.Persistent.IsTargetingPreview;
+        var isTargetingPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
 
         if (!MinecraftUserDataLocator.IsDataValid(isTargetingPreview))
         {
@@ -862,7 +862,7 @@ public sealed partial class PackBrowserWindow : Window
         var seenDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var scanPath in MinecraftUserDataLocator.GetExistingResourcePackScanPaths(
-                     TunerVariables.Persistent.IsTargetingPreview))
+                     EnvironmentVariables.Persistent.IsTargetingPreview))
         {
             // Pass 1: modern manifest.json
             foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "manifest.json", minDepth: 1, maxDepth: 2))

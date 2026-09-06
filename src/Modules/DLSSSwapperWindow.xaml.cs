@@ -17,7 +17,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.TunerVariables;
+using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -239,7 +239,7 @@ public sealed partial class DLSSSwapperWindow : Window
         _scanCancellationTokenSource?.Cancel();
 
         var hWnd = WindowNative.GetWindowHandle(this);
-        var isPreview = TunerVariables.Persistent.IsTargetingPreview;
+        var isPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
         var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
 
         if (path != null)

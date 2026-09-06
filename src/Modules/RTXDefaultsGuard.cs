@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using static Vanilla_RTX_App.TunerVariables;
+using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules;
 

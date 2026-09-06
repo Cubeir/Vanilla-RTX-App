@@ -41,7 +41,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// GeneratingTextures mixes both (StepBusyWork).
 ///
 /// Everything routes through AnimateTile/SetBloom, which honor
-/// TunerVariables.Persistent.SuspendUIAnimations: with it on, every transition is applied
+/// EnvironmentVariables.Persistent.SuspendUIAnimations: with it on, every transition is applied
 /// instantly and the two looping behaviors (bloom breathing, press-hold flicker) never
 /// start. The reactor still tracks state, it just stops moving.
 ///
@@ -142,7 +142,7 @@ public sealed class ReactorAnimator
     private bool _isWaiting;
     private bool _isInitialized;
 
-    private static bool AnimationsSuspended => TunerVariables.Persistent.SuspendUIAnimations;
+    private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
 
     public ReactorAnimator(Grid tileGrid, Image? bloomLayer)
     {

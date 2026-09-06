@@ -29,20 +29,22 @@ using Windows.System;
 using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.Modules.Helpers;
-using static Vanilla_RTX_App.TunerVariables;
-using static Vanilla_RTX_App.TunerVariables.Persistent;
+using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
 // EXPAND ON LAZIFY SURFACE NORMALS
 // It'll be simple, take the luminosity map of each texture
 // raise it all till highest hits the ceiling (255), apply that to blue channel of each normal (linear/simple blending, 0-255)
+// Might wanna become a user of Alchitex's heightmap/normal generation methods and Rework lazifier entirely!
+// Thing is, lazifier's job is different, it literally lazifies, its meant to be used on good packs. If we generate semi-good normals, it DEFEATS the point!
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
 /// </summary>
-public static class TunerVariables
+public static class EnvironmentVariables
 {
     private static readonly Windows.ApplicationModel.PackageVersion _version = App.GetPackageVersion();
     public static readonly string appVersion = $"{_version.Major}.{_version.Minor}.{_version.Build}.{_version.Revision}";
@@ -156,7 +158,7 @@ public class PackSelectionViewModel : INotifyPropertyChanged
 
     public PackSelectionViewModel()
     {
-        TunerVariables.SelectedPacks.CollectionChanged += OnSelectedPacksChanged;
+        EnvironmentVariables.SelectedPacks.CollectionChanged += OnSelectedPacksChanged;
     }
 
     private void OnSelectedPacksChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -172,7 +174,7 @@ public class PackSelectionViewModel : INotifyPropertyChanged
             if (_labelOverride != null)
                 return _labelOverride;
 
-            int count = TunerVariables.SelectedPacks.Count;
+            int count = EnvironmentVariables.SelectedPacks.Count;
             return count switch
             {
                 0 => "Select other packs",
@@ -827,9 +829,9 @@ public sealed partial class MainWindow : Window
         // 1. Match bool-based UI elements to their current bools
         TargetPreviewToggle.IsChecked = Persistent.IsTargetingPreview;
         EmissivityAmbientLightToggle.IsOn = Persistent.AddEmissivityAmbientLight;
-        VanillaRTXCheckBox.IsChecked = TunerVariables.IsVanillaRTXEnabled;
-        NormalsCheckBox.IsChecked = TunerVariables.IsNormalsEnabled;
-        OpusCheckBox.IsChecked = TunerVariables.IsOpusEnabled;
+        VanillaRTXCheckBox.IsChecked = EnvironmentVariables.IsVanillaRTXEnabled;
+        NormalsCheckBox.IsChecked = EnvironmentVariables.IsNormalsEnabled;
+        OpusCheckBox.IsChecked = EnvironmentVariables.IsOpusEnabled;
 
         // Sliders/texbox pairs
         var sliderConfigs = new[]
@@ -938,14 +940,14 @@ public sealed partial class MainWindow : Window
                 sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
                 sb.AppendLine();
                 sb.AppendLine("===== Tuner Variables");
-                var fields = typeof(TunerVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+                var fields = typeof(EnvironmentVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
 
                 foreach (var field in fields)
                 {
                     var value = field.GetValue(null);
 
                     // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
-                    if (field.Name == nameof(TunerVariables.SelectedPacks) &&
+                    if (field.Name == nameof(EnvironmentVariables.SelectedPacks) &&
                         value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
                     {
                         if (selectedPacks.Count == 0)
@@ -987,7 +989,7 @@ public sealed partial class MainWindow : Window
                 sb.AppendLine();
                 // Persistent variables
                 sb.AppendLine("===== Persistent Tuner Variables");
-                var persistentFields = typeof(TunerVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+                var persistentFields = typeof(EnvironmentVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
                 foreach (var field in persistentFields)
                 {
                     var value = field.GetValue(null);
@@ -1439,9 +1441,9 @@ public sealed partial class MainWindow : Window
 
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
-            if (TunerVariables.SelectedPacks.Count > 0)
+            if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
-                var names = string.Join(Environment.NewLine, TunerVariables.SelectedPacks.Select(p => p.Name));
+                var names = string.Join(Environment.NewLine, EnvironmentVariables.SelectedPacks.Select(p => p.Name));
                 Log($"Selected the following:\n{names}", LogLevel.Selected);
                 _ = BlinkingLamp(true, true, 1.0);
             }
@@ -1712,7 +1714,7 @@ public sealed partial class MainWindow : Window
     {
         // Capture previous state
         bool hadVanillaRTX = IsVanillaRTXEnabled || IsNormalsEnabled || IsOpusEnabled;
-        bool hadCustomPacks = TunerVariables.SelectedPacks.Count > 0;
+        bool hadCustomPacks = EnvironmentVariables.SelectedPacks.Count > 0;
 
         // Vanilla RTX
         IsVanillaRTXEnabled = false;
@@ -1720,7 +1722,7 @@ public sealed partial class MainWindow : Window
         IsOpusEnabled = false;
 
         // Custom packs
-        TunerVariables.SelectedPacks.Clear();
+        EnvironmentVariables.SelectedPacks.Clear();
 
         // Manually update UI based on new values
         UpdateUI();
@@ -1902,7 +1904,7 @@ public sealed partial class MainWindow : Window
         if (IsOpusEnabled && Directory.Exists(VanillaRTXOpusLocation))
             toDelete.Add((VanillaRTXOpusLocation, "Vanilla RTX Opus"));
 
-        foreach (var (location, name, _, _) in TunerVariables.SelectedPacks)
+        foreach (var (location, name, _, _) in EnvironmentVariables.SelectedPacks)
             if (!string.IsNullOrEmpty(location) && Directory.Exists(location))
                 toDelete.Add((location, name));
 
@@ -2016,7 +2018,7 @@ public sealed partial class MainWindow : Window
                 exportQueue.Add((VanillaRTXOpusLocation, "Vanilla_RTX_Opus_" + VanillaRTXOpusVersion + suffix));
 
             // ── All selected custom packs ─────────────────────────────────────────
-            foreach (var (location, name, _, _) in TunerVariables.SelectedPacks)
+            foreach (var (location, name, _, _) in EnvironmentVariables.SelectedPacks)
             {
                 if (!string.IsNullOrEmpty(name) && Directory.Exists(location))
                     exportQueue.Add((location, SanitizeFileName(name) + suffix));
@@ -2073,7 +2075,7 @@ public sealed partial class MainWindow : Window
                 !IsVanillaRTXEnabled &&
                 !IsNormalsEnabled &&
                 !IsOpusEnabled &&
-                TunerVariables.SelectedPacks.Count == 0;
+                EnvironmentVariables.SelectedPacks.Count == 0;
 
             if (nothingSelected)
                 Log("Select at least one pack to export.", LogLevel.Warning);
@@ -2118,8 +2120,8 @@ public sealed partial class MainWindow : Window
         try
         {
             bool hasVanillaPacks = IsVanillaRTXEnabled || IsNormalsEnabled || IsOpusEnabled;
-            bool hasCompatibleCustom = TunerVariables.SelectedPacks.Any(p => p.Type != "Incompatible");
-            bool hasIncompatibleCustom = TunerVariables.SelectedPacks.Any(p => p.Type == "Incompatible");
+            bool hasCompatibleCustom = EnvironmentVariables.SelectedPacks.Any(p => p.Type != "Incompatible");
+            bool hasIncompatibleCustom = EnvironmentVariables.SelectedPacks.Any(p => p.Type == "Incompatible");
 
             if ((hasVanillaPacks || hasCompatibleCustom) && hasIncompatibleCustom)
                 Log("Some of the selected packs are not RTX compatible & will be excluded from the tuning process.", LogLevel.Warning);

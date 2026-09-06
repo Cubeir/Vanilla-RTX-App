@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Drawing.Printing;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -102,7 +101,7 @@ public sealed partial class Alchitex : Window
     /// enough - this used to require MainWindow to remember to assign it, and it never did,
     /// which left every Preview user's sweep looking in the stable folders.
     /// </summary>
-    public bool IsTargetingPreview { get; set; } = TunerVariables.Persistent.IsTargetingPreview;
+    public bool IsTargetingPreview { get; set; } = EnvironmentVariables.Persistent.IsTargetingPreview;
 
     /// <summary>
     /// Mirrors the sibling modules' report-on-close convention (BetterRTX/DLSS/LUT
@@ -134,15 +133,15 @@ public sealed partial class Alchitex : Window
 
     private string AlchitexAssetsPath => System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets");
 
-    private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{TunerVariables.appVersion}";
+    private static string LicenseAcceptedKey = $"Alchitex_LicenseAccepted_{EnvironmentVariables.appVersion}";
 
     public Alchitex()
     {
         this.InitializeComponent();
 
         var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = TunerVariables.WindowMinSizeX;
-        manager.MinHeight = TunerVariables.WindowMinSizeY;
+        manager.MinWidth = EnvironmentVariables.WindowMinSizeX;
+        manager.MinHeight = EnvironmentVariables.WindowMinSizeY;
         manager.IsResizable = true;
         manager.IsMaximizable = true;
 
@@ -164,7 +163,7 @@ public sealed partial class Alchitex : Window
 
         // The queue mirrors the app-wide selection, so it has to hear about edits made
         // from the main window while this one is open - see SelectedPacks_CollectionChanged.
-        TunerVariables.SelectedPacks.CollectionChanged += SelectedPacks_CollectionChanged;
+        EnvironmentVariables.SelectedPacks.CollectionChanged += SelectedPacks_CollectionChanged;
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
 
@@ -224,7 +223,7 @@ public sealed partial class Alchitex : Window
         _reactor?.Shutdown();
         _backdrop?.Shutdown();
 
-        TunerVariables.SelectedPacks.CollectionChanged -= SelectedPacks_CollectionChanged;
+        EnvironmentVariables.SelectedPacks.CollectionChanged -= SelectedPacks_CollectionChanged;
 
         if (Content is FrameworkElement root)
             root.Loaded -= Alchitex_Loaded;
@@ -510,7 +509,7 @@ public sealed partial class Alchitex : Window
     /// Packs this window is ignoring for the rest of its lifetime: discarded by the user,
     /// skipped at a confirmation dialog, or already run (successfully or not).
     ///
-    /// Deliberately NOT a change to TunerVariables.SelectedPacks - that selection belongs
+    /// Deliberately NOT a change to EnvironmentVariables.SelectedPacks - that selection belongs
     /// to the main window and the pack browser. Closing and reopening this window brings
     /// everything back, which is exactly what "temporarily ignore" should mean. (The one
     /// case where SelectedPacks does change is the "Uninstall the original pack" toggle,
@@ -524,9 +523,9 @@ public sealed partial class Alchitex : Window
     // Cached per pack so a resize or a queue change doesn't re-read icon files.
     private readonly Dictionary<string, BitmapImage?> _packIconCache = new(StringComparer.OrdinalIgnoreCase);
 
-    private static bool AnimationsSuspended => TunerVariables.Persistent.SuspendUIAnimations;
+    private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
 
-    private List<(string Location, string Name)> InputQueue() => TunerVariables.SelectedPacks
+    private List<(string Location, string Name)> InputQueue() => EnvironmentVariables.SelectedPacks
         .Where(p => !string.IsNullOrEmpty(p.Location))
         .Where(p => !_dismissedLocations.Contains(p.Location))
         .Where(p => System.IO.Directory.Exists(p.Location))
@@ -580,7 +579,7 @@ public sealed partial class Alchitex : Window
 
     /// <summary>
     /// The main window's Clear button (and anything else that edits the shared selection)
-    /// empties TunerVariables.SelectedPacks out from under this window. The queue is drawn
+    /// empties EnvironmentVariables.SelectedPacks out from under this window. The queue is drawn
     /// from that collection, so it follows along - no need for the main window to disable
     /// its controls while this window is open just to keep the two in agreement.
     ///
@@ -651,7 +650,7 @@ public sealed partial class Alchitex : Window
     /// the selection upstream.</summary>
     private static bool IsStillQueued(string location, HashSet<string> dismissed)
         => !dismissed.Contains(location)
-           && TunerVariables.SelectedPacks.Any(p =>
+           && EnvironmentVariables.SelectedPacks.Any(p =>
                   string.Equals(p.Location, location, StringComparison.OrdinalIgnoreCase));
 
     private void RenderQueues()
@@ -1141,7 +1140,7 @@ public sealed partial class Alchitex : Window
         // the confirmation phase below) - EXCEPT the ones dismissed from the queue, which
         // is the whole point of the discard button. This has to read the same list the
         // queue renders from, or the two disagree about what a click does.
-        var selected = TunerVariables.SelectedPacks
+        var selected = EnvironmentVariables.SelectedPacks
             .Where(p => !string.IsNullOrEmpty(p.Location))
             .Where(p => !_dismissedLocations.Contains(p.Location))
             .Where(p => System.IO.Directory.Exists(p.Location))
@@ -1149,7 +1148,7 @@ public sealed partial class Alchitex : Window
 
         if (selected.Count == 0)
         {
-            SetStatusThenRevert(TunerVariables.SelectedPacks.Count == 0
+            SetStatusThenRevert(EnvironmentVariables.SelectedPacks.Count == 0
                 ? "No packs selected."
                 : "The queue is empty - at least one pack is needed.");
             return;
@@ -1258,7 +1257,7 @@ public sealed partial class Alchitex : Window
                     pack.Name,
                     stripExistingPbr ? options with { StripExistingPbr = true } : options,
                     AlchitexAssetsPath,
-                    TunerVariables.appVersion,
+                    EnvironmentVariables.appVersion,
                     progress,
                     _generateCts.Token);
 
@@ -1425,7 +1424,7 @@ public sealed partial class Alchitex : Window
     /// No confirmation dialog: the toggle IS the confirmation, and it was answered before
     /// the run started.
     ///
-    /// Also drops the pack from TunerVariables.SelectedPacks. It's app-wide state and the
+    /// Also drops the pack from EnvironmentVariables.SelectedPacks. It's app-wide state and the
     /// folder is gone, so leaving it selected would hand a dead path to Export/Tune/Delete
     /// back in the main window.
     ///
@@ -1440,10 +1439,10 @@ public sealed partial class Alchitex : Window
             {
                 _removedOriginalNames.Add(packName);
 
-                for (var i = TunerVariables.SelectedPacks.Count - 1; i >= 0; i--)
+                for (var i = EnvironmentVariables.SelectedPacks.Count - 1; i >= 0; i--)
                 {
-                    if (string.Equals(TunerVariables.SelectedPacks[i].Location, location, StringComparison.OrdinalIgnoreCase))
-                        TunerVariables.SelectedPacks.RemoveAt(i);
+                    if (string.Equals(EnvironmentVariables.SelectedPacks[i].Location, location, StringComparison.OrdinalIgnoreCase))
+                        EnvironmentVariables.SelectedPacks.RemoveAt(i);
                 }
             }
             else

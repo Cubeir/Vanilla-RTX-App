@@ -64,13 +64,13 @@ public class PackUpdater
     public bool InstallToDevelopmentFolder { get; set; } = false;
     public bool CleanUpTheOtherFolder { get; set; } = true;
 
-    private string GetRemoteVersionsCacheKey() => TunerVariables.Persistent.IsTargetingPreview
+    private string GetRemoteVersionsCacheKey() => EnvironmentVariables.Persistent.IsTargetingPreview
         ? RemoteVersionsCacheKey_Preview : RemoteVersionsCacheKey_Release;
 
-    private string GetRemoteVersionsCacheTimeKey() => TunerVariables.Persistent.IsTargetingPreview
+    private string GetRemoteVersionsCacheTimeKey() => EnvironmentVariables.Persistent.IsTargetingPreview
         ? RemoteVersionsCacheTimeKey_Preview : RemoteVersionsCacheTimeKey_Release;
 
-    private string GetLastCacheCheckKey() => TunerVariables.Persistent.IsTargetingPreview
+    private string GetLastCacheCheckKey() => EnvironmentVariables.Persistent.IsTargetingPreview
         ? LastCacheCheckKey_Preview : LastCacheCheckKey_Release;
 
     // ======================= Installation State Management =======================
@@ -702,16 +702,16 @@ public class PackUpdater
 
         try
         {
-            var versionName = MinecraftUserDataLocator.GetVersionDisplayName(TunerVariables.Persistent.IsTargetingPreview);
+            var versionName = MinecraftUserDataLocator.GetVersionDisplayName(EnvironmentVariables.Persistent.IsTargetingPreview);
 
-            if (!MinecraftUserDataLocator.IsDataValid(TunerVariables.Persistent.IsTargetingPreview))
+            if (!MinecraftUserDataLocator.IsDataValid(EnvironmentVariables.Persistent.IsTargetingPreview))
             {
                 Trace.WriteLine($"❌ {versionName} data root not found. Please make sure the game is installed or has been launched at least once.");
                 return false;
             }
 
             resourcePackPath = MinecraftUserDataLocator.GetResourcePacksPath(
-                TunerVariables.Persistent.IsTargetingPreview,
+                EnvironmentVariables.Persistent.IsTargetingPreview,
                 development: InstallToDevelopmentFolder,
                 createIfMissing: true);
 

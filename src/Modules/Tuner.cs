@@ -14,8 +14,8 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.Modules.ProcessorVariables;
-using static Vanilla_RTX_App.TunerVariables;
-using static Vanilla_RTX_App.TunerVariables.Persistent;
+using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -140,7 +140,7 @@ public class Tuner
             new("Vanilla RTX Opus",    VanillaRTXOpusLocation,    IsOpusEnabled),
         };
 
-        foreach (var (location, name, type, _) in TunerVariables.SelectedPacks)
+        foreach (var (location, name, type, _) in EnvironmentVariables.SelectedPacks)
         {
             if (type == "Incompatible") continue;
             packList.Add(new PackInfo(name, location, !string.IsNullOrEmpty(location)));

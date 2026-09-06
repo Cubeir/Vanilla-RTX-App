@@ -35,7 +35,7 @@ public static class ThemeService
     }
 
     public static ElementTheme ResolveInitialTheme() =>
-    (TunerVariables.Persistent.AppThemeMode ?? "System") switch
+    (EnvironmentVariables.Persistent.AppThemeMode ?? "System") switch
     {
         "Light" => ElementTheme.Light,
         "Dark" => ElementTheme.Dark,

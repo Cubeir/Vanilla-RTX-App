@@ -220,7 +220,7 @@ public static class ExpImpDel
 
     private static string GetImportDestination() =>
         MinecraftUserDataLocator.GetResourcePacksPath(
-            TunerVariables.Persistent.IsTargetingPreview,
+            EnvironmentVariables.Persistent.IsTargetingPreview,
             development: InstallToDevelopmentPacks,
             createIfMissing: true);
 
@@ -522,7 +522,7 @@ public static class ExpImpDel
     private static string? FindExistingPackMatch(string headerUuid)
     {
         var scanRoots = MinecraftUserDataLocator
-            .GetExistingResourcePackScanPaths(TunerVariables.Persistent.IsTargetingPreview)
+            .GetExistingResourcePackScanPaths(EnvironmentVariables.Persistent.IsTargetingPreview)
             .ToList();
 
         foreach (var root in scanRoots)

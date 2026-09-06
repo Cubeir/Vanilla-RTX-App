@@ -13,7 +13,7 @@ public sealed partial class PsaCard : UserControl
     private readonly PsaKind _kind;
     private readonly int? _cooldownMinutes;
 
-    private double AnimationSpeedMultiplier => TunerVariables.Persistent.SuspendUIAnimations ? 0.01 : 1.0;
+    private double AnimationSpeedMultiplier => EnvironmentVariables.Persistent.SuspendUIAnimations ? 0.01 : 1.0;
     private double FADE_IN_MS => 50 * AnimationSpeedMultiplier;
     private double FADE_OUT_MS => 50 * AnimationSpeedMultiplier;
 

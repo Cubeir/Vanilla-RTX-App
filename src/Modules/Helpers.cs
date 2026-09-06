@@ -34,16 +34,6 @@ public static class Helpers
 
             var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-            // this loop used to call sourcePixels.GetPixel(x, y) - a native
-            // ImageMagick call per pixel - AND bitmap.SetPixel(x, y, ...) - a native
-            // GDI+ call per pixel. Both were replaced with a single bulk native
-            // call on each side: GetValues() fetches every channel of every pixel in
-            // one call (verified against Magick.NET's own test suite: the returned
-            // array's length is exactly width * height * channelCount, in the same
-            // row-major, channel-interleaved order that indexing a single GetPixel(x,y)
-            // result already used), and FastBitmap replaces the GDI+ side. The decode
-            // logic itself - every ColorType branch, the >>8 truncation, maxOpacity -
-            // is untouched; only how the raw channel values are fetched changed.
             using (var sourcePixels = sourceImage.GetPixels())
             using (var fb = new FastBitmap(bitmap, writable: true))
             {
@@ -173,9 +163,8 @@ public static class Helpers
             writer.Write((byte)32);       // Pixel Depth (32-bit RGBA)
             writer.Write((byte)8);        // Image Descriptor (default origin, 8-bit alpha)
 
-            // FIX: was bitmap.GetPixel(x, y) per pixel - every TGA save (the majority
-            // format for RTX PBR packs) paid this. FastBitmap bulk-copies the whole
-            // buffer once via LockBits/Marshal.Copy, then reads are plain array indexing.
+            // FastBitmap bulk-copies the whole buffer once via LockBits/Marshal.Copy,
+            // then reads are plain array indexing instead of bitmap.GetPixel(x, y)
             using var fb = new FastBitmap(bitmap, writable: false);
 
             for (var y = height - 1; y >= 0; y--) // TGA is bottom-up by default
@@ -222,8 +211,8 @@ public static class Helpers
     /// </summary>
     public static string BuildUserAgent(string? component = null) =>
         component is null
-            ? $"vanilla_rtx_app/{TunerVariables.appVersion}"
-            : $"vanilla_rtx_app_{component}/{TunerVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)";
+            ? $"vanilla_rtx_app/{EnvironmentVariables.appVersion}"
+            : $"vanilla_rtx_app_{component}/{EnvironmentVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)";
     /// <summary>
     /// Downloads a file with progress tracking and retry logic.
     /// Uses the shared HttpClient which is pre-configured.
@@ -918,14 +907,14 @@ public static class MinecraftGDKLocator
 
         ValidateAndUpdateSingleInstallation(
             isPreview: false,
-            cachedPath: TunerVariables.Persistent.MinecraftInstallPath,
-            updateCache: (path) => TunerVariables.Persistent.MinecraftInstallPath = path
+            cachedPath: EnvironmentVariables.Persistent.MinecraftInstallPath,
+            updateCache: (path) => EnvironmentVariables.Persistent.MinecraftInstallPath = path
         );
 
         ValidateAndUpdateSingleInstallation(
             isPreview: true,
-            cachedPath: TunerVariables.Persistent.MinecraftPreviewInstallPath,
-            updateCache: (path) => TunerVariables.Persistent.MinecraftPreviewInstallPath = path
+            cachedPath: EnvironmentVariables.Persistent.MinecraftPreviewInstallPath,
+            updateCache: (path) => EnvironmentVariables.Persistent.MinecraftPreviewInstallPath = path
         );
 
         Trace.WriteLine("=== PHASE 1 Complete ===");
@@ -1541,12 +1530,12 @@ public static class MinecraftGDKLocator
     {
         if (isPreview)
         {
-            TunerVariables.Persistent.MinecraftPreviewInstallPath = path;
+            EnvironmentVariables.Persistent.MinecraftPreviewInstallPath = path;
             Trace.WriteLine($"[GDKLocator] Cached Preview installation: {path}");
         }
         else
         {
-            TunerVariables.Persistent.MinecraftInstallPath = path;
+            EnvironmentVariables.Persistent.MinecraftInstallPath = path;
             Trace.WriteLine($"[GDKLocator] Cached Stable installation: {path}");
         }
     }
@@ -1560,7 +1549,7 @@ public static class MinecraftGDKLocator
 /// Centralizes discovery and validation of Minecraft's GDK user data root -
 /// the folder that contains worlds, options, resource packs, and the Shared tree.
 ///
-/// Contract: the path stored in TunerVariables.Persistent.MinecraftDataPath (and
+/// Contract: the path stored in EnvironmentVariables.Persistent.MinecraftDataPath (and
 /// MinecraftPreviewDataPath) is always the "Minecraft Bedrock" or "Minecraft Bedrock
 /// Preview" root folder - the one that directly contains a "Users" subfolder.
 /// All deeper paths (com.mojang, resource_packs, options.txt) are derived from this
@@ -1623,8 +1612,8 @@ public static class MinecraftUserDataLocator
     public static string? GetDataRoot(bool isPreview)
     {
         var path = isPreview
-            ? TunerVariables.Persistent.MinecraftPreviewDataPath
-            : TunerVariables.Persistent.MinecraftDataPath;
+            ? EnvironmentVariables.Persistent.MinecraftPreviewDataPath
+            : EnvironmentVariables.Persistent.MinecraftDataPath;
 
         return IsValidDataRoot(path, isPreview) ? path : null;
     }
@@ -1764,8 +1753,8 @@ public static class MinecraftUserDataLocator
     {
         var versionName = isPreview ? "Preview" : "Stable";
         var cachedPath = isPreview
-            ? TunerVariables.Persistent.MinecraftPreviewDataPath
-            : TunerVariables.Persistent.MinecraftDataPath;
+            ? EnvironmentVariables.Persistent.MinecraftPreviewDataPath
+            : EnvironmentVariables.Persistent.MinecraftDataPath;
 
         // 1. Cached path - still there and valid?
         if (!string.IsNullOrEmpty(cachedPath))
@@ -1825,8 +1814,8 @@ public static class MinecraftUserDataLocator
 
     private static void SetCachedPath(bool isPreview, string? path)
     {
-        if (isPreview) TunerVariables.Persistent.MinecraftPreviewDataPath = path;
-        else TunerVariables.Persistent.MinecraftDataPath = path;
+        if (isPreview) EnvironmentVariables.Persistent.MinecraftPreviewDataPath = path;
+        else EnvironmentVariables.Persistent.MinecraftDataPath = path;
     }
 
 

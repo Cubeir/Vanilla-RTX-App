@@ -166,7 +166,7 @@ internal sealed class ReactorBackdrop
     /// </summary>
     private readonly bool _motionAffordable = ResolveMotionBudget();
 
-    private bool MotionAllowed => _motionAffordable && !TunerVariables.Persistent.SuspendUIAnimations;
+    private bool MotionAllowed => _motionAffordable && !EnvironmentVariables.Persistent.SuspendUIAnimations;
 
     public ReactorBackdrop(Border host) => _host = host ?? throw new ArgumentNullException(nameof(host));
 

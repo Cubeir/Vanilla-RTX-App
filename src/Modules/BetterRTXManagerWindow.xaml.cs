@@ -20,7 +20,7 @@ using Vanilla_RTX_App.Core;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.TunerVariables;
+using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -320,7 +320,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            var cachedPath = TunerVariables.Persistent.MinecraftInstallPath;
+            var cachedPath = EnvironmentVariables.Persistent.MinecraftInstallPath;
             string? minecraftPath = null;
 
             // Validate cached path
@@ -335,7 +335,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (!string.IsNullOrEmpty(cachedPath))
                 {
                     Trace.WriteLine($"[BetterRTX] ⚠ Cache became invalid, clearing");
-                    TunerVariables.Persistent.MinecraftInstallPath = null;
+                    EnvironmentVariables.Persistent.MinecraftInstallPath = null;
                 }
 
                 // Show manual selection button

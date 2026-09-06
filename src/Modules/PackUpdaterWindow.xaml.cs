@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Windows.Storage;
 using WinUIEx;
-using static Vanilla_RTX_App.TunerVariables; // For Public Pack version variables, if null or empty = not installed
+using static Vanilla_RTX_App.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -111,7 +111,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
 
             SetTitleBar(TitleBarArea);
 
-            var text = TunerVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
+            var text = EnvironmentVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
             WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
             await InitializePackInformation();

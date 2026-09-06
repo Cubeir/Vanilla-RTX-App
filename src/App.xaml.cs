@@ -111,7 +111,7 @@ public partial class App : Application
 
             File.AppendAllText(logPath,
                 $"=== Crash Report ===\n" +
-                $"Version:   {TunerVariables.appVersion ?? "unknown"}\n" +
+                $"Version:   {EnvironmentVariables.appVersion ?? "unknown"}\n" +
                 $"Source:    {source}\n" +
                 $"Time:      {DateTime.Now}\n" +
                 $"Message:   {message}\n" +
