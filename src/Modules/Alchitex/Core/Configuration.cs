@@ -627,7 +627,7 @@ public sealed record AlchitexOptions(
     /// <summary>
     /// Ceiling for an *explicit* Heightmap selection (TextureSetOrchestrator.
     /// ResolveSecondaryMode): above this width a normal map is generated instead - a
-    /// heightmap texture set above this size no longer manifests correctly in-game.
+    /// heightmap texture set above this size no longer manifests itself correctly in-game.
     /// </summary>
     public const int ExplicitHeightmapMaxWidth = 32;
 

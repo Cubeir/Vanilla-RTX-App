@@ -35,10 +35,12 @@ using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
 namespace Vanilla_RTX_App;
 
 // EXPAND ON LAZIFY SURFACE NORMALS
-// It'll be simple, take the luminosity map of each texture
-// raise it all till highest hits the ceiling (255), apply that to blue channel of each normal (linear/simple blending, 0-255)
+// Do it simple, take the luminosity map of each texture
+// raise it all till highest hits the ceiling (255) (no contrast maximization), apply that to blue channel of each normal (linear/simple blending, 0-255)
 // Might wanna become a user of Alchitex's heightmap/normal generation methods and Rework lazifier entirely!
 // Thing is, lazifier's job is different, it literally lazifies, its meant to be used on good packs. If we generate semi-good normals, it DEFEATS the point!
+
+// IDEA: MOVE the BetterRTX "Add custom presets" button to be at the VERY top instead, and expand the text to say, or install from one of the pre-made presets provided by BetterRTX
 
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
