@@ -45,13 +45,13 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 ///
 /// -- ORDER OF OPERATIONS, AND WHY IT'S THIS ORDER --------------------------------------
 ///
-/// Generation happens first, in temp; the destination folders are stripped and written only
-/// once generation has actually succeeded. So a crash, a cancel, or a bad texture leaves the
-/// user's folders exactly as they were, rather than stripped bare with nothing to show for
-/// it. The strip is what makes re-running idempotent - without it, TextureSetOrchestrator
-/// skips every texture that the *previous* run already claimed with a .texture_set.json, and
-/// changing the Secondary PBR option would leave last run's orphaned _normal.tga sitting
-/// next to this run's _heightmap.tga.
+/// The staged copy is stripped first, then generated into; the destination folders are
+/// stripped and written only once generation has actually succeeded. So a crash, a cancel,
+/// or a bad texture leaves the user's folders exactly as they were, rather than stripped bare
+/// with nothing to show for it. Both strips are what make re-running idempotent - without
+/// them, TextureSetOrchestrator skips every texture the *previous* run already claimed with a
+/// .texture_set.json, and changing the Secondary PBR option would leave last run's orphaned
+/// _normal.tga sitting next to this run's _heightmap.tga.
 ///
 /// DESTRUCTIVE, and outside the temp-copy safety net the real pipeline enjoys (§4.2) - by
 /// necessity, since the whole point is regenerating in place. The caller must confirm with
@@ -124,11 +124,12 @@ public static class PbrTestBench
     /// copy, so "what counts as a texture" can never disagree with what the pipeline itself
     /// accepts.
     ///
-    /// No attempt is made here to exclude names that look like generated PBR output
-    /// (_mer/_mers/_normal/_heightmap). That rule lives inside TextureSetOrchestrator and is
-    /// private to it; duplicating it here to make a count look tidier is exactly the kind of
-    /// second copy that goes stale. Everything is staged, the orchestrator throws out what
-    /// it doesn't want, and Result reports what it actually did with them.
+    /// Names that look like generated PBR output (_mer/_mers/_normal/_heightmap) are picked
+    /// up like any other image, deliberately - nothing in the module decides what a file is
+    /// from how it is spelled, because sandstone_normal.png is a color texture. What keeps a
+    /// previous run's output from coming back as artwork is that Run() stages each texture's
+    /// .texture_set.json with it and strips the staged copy: a file some set already claims
+    /// is cleared, and a genuinely orphaned one is the color texture it now is.
     /// </summary>
     public static Plan Survey(IEnumerable<string> selectedPaths)
     {
@@ -227,11 +228,33 @@ public static class PbrTestBench
                     cancellationToken.ThrowIfCancellationRequested();
                     File.Copy(image, Path.Combine(stagedDir, Path.GetFileName(image)), overwrite: true);
                     staged++;
+
+                    // Whatever texture set claims this texture comes with it. Without it the
+                    // staged copy is a pile of orphans, and a previous run's foo_mers.tga -
+                    // staged along with everything else, because selection is by extension -
+                    // would be a color texture in its own right and get PBR generated for it.
+                    // With it, the strip below recognises it as foo's MERS layer.
+                    var descriptor = Path.ChangeExtension(image, null) + ".texture_set.json";
+                    if (File.Exists(descriptor))
+                        File.Copy(descriptor, Path.Combine(stagedDir, Path.GetFileName(descriptor)), overwrite: true);
                 }
             }
 
             if (staged == 0)
                 return new Result(0, 0, 0, 0, 0, 0, 0, "Nothing could be staged from the selection.");
+
+            // ── Clear what a previous run left ───────────────────────────────
+            // The production stripper against the staged copy, and the one place the bench
+            // deliberately differs from a pack run. GenerateTexturePixels skips any target
+            // whose output already exists, which for a real pack correctly means "don't redo
+            // finished work" and here would mean "silently keep the last run's result" - so
+            // re-running after changing an option wrote a fresh .texture_set.json pointing at
+            // files that were then stripped from the destination and never rewritten.
+            //
+            // Running before the snapshot below is what keeps this simple: anything cleared
+            // was never "here before", so the diff sees the regenerated file as new with no
+            // bookkeeping. Nothing of the user's is touched - this is all inside benchRoot.
+            PbrStripper.Strip(benchRoot);
 
             var before = SnapshotFiles(benchRoot);
 
@@ -245,30 +268,6 @@ public static class PbrTestBench
             var orchestrated = TextureSetOrchestrator.GenerateMissingTextureSets(benchRoot, options, blacklist);
 
             cancellationToken.ThrowIfCancellationRequested();
-
-            // ── Force regeneration ───────────────────────────────────────────
-            // The one place the bench deliberately differs from a pack run, and it has to be
-            // here rather than left to the destination strip at the end.
-            //
-            // Selection is by extension, so a folder that has been run before hands us the
-            // last run's _mers.tga / _normal.tga alongside the color textures. Those get
-            // staged too (harmlessly - the orchestrator's own junk filter refuses to treat
-            // them as color textures). But GenerateTexturePixels skips any target whose
-            // output file already exists, which for a real pack correctly means "don't redo
-            // finished work", and here would mean "silently keep the previous run's result"
-            // - so re-running after changing an option produced a fresh .texture_set.json
-            // pointing at PBR files that were then stripped from the destination and never
-            // rewritten. Deleting the outputs inside the staged copy first is what makes a
-            // re-run actually regenerate.
-            //
-            // The paths come from the production discovery pass, so this can only ever
-            // target files a texture set genuinely claims as a PBR layer - never a color
-            // texture that happens to be named like one (sandstone_normal.png).
-            foreach (var target in TextureSetOrchestrator.DiscoverGenerationTargets(benchRoot))
-            {
-                ClearStagedOutput(target.MersPath, before);
-                ClearStagedOutput(target.SecondaryPath, before);
-            }
 
             AlchitexPipeline.GenerateTexturePixels(benchRoot, materials, options, progress, cancellationToken);
 
@@ -394,30 +393,6 @@ public static class PbrTestBench
         {
             Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't snapshot '{root}': {ex.Message}");
             return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        }
-    }
-
-    /// <summary>
-    /// Removes a stale PBR output from the staged copy so generation rewrites it, and drops
-    /// it from the "what was here before" set at the same time - otherwise the regenerated
-    /// file would still look pre-existing to the diff and never get copied back out.
-    /// </summary>
-    private static void ClearStagedOutput(string? path, HashSet<string> before)
-    {
-        if (string.IsNullOrEmpty(path)) return;
-
-        var full = Path.GetFullPath(path);
-        before.Remove(full);
-
-        try
-        {
-            if (File.Exists(full)) File.Delete(full);
-        }
-        catch (Exception ex)
-        {
-            // Left in place, generation will skip it, and the diff simply won't see it -
-            // the run reports fewer files written rather than producing a broken folder.
-            Trace.WriteLine($"[ALCHITEX] PbrTestBench: couldn't clear staged '{full}': {ex.Message}");
         }
     }
 

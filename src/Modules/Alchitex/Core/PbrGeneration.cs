@@ -17,6 +17,22 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 public sealed class TextureSetOrchestratorOptions
 {
     public static readonly string[] CandidateExtensions = { ".tga", ".png", ".jpg", ".jpeg" };
+
+    /// <summary>
+    /// The same file name under every supported extension, the given path's own included.
+    /// TextureSetHelper only ever hands back the one file the game would actually load
+    /// (.tga > .png > .jpg > .jpeg), so anything reasoning about "this texture" rather than
+    /// "this file" has to widen a resolved path back out to all four. The three that don't
+    /// exist are the normal case and cost nothing to name.
+    /// </summary>
+    public static IEnumerable<string> ExtensionVariants(string path)
+    {
+        var folder = Path.GetDirectoryName(path)!;
+        var nameNoExt = Path.GetFileNameWithoutExtension(path);
+
+        foreach (var extension in CandidateExtensions)
+            yield return Path.Combine(folder, nameNoExt + extension);
+    }
 }
 
 /// <summary>
@@ -90,35 +106,73 @@ public static class TextureSetOrchestrator
             return new Result(0, 0, 0, 0);
         }
 
-        // Exclude anything already claimed by an existing texture set.
+        // ── What an existing texture set already owns ────────────────────────
+        //
+        // Ownership is the ONLY thing that excludes a texture from generation, and it is
+        // deliberately not helped along by a name check. Plenty of ordinary *color* textures
+        // end in _normal or _heightmap - sandstone_normal, red_sandstone_normal,
+        // rail_normal_turned - where "normal" means the plain variant of a block, not a
+        // normal map. A suffix filter used to sit here as a second line of defence and was
+        // simply wrong twice over: it made those textures invisible to the entire module (no
+        // PBR, and not even the color-only texture set a blacklisted name still gets), and it
+        // did the same to a genuinely orphaned foo_heightmap.tga that no texture set claims -
+        // which is exactly the file this pass exists to pick up.
+        //
+        // Widened to every extension because TextureSetHelper resolves only the one file the
+        // game would load: a foo_mer.png sitting beside the foo_mer.tga a set resolved is the
+        // same texture and has to be skipped with it, or it comes back as a color texture on
+        // the next line. Same widening PbrStripper applies when it deletes.
         var alreadyCovered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var resolved in TextureSetHelper.ResolveTextureSets(packRoot))
+
+        // Every color texture in the pack, so a generated file can't be named over one below.
+        var colorNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Both sides of this comparison go through GetFullPath. They happen to agree today
+        // (each is built up from the same packRoot string), but this set is now the only
+        // thing standing between generation and a pack's existing PBR, and a texture set is
+        // free to name its layer with a "/" in it - which Path.Combine leaves as a mixed
+        // separator that would never match a Directory.GetFiles result.
+        void CoverAllVariants(string? path)
         {
-            if (resolved.Color.FilePath != null) alreadyCovered.Add(resolved.Color.FilePath);
-            if (resolved.Mer?.FilePath != null) alreadyCovered.Add(resolved.Mer.FilePath);
-            if (resolved.NormalOrHeight?.FilePath != null) alreadyCovered.Add(resolved.NormalOrHeight.FilePath);
+            if (path == null) return;
+            foreach (var variant in TextureSetOrchestratorOptions.ExtensionVariants(path))
+                alreadyCovered.Add(Path.GetFullPath(variant));
         }
 
-        static bool LooksLikeGeneratedOrJunk(string nameLowerNoExt)
+        foreach (var resolved in TextureSetHelper.ResolveTextureSets(packRoot))
         {
-            if (nameLowerNoExt.EndsWith("_mer") || nameLowerNoExt.EndsWith("_mers")) return true;
-            if (nameLowerNoExt.EndsWith("_normal") || nameLowerNoExt.EndsWith("_heightmap")) return true;
+            CoverAllVariants(resolved.Color.FilePath);
+            CoverAllVariants(resolved.Mer?.FilePath);
+            CoverAllVariants(resolved.NormalOrHeight?.FilePath);
+
+            if (resolved.Color.FilePath is { } ownedColor)
+                colorNames.Add(Path.GetFileNameWithoutExtension(ownedColor));
+        }
+
+        // Specific vanilla names, each excluded for its own reason rather than for how it is
+        // spelled. Nothing here may grow back into "looks like PBR output" - deciding who
+        // owns a texture is the set above's job, and only its job.
+        static bool IsExcludedByName(string nameLowerNoExt)
+        {
             if (nameLowerNoExt.Contains("bubble") || nameLowerNoExt.Contains("_placeholder")) return true;
+
             // Colored/inventory water icons - consumed as source material by the
             // water-fallback pass (PostProcess.EnsureGreyWaterTextures), never need a
             // texture set of their own. The grey in-world variants (water_still_grey/
-            // water_flow_grey) DO get one now - see the PBR blacklist below.
-            if (nameLowerNoExt == "water_flow" || nameLowerNoExt == "water_still") return true;
-            return false;
+            // water_flow_grey) DO get one - see the PBR blacklist below.
+            return nameLowerNoExt is "water_flow" or "water_still";
         }
 
         var colorTextures = candidates
-            .Where(path => !alreadyCovered.Contains(path))
-            .Where(path => !LooksLikeGeneratedOrJunk(Path.GetFileNameWithoutExtension(path).ToLowerInvariant()))
+            .Where(path => !alreadyCovered.Contains(Path.GetFullPath(path)))
+            .Where(path => !IsExcludedByName(Path.GetFileNameWithoutExtension(path).ToLowerInvariant()))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var skippedCovered = candidates.Count - colorTextures.Count;
+
+        foreach (var colorPath in colorTextures)
+            colorNames.Add(Path.GetFileNameWithoutExtension(colorPath));
 
         foreach (var colorPath in colorTextures)
         {
@@ -147,16 +201,32 @@ public static class TextureSetOrchestrator
                 }
                 else
                 {
-                    set["metalness_emissive_roughness_subsurface"] = nameNoExt + "_mers";
+                    // Generated files are always .tga, which outranks every other extension
+                    // (§4.4) - so an output named after a real color texture doesn't land
+                    // beside it, it hides it, and that block renders as somebody's normal
+                    // map. Art wins: the colliding layer is dropped and the rest of the set
+                    // stands. Only reachable when a pack ships both "foo" and "foo_normal"
+                    // as artwork, which is rare and silent enough to be worth the check.
+                    string? Claim(string suffix)
+                    {
+                        var layerName = nameNoExt + suffix;
+                        if (!colorNames.Contains(layerName)) return layerName;
+
+                        Trace.WriteLine($"[ALCHITEX] '{nameNoExt}': '{layerName}' is a color texture in this pack - dropping that layer rather than overwriting it.");
+                        return null;
+                    }
+
+                    if (Claim("_mers") is { } mersName)
+                        set["metalness_emissive_roughness_subsurface"] = mersName;
 
                     var secondaryMode = ResolveSecondaryMode(options.SecondaryPbr, colorPath);
                     switch (secondaryMode)
                     {
                         case SecondaryPbrMode.Normal:
-                            set["normal"] = nameNoExt + "_normal";
+                            if (Claim("_normal") is { } normalName) set["normal"] = normalName;
                             break;
                         case SecondaryPbrMode.Heightmap:
-                            set["heightmap"] = nameNoExt + "_heightmap";
+                            if (Claim("_heightmap") is { } heightmapName) set["heightmap"] = heightmapName;
                             break;
                         case SecondaryPbrMode.None:
                         case SecondaryPbrMode.Auto: // Auto never reaches here unresolved - see ResolveSecondaryMode

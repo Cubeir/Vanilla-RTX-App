@@ -208,13 +208,8 @@ public static class PbrStripper
 
     /// <summary>The given file path under every extension the game (and this app) supports,
     /// the path's own included - see the class comment for why the ones that don't exist are
-    /// worth trying anyway.</summary>
+    /// worth trying anyway. Shared with TextureSetOrchestrator, which needs the same widening
+    /// to decide what an existing texture set already owns.</summary>
     private static IEnumerable<string> ExtensionVariants(string path)
-    {
-        var folder = Path.GetDirectoryName(path)!;
-        var nameNoExt = Path.GetFileNameWithoutExtension(path);
-
-        foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
-            yield return Path.Combine(folder, nameNoExt + ext);
-    }
+        => TextureSetOrchestratorOptions.ExtensionVariants(path);
 }
