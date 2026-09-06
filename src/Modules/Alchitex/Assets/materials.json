@@ -2736,11 +2736,19 @@
             "invert_roughness": true
         },
         "sss": {
-            "min": 177,
+            "min": 0,
             "max": 254,
             "invert": false
         },
         "recursive": [],
+        "invisible_emission": {
+            "color": [
+                222,
+                164,
+                64
+            ],
+            "strength": 44
+        },
         "heightmap": {
             "intensity": 1,
             "invert": false
@@ -13456,9 +13464,9 @@
         "recursive": [],
         "invisible_emission": {
             "color": [
-                156,
-                36,
-                0
+                213,
+                142,
+                53
             ],
             "strength": 56
         },
@@ -13491,9 +13499,9 @@
         "recursive": [],
         "invisible_emission": {
             "color": [
-                157,
-                37,
-                0
+                217,
+                151,
+                54
             ],
             "strength": 56
         },
@@ -13644,11 +13652,11 @@
     "flower_allium": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 20,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 134,
-            "roughness_max": 255,
+            "roughness_max": 207,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -13756,7 +13764,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 244,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -13783,7 +13791,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 252,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -13810,7 +13818,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 253,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -13837,14 +13845,14 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 251,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
         },
         "sss": {
             "min": 8,
-            "max": 231,
+            "max": 199,
             "invert": false
         },
         "recursive": [],
@@ -13945,7 +13953,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 253,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -13972,7 +13980,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 253,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -13999,7 +14007,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 253,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -14026,7 +14034,7 @@
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 185,
-            "roughness_max": 255,
+            "roughness_max": 253,
             "invert_metal": false,
             "invert_emissive": false,
             "invert_roughness": true
@@ -14052,7 +14060,7 @@
             "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 128,
+            "roughness_min": 218,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -27226,11 +27234,19 @@
             "invert_roughness": true
         },
         "sss": {
-            "min": 177,
+            "min": 0,
             "max": 254,
             "invert": false
         },
         "recursive": [],
+        "invisible_emission": {
+            "color": [
+                85,
+                209,
+                212
+            ],
+            "strength": 24
+        },
         "heightmap": {
             "intensity": 1,
             "invert": false
@@ -27287,9 +27303,9 @@
         "recursive": [],
         "invisible_emission": {
             "color": [
-                0,
-                247,
-                255
+                56,
+                204,
+                209
             ],
             "strength": 28
         },
@@ -27322,9 +27338,9 @@
         "recursive": [],
         "invisible_emission": {
             "color": [
-                0,
-                247,
-                255
+                56,
+                204,
+                209
             ],
             "strength": 28
         },
