@@ -106,9 +106,23 @@ public static class AssetUpdater
     /// <summary>
     /// Where to read this asset from: the cached copy if one is present, the packaged copy
     /// otherwise. The only method a call site should ever use to build one of these paths.
+    ///
+    /// **A Debug build always reads the packaged copy.** One successful check is enough for
+    /// the cache to win every read from then on, so a change to a bundled asset appears to do
+    /// nothing until the remote copy catches up - and the only way to see your own edit was to
+    /// go offline. That is the wrong loop for the asset that gets edited most (materials.json,
+    /// via MaterialsBootstrapper). This is the one behavioural difference between the two
+    /// configurations; Release is untouched.
+    ///
+    /// TriggerUpdate deliberately still runs in Debug. Nothing reads what it fetches here, but
+    /// it keeps the download, cooldown and swap path exercised during development - shorting
+    /// that out too would mean the updater is only ever really run by users.
     /// </summary>
     public static string Resolve(ManagedAsset asset)
     {
+#if DEBUG
+        return asset.PackagedPath;
+#else
         try
         {
             var cacheFolder = CacheFolderPath;
@@ -125,6 +139,7 @@ public static class AssetUpdater
             Trace.WriteLine($"[AssetUpdater] Resolve('{asset.FileName}') failed, using the packaged copy: {ex.Message}");
             return asset.PackagedPath;
         }
+#endif
     }
 
     // =========================================================================
