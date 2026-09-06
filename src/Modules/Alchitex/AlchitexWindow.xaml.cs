@@ -1031,7 +1031,7 @@ public sealed partial class Alchitex : Window
     /// both come from here, so there's one list rather than one per surface.</summary>
     private static readonly string[] SecondaryPbrModeLabels =
     {
-        "None (flat textures)", "Automatic", "Normal map", "Heightmap",
+        "None (flat)", "Automatic", "Normal map", "Heightmap",
     };
 
     private int _secondaryPbrModeIndex = (int)SecondaryPbrMode.Auto;
