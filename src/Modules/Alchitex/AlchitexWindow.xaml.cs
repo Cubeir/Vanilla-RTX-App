@@ -804,186 +804,6 @@ public sealed partial class Alchitex : Window
         GenerateButton.Height = side;
     }
 
-    // ── Queue animations ─────────────────────────────────────────────────────
-    //
-    // All of them no-op into their end state when SuspendUIAnimations is on - the queue
-    // still updates, it just stops moving.
-
-    private const double DismissAnimationMs = 180;
-    private const double IntoReactorAnimationMs = 320;
-    private const double ArrivalAnimationMs = 260;
-
-    /// <summary>Discarded or skipped: straight up and out.</summary>
-    private async Task AnimateDismissAsync(FrameworkElement tile)
-    {
-        if (AnimationsSuspended) return;
-
-        await RunStoryboardAsync(BuildTileStoryboard(tile, DismissAnimationMs,
-            translateY: -40, opacity: 0, easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
-    }
-
-    /// <summary>Accepted for generation: flies right, into the reactor, shrinking as it
-    /// goes. The tiles behind it then slide up into the gap (RenderQueues redraws them at
-    /// their new positions, and AnimateReflow covers the jump).</summary>
-    private async Task AnimateIntoReactorAsync(FrameworkElement tile)
-    {
-        if (AnimationsSuspended) return;
-
-        await RunStoryboardAsync(BuildTileStoryboard(tile, IntoReactorAnimationMs,
-            translateX: ReactorTravelDistance(tile), opacity: 0, scale: 0.35,
-            easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
-    }
-
-    /// <summary>The tiles left in the input row closing the gap the departed one left.</summary>
-    private void AnimateReflow()
-    {
-        if (AnimationsSuspended) return;
-
-        foreach (var child in InputQueuePanel.Children.OfType<FrameworkElement>())
-        {
-            if (child.RenderTransform is not CompositeTransform transform) continue;
-
-            transform.TranslateX = _packTileSize + 12; // where it was before the gap closed
-            _ = RunStoryboardAsync(BuildTileStoryboard(child, 220, translateX: 0,
-                easing: new QuadraticEase { EasingMode = EasingMode.EaseOut }));
-        }
-    }
-
-    /// <summary>
-    /// A finished pack coming out of the reactor - AnimateIntoReactorAsync played
-    /// backwards: it starts small and transparent, off at the reactor's side, and travels
-    /// back down the row into place. Same distance basis and easing (mirrored) as the
-    /// intake, so the two read as one motion in opposite directions.
-    /// </summary>
-    private async Task AnimateArrivalAsync(FrameworkElement tile)
-    {
-        if (AnimationsSuspended) return;
-        if (tile.RenderTransform is not CompositeTransform transform) return;
-
-        transform.TranslateX = ReactorTravelDistance(tile);
-        transform.ScaleX = transform.ScaleY = 0.35;
-        tile.Opacity = 0;
-
-        await RunStoryboardAsync(BuildTileStoryboard(tile, ArrivalAnimationMs,
-            translateX: 0, opacity: 1, scale: 1.0,
-            easing: new QuadraticEase { EasingMode = EasingMode.EaseOut }));
-    }
-
-    /// <summary>How far a tile has to travel to reach the reactor from where it sits.
-    /// Shared by the intake and the arrival so the two mirror each other exactly.</summary>
-    private double ReactorTravelDistance(FrameworkElement tile)
-        => Math.Max(120, PackQueueHost.ActualWidth - tile.ActualOffset.X);
-
-    private const double EjectAnimationMs = 480;
-
-    /// <summary>
-    /// A pack that errored out: thrown clear through the reactor and off the far side,
-    /// rather than coming back down the output row like a finished one. Three departures,
-    /// three directions - up and out for discarded, right into the reactor for accepted,
-    /// left back into the row for a result. Straight out the other side is the one that
-    /// was missing, and it's the one that shouldn't look like either of the others.
-    ///
-    /// The tile is built fresh here: the original left the input row when the pack was
-    /// handed over, so there's nothing left to animate by the time the failure is known.
-    /// It's parented to QueueEjectionHost (see the XAML) because the queue rows clip.
-    /// </summary>
-    private async Task EjectFailedPackAsync(string location, string packName)
-    {
-        if (AnimationsSuspended || QueueEjectionHost == null || _isClosing) return;
-
-        try
-        {
-            var tile = BuildPackTile(location, packName, allowDiscard: false);
-
-            // Start where the pack was last seen - the reactor's leading edge, on the
-            // input row's line - measured rather than assumed, so it stays right through
-            // any layout change.
-            var reactorEdge = GenerateButton.TransformToVisual(QueueEjectionHost)
-                .TransformPoint(new Windows.Foundation.Point(0, 0));
-            var rowLine = InputQueuePanel.TransformToVisual(QueueEjectionHost)
-                .TransformPoint(new Windows.Foundation.Point(0, 0));
-
-            tile.HorizontalAlignment = HorizontalAlignment.Left;
-            tile.VerticalAlignment = VerticalAlignment.Top;
-            tile.Margin = new Thickness(reactorEdge.X, rowLine.Y, 0, 0);
-
-            QueueEjectionHost.Children.Add(tile);
-
-            using (BeginQueueTransition())
-            {
-                await RunStoryboardAsync(BuildTileStoryboard(tile, EjectAnimationMs,
-                    translateX: GenerateButton.ActualWidth + _packTileSize,
-                    opacity: 0,
-                    scale: 0.6,
-                    easing: new QuadraticEase { EasingMode = EasingMode.EaseIn }));
-            }
-
-            QueueEjectionHost.Children.Remove(tile);
-        }
-        catch (Exception ex)
-        {
-            // Cosmetic to the last: a failed pack is already being reported properly, and
-            // a broken flourish must not turn into a second failure.
-            Trace.WriteLine($"[ALCHITEX] Couldn't play the ejection animation for '{packName}': {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// One storyboard covering any combination of translate/scale/opacity on a tile.
-    /// CompositeTransform properties are dependent animations (they run on the UI thread),
-    /// which is fine for the handful of tiles ever moving at once - and keeps this to one
-    /// small helper instead of a composition-animation layer.
-    /// </summary>
-    private static Storyboard BuildTileStoryboard(
-        FrameworkElement element,
-        double durationMs,
-        double? translateX = null,
-        double? translateY = null,
-        double? opacity = null,
-        double? scale = null,
-        EasingFunctionBase? easing = null)
-    {
-        var storyboard = new Storyboard();
-        var duration = TimeSpan.FromMilliseconds(durationMs);
-
-        void Add(double to, string property, DependencyObject target, bool dependent)
-        {
-            var animation = new DoubleAnimation
-            {
-                To = to,
-                Duration = duration,
-                EnableDependentAnimation = dependent,
-                EasingFunction = easing,
-            };
-            Storyboard.SetTarget(animation, target);
-            Storyboard.SetTargetProperty(animation, property);
-            storyboard.Children.Add(animation);
-        }
-
-        if (element.RenderTransform is CompositeTransform transform)
-        {
-            if (translateX.HasValue) Add(translateX.Value, "TranslateX", transform, true);
-            if (translateY.HasValue) Add(translateY.Value, "TranslateY", transform, true);
-            if (scale.HasValue)
-            {
-                Add(scale.Value, "ScaleX", transform, true);
-                Add(scale.Value, "ScaleY", transform, true);
-            }
-        }
-
-        if (opacity.HasValue) Add(opacity.Value, "Opacity", element, false);
-
-        return storyboard;
-    }
-
-    private static Task RunStoryboardAsync(Storyboard storyboard)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-        storyboard.Completed += (s, e) => tcs.TrySetResult(true);
-        storyboard.Begin();
-        return tcs.Task;
-    }
-
     private static void FadeTo(UIElement element, double opacity, double durationMs)
     {
         if (AnimationsSuspended)
@@ -1368,6 +1188,10 @@ public sealed partial class Alchitex : Window
 
         if (tile == null) return;
 
+        // The reactor washes left to right alongside the tile's own travel, so the two
+        // are one event: the pack goes in, and the thing it went into reacts.
+        _reactor?.PlayQueueWash(leftToRight: true);
+
         await AnimateIntoReactorAsync(tile);
 
         InputQueuePanel.Children.Remove(tile);
@@ -1388,9 +1212,12 @@ public sealed partial class Alchitex : Window
             .FirstOrDefault(t => t.Tag is string tagged &&
                                  string.Equals(tagged, location, StringComparison.OrdinalIgnoreCase));
 
-        if (tile != null)
-            using (BeginQueueTransition())
-                await AnimateArrivalAsync(tile);
+        if (tile == null) return;
+
+        _reactor?.PlayQueueWash(leftToRight: false);
+
+        using (BeginQueueTransition())
+            await AnimateArrivalAsync(tile);
     }
 
     /// <summary>
@@ -1410,6 +1237,8 @@ public sealed partial class Alchitex : Window
 
         var tile = BuildPackTile(location, packName, allowDiscard: false);
         OutputQueuePanel.Children.Add(tile);
+
+        _reactor?.PlayQueueWash(leftToRight: false);
 
         using (BeginQueueTransition())
             await AnimateArrivalAsync(tile);

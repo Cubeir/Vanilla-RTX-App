@@ -40,15 +40,32 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// rolled across the grid. Phases that mean a direction are pure gradient and keep theirs;
 /// GeneratingTextures mixes both (StepBusyWork).
 ///
+/// On top of those sit the one-shot flourishes - PlayQueueWash, PlayRipple, PlayImplosion,
+/// PlayCompletionWash. They aren't driven by a pulse or a timer; something happened and the
+/// reactor answers once, across staggered tiles over several hundred milliseconds. Because
+/// of that they take the grid for their duration (ClaimGrid), the same way the abort stance
+/// and the waiting orbit do - otherwise the next pulse repaints all nine tiles and the
+/// flourish never finishes.
+///
 /// Everything routes through AnimateTile/SetBloom, which honor
 /// EnvironmentVariables.Persistent.SuspendUIAnimations: with it on, every transition is applied
 /// instantly and the two looping behaviors (bloom breathing, press-hold flicker) never
 /// start. The reactor still tracks state, it just stops moving.
 ///
-/// Cost control matters here: PulseGeneratingTextures is called once per texture, which on
-/// a real pack is thousands of calls a second. Every pulse goes through a throttle
-/// (MinPulseIntervalMs) so what reaches the compositor is bounded no matter how fast the
-/// pipeline runs. Nine brushes' worth of color animation is cheap; nine thousand is not.
+/// Cost control matters here, and it has two halves that are easy to confuse:
+///
+///   * The frame rate is MinPulseIntervalMs. PulseGeneratingTextures is called once per
+///     texture - thousands of calls a second on a real pack - and the throttle is what
+///     bounds that to a fixed cost. Nine brushes' worth of colour animation is cheap; nine
+///     thousand is not. This is the knob for a slow machine.
+///   * How fast it *feels* is the transition durations, which are a separate thing
+///     entirely. They are all shorter than the pulse interval on purpose: a transition
+///     still easing when the next one starts on top of it is what made the reactor look
+///     sluggish while changing stances rapidly.
+///
+/// A tile runs exactly one storyboard at a time, and starting a new sequence stops the one
+/// before it - see PlayTileSequence for why that is load-bearing rather than tidy, and what
+/// it means for anything that wants two things happening on one tile at once.
 /// </summary>
 public sealed class ReactorAnimator
 {
@@ -106,20 +123,30 @@ public sealed class ReactorAnimator
     private const int GridSize = 3;
 
     // Nothing reaches the compositor more often than this, however hard the pipeline
-    // hammers Pulse. 70ms still reads as "flickering fast" to the eye.
+    // hammers Pulse. ~14 repaints a second of a nine-tile grid, which is the whole reason
+    // a run of thousands of textures costs the same as a run of ten.
+    //
+    // This is the frame rate, and it is deliberately NOT what makes the reactor feel quick.
+    // Raising it costs real work on an iGPU for very little; the transition durations below
+    // are the lever, and they are all shorter than the interval so a change lands inside its
+    // own slot instead of still easing when the next one starts on top of it.
     private const double MinPulseIntervalMs = 70;
 
     // How fast the waiting stance's head moves around the ring. Slow enough to read as one
     // travelling cell rather than a flicker, fast enough to look impatient.
-    private const double OrbitStepMs = 110;
+    private const double OrbitStepMs = 90;
 
     // A travelling gradient's cycle length: the palette walked out and back again, so the
     // brightest and darkest ends each come round once per cycle with no seam between them.
     private static readonly int WavePeriod = (Palette.Length - 1) * 2;
 
-    // Slightly longer than the pulse throttle, so consecutive steps overlap and the band
-    // slides instead of stepping.
-    private const double WaveStepMs = 150;
+    // Just under the pulse throttle: consecutive steps still overlap enough for the band to
+    // slide rather than step, without a step being half-finished when the next one lands.
+    private const double WaveStepMs = 95;
+
+    // What a tile costs to settle when nothing is driving it - coming back to rest, or
+    // getting the abort red off the grid.
+    private const double SettleMs = 260;
 
     private const double RestBloomMin = 0.45;
     private const double RestBloomMax = 0.85;
@@ -128,6 +155,17 @@ public sealed class ReactorAnimator
     private readonly Image? _bloom;
 
     private readonly SolidColorBrush[,] _brushes = new SolidColorBrush[GridSize, GridSize];
+
+    // One storyboard per tile, built once and reused forever, and this matters far more
+    // than it looks. The obvious version news up a Storyboard per colour change and
+    // Begin()s it, and nothing ever stops the one before: Pulse repaints nine tiles up to
+    // fourteen times a second for the length of a run, the press-hold, orbit and abort
+    // timers add their own, and the one-shot flourishes fire several per tile at once. Each
+    // of those is a dependent animation ticking on the UI thread, and they accumulated on
+    // every brush - which is what made the button lock the window up under a fast pack or
+    // an impatient click. Nine live storyboards is now the hard ceiling, whatever the
+    // pipeline does.
+    private readonly Storyboard?[,] _tileStoryboards = new Storyboard?[GridSize, GridSize];
 
     private readonly Random _random = new();
 
@@ -195,13 +233,14 @@ public sealed class ReactorAnimator
         StopPressHold();
         StopOrbit();
         StopBloomLoop();
+        ReleaseGrid();
         _isGenerating = false;
 
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
-                AnimateTile(row, col, RestLayout[row, col], 420);
+                AnimateTile(row, col, RestLayout[row, col], SettleMs);
 
-        SetBloom(RestBloomMin + _random.NextDouble() * (RestBloomMax - RestBloomMin), 420);
+        SetBloom(RestBloomMin + _random.NextDouble() * (RestBloomMax - RestBloomMin), SettleMs);
     }
 
     /// <summary>Pointer down on the reactor: tiles start firing erratically and the bloom
@@ -210,17 +249,18 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
-        SetBloom(_random.NextDouble() * 0.10, 140);
+        ReleaseGrid();
+        SetBloom(_random.NextDouble() * 0.10, 110);
 
         // One erratic burst either way, so a quick click still registers visually with
         // animations suspended or a timer that never gets to tick.
-        FlickerRandomTiles(2, 90);
+        FlickerRandomTiles(2, 70);
 
         if (AnimationsSuspended) return;
 
         StopPressHold();
-        _pressHoldTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(90) };
-        _pressHoldTimer.Tick += (s, e) => FlickerRandomTiles(_random.Next(1, 4), 90);
+        _pressHoldTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(75) };
+        _pressHoldTimer.Tick += (s, e) => FlickerRandomTiles(_random.Next(1, 4), 70);
         _pressHoldTimer.Start();
     }
 
@@ -287,9 +327,10 @@ public sealed class ReactorAnimator
 
         _isWaiting = true;
         StopPressHold();
+        ReleaseGrid();
 
         _orbitHead = 0;
-        PaintOrbit(220);
+        PaintOrbit(140);
 
         // Outside a run there's no loop yet; inside one it's already going and this is a
         // no-op that just re-arms it after a suspended-animations toggle.
@@ -302,7 +343,7 @@ public sealed class ReactorAnimator
         _orbitTimer.Tick += (s, e) =>
         {
             _orbitHead = (_orbitHead + 1) % OrbitRing.Length;
-            PaintOrbit(OrbitStepMs * 2);
+            PaintOrbit(OrbitStepMs * 1.6);
         };
         _orbitTimer.Start();
     }
@@ -321,7 +362,7 @@ public sealed class ReactorAnimator
             // the meantime, the same way EndAbortHintImmediate does.
             for (var row = 0; row < GridSize; row++)
                 for (var col = 0; col < GridSize; col++)
-                    AnimateTile(row, col, RestLayout[row, col], 220);
+                    AnimateTile(row, col, RestLayout[row, col], 150);
 
             return;
         }
@@ -393,21 +434,22 @@ public sealed class ReactorAnimator
 
         if (_isAbortHintActive) return;
         _isAbortHintActive = true;
+        ReleaseGrid();
 
         foreach (var (row, col) in AbortCross)
-            SetTileColor(row, col, AbortReds[0], 90);
+            SetTileColor(row, col, AbortReds[0], 70);
 
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
                 if (!IsOnCross(row, col))
-                    SetTileColor(row, col, AbortBackdrop, 140);
+                    SetTileColor(row, col, AbortBackdrop, 110);
 
         if (AnimationsSuspended) return;
 
         // Each cross tile drifts between the three reds on its own schedule - alive and
         // agitated, but never leaving red, so the X never stops being an X.
         StopAbortHintTimer();
-        _abortHintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(130) };
+        _abortHintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(110) };
         _abortHintTimer.Tick += (s, e) =>
         {
             foreach (var (row, col) in AbortCross)
@@ -418,7 +460,7 @@ public sealed class ReactorAnimator
                 var roll = _random.NextDouble();
                 var color = roll < 0.5 ? AbortReds[0] : roll < 0.85 ? AbortReds[1] : AbortReds[2];
 
-                SetTileColor(row, col, color, _random.Next(90, 180));
+                SetTileColor(row, col, color, _random.Next(70, 130));
             }
         };
         _abortHintTimer.Start();
@@ -463,7 +505,7 @@ public sealed class ReactorAnimator
         {
             for (var row = 0; row < GridSize; row++)
                 for (var col = 0; col < GridSize; col++)
-                    AnimateTile(row, col, RestLayout[row, col], 220);
+                    AnimateTile(row, col, RestLayout[row, col], 150);
             return;
         }
 
@@ -512,15 +554,27 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
-        // The abort stance and the waiting orbit each own the whole grid while they're up -
-        // see BeginAbortHint / BeginWaiting.
+        // The abort stance and the waiting orbit own the whole grid while they're up - see
+        // BeginAbortHint / BeginWaiting. Neither is a flourish; both mean the user is being
+        // told something more important than progress.
         if (_isAbortHintActive || _isWaiting) return;
 
-        // Throttle everything. GeneratingTextures alone can arrive thousands of times a
-        // second; the rest are rare but there's no reason to special-case them.
-        var now = DateTime.UtcNow;
-        if ((now - _lastPulseUtc).TotalMilliseconds < MinPulseIntervalMs) return;
-        _lastPulseUtc = now;
+        // A pack finishing is the one thing the reactor must never fail to say, so it is
+        // exempt from both gates below. It arrives once per pack, hard on the heels of
+        // Finalizing - which is itself a flourish holding the grid - and it would otherwise
+        // be swallowed by that hold on any machine quick enough to close the gap.
+        if (phase != Core.AlchitexPhase.Done)
+        {
+            // Any one-shot flourish owns the grid for its duration, or the next pulse
+            // repaints all nine tiles out from under it - see ClaimGrid.
+            if (IsGridClaimed) return;
+
+            // Throttle everything else. GeneratingTextures alone can arrive thousands of
+            // times a second; the rest are rare but there's no reason to special-case them.
+            var now = DateTime.UtcNow;
+            if ((now - _lastPulseUtc).TotalMilliseconds < MinPulseIntervalMs) return;
+            _lastPulseUtc = now;
+        }
 
         switch (phase)
         {
@@ -539,7 +593,7 @@ public sealed class ReactorAnimator
             // Staging: nothing is being written yet. A single tile lifts toward the bright
             // end, like a needle twitching before the machine spins up.
             case Core.AlchitexPhase.Staging:
-                AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(0, 2), 260);
+                AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(0, 2), 180);
                 break;
 
             // Reading the pack's folders top to bottom - so does the gradient. Locked
@@ -559,10 +613,17 @@ public sealed class ReactorAnimator
                 StepGradientWave(WaveAxis.Vertical, forward: false);
                 break;
 
-            // The last two passes each walk a bright cell one step along a random path, so
-            // the end of a run reads as something tracing its way out rather than another
-            // sweep - these are bookkeeping over a finished pack, not work across it.
+            // Manifest, terrain data and icon: metadata about a pack that is otherwise
+            // finished. One ripple out from the centre - the closest thing the grid has to
+            // a stamp being pressed onto something, and the one post-process step that
+            // happens at a point rather than across a surface.
             case Core.AlchitexPhase.Finalizing:
+                PlayRipple(brighten: true);
+                break;
+
+            // Walks a bright cell one step along a random path, so the very end of a run
+            // reads as something tracing its way out rather than another sweep - this is
+            // bookkeeping over a finished pack, not work across it.
             case Core.AlchitexPhase.Bookkeeping:
                 StepTrail();
                 break;
@@ -572,6 +633,107 @@ public sealed class ReactorAnimator
                 PlayCompletionWash();
                 break;
         }
+    }
+
+    // ── One-shot flourishes ──────────────────────────────────────────────────
+    //
+    // These are the only behaviors that aren't driven by a pulse or a timer: something
+    // happened, and the reactor reacts once. They all span several hundred milliseconds
+    // across staggered tiles, which means they need the grid to themselves - a pulse
+    // landing mid-flourish repaints all nine tiles and it never finishes. Hence the claim.
+
+    /// <summary>
+    /// How long a one-shot owns the grid. A timestamp rather than a flag, deliberately: a
+    /// flag that failed to clear (an exception, a run ending mid-flourish, a window closing)
+    /// would wedge the reactor into never repainting again, and this is cosmetic code
+    /// sitting on top of a pipeline. The worst a stale timestamp can do is expire.
+    /// </summary>
+    private DateTime _gridClaimedUntilUtc = DateTime.MinValue;
+
+    private bool IsGridClaimed => DateTime.UtcNow < _gridClaimedUntilUtc;
+
+    private void ClaimGrid(double durationMs)
+        => _gridClaimedUntilUtc = DateTime.UtcNow.AddMilliseconds(durationMs);
+
+    private void ReleaseGrid() => _gridClaimedUntilUtc = DateTime.MinValue;
+
+    // A wash's leading edge crossing one column, and how long a column stays lit behind it.
+    private const double WashColumnDelayMs = 80;
+    private const double WashRiseMs = 100;
+    private const double WashFallMs = 220;
+
+    /// <summary>
+    /// A pack being taken in or handed back: a bright band washing across the grid, left to
+    /// right on the way in and right to left on the way out - the same direction the pack's
+    /// own tile travels, so the two read as one event rather than two things happening at
+    /// once.
+    ///
+    /// Three columns is not much to say "something landed in water" with, so the band is
+    /// built from the palette rather than a single bright frame: each column rises to the
+    /// brightest blue, falls back through the middle of the ramp, and settles at its
+    /// resting value, one column-delay behind the column before it. What sells it is that
+    /// the trailing columns are still falling while the leading one has already settled.
+    /// </summary>
+    public void PlayQueueWash(bool leftToRight)
+    {
+        if (!_isInitialized || _isAbortHintActive) return;
+
+        for (var row = 0; row < GridSize; row++)
+        {
+            for (var col = 0; col < GridSize; col++)
+            {
+                var lead = (leftToRight ? col : GridSize - 1 - col) * WashColumnDelayMs;
+                var rest = Palette[RestLayout[row, col]];
+
+                PlayTileSequence(row, col,
+                    (_brushes[row, col].Color, Math.Max(lead, 1)),
+                    (Palette[0], lead + WashRiseMs),
+                    (Palette[2], lead + WashRiseMs + WashFallMs * 0.45),
+                    (rest, lead + WashRiseMs + WashFallMs));
+            }
+        }
+
+        ClaimGrid((GridSize - 1) * WashColumnDelayMs + WashRiseMs + WashFallMs);
+    }
+
+    private const double RippleRingDelayMs = 75;
+    private const double RippleRiseMs = 110;
+    private const double RippleFallMs = 230;
+
+    /// <summary>
+    /// A drop landing in the middle: the centre moves first, then the four edge tiles, then
+    /// the corners, each ring one delay behind the last.
+    ///
+    /// Rings are Manhattan distance from the centre, not Chebyshev, and that is the whole
+    /// reason this reads as a ripple - Chebyshev gives a 3x3 grid only two rings, which is
+    /// a blink. Manhattan gives three, which is a wave. (PlayImplosion uses Chebyshev on
+    /// purpose, because a collapse inward wants to arrive all at once.)
+    ///
+    /// Goes up toward the brightest blue or down toward the darkest; both are the same
+    /// motion, and having both means the reactor can answer "something arrived" and
+    /// "something was consumed" with the same gesture.
+    /// </summary>
+    public void PlayRipple(bool brighten)
+    {
+        if (!_isInitialized || _isAbortHintActive) return;
+
+        var peak = brighten ? Palette[0] : Palette[Palette.Length - 1];
+
+        for (var row = 0; row < GridSize; row++)
+        {
+            for (var col = 0; col < GridSize; col++)
+            {
+                var ring = Math.Abs(row - 1) + Math.Abs(col - 1); // 0, 1 or 2
+                var lead = ring * RippleRingDelayMs;
+
+                PlayTileSequence(row, col,
+                    (_brushes[row, col].Color, Math.Max(lead, 1)),
+                    (peak, lead + RippleRiseMs),
+                    (Palette[RestLayout[row, col]], lead + RippleRiseMs + RippleFallMs));
+            }
+        }
+
+        ClaimGrid((GridSize - 1) * RippleRingDelayMs + RippleRiseMs + RippleFallMs);
     }
 
     // ── Behaviors ────────────────────────────────────────────────────────────
@@ -610,9 +772,13 @@ public sealed class ReactorAnimator
     private const int MinWaveBurstSteps = 8;
     private const int MaxWaveBurstSteps = 15;
 
+    // Rarer than a sweep by a wide margin. A ripple takes the grid for half a second, so
+    // often enough to be recognised and seldom enough that it still reads as an event.
+    private const double RippleChance = 0.004;
+
     /// <summary>
     /// Textures being written: mostly every tile firing at once, with a sweep cutting
-    /// through every couple of seconds.
+    /// through every couple of seconds and, now and then, a drop rippling out of the centre.
     ///
     /// The mix is deliberate. Pure noise reads as static and stops meaning anything after a
     /// second of watching, and a pure gradient is far too orderly for a phase that means
@@ -629,7 +795,15 @@ public sealed class ReactorAnimator
 
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
-                AnimateTile(row, col, _random.Next(Palette.Length), 90);
+                AnimateTile(row, col, _random.Next(Palette.Length), 70);
+
+        // Checked before the sweep so the two can't fire on the same pulse - the ripple
+        // claims the grid and the sweep's first step would be thrown away.
+        if (_random.NextDouble() < RippleChance)
+        {
+            PlayRipple(brighten: _random.NextDouble() < 0.5);
+            return;
+        }
 
         if (_random.NextDouble() >= WaveBurstChance) return;
 
@@ -727,8 +901,8 @@ public sealed class ReactorAnimator
         var behind1 = (head - 1 + GridSize * GridSize) % (GridSize * GridSize);
         var behind2 = (head - 2 + GridSize * GridSize) % (GridSize * GridSize);
 
-        AnimateTile(behind1 / GridSize, behind1 % GridSize, Palette.Length - 2, 260);
-        AnimateTile(behind2 / GridSize, behind2 % GridSize, RestLayout[behind2 / GridSize, behind2 % GridSize], 520);
+        AnimateTile(behind1 / GridSize, behind1 % GridSize, Palette.Length - 2, 180);
+        AnimateTile(behind2 / GridSize, behind2 % GridSize, RestLayout[behind2 / GridSize, behind2 % GridSize], 340);
     }
 
     /// <summary>
@@ -739,20 +913,32 @@ public sealed class ReactorAnimator
     /// </summary>
     private void PlayImplosion()
     {
+        const double flashMs = 80;
+        const double holdMs = 100;
+        const double ringDelayMs = 180;
+        const double collapseMs = 220;
+
         for (var row = 0; row < GridSize; row++)
         {
             for (var col = 0; col < GridSize; col++)
             {
                 // Chebyshev distance from the centre: 1 for the ring, 0 for the middle.
+                // Chebyshev rather than the ripple's Manhattan on purpose - a collapse
+                // inward wants the whole outer ring to go together, not corner by corner.
                 var ring = Math.Max(Math.Abs(row - 1), Math.Abs(col - 1));
+                var collapseAt = flashMs + holdMs + (1 - ring) * ringDelayMs;
 
-                // The flash.
-                AnimateTile(row, col, 0, 90);
-
-                // The collapse, outer ring first, centre last and slowest.
-                AnimateTile(row, col, Palette.Length - 1, 260, delayMs: 120 + (1 - ring) * 220);
+                // Flash, hold, then collapse - outer ring first, centre last. One sequence
+                // rather than two overlapping animations: the second would now cancel the
+                // first, since a tile only ever runs one storyboard (see PlayTileSequence).
+                PlayTileSequence(row, col,
+                    (Palette[0], flashMs),
+                    (Palette[0], collapseAt),
+                    (Palette[Palette.Length - 1], collapseAt + collapseMs));
             }
         }
+
+        ClaimGrid(flashMs + holdMs + ringDelayMs + collapseMs);
     }
 
     /// <summary>
@@ -762,17 +948,24 @@ public sealed class ReactorAnimator
     /// </summary>
     private void PlayCompletionWash()
     {
+        const double diagonalDelayMs = 55;
+        const double riseMs = 100;
+        const double fallMs = 260;
+
         for (var row = 0; row < GridSize; row++)
         {
             for (var col = 0; col < GridSize; col++)
             {
-                var diagonal = row + col; // 0..4, top-left to bottom-right
-                var delay = diagonal * 70.0;
+                var lead = (row + col) * diagonalDelayMs; // 0..4 steps, corner to corner
 
-                AnimateTile(row, col, 0, 120, delayMs: delay);
-                AnimateTile(row, col, RestLayout[row, col], 320, delayMs: delay + 160);
+                PlayTileSequence(row, col,
+                    (_brushes[row, col].Color, Math.Max(lead, 1)),
+                    (Palette[0], lead + riseMs),
+                    (Palette[RestLayout[row, col]], lead + riseMs + fallMs));
             }
         }
+
+        ClaimGrid((GridSize - 1) * 2 * diagonalDelayMs + riseMs + fallMs);
     }
 
     // Where the bright cell currently sits, so consecutive trail steps move rather than
@@ -794,7 +987,7 @@ public sealed class ReactorAnimator
         }
         else
         {
-            AnimateTile(_trailRow, _trailCol, RestLayout[_trailRow, _trailCol], 320);
+            AnimateTile(_trailRow, _trailCol, RestLayout[_trailRow, _trailCol], 220);
 
             // A step in one axis, staying on the grid.
             if (_random.NextDouble() < 0.5)
@@ -803,47 +996,111 @@ public sealed class ReactorAnimator
                 _trailCol = Math.Clamp(_trailCol + (_random.NextDouble() < 0.5 ? -1 : 1), 0, GridSize - 1);
         }
 
-        AnimateTile(_trailRow, _trailCol, 0, 200);
+        AnimateTile(_trailRow, _trailCol, 0, 140);
     }
 
     // ── Primitives ───────────────────────────────────────────────────────────
 
-    private void AnimateTile(int row, int col, int paletteIndex, double durationMs, double delayMs = 0)
-        => SetTileColor(row, col, Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)], durationMs, delayMs);
+    private void AnimateTile(int row, int col, int paletteIndex, double durationMs)
+        => SetTileColor(row, col, Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)], durationMs);
 
     /// <summary>
     /// The one place a tile's color ever changes. Takes a Color rather than a palette index
     /// so the abort stance can paint its reds through the same path as everything else.
     /// </summary>
-    private void SetTileColor(int row, int col, Color target, double durationMs, double delayMs = 0)
+    private void SetTileColor(int row, int col, Color target, double durationMs)
     {
-        var brush = _brushes[row, col];
-
-        if (AnimationsSuspended || (durationMs <= 0 && delayMs <= 0))
+        if (AnimationsSuspended || durationMs <= 0)
         {
-            brush.Color = target;
+            StopTile(row, col);
+            _brushes[row, col].Color = target;
             return;
         }
 
-        // A brush's Color is a dependent animation - it runs on the UI thread rather than
-        // the compositor. Fine at this scale (nine brushes, throttled), and the honest
-        // alternative (five stacked opacity layers per tile) buys nothing here.
-        var animation = new ColorAnimation
+        PlayTileSequence(row, col, (target, durationMs));
+    }
+
+    // Staggering is expressed as key frames on one sequence rather than as a delay on a
+    // transition - a tile runs exactly one storyboard, so two overlapping calls would cancel
+    // rather than compose. PlayImplosion is the worked example.
+
+    /// <summary>
+    /// Runs one tile through a series of colours at absolute times, on that tile's own
+    /// reused storyboard. Every colour change in the class ends up here, including the
+    /// single-step case - so a flourish that needs three stages costs exactly what a plain
+    /// transition costs, and a later call always replaces an earlier one rather than
+    /// stacking on top of it.
+    ///
+    /// A brush's Color is a dependent animation, so this runs on the UI thread rather than
+    /// the compositor. Fine at this scale (nine brushes, throttled); the honest alternative
+    /// of five stacked opacity layers per tile buys nothing here.
+    /// </summary>
+    private void PlayTileSequence(int row, int col, params (Color Color, double AtMs)[] frames)
+    {
+        if (frames.Length == 0) return;
+
+        var brush = _brushes[row, col];
+
+        if (AnimationsSuspended)
         {
-            To = target,
-            Duration = TimeSpan.FromMilliseconds(Math.Max(durationMs, 1)),
-            BeginTime = TimeSpan.FromMilliseconds(delayMs),
-            EnableDependentAnimation = true,
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-        };
+            StopTile(row, col);
+            brush.Color = frames[^1].Color;
+            return;
+        }
+
+        // Retire the tile's previous storyboard before starting another. This is the whole
+        // fix: a fresh Storyboard per call is fine and always was - what wasn't fine is
+        // never stopping the last one, so every brush accumulated live animations for the
+        // length of a run. Building a new one rather than re-arming a kept one is
+        // deliberate: re-arming means mutating a Storyboard's key frames after it has been
+        // begun, which is not something WinUI promises to allow, and this is cosmetic code
+        // that must never be the reason a run falls over.
+        StopTile(row, col);
+
+        var animation = new ColorAnimationUsingKeyFrames { EnableDependentAnimation = true };
+
+        foreach (var (color, atMs) in frames)
+        {
+            animation.KeyFrames.Add(new EasingColorKeyFrame
+            {
+                KeyTime = TimeSpan.FromMilliseconds(Math.Max(atMs, 1)),
+                Value = color,
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+            });
+        }
 
         Storyboard.SetTarget(animation, brush);
         Storyboard.SetTargetProperty(animation, "Color");
 
         var storyboard = new Storyboard();
         storyboard.Children.Add(animation);
+
+        _tileStoryboards[row, col] = storyboard;
         storyboard.Begin();
     }
+
+    /// <summary>Takes a tile off its storyboard without letting go of the colour it is
+    /// currently showing - see PlayTileSequence for why that isn't automatic.</summary>
+    private void StopTile(int row, int col)
+    {
+        var storyboard = _tileStoryboards[row, col];
+        if (storyboard == null) return;
+
+        // Stop() reverts the brush to the value it held before that storyboard started, so
+        // whatever it is showing right now has to be written back as its base first -
+        // otherwise every restart snaps to where the previous sequence began, which on a
+        // grid repainted fourteen times a second is a permanent flicker.
+        var current = _brushes[row, col].Color;
+        storyboard.Stop();
+        _brushes[row, col].Color = current;
+
+        _tileStoryboards[row, col] = null;
+    }
+
+    // The bloom's one-shot storyboard, reused for the same reason the tiles' are - press
+    // and release the button a few times and the naive version leaves one running per
+    // press. Separate from _bloomLoop, which is the long-lived breathing.
+    private Storyboard? _bloomShot;
 
     private void SetBloom(double opacity, double durationMs)
     {
@@ -851,8 +1108,16 @@ public sealed class ReactorAnimator
 
         if (AnimationsSuspended || durationMs <= 0)
         {
+            _bloomShot?.Stop();
             _bloom.Opacity = opacity;
             return;
+        }
+
+        if (_bloomShot != null)
+        {
+            var current = _bloom.Opacity;
+            _bloomShot.Stop();
+            _bloom.Opacity = current;
         }
 
         var animation = new DoubleAnimation
@@ -865,9 +1130,9 @@ public sealed class ReactorAnimator
         Storyboard.SetTarget(animation, _bloom);
         Storyboard.SetTargetProperty(animation, "Opacity");
 
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
+        _bloomShot = new Storyboard();
+        _bloomShot.Children.Add(animation);
+        _bloomShot.Begin();
     }
 
     // The breath, as (millisecond, opacity) pairs. Uneven on purpose: two of the three
@@ -877,12 +1142,12 @@ public sealed class ReactorAnimator
     private static readonly (double AtMs, double Opacity)[] BloomBreath =
     {
         (0, 0.35),
-        (760, 1.00),
-        (1500, 0.50),
-        (2200, 0.88),
-        (2900, 0.40),
-        (3500, 1.00),
-        (4200, 0.35),
+        (520, 1.00),
+        (1040, 0.50),
+        (1520, 0.88),
+        (2000, 0.40),
+        (2420, 1.00),
+        (2900, 0.35),
     };
 
     /// <summary>The bloom breathing under everything else for as long as a run - or a wait -
@@ -937,5 +1202,11 @@ public sealed class ReactorAnimator
         StopOrbit();
         StopAbortHint();
         StopBloomLoop();
+
+        _bloomShot?.Stop();
+
+        for (var row = 0; row < GridSize; row++)
+            for (var col = 0; col < GridSize; col++)
+                _tileStoryboards[row, col]?.Stop();
     }
 }
