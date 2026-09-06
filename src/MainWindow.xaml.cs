@@ -1459,6 +1459,7 @@ public sealed partial class MainWindow : Window
             }
         };
 
+        _childWindows.Add(packBrowserWindow);
         WindowControlsManager.Activate(packBrowserWindow);
     }
 
