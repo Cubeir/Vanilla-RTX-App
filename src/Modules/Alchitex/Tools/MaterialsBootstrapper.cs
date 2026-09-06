@@ -30,7 +30,9 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 ///
 /// What gets derived per new texture, straight from the baked MER/MERS pixels:
 ///   - metal_min/max, emissive_min/max, roughness_min/max - the observed min/max of the
-///     R/G/B channels respectively, across the texture's opaque pixels.
+///     R/G/B channels respectively, across the texture's real-colour pixels (see
+///     SampleMerRanges - it is ColorField.IsRealColorData, the same rule generation uses,
+///     and the two agreeing is load-bearing rather than tidy).
 ///   - sss_min/max - the observed min/max of the alpha channel, but only if the texture
 ///     set uses metalness_emissive_roughness_subsurface (MERS). Left at (0, 0) for plain
 ///     MER sets (Vanilla RTX, being an existing pack, may still have MER-only entries -
@@ -200,76 +202,155 @@ public static class MaterialsBootstrapper
             : null;
     }
 
+    /// <summary>Observed min/max of one channel over whatever pixels were fed to it.
+    /// <see cref="IsEmpty"/> means nothing was, which is what the fallbacks key off.</summary>
+    private struct Range()
+    {
+        public int Min = 255;
+        public int Max = 0;
+
+        public void Add(int value)
+        {
+            if (value < Min) Min = value;
+            if (value > Max) Max = value;
+        }
+
+        public readonly bool IsEmpty => Min > Max;
+    }
+
+    private readonly record struct MerRanges(Range Metal, Range Emissive, Range Roughness, Range Sss);
+
+    /// <summary>
+    /// Reads one texture's baked MER(S) and reports what range each channel actually
+    /// occupies over the pixels that matter.
+    ///
+    /// **Which pixels those are is ColorField.IsRealColorData, the same rule generation
+    /// uses**, and that is the point of this method rather than an incidental detail. The
+    /// two have to agree: generation stretches its value domain - computed over exactly
+    /// those pixels - into whatever min/max this tool wrote, so measuring over a different
+    /// population than the one that will be written back describes a texture nobody has.
+    ///
+    /// This used to filter on plain opacity (alpha == 0 -> skip), which is strictly
+    /// narrower and wrong in both directions of the rule:
+    ///
+    ///   * Padding under a collapsed alpha channel - the flat black or flat white most
+    ///     editors leave in cutout regions - was already excluded, correctly, but only as a
+    ///     side effect of excluding everything transparent.
+    ///   * Real colour under a collapsed alpha channel was excluded with it, and that is
+    ///     the actual loss. grass_side's dirt is the standard example: transparent so the
+    ///     game skips tinting it, but genuinely part of the block and carrying its own
+    ///     material in the MER. Generation counts it; this did not, so the derived range
+    ///     described only half the texture.
+    ///
+    /// The one carve-out is emissive, and it is not symmetry-breaking so much as avoiding a
+    /// double count. Alpha-0 pixels that emit are the "invisible emission" trick
+    /// (InvisibleEmission), and generation overwrites *only their green channel* with
+    /// invisible_emission.strength after the MERS is built. Their emissive value is
+    /// therefore described by that section, not by this range - and letting it in would
+    /// inflate emissive_max for the visible material by however hot the hole is. It matters
+    /// concretely rather than in principle: the pack this tool is pointed at is Vanilla RTX,
+    /// which uses the trick constantly (spawners, torches, trial spawners). Their metal,
+    /// roughness and subsurface still count, because generation writes those normally.
+    ///
+    /// **The pixels skipped here are exactly the pixels DeriveInvisibleEmission measures** -
+    /// same "alpha 0 and green != 0" test, and both give up on the same dimension mismatch.
+    /// Keep it that way. It is what makes every pixel described once and only once: if that
+    /// method returns null, nothing was excluded here either, so a texture with no emission
+    /// holes gets its full emissive range. There is deliberately no attempt to tell an
+    /// "emission hole" from "an alpha-0 pixel that merely happens to carry green" - by the
+    /// trick's own definition there is no difference, and inventing one here would put the
+    /// two methods out of step.
+    /// </summary>
+    private static MerRanges SampleMerRanges(System.Drawing.Bitmap colorBmp, System.Drawing.Bitmap merBmp, bool includeSss)
+    {
+        var metal = new Range();
+        var emissive = new Range();
+        var roughness = new Range();
+        var sss = new Range();
+
+        // Emissive measured the other way as well, for the texture that is nothing but
+        // invisible emission - better to report the holes' range than no range at all.
+        var emissiveIncludingHoles = new Range();
+
+        // A MER can legitimately be a different size from its colour texture (an animation
+        // strip against a single frame, say). Without a per-pixel correspondence there is
+        // no colour to filter on, so every pixel counts.
+        var canFilterByColor = colorBmp.Width == merBmp.Width && colorBmp.Height == merBmp.Height;
+
+        using var merFb = new FastBitmap(merBmp, writable: false);
+        using var colorFb = canFilterByColor ? new FastBitmap(colorBmp, writable: false) : null;
+
+        for (var y = 0; y < merBmp.Height; y++)
+        {
+            for (var x = 0; x < merBmp.Width; x++)
+            {
+                var isInvisibleEmitter = false;
+
+                if (colorFb != null)
+                {
+                    var c = colorFb[x, y];
+                    if (!ColorField.IsRealColorData(c)) continue;
+
+                    isInvisibleEmitter = c.A == 0 && merFb[x, y].G != 0;
+                }
+
+                var p = merFb[x, y];
+
+                metal.Add(p.R);
+                roughness.Add(p.B);
+                if (includeSss) sss.Add(p.A);
+
+                emissiveIncludingHoles.Add(p.G);
+                if (!isInvisibleEmitter) emissive.Add(p.G);
+            }
+        }
+
+        // Every pixel filtered out - a colour texture that is entirely padding. Re-scan
+        // unfiltered rather than emitting a degenerate all-zero entry.
+        if (metal.IsEmpty && canFilterByColor)
+            return SampleMerRanges(colorBmp, merBmp: merBmp, includeSss: includeSss, ignoreColor: true);
+
+        if (emissive.IsEmpty) emissive = emissiveIncludingHoles;
+
+        return new MerRanges(metal, emissive, roughness, sss);
+    }
+
+    /// <summary>The unfiltered re-scan, reached only when the colour texture excluded every
+    /// pixel. Separate overload rather than a flag on the main path so the filtered case
+    /// stays the thing you read.</summary>
+    private static MerRanges SampleMerRanges(
+        System.Drawing.Bitmap colorBmp, System.Drawing.Bitmap merBmp, bool includeSss, bool ignoreColor)
+    {
+        var metal = new Range();
+        var emissive = new Range();
+        var roughness = new Range();
+        var sss = new Range();
+
+        using var merFb = new FastBitmap(merBmp, writable: false);
+
+        for (var y = 0; y < merBmp.Height; y++)
+        {
+            for (var x = 0; x < merBmp.Width; x++)
+            {
+                var p = merFb[x, y];
+                metal.Add(p.R);
+                emissive.Add(p.G);
+                roughness.Add(p.B);
+                if (includeSss) sss.Add(p.A);
+            }
+        }
+
+        return new MerRanges(metal, emissive, roughness, sss);
+    }
+
     private static MaterialEntry DeriveEntry(System.Drawing.Bitmap colorBmp, System.Drawing.Bitmap merBmp, bool includeSss)
     {
-        int minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
-        int minA = 255, maxA = 0;
-        var anyOpaqueSample = false;
+        var (metal, emissive, roughness, sss) = SampleMerRanges(colorBmp, merBmp, includeSss);
 
-        var canFilterByColorAlpha = colorBmp.Width == merBmp.Width && colorBmp.Height == merBmp.Height;
-
-        using (var merFb = new FastBitmap(merBmp, writable: false))
-        {
-            var colorForFilter = canFilterByColorAlpha ? colorBmp : null;
-            FastBitmap? colorFb = null;
-            try
-            {
-                if (colorForFilter != null) colorFb = new FastBitmap(colorForFilter, writable: false);
-
-                for (var y = 0; y < merBmp.Height; y++)
-                {
-                    for (var x = 0; x < merBmp.Width; x++)
-                    {
-                        if (colorFb != null && colorFb[x, y].A == 0) continue;
-
-                        var p = merFb[x, y];
-                        anyOpaqueSample = true;
-
-                        if (p.R < minR) minR = p.R;
-                        if (p.R > maxR) maxR = p.R;
-                        if (p.G < minG) minG = p.G;
-                        if (p.G > maxG) maxG = p.G;
-                        if (p.B < minB) minB = p.B;
-                        if (p.B > maxB) maxB = p.B;
-
-                        if (includeSss)
-                        {
-                            if (p.A < minA) minA = p.A;
-                            if (p.A > maxA) maxA = p.A;
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                colorFb?.Dispose();
-            }
-        }
-
-        // Fallback: every pixel got filtered out (fully transparent color texture) -
-        // re-scan without the filter rather than emitting a degenerate all-zero entry.
-        if (!anyOpaqueSample)
-        {
-            using var merFb = new FastBitmap(merBmp, writable: false);
-            for (var y = 0; y < merBmp.Height; y++)
-            {
-                for (var x = 0; x < merBmp.Width; x++)
-                {
-                    var p = merFb[x, y];
-                    if (p.R < minR) minR = p.R;
-                    if (p.R > maxR) maxR = p.R;
-                    if (p.G < minG) minG = p.G;
-                    if (p.G > maxG) maxG = p.G;
-                    if (p.B < minB) minB = p.B;
-                    if (p.B > maxB) maxB = p.B;
-                    if (includeSss)
-                    {
-                        if (p.A < minA) minA = p.A;
-                        if (p.A > maxA) maxA = p.A;
-                    }
-                }
-            }
-        }
+        var minR = metal.Min; var maxR = metal.Max;
+        var minG = emissive.Min; var maxG = emissive.Max;
+        var minB = roughness.Min; var maxB = roughness.Max;
+        var minA = sss.Min; var maxA = sss.Max;
 
         // Every property is written explicitly, including the ones this tool can't derive
         // and simply fills with the built-in default. materials.json properties are all
@@ -356,6 +437,18 @@ public static class MaterialsBootstrapper
                 {
                     var c = colorFb[x, y];
                     if (c.A != 0) continue;
+
+                    // Padding is not a light. A fully-transparent pixel filled with flat
+                    // black or flat white is the fill an editor left in a cutout region
+                    // (ColorField.IsRealColorData), and whatever its MER happens to carry
+                    // there is junk nobody authored - averaging it in drags both the colour
+                    // and the strength toward whatever the pack's dead space contains. An
+                    // artist marking a hole to glow left real colour in it.
+                    //
+                    // This also keeps SampleMerRanges honest: the pixels it withholds from
+                    // the emissive range are exactly the pixels measured here, and it
+                    // applies the same rule before asking whether a pixel emits.
+                    if (!ColorField.IsRealColorData(c)) continue;
 
                     // Green is emissive in MER/MERS.
                     var emissive = merFb[x, y].G;
