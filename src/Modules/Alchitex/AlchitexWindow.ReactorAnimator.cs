@@ -13,7 +13,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// <summary>
 /// Drives the Generate button's three layers so the reactor reads as a live instrument
 /// rather than a picture of one - the same idea as the main window's lamp
-/// (Core/LampAnimator.cs), tied here to what generation is actually doing:
+/// (Core/MainWindow.LampAnimator.cs), tied here to what generation is actually doing:
 ///
 ///   1. Background - a 3x3 grid of tiles built here, not an image. Each tile holds one of
 ///      the logo's five blues, and the whole point of this class is deciding when and how
@@ -142,11 +142,11 @@ public sealed class ReactorAnimator
 
     // Just under the pulse throttle: consecutive steps still overlap enough for the band to
     // slide rather than step, without a step being half-finished when the next one lands.
-    private const double WaveStepMs = 95;
+    private const double WaveStepMs = 75;
 
     // What a tile costs to settle when nothing is driving it - coming back to rest, or
     // getting the abort red off the grid.
-    private const double SettleMs = 260;
+    private const double SettleMs = 190;
 
     private const double RestBloomMin = 0.45;
     private const double RestBloomMax = 0.85;
@@ -254,13 +254,13 @@ public sealed class ReactorAnimator
 
         // One erratic burst either way, so a quick click still registers visually with
         // animations suspended or a timer that never gets to tick.
-        FlickerRandomTiles(2, 70);
+        FlickerRandomTiles(2, 55);
 
         if (AnimationsSuspended) return;
 
         StopPressHold();
         _pressHoldTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(75) };
-        _pressHoldTimer.Tick += (s, e) => FlickerRandomTiles(_random.Next(1, 4), 70);
+        _pressHoldTimer.Tick += (s, e) => FlickerRandomTiles(_random.Next(1, 4), 55);
         _pressHoldTimer.Start();
     }
 
@@ -330,7 +330,7 @@ public sealed class ReactorAnimator
         ReleaseGrid();
 
         _orbitHead = 0;
-        PaintOrbit(140);
+        PaintOrbit(100);
 
         // Outside a run there's no loop yet; inside one it's already going and this is a
         // no-op that just re-arms it after a suspended-animations toggle.
@@ -343,7 +343,7 @@ public sealed class ReactorAnimator
         _orbitTimer.Tick += (s, e) =>
         {
             _orbitHead = (_orbitHead + 1) % OrbitRing.Length;
-            PaintOrbit(OrbitStepMs * 1.6);
+            PaintOrbit(OrbitStepMs * 1.25);
         };
         _orbitTimer.Start();
     }
@@ -362,7 +362,7 @@ public sealed class ReactorAnimator
             // the meantime, the same way EndAbortHintImmediate does.
             for (var row = 0; row < GridSize; row++)
                 for (var col = 0; col < GridSize; col++)
-                    AnimateTile(row, col, RestLayout[row, col], 150);
+                    AnimateTile(row, col, RestLayout[row, col], 110);
 
             return;
         }
@@ -437,12 +437,12 @@ public sealed class ReactorAnimator
         ReleaseGrid();
 
         foreach (var (row, col) in AbortCross)
-            SetTileColor(row, col, AbortReds[0], 70);
+            SetTileColor(row, col, AbortReds[0], 55);
 
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
                 if (!IsOnCross(row, col))
-                    SetTileColor(row, col, AbortBackdrop, 110);
+                    SetTileColor(row, col, AbortBackdrop, 85);
 
         if (AnimationsSuspended) return;
 
@@ -460,7 +460,7 @@ public sealed class ReactorAnimator
                 var roll = _random.NextDouble();
                 var color = roll < 0.5 ? AbortReds[0] : roll < 0.85 ? AbortReds[1] : AbortReds[2];
 
-                SetTileColor(row, col, color, _random.Next(70, 130));
+                SetTileColor(row, col, color, _random.Next(55, 100));
             }
         };
         _abortHintTimer.Start();
@@ -505,7 +505,7 @@ public sealed class ReactorAnimator
         {
             for (var row = 0; row < GridSize; row++)
                 for (var col = 0; col < GridSize; col++)
-                    AnimateTile(row, col, RestLayout[row, col], 150);
+                    AnimateTile(row, col, RestLayout[row, col], 110);
             return;
         }
 
@@ -593,7 +593,7 @@ public sealed class ReactorAnimator
             // Staging: nothing is being written yet. A single tile lifts toward the bright
             // end, like a needle twitching before the machine spins up.
             case Core.AlchitexPhase.Staging:
-                AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(0, 2), 180);
+                AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(0, 2), 130);
                 break;
 
             // Reading the pack's folders top to bottom - so does the gradient. Locked
@@ -613,17 +613,17 @@ public sealed class ReactorAnimator
                 StepGradientWave(WaveAxis.Vertical, forward: false);
                 break;
 
-            // Manifest, terrain data and icon: metadata about a pack that is otherwise
-            // finished. One ripple out from the centre - the closest thing the grid has to
-            // a stamp being pressed onto something, and the one post-process step that
-            // happens at a point rather than across a surface.
+            // The last two passes each walk a bright cell one step along a random path, so
+            // the end of a run reads as something tracing its way out rather than another
+            // sweep - these are bookkeeping over a finished pack, not work across it.
+            //
+            // The ripple was tried here and does not belong: post-processing is over in a
+            // blink against a texture pass measured in seconds, so a half-second flourish
+            // hung on it was never actually seen. It lives in StepBusyWork instead, which
+            // is the only phase that runs long enough to show anything off. Anything else
+            // wanting a flourish should ask the same question first - is this phase on
+            // screen long enough to finish one?
             case Core.AlchitexPhase.Finalizing:
-                PlayRipple(brighten: true);
-                break;
-
-            // Walks a bright cell one step along a random path, so the very end of a run
-            // reads as something tracing its way out rather than another sweep - this is
-            // bookkeeping over a finished pack, not work across it.
             case Core.AlchitexPhase.Bookkeeping:
                 StepTrail();
                 break;
@@ -772,9 +772,11 @@ public sealed class ReactorAnimator
     private const int MinWaveBurstSteps = 8;
     private const int MaxWaveBurstSteps = 15;
 
-    // Rarer than a sweep by a wide margin. A ripple takes the grid for half a second, so
-    // often enough to be recognised and seldom enough that it still reads as an event.
-    private const double RippleChance = 0.004;
+    // Rarer than a sweep, but not by much - this is the reactor's only home for the ripple
+    // now, and at a pulse every 70ms a chance this size works out to roughly one every few
+    // seconds of texture work. Seldom enough to still read as an event, often enough that a
+    // run actually shows it off.
+    private const double RippleChance = 0.02;
 
     /// <summary>
     /// Textures being written: mostly every tile firing at once, with a sweep cutting
@@ -795,7 +797,7 @@ public sealed class ReactorAnimator
 
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
-                AnimateTile(row, col, _random.Next(Palette.Length), 70);
+                AnimateTile(row, col, _random.Next(Palette.Length), 55);
 
         // Checked before the sweep so the two can't fire on the same pulse - the ripple
         // claims the grid and the sweep's first step would be thrown away.
@@ -901,8 +903,8 @@ public sealed class ReactorAnimator
         var behind1 = (head - 1 + GridSize * GridSize) % (GridSize * GridSize);
         var behind2 = (head - 2 + GridSize * GridSize) % (GridSize * GridSize);
 
-        AnimateTile(behind1 / GridSize, behind1 % GridSize, Palette.Length - 2, 180);
-        AnimateTile(behind2 / GridSize, behind2 % GridSize, RestLayout[behind2 / GridSize, behind2 % GridSize], 340);
+        AnimateTile(behind1 / GridSize, behind1 % GridSize, Palette.Length - 2, 130);
+        AnimateTile(behind2 / GridSize, behind2 % GridSize, RestLayout[behind2 / GridSize, behind2 % GridSize], 250);
     }
 
     /// <summary>
@@ -987,7 +989,7 @@ public sealed class ReactorAnimator
         }
         else
         {
-            AnimateTile(_trailRow, _trailCol, RestLayout[_trailRow, _trailCol], 220);
+            AnimateTile(_trailRow, _trailCol, RestLayout[_trailRow, _trailCol], 160);
 
             // A step in one axis, staying on the grid.
             if (_random.NextDouble() < 0.5)
@@ -996,7 +998,7 @@ public sealed class ReactorAnimator
                 _trailCol = Math.Clamp(_trailCol + (_random.NextDouble() < 0.5 ? -1 : 1), 0, GridSize - 1);
         }
 
-        AnimateTile(_trailRow, _trailCol, 0, 140);
+        AnimateTile(_trailRow, _trailCol, 0, 100);
     }
 
     // ── Primitives ───────────────────────────────────────────────────────────

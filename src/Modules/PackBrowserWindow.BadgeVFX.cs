@@ -377,7 +377,7 @@ internal static class PackBrowserBadgeVFX
     // ════════════════════════════════════════════════════════════════════
     //  Alchitex candidate – a miniature ReactorBackdrop field
     //
-    //  Built to the same two rules as the real one in Alchitex/ReactorBackdrop.cs,
+    //  Built to the same two rules as the real one in Alchitex/AlchitexWindow.ReactorBackdrop.cs,
     //  for the same reasons:
     //
     //    - Nothing is animated. Colour never eases between two values; a cell is on
@@ -391,6 +391,13 @@ internal static class PackBrowserBadgeVFX
     //
     //  The cadence is unchanged – a cell still moves about as often as it used to.
     //  Only the smoothness is gone, deliberately.
+    //
+    //  What it does NOT take from the backdrop is dispersion. Out there the field has to
+    //  stop somewhere and cells thinning out toward the top is how it ends without a cut
+    //  edge. Here the field fills the badge exactly, corner to corner, over a flat blue
+    //  that shows through at 50% - there is no edge to dissolve, so cells winking on and
+    //  off just read as a fault in the badge. The rows, the falloff curve, the fade ladder
+    //  and the per-cell rung state all existed to serve it and went with it.
     // ════════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -407,17 +414,9 @@ internal static class PackBrowserBadgeVFX
         ColorHelper.FromArgb(255, 44, 154, 255),
     };
 
-    /// <summary>How likely each colour is to be a cell's own, relative to the others.</summary>
-    private static readonly int[] ReactorPaletteWeights = { 1, 1, 1, 1, 1, 1, 1 };
-    private static readonly int ReactorTotalWeight = ReactorPaletteWeights.Sum();
-
     /// <summary>Palette entries below this form the ordered ramp a cell steps along; anything
     /// from here up is an accent with no neighbours on it (see StepReactorShade).</summary>
     private const int ReactorRampLength = 6;
-
-    /// <summary>A coarse ladder reads as cells blinking on and off
-    /// rather than as rain thinning out.</summary>
-    private static readonly double[] ReactorFadeRungs = { 0.0, 0.5, 1.0 };
 
     private const int ReactorColumns = 24;
     private const int ReactorRows = 4;
@@ -429,13 +428,6 @@ internal static class PackBrowserBadgeVFX
     /// tick touches. Matched to the half-cycle of the ColorAnimation this replaced, so the
     /// effect turns over at the speed it always did.</summary>
     private const double ReactorCellStepSeconds = 1.2;
-
-    /// <summary>Chance that a cell in the top row disperses rather than holding a shade,
-    /// falling to zero at the bottom row: the badge's own version of the backdrop's field
-    /// thinning out toward the top. Convex, for the same reason – a linear falloff spends too
-    /// long at "half the cells are missing", which reads as damage rather than dispersion.</summary>
-    private const double ReactorTopRowDispersion = 0.25;
-    private const double ReactorDispersionCurve = 1.6;
 
     /// <summary>
     /// Brushes are DependencyObjects and so have thread affinity. Built on first use rather
@@ -451,10 +443,7 @@ internal static class PackBrowserBadgeVFX
     {
         public required Rectangle Shape;
         public required int BaseShade;
-        public required bool Dispersing;
         public int Shade;
-        public int Rung;
-        public bool Rising;
     }
 
     private sealed class ReactorField
@@ -482,10 +471,6 @@ internal static class PackBrowserBadgeVFX
 
         for (int r = 0; r < ReactorRows; r++)
         {
-            // Row 0 is the top of the badge, so that is the sparse end.
-            var dispersionChance = ReactorTopRowDispersion *
-                Math.Pow(1.0 - r / (double)(ReactorRows - 1), ReactorDispersionCurve);
-
             for (int c = 0; c < ReactorColumns; c++)
             {
                 // One re-roll away from the neighbours already placed, exactly as the
@@ -496,21 +481,12 @@ internal static class PackBrowserBadgeVFX
                 if (shade == left || shade == above) shade = PickReactorShade();
                 shades[c, r] = shade;
 
-                var dispersing = Desync.NextDouble() < dispersionChance;
-
                 var cell = new ReactorCell
                 {
                     Shape = new Rectangle { Fill = brushes[shade] },
                     BaseShade = shade,
-                    Dispersing = dispersing,
                     Shade = shade,
-                    // Dispersing cells start scattered along the ladder rather than all lit,
-                    // so a badge that has only just appeared is already mid-rain.
-                    Rung = dispersing ? Desync.Next(ReactorFadeRungs.Length) : ReactorFadeRungs.Length - 1,
-                    Rising = Desync.NextDouble() < 0.5
                 };
-
-                if (dispersing) cell.Shape.Opacity = ReactorFadeRungs[cell.Rung];
 
                 Grid.SetRow(cell.Shape, r);
                 Grid.SetColumn(cell.Shape, c);
@@ -535,19 +511,10 @@ internal static class PackBrowserBadgeVFX
         TickWhileLoaded(overlay, field);
     }
 
-    private static int PickReactorShade()
-    {
-        var target = Desync.NextDouble() * ReactorTotalWeight;
-        var running = 0;
-
-        for (var i = 0; i < ReactorPaletteWeights.Length; i++)
-        {
-            running += ReactorPaletteWeights[i];
-            if (target < running) return i;
-        }
-
-        return ReactorPalette.Length - 1;
-    }
+    /// <summary>Uniform across the palette, accent included. The backdrop weights its own
+    /// pick so the accent stays rare over a field the size of a window; a badge is 96 cells
+    /// behind a flat blue, and wants the accent often enough to be seen at all.</summary>
+    private static int PickReactorShade() => Desync.Next(ReactorPalette.Length);
 
     /// <summary>
     /// Registers a field with the shared ticker for as long as its overlay is in the tree.
@@ -597,9 +564,8 @@ internal static class PackBrowserBadgeVFX
     }
 
     /// <summary>
-    /// One frame of every live field's life: a few cells each take a single step. A solid
-    /// cell moves one rung along the blue ramp and back; a dispersing one moves one rung
-    /// along the fade ladder. Nothing interpolates – every cell is always on a rung.
+    /// One frame of every live field's life: a few cells each move one rung along the blue
+    /// ramp and back. Nothing interpolates – every cell is always on a rung.
     /// </summary>
     private static void ReactorTick()
     {
@@ -613,12 +579,7 @@ internal static class PackBrowserBadgeVFX
                 var field = ReactorFields[f];
 
                 for (var i = 0; i < field.CellsPerTick; i++)
-                {
-                    var cell = field.Cells[Desync.Next(field.Cells.Length)];
-
-                    if (cell.Dispersing) StepReactorFade(cell);
-                    else StepReactorShade(cell);
-                }
+                    StepReactorShade(field.Cells[Desync.Next(field.Cells.Length)]);
             }
         }
         catch (Exception ex)
@@ -648,14 +609,6 @@ internal static class PackBrowserBadgeVFX
         cell.Shape.Fill = ReactorBrushes[target];
     }
 
-    private static void StepReactorFade(ReactorCell cell)
-    {
-        if (cell.Rung == 0) cell.Rising = true;
-        else if (cell.Rung == ReactorFadeRungs.Length - 1) cell.Rising = false;
-
-        cell.Rung += cell.Rising ? 1 : -1;
-        cell.Shape.Opacity = ReactorFadeRungs[cell.Rung];
-    }
 
     // ════════════════════════════════════════════════════════════════════
     //  Chemistry – three reagents diffusing through the teal base
