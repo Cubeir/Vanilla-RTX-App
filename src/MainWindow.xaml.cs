@@ -2854,6 +2854,11 @@ Initial Mult of 2, adds 2, mult of 3, adds 3, mult of 4, adds 4, always rounded 
 - Inviestigate and fix the egdecase where previewer stops displaying toggle images,
 the one that'sb een happening with preview button for a while now... fix it 
 
+-> For example, declare file picker?
+Allow the app to be registered as the opener of .mcpack files next to Minecraft itself? that'd be pretty good!
+allows the app to, depending on what it targets, import to both MC, and MC Preview
+This is a really cool idea honestly, Definitely do it, implement it the right way.
+
 - Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
 a page, filled by Online Texts, reporting on all the bugs
 Rich textboxes as containers with clickable links as pasted in the onlinetexts hopefully?
@@ -2886,12 +2891,6 @@ but still, if there are more native, better ways, opt for them, teast.
 
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
-
--> For example, declare file picker?
-Allow the app to be registered as the opener of .mcpack files next to Minecraft itself? that'd be pretty good!
-allows the app to, depending on what it targets, import to both MC, and MC Preview
-
-This is a really cool idea honestly, Definitely do it, implement it the right way.
 
 >> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX
 >> Add a "Gaming" LUT preset, whole day all day colors rapidly changing, greyscale skies, colorful directional lights
