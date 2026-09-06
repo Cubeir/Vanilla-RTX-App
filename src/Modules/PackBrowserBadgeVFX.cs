@@ -24,18 +24,18 @@ namespace Vanilla_RTX_App.Modules;
 /// CreatePackButton, i.e. BEFORE it's added to PackListContainer.Children. A
 /// Storyboard.Begin() called on targets that aren't yet part of a live visual
 /// tree throws a COMException whose message is the infamous "No installed
-/// components were detected." (HRESULT 0x800F1000 — a XAML "invalid operation"
+/// components were detected." (HRESULT 0x800F1000 – a XAML "invalid operation"
 /// code that happens to collide with an unrelated SetupAPI error code, hence the
 /// misleading text). So every Storyboard here is started lazily via
 /// BeginOnLoaded, once its overlay is actually rooted in the tree.
 ///
 /// Not everything here is a Storyboard. The reactor field is driven by one shared
 /// DispatcherTimer that steps a few cells per tick, mirroring the real ReactorBackdrop
-/// in the Alchitex module — see the block comment above ApplyReactorRain for why. It
+/// in the Alchitex module – see the block comment above ApplyReactorRain for why. It
 /// registers and unregisters on the same Loaded/Unloaded pair, so the same rule holds:
 /// nothing animates until it is in the tree, and nothing survives leaving it.
 ///
-/// Kept in its own file so BuildTagBadge's color switch stays a color switch —
+/// Kept in its own file so BuildTagBadge's color switch stays a color switch –
 /// call BadgeVFX.Apply(badge, tag) once at the end and move on.
 /// </summary>
 internal static class PackBrowserBadgeVFX
@@ -74,7 +74,7 @@ internal static class PackBrowserBadgeVFX
         catch (Exception ex)
         {
             System.Diagnostics.Trace.WriteLine($"[BadgeVFX] Skipping animation for \"{tag}\": {ex.Message}");
-            // badge.Background — the flat fallback color — was never touched, so the badge is still fully usable.
+            // badge.Background – the flat fallback color – was never touched, so the badge is still fully usable.
         }
     }
 
@@ -83,7 +83,7 @@ internal static class PackBrowserBadgeVFX
 
     /// <summary>
     /// Starts a Storyboard only once <paramref name="element"/> is actually loaded
-    /// into the live visual tree — see the class remarks for why this matters.
+    /// into the live visual tree – see the class remarks for why this matters.
     /// </summary>
     private static void BeginOnLoaded(FrameworkElement element, Storyboard storyboard)
     {
@@ -93,7 +93,7 @@ internal static class PackBrowserBadgeVFX
             element.Unloaded += OnUnloaded;
 
             // Apply()'s try/catch is long gone by the time this runs, and the flat badge
-            // colour underneath is still a perfectly good badge — so a Begin() that throws
+            // colour underneath is still a perfectly good badge – so a Begin() that throws
             // here costs the animation, never the window.
             try { storyboard.Begin(); }
             catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"[BadgeVFX] Begin failed: {ex.Message}"); }
@@ -131,7 +131,7 @@ internal static class PackBrowserBadgeVFX
 
     /// <summary>
     /// Lays an animated visual over the badge's existing content, behind the text,
-    /// stretched to cover the full badge including its padding — without ever
+    /// stretched to cover the full badge including its padding – without ever
     /// touching badge.Background itself.
     /// </summary>
     private static void LayerOverlay(Border badge, FrameworkElement overlay)
@@ -154,8 +154,7 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  RTX — Swapped breathing glow effect for a VV-like one cause that one looks cooler,
-    //  plus a shine passing over the top of it, because it is the ray traced one
+    //  RTX – Breathing glow effect plus a shine passing over the top of it
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyRtxGlow(Border badge)
     {
@@ -229,14 +228,11 @@ internal static class PackBrowserBadgeVFX
         var host = new Grid();
         host.Children.Add(glow);
 
-        // Over the top of the breathing glow rather than instead of it: a bright, quick pass
-        // with a long wait either side, so it reads as light catching the badge rather than
-        // as one more thing pulsing. Brighter than anything in the glow underneath, because a
-        // highlight that sits inside the range it crosses is not a highlight.
+        // Over the top of the breathing glow rather than instead of it
         host.Children.Add(BuildShineSweep(badge, storyboards,
             band: ColorHelper.FromArgb(105, 225, 255, 190),
             fastestPass: 0.7, slowestPass: 1.4,
-            shortestRest: 5.0, longestRest: 13.0));
+            shortestRest: 4.0, longestRest: 12.0));
 
         var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
 
@@ -246,7 +242,7 @@ internal static class PackBrowserBadgeVFX
 
 
     // ════════════════════════════════════════════════════════════════════
-    //  Vibrant Visuals — golden / burnt-orange blobs drifting into one another
+    //  Vibrant Visuals – burnt-orange/brown blobs drifting into one another
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyVibrantVisualsBlobs(Border badge)
     {
@@ -347,7 +343,8 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Incompatible — red drifting toward VV's gold and back, signalling kinship
+    //  Incompatible – red drifting toward VV's brown color, signaling their somewhat kinship in how
+    //  Tuning isn't really gonna work well for VV, and not at all for Incompatible packs.
     // ════════════════════════════════════════════════════════════════════
     private static void ApplyIncompatiblePulse(Border badge)
     {
@@ -378,7 +375,7 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Alchitex candidate — a miniature ReactorBackdrop field
+    //  Alchitex candidate – a miniature ReactorBackdrop field
     //
     //  Built to the same two rules as the real one in Alchitex/ReactorBackdrop.cs,
     //  for the same reasons:
@@ -392,15 +389,12 @@ internal static class PackBrowserBadgeVFX
     //      badge at once. The storyboard version this replaced ran 96 ColorAnimations
     //      per badge, each evaluated every frame for as long as the window was open.
     //
-    //  The cadence is unchanged — a cell still moves about as often as it used to.
+    //  The cadence is unchanged – a cell still moves about as often as it used to.
     //  Only the smoothness is gone, deliberately.
     // ════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// ReactorBackdrop's palette: six blues darkest-to-brightest, then one accent that sits
-    /// outside that ramp. Copied rather than shared — the backdrop is an Alchitex internal
-    /// and these are constants measured off the original artwork, with no reason to move. If
-    /// they ever do, both places change together.
+    /// ReactorBackdrop's palette: usual RTX Reactor-brand blues
     /// </summary>
     private static readonly Color[] ReactorPalette =
     {
@@ -410,28 +404,26 @@ internal static class PackBrowserBadgeVFX
         ColorHelper.FromArgb(255, 0, 53, 102),
         ColorHelper.FromArgb(255, 0, 59, 114),
         ColorHelper.FromArgb(255, 0, 72, 138),
-
-        ColorHelper.FromArgb(255, 44, 154, 255), // accent
+        ColorHelper.FromArgb(255, 44, 154, 255),
     };
 
     /// <summary>How likely each colour is to be a cell's own, relative to the others.</summary>
-    private static readonly int[] ReactorPaletteWeights = { 2, 2, 2, 2, 2, 2, 1 };
+    private static readonly int[] ReactorPaletteWeights = { 1, 1, 1, 1, 1, 1, 1 };
     private static readonly int ReactorTotalWeight = ReactorPaletteWeights.Sum();
 
     /// <summary>Palette entries below this form the ordered ramp a cell steps along; anything
     /// from here up is an accent with no neighbours on it (see StepReactorShade).</summary>
     private const int ReactorRampLength = 6;
 
-    /// <summary>Six rungs where ReactorBackdrop has three. A badge is four rows tall and a
-    /// couple of pixels per cell, so a coarse ladder reads as cells blinking on and off
+    /// <summary>A coarse ladder reads as cells blinking on and off
     /// rather than as rain thinning out.</summary>
-    private static readonly double[] ReactorFadeRungs = { 0.0, 0.2, 0.4, 0.6, 0.8, 1.0 };
+    private static readonly double[] ReactorFadeRungs = { 0.0, 0.5, 1.0 };
 
     private const int ReactorColumns = 24;
     private const int ReactorRows = 4;
 
-    /// <summary>The tick rate is the frame rate — see the block comment above.</summary>
-    private const double ReactorTickMs = 200;
+    /// <summary>The tick rate is the frame rate – see the block comment above.</summary>
+    private const double ReactorTickMs = 100;
 
     /// <summary>How often a given cell takes a step, which is what sets how many of them each
     /// tick touches. Matched to the half-cycle of the ColorAnimation this replaced, so the
@@ -440,15 +432,15 @@ internal static class PackBrowserBadgeVFX
 
     /// <summary>Chance that a cell in the top row disperses rather than holding a shade,
     /// falling to zero at the bottom row: the badge's own version of the backdrop's field
-    /// thinning out toward the top. Convex, for the same reason — a linear falloff spends too
+    /// thinning out toward the top. Convex, for the same reason – a linear falloff spends too
     /// long at "half the cells are missing", which reads as damage rather than dispersion.</summary>
-    private const double ReactorTopRowDispersion = 0.55;
+    private const double ReactorTopRowDispersion = 0.25;
     private const double ReactorDispersionCurve = 1.6;
 
     /// <summary>
     /// Brushes are DependencyObjects and so have thread affinity. Built on first use rather
     /// than in a static initialiser, so they are created on whichever UI thread is actually
-    /// building badges — the same thread the ticker below binds itself to.
+    /// building badges – the same thread the ticker below binds itself to.
     /// </summary>
     private static SolidColorBrush[]? _reactorBrushes;
 
@@ -472,7 +464,7 @@ internal static class PackBrowserBadgeVFX
     }
 
     // Every live reactor badge in the app, ticked together. Only ever touched on the UI
-    // thread — from Loaded/Unloaded and from the timer — so no locking is needed.
+    // thread – from Loaded/Unloaded and from the timer – so no locking is needed.
     private static readonly List<ReactorField> ReactorFields = new();
     private static DispatcherTimer? _reactorTimer;
 
@@ -607,7 +599,7 @@ internal static class PackBrowserBadgeVFX
     /// <summary>
     /// One frame of every live field's life: a few cells each take a single step. A solid
     /// cell moves one rung along the blue ramp and back; a dispersing one moves one rung
-    /// along the fade ladder. Nothing interpolates — every cell is always on a rung.
+    /// along the fade ladder. Nothing interpolates – every cell is always on a rung.
     /// </summary>
     private static void ReactorTick()
     {
@@ -640,7 +632,7 @@ internal static class PackBrowserBadgeVFX
 
     private static void StepReactorShade(ReactorCell cell)
     {
-        // Back to its own colour if it has wandered, otherwise one step off it — never
+        // Back to its own colour if it has wandered, otherwise one step off it – never
         // further, so the field keeps the arrangement it was built with. An accent cell has
         // no neighbours on the ramp, so it steps against the ramp's bright end instead;
         // stepping it by index would land on an unrelated colour.
@@ -666,14 +658,12 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Chemistry — three reagents diffusing through the teal base
+    //  Chemistry – three reagents diffusing through the teal base
     // ════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// The three reagents: #39ABBF cyan, #CC39AE magenta, #7741BF purple. The badge's own
-    /// flat teal is the solvent they are being dropped into, which is why every blob fades to
+    /// The badge's own flat teal is the solvent they are being dropped into, which is why every blob fades to
     /// fully transparent at its rim rather than to a colour of its own.
-    ///
     /// The purple is also what the other two turn into: it sits between them on the wheel, so
     /// using it as the colour each of them drifts toward is what makes the drift read as the
     /// two of them reacting rather than as two lights independently changing hue. It then
@@ -691,7 +681,7 @@ internal static class PackBrowserBadgeVFX
 
         // Three blobs on deliberately unrelated periods: large and slow, middling, small and
         // quick. Where they cross, their colours stack; where they part, the teal comes back
-        // through. That is the whole "fluids not yet mixed" read — one blob on its own just
+        // through. That is the whole "fluids not yet mixed" read – one blob on its own just
         // looks like a moving light, and three beat two because with three the overlaps stop
         // repeating on any period short enough to notice.
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
@@ -832,7 +822,7 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Shared — the shine sweep
+    //  Shared – the shine sweep
     // ════════════════════════════════════════════════════════════════════
 
     /// <summary>
@@ -840,12 +830,12 @@ internal static class PackBrowserBadgeVFX
     /// again. Layer it over whatever the badge already does; it contributes nothing of its
     /// own between passes.
     ///
-    /// It is a narrow gradient window — transparent, bright, transparent — whose whole span
+    /// It is a narrow gradient window – transparent, bright, transparent – whose whole span
     /// is slid across the badge, rather than stops animated within a fixed span. Both ends of
     /// the window are transparent and the default pad extend repeats those ends outward, so
     /// the band is genuinely absent everywhere the window is not, and it starts and finishes
     /// each pass entirely off the badge. That means the loop needs no seam handling, no
-    /// SpreadMethod, and no stop offsets outside 0..1 — none of which a gradient brush is
+    /// SpreadMethod, and no stop offsets outside 0..1 – none of which a gradient brush is
     /// obliged to render the way you would hope.
     ///
     /// Pass length, rest length and start offset are all rolled per badge, so a menu full of
@@ -872,7 +862,7 @@ internal static class PackBrowserBadgeVFX
 
         var sweep = new Border { Background = brush, CornerRadius = badge.CornerRadius };
 
-        // Rolled once and shared by both halves of the slide — roll them separately and the
+        // Rolled once and shared by both halves of the slide – roll them separately and the
         // window stretches and shears instead of travelling.
         var pass = Jitter(fastestPass, slowestPass);
         var cycle = pass + Jitter(shortestRest, longestRest);
@@ -900,8 +890,8 @@ internal static class PackBrowserBadgeVFX
             EnableDependentAnimation = true
         };
 
-        // Linear across the pass — a shine that eased in and out would look like it was
-        // considering something — then parked off the far edge for the rest of the cycle.
+        // Linear across the pass – a shine that eased in and out would look like it was
+        // considering something – then parked off the far edge for the rest of the cycle.
         // The snap back at the loop point is invisible because both ends of the travel are
         // entirely off the badge, which is the same property that lets the band arrive and
         // leave cleanly in the first place.
@@ -927,10 +917,10 @@ internal static class PackBrowserBadgeVFX
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  Unknown — a badge that will not hold still
+    //  Unknown – a badge that will not hold still
     //
     //  The one tag here that says nothing about the pack, so its effect says as
-    //  little as it can get away with: no colour, no travel, no shine — just the
+    //  little as it can get away with: no colour, no travel, no shine – just the
     //  badge intermittently failing. It is the least important thing in the row and
     //  is meant to look it. The sweep it used to carry now belongs to RTX, where
     //  looking special is the entire point.
@@ -946,9 +936,7 @@ internal static class PackBrowserBadgeVFX
 
     /// <summary>
     /// The badge occasionally failing to hold still: two or three flashes of wash at odd
-    /// intervals, with a long quiet stretch either side of them. Discrete key frames, so
-    /// nothing here interpolates — it is either glitching or it is not, which is also what
-    /// makes it nearly free between blinks.
+    /// intervals. Discrete key frames, so nothing here interpolates, making it cheaper to run.
     /// </summary>
     private static Border BuildUnknownGlitch(Border badge, List<Storyboard> storyboards)
     {
@@ -959,12 +947,12 @@ internal static class PackBrowserBadgeVFX
             Opacity = 0
         };
 
-        var cycle = Jitter(5.0, 11.0);
+        var cycle = Jitter(4.0, 8.0);
         var blink = new DoubleAnimationUsingKeyFrames
         {
             Duration = TimeSpan.FromSeconds(cycle),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 6.0))
+            BeginTime = TimeSpan.FromSeconds(Jitter(1.0, 6.0))
         };
 
         // Placed as fractions of the cycle rather than in seconds, so the jittered period
