@@ -16,27 +16,37 @@ using static Vanilla_RTX_App.Modules.ProcessorVariables;
 namespace Vanilla_RTX_App.Modules;
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Hardcoded Processor Variables —— Read individual comments
+//  Hardcoded Processor Variables
 // ══════════════════════════════════════════════════════════════════════════════
 
 internal static class ProcessorVariables
 {
-    // If set to true, replaces height values, if any, with uniform fog, this was planned to be exposed to user
-    // But the app later pivoted towards "making everything dumb simple" and this option wouldn't have been "simple" enough.
+
+    /// <summary>
+    /// If set to true, replaces height values, if any, with uniform fog, this was planned to be exposed to user
+    /// But the app later pivoted towards "making everything dumb simple" and this option wouldn't have been "simple" enough.
+    /// </summary>
     public const bool FOG_UNIFORM_HEIGHT = false;
-    // Excess of the multiplier is applied to other pixels, but heavily dampenend using this number
+
+    /// <summary>
+    /// Excess of the multiplier is applied to other pixels, but heavily dampenend using this number
+    /// </summary>
     public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
 
-    // Lazified POM is floored at the lazify alpha so a strong lazify can't also be a deep one,
-    // but the floor stops climbing here -- at 255 an uncapped floor leaves zero depth range and
-    // the pass has nothing left to say. 200 keeps a usable slice of relief at the far end.
+    /// <summary>
+    /// Lazified POM is floored at the lazify alpha so a strong lazify can't also be a deep one,
+    /// but the floor stops climbing here -- at 255 an uncapped floor leaves zero depth range and
+    /// the pass has nothing left to say. 200 keeps a usable slice of relief at the far end.
+    /// </summary>
     public const int LAZIFY_POM_MAX_FLOOR = 200;
 
-    // Ambient light tracks the emissivity multiplier 1:1 up to the knee, then saturates along
-    // a hyperbolic tail instead of continuing to climb -- a 16x multiplier paired with the
-    // toggle used to dump 17 uniform green over every pixel. Tail approaches
-    // 1 + KNEE + SOFTNESS (12) but never reaches it; at the slider's 16x ceiling it reads 10.
-    public const double AMBIENT_LINEAR_KNEE = 6.0;
+    /// <summary>
+    /// Ambient light tracks the emissivity multiplier 1:1 up to the knee, then saturates along
+    /// a hyperbolic tail instead of continuing to climb -- a 16x multiplier paired with the
+    /// toggle used to dump 17 uniform green over every pixel. Tail approaches
+    /// 1 + KNEE + SOFTNESS (12) but never reaches it; at the slider's 16x ceiling it reads 10.
+    /// </summary>
+    public const double AMBIENT_LINEAR_KNEE = 4.5;
     public const double AMBIENT_TAIL_SOFTNESS = 5.0;
 }
 
