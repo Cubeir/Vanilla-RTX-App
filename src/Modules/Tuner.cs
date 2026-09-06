@@ -26,6 +26,18 @@ internal static class ProcessorVariables
     public const bool FOG_UNIFORM_HEIGHT = false;
     // Excess of the multiplier is applied to other pixels, but heavily dampenend using this number
     public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
+
+    // Lazified POM is floored at the lazify alpha so a strong lazify can't also be a deep one,
+    // but the floor stops climbing here -- at 255 an uncapped floor leaves zero depth range and
+    // the pass has nothing left to say. 200 keeps a usable slice of relief at the far end.
+    public const int LAZIFY_POM_MAX_FLOOR = 200;
+
+    // Ambient light tracks the emissivity multiplier 1:1 up to the knee, then saturates along
+    // a hyperbolic tail instead of continuing to climb -- a 16x multiplier paired with the
+    // toggle used to dump 17 uniform green over every pixel. Tail approaches
+    // 1 + KNEE + SOFTNESS (12) but never reaches it; at the slider's 16x ceiling it reads 10.
+    public const double AMBIENT_LINEAR_KNEE = 6.0;
+    public const double AMBIENT_TAIL_SOFTNESS = 5.0;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -860,7 +872,26 @@ public class Tuner
 
         if (AddEmissivityAmbientLight)
         {
-            var ambientAmount = (int)Math.Ceiling(userMult) + 1;
+            // Ambient light is worth one level more than the multiplier the user set, until
+            // the knee -- so 2x reads 3, 6x reads 7 -- after which the tail saturates rather
+            // than keeps pace. The multiplier pass has already brightened every lit pixel by
+            // then; matching it here a second time, uniformly and over pixels that emit
+            // nothing, is what made a high multiplier plus this toggle blow a pack out.
+            //
+            // Rounded to the slider's own precision before flooring: 3.0 arriving as
+            // 2.9999999 would otherwise floor a whole level down.
+            //
+            // Floor, not ceiling: with a 0.1 step, ceiling made 1.1 through 1.9 all behave as
+            // a flat 2.0, so a single notch off 1.0 jumped a whole level. Never below 2 --
+            // at a 1.0 multiplier the multiplier pass does nothing at all, so this pass is the
+            // entire effect of the toggle and one green level is too faint to bother flipping
+            // it for. That minimum also carries the sub-1.0 multipliers, which are dimming.
+            var mult = Math.Round(userMult, 3);
+            var ambientRaw = mult <= AMBIENT_LINEAR_KNEE
+                ? 1.0 + mult
+                : 1.0 + AMBIENT_LINEAR_KNEE
+                    + (mult - AMBIENT_LINEAR_KNEE) / (1.0 + (mult - AMBIENT_LINEAR_KNEE) / AMBIENT_TAIL_SOFTNESS);
+            var ambientAmount = Math.Max(2, (int)Math.Floor(ambientRaw));
             for (var y = 0; y < height; y++)
             {
                 for (var x = 0; x < width; x++)
@@ -1078,28 +1109,33 @@ public class Tuner
         // Deliberately NOT the min->max stretch above: that one forces the darkest pixel to
         // full depth on every texture regardless of how shallow its real range is, which is
         // acceptable for R/G (they only ever describe slope) and wrong for depth.
+        //
+        // The lift is then floored at the lazify alpha itself and the whole range
+        // interpolated up into [alpha, 255]. Ceiling-maximizing keys the entire texture off
+        // its single brightest pixel, so one outlier drags everything else deep -- acacia
+        // leaves with a flower came out far deeper than the same leaves without one, purely
+        // because the flower was brighter than any leaf. Tying the floor to alpha bounds how
+        // deep the guess may go exactly when it is about to be weighted most heavily, and
+        // leaves it free to go deep when the blend below will barely apply it, capped at
+        // LAZIFY_POM_MAX_FLOOR so the top of the slider still says something. The remap is
+        // affine, so the texture's relative composition passes through intact either way.
         var ceiling = new byte[width, height];
+        var depthFloor = Math.Min(alpha, LAZIFY_POM_MAX_FLOOR);
+        double span = (255 - depthFloor) / 255.0;
 
-        if (maxV == 0)
-        {
-            // Nothing to scale up from -- a texture with no luminance carries no relief to
-            // read. Flat surface, which lets the blend below flatten the pack's POM in
-            // proportion to the slider, the same way the range == 0 branch above hands R/G
-            // a flat 128 and lets them smear toward neutral.
-            for (var y = 0; y < height; y++)
-                for (var x = 0; x < width; x++)
-                    ceiling[x, y] = 255;
-        }
-        else
-        {
-            // Rounded, not truncated: the brightest pixel has to land exactly on 255 or the
-            // texture never quite reaches the surface. 200 * (255.0 / 200) lands a hair under
-            // 255 in floating point and truncates to 254.
-            double lift = 255.0 / maxV;
-            for (var y = 0; y < height; y++)
-                for (var x = 0; x < width; x++)
-                    ceiling[x, y] = (byte)Math.Clamp(Math.Round(greyscale[x, y] * lift), 0, 255);
-        }
+        for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                // maxV == 0 means every pixel is the brightest pixel, so raising the
+                // brightest to 255 raises all of them: a black texture is uniformly flush.
+                // Needs its own branch only because the multiply cannot express it.
+                //
+                // Rounded, not truncated: the brightest pixel has to land exactly on 255 or
+                // the texture never quite reaches the surface. 200 * (255.0 / 200) lands a
+                // hair under 255 in floating point and truncates to 254.
+                double lifted = maxV == 0 ? 255.0 : greyscale[x, y] * (255.0 / maxV);
+                ceiling[x, y] = (byte)Math.Clamp(Math.Round(depthFloor + lifted * span), 0, 255);
+            }
 
         return LazifyNormalMap(normalFb, stretched, ceiling, alpha, width, height);
     }
