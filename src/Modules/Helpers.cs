@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ImageMagick;
 using Newtonsoft.Json.Linq;
@@ -530,6 +531,25 @@ public static class Helpers
         }
     }
 
+
+    /// <summary>
+    /// Removes Minecraft's section-sign formatting codes (§a, §l, §r...) from a pack name or
+    /// description, leaving the text the player actually reads.
+    ///
+    /// Deliberately permissive about what follows the sign: Bedrock keeps adding codes
+    /// (§g and §h-§u arrived well after the classic §0-§f / §k-§r set), so matching a fixed
+    /// character class would quietly start leaving new ones behind. A lone trailing § is
+    /// dropped too, and a § before whitespace takes only itself - "Cost: 5§ each" keeps its
+    /// space. Trailing whitespace is trimmed, since a code at either end leaves some behind.
+    ///
+    /// Lives here rather than in either caller: PackBrowserWindow needs it for display,
+    /// Alchitex needs it for the name it writes into a regenerated manifest, and both had
+    /// their own version that disagreed on all three edge cases above.
+    /// </summary>
+    public static string StripMinecraftFormatting(string input)
+        => string.IsNullOrEmpty(input) ? input : MinecraftFormattingCodeRegex.Replace(input, string.Empty).Trim();
+
+    private static readonly Regex MinecraftFormattingCodeRegex = new(@"§\S?", RegexOptions.Compiled);
 
     /// <summary>
     /// Shortns it too

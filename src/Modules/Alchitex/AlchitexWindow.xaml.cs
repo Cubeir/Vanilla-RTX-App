@@ -724,7 +724,7 @@ public sealed partial class Alchitex : Window
             }
         }
 
-        ToolTipService.SetToolTip(tile, PackBrowserWindow.StripMinecraftFormatting(packName));
+        ToolTipService.SetToolTip(tile, Helpers.StripMinecraftFormatting(packName));
         tile.Children.Add(iconBorder);
 
         if (allowDiscard)
@@ -751,7 +751,7 @@ public sealed partial class Alchitex : Window
                 },
             };
 
-            ToolTipService.SetToolTip(discard, $"Remove {PackBrowserWindow.StripMinecraftFormatting(packName)} from this queue.");
+            ToolTipService.SetToolTip(discard, $"Remove {Helpers.StripMinecraftFormatting(packName)} from this queue.");
 
             // Revealed by hovering the tile as a whole, so the target is the icon itself
             // rather than a control you have to find before you can use it.
@@ -1651,7 +1651,7 @@ public sealed partial class Alchitex : Window
         {
             sb.AppendLine($"Added the following RTX-capable pack{(_succeededPackNames.Count == 1 ? "" : "s")}:");
             foreach (var name in _succeededPackNames)
-                sb.AppendLine($"{PackBrowserWindow.StripMinecraftFormatting(name)}");
+                sb.AppendLine($"{Helpers.StripMinecraftFormatting(name)}");
         }
         if (_succeededPackNames.Count > 0)
         {
@@ -1665,7 +1665,7 @@ public sealed partial class Alchitex : Window
             if (sb.Length > 0) sb.AppendLine();
             sb.AppendLine($"🗑️ Uninstalled the original pack{(_removedOriginalNames.Count == 1 ? "" : "s")} they were generated from:");
             foreach (var name in _removedOriginalNames)
-                sb.AppendLine($"* {PackBrowserWindow.StripMinecraftFormatting(name)}");
+                sb.AppendLine($"* {Helpers.StripMinecraftFormatting(name)}");
         }
 
         if (_failedPackNames.Count > 0)
@@ -1674,7 +1674,7 @@ public sealed partial class Alchitex : Window
             sb.AppendLine("⚠️ Partially (or fully) failed to add RTX support to the following:");
             sb.AppendLine();
             foreach (var name in _failedPackNames)
-                sb.AppendLine($"* {PackBrowserWindow.StripMinecraftFormatting(name)}");
+                sb.AppendLine($"* {Helpers.StripMinecraftFormatting(name)}");
             sb.Append($"ℹ️ Better luck with another pack!");
         }
 

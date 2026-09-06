@@ -679,22 +679,7 @@ public static class PostProcess
                 description = trimmed[(trimmed.IndexOf('=') + 1)..].Trim();
         }
 
-        return (StripSectionSigns(name ?? rawName), description, true);
-    }
-
-    private static string StripSectionSigns(string input)
-    {
-        var chars = new List<char>(input.Length);
-        for (var i = 0; i < input.Length; i++)
-        {
-            if (input[i] == '§')
-            {
-                i++; // also skip the formatting character that follows, if any
-                continue;
-            }
-            chars.Add(input[i]);
-        }
-        return new string(chars.ToArray());
+        return (Helpers.StripMinecraftFormatting(name ?? rawName), description, true);
     }
 
     private static string AppendLine(string? existing, string line)
@@ -884,13 +869,13 @@ public static class PostProcess
     }
 
     /// <summary>Strips everything down to plain lowercase a-z0-9 - section-sign formatting
-    /// codes (via StripSectionSigns), spaces, dashes, punctuation, all of it. Returns
-    /// empty string (never null) if nothing alphanumeric survives, so callers can chain
-    /// fallback candidates with a simple Length check.</summary>
+    /// codes (via Helpers.StripMinecraftFormatting), spaces, dashes, punctuation, all of it.
+    /// Returns empty string (never null) if nothing alphanumeric survives, so callers can
+    /// chain fallback candidates with a simple Length check.</summary>
     private static string SanitizeResourcePackName(string? name)
     {
         if (string.IsNullOrEmpty(name)) return string.Empty;
-        var stripped = StripSectionSigns(name);
+        var stripped = Helpers.StripMinecraftFormatting(name);
         return new string(stripped.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
     }
 

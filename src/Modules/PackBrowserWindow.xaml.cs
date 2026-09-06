@@ -65,7 +65,6 @@ public sealed partial class PackBrowserWindow : Window
     private static readonly string VibrantVisualsPoopJoke =
         $"Vibrant Visuals{(Random.Shared.Next(100) == 49 ? " 💩" : "")}";
 
-    private static readonly Regex MinecraftFormattingCodeRegex = new(@"§\S", RegexOptions.Compiled);
     private static readonly Regex StrictSemVerRegex = new(@"^\d+\.\d+\.\d+$", RegexOptions.Compiled);
 
     public PackBrowserWindow()
@@ -291,16 +290,6 @@ public sealed partial class PackBrowserWindow : Window
         {
             return JObject.Parse(json);
         }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    //  Minecraft formatting-code stripping
-    // ════════════════════════════════════════════════════════════════════════
-
-    public static string StripMinecraftFormatting(string input)
-    {
-        if (string.IsNullOrEmpty(input)) return input;
-        return MinecraftFormattingCodeRegex.Replace(input, string.Empty).Trim();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -925,8 +914,8 @@ public sealed partial class PackBrowserWindow : Window
     {
         var header = root["header"];
 
-        string packName = StripMinecraftFormatting(header?["name"]?.ToString() ?? string.Empty);
-        string packDesc = StripMinecraftFormatting(header?["description"]?.ToString() ?? string.Empty);
+        string packName = Helpers.StripMinecraftFormatting(header?["name"]?.ToString() ?? string.Empty);
+        string packDesc = Helpers.StripMinecraftFormatting(header?["description"]?.ToString() ?? string.Empty);
 
         if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
         if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
@@ -1047,8 +1036,8 @@ public sealed partial class PackBrowserWindow : Window
             }
         }
 
-        packName = StripMinecraftFormatting(packName);
-        packDesc = StripMinecraftFormatting(packDesc);
+        packName = Helpers.StripMinecraftFormatting(packName);
+        packDesc = Helpers.StripMinecraftFormatting(packDesc);
 
         if (packName == "pack.name" || string.IsNullOrWhiteSpace(packName))
             packName = Path.GetFileName(packDir);
