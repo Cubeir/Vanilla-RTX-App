@@ -689,14 +689,14 @@ internal static class PackBrowserBadgeVFX
             radius: 0.85, radiusSwing: 0.18, lowOpacity: 0.50,
             centerPath: new[] { new Point(0.22, 0.62), new Point(0.55, 0.28), new Point(0.82, 0.66), new Point(0.48, 0.80) },
             originPath: new[] { new Point(0.30, 0.45), new Point(0.62, 0.60), new Point(0.40, 0.30) },
-            slowest: 5.0, fastest: 8.0));
+            slowest: 6.0, fastest: 9.0));
 
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
             reagent: ChemistryMagenta, reacted: ChemistryPurple,
             radius: 0.62, radiusSwing: 0.16, lowOpacity: 0.38,
             centerPath: new[] { new Point(0.78, 0.30), new Point(0.40, 0.72), new Point(0.15, 0.35), new Point(0.60, 0.20) },
             originPath: new[] { new Point(0.60, 0.55), new Point(0.35, 0.40), new Point(0.65, 0.35) },
-            slowest: 4.0, fastest: 6.5));
+            slowest: 3.0, fastest: 6.0));
 
         // The purple one drifts back toward magenta rather than onward to anything new, so
         // the three of them stay a closed loop instead of wandering off the palette.
@@ -705,7 +705,7 @@ internal static class PackBrowserBadgeVFX
             radius: 0.45, radiusSwing: 0.12, lowOpacity: 0.28,
             centerPath: new[] { new Point(0.45, 0.20), new Point(0.18, 0.58), new Point(0.68, 0.78), new Point(0.88, 0.42) },
             originPath: new[] { new Point(0.42, 0.38), new Point(0.55, 0.66), new Point(0.30, 0.52) },
-            slowest: 3.0, fastest: 5.5));
+            slowest: 1.0, fastest: 2.0));
 
         var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
 
@@ -743,7 +743,7 @@ internal static class PackBrowserBadgeVFX
         {
             Duration = TimeSpan.FromSeconds(Jitter(slowest, fastest)),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(0, 3.0))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0, 6.0))
         };
         AddLoop(drift, centerPath);
         Storyboard.SetTarget(drift, brush);
