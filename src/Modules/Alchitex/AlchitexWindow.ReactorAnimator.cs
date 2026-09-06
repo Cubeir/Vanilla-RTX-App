@@ -35,6 +35,16 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///     orbits the eight perimeter tiles with a fading tail behind it, which is the one
 ///     stance here that reads as "this is not finished, and it is not your turn yet".
 ///
+/// How often a phase reports decides what kind of behavior it can have, and getting this
+/// wrong is invisible in code and obvious on screen:
+///   - Reports continuously (GeneratingTextures) -> a per-pulse behavior. It is also the
+///     only phase long enough to show off a one-shot flourish.
+///   - Reports once, then works for a long time in silence (Staging, copying thousands of
+///     files) -> a timer. BeginPhaseOrbit exists for exactly this: a per-pulse behavior has
+///     a single pulse to work with and leaves the reactor looking switched off.
+///   - Reports once and is immediately followed by more work (ScanningTextures) -> a
+///     one-shot flourish, which gets to finish on screen under whatever comes next.
+///
 /// Running behaviors are built from two ingredients: tiles firing at random, and a
 /// travelling gradient (StepGradientWave) - the resting arrangement's own diagonal ramp
 /// rolled across the grid. Phases that mean a direction are pure gradient and keep theirs;
@@ -326,6 +336,7 @@ public sealed class ReactorAnimator
         if (!_isInitialized || _isWaiting) return;
 
         _isWaiting = true;
+        _orbitPhase = null; // the wait stance takes the orbit over from any phase using it
         StopPressHold();
         ReleaseGrid();
 
@@ -401,6 +412,64 @@ public sealed class ReactorAnimator
     {
         StopOrbitTimer();
         _isWaiting = false;
+        _orbitPhase = null;
+    }
+
+    // ── The orbit as a phase's own behaviour ─────────────────────────────────
+
+    /// <summary>
+    /// Which phase a phase-driven orbit belongs to, if any. The external wait stance and a
+    /// long phase share one mechanism but not one meaning: a wait owns the whole grid and
+    /// swallows pulses, while this is simply what one phase looks like and has to step
+    /// aside the moment the next phase reports.
+    /// </summary>
+    private Core.AlchitexPhase? _orbitPhase;
+
+    /// <summary>
+    /// Runs the orbit for a phase that reports once and then works for a long time without
+    /// saying anything else.
+    ///
+    /// Staging is the case that needs it, and it is worth being explicit about why, because
+    /// it is the mirror image of the ripple problem (§ the class comment on flourishes):
+    /// copying a heavy pack is thousands of files between two progress reports, so there is
+    /// exactly one pulse for the whole of it. A per-pulse behaviour has nothing to work
+    /// with there - the reactor sat on one twitched tile and looked switched off. A phase
+    /// that reports continuously wants a pulse behaviour; a phase that reports once and
+    /// then disappears wants a timer.
+    ///
+    /// Unlike BeginWaiting this does NOT claim the grid and does not block pulses.
+    /// </summary>
+    private void BeginPhaseOrbit(Core.AlchitexPhase phase)
+    {
+        if (!_isInitialized || _isWaiting) return;  // the real wait stance outranks this
+        if (_orbitPhase == phase) return;           // already running for this phase
+
+        StopOrbitTimer();
+        _orbitPhase = phase;
+        _orbitHead = 0;
+
+        if (AnimationsSuspended) return;
+
+        _orbitTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(OrbitStepMs) };
+        _orbitTimer.Tick += (s, e) =>
+        {
+            // Defer to a flourish that is still playing rather than cutting it short - the
+            // intake wash lands right about here, since a pack's run starts the moment its
+            // tile has finished flying in.
+            if (IsGridClaimed) return;
+
+            _orbitHead = (_orbitHead + 1) % OrbitRing.Length;
+            PaintOrbit(OrbitStepMs * 1.25);
+        };
+        _orbitTimer.Start();
+    }
+
+    private void StopPhaseOrbit()
+    {
+        if (_orbitPhase == null) return;
+
+        _orbitPhase = null;
+        StopOrbitTimer();
     }
 
     private void StopOrbitTimer()
@@ -554,6 +623,14 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
+        // A phase orbit belongs to exactly one phase, so anything else reporting ends it.
+        // Ahead of every gate below deliberately: a pulse that gets swallowed still means
+        // that phase is over, and leaving the orbit spinning under the next one would
+        // outlast the gate that swallowed it. Safe above the wait check because the wait
+        // stance takes _orbitPhase to null when it claims the orbit, so this can never stop
+        // a wait's own timer.
+        if (_orbitPhase.HasValue && _orbitPhase.Value != phase) StopPhaseOrbit();
+
         // The abort stance and the waiting orbit own the whole grid while they're up - see
         // BeginAbortHint / BeginWaiting. Neither is a flourish; both mean the user is being
         // told something more important than progress.
@@ -590,17 +667,19 @@ public sealed class ReactorAnimator
                 PlayImplosion();
                 break;
 
-            // Staging: nothing is being written yet. A single tile lifts toward the bright
-            // end, like a needle twitching before the machine spins up.
+            // Copying the pack. Reports once and then goes quiet for as long as the copy
+            // takes, so this is a timer rather than a per-pulse behaviour - see
+            // BeginPhaseOrbit. The orbit is the shape that means "still going, nothing to
+            // show yet", which is exactly what staging is.
             case Core.AlchitexPhase.Staging:
-                AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(0, 2), 130);
+                BeginPhaseOrbit(phase);
                 break;
 
-            // Reading the pack's folders top to bottom - so does the gradient. Locked
-            // downward, because a scan that reversed direction would be a lie about what
-            // the pass is doing.
+            // The orchestrator taking the measure of the whole pack in one pass: a single
+            // drop out from the centre. Also reports once, but unlike staging it is followed
+            // immediately by texture work, so a half-second flourish finishes on screen.
             case Core.AlchitexPhase.ScanningTextures:
-                StepGradientWave(WaveAxis.Vertical, forward: true);
+                PlayRipple(brighten: true);
                 break;
 
             // Water and glass sweep sideways, the way a pass over a surface does.
