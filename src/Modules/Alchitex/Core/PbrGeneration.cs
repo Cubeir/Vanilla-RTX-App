@@ -149,23 +149,14 @@ public static class TextureSetOrchestrator
                 colorNames.Add(Path.GetFileNameWithoutExtension(ownedColor));
         }
 
-        // Specific vanilla names, each excluded for its own reason rather than for how it is
-        // spelled. Nothing here may grow back into "looks like PBR output" - deciding who
-        // owns a texture is the set above's job, and only its job.
-        static bool IsExcludedByName(string nameLowerNoExt)
-        {
-            if (nameLowerNoExt.Contains("bubble") || nameLowerNoExt.Contains("_placeholder")) return true;
-
-            // Colored/inventory water icons - consumed as source material by the
-            // water-fallback pass (PostProcess.EnsureGreyWaterTextures), never need a
-            // texture set of their own. The grey in-world variants (water_still_grey/
-            // water_flow_grey) DO get one - see the PBR blacklist below.
-            return nameLowerNoExt is "water_flow" or "water_still";
-        }
-
+        // Ownership is the only thing that removes a texture from this list. Exclusion by
+        // name - specific textures and wildcards alike - belongs to pbr_blacklist.json, and
+        // a blacklisted texture is still a color texture: it gets a color-only set below
+        // rather than disappearing. A hardcoded list of names used to run ahead of the
+        // blacklist here, which made its water_still, water_flow, bubble_* and *_placeholder
+        // entries unreachable and gave those textures no texture set at all.
         var colorTextures = candidates
             .Where(path => !alreadyCovered.Contains(Path.GetFullPath(path)))
-            .Where(path => !IsExcludedByName(Path.GetFileNameWithoutExtension(path).ToLowerInvariant()))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
