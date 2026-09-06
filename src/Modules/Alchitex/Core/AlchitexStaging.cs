@@ -34,7 +34,11 @@ public static class AlchitexStaging
 
     #region Pack Copy & Promotion
 
-    public static string CreateTempCopy(string sourcePackPath)
+    /// <param name="cancellationToken">Checked per file. A heavy pack is thousands of files
+    /// and can take a long time to copy, and passing a token to Task.Run only stops the work
+    /// from *starting* - so without this, Abort during staging sat there until the whole pack
+    /// had been copied before it could do anything.</param>
+    public static string CreateTempCopy(string sourcePackPath, CancellationToken cancellationToken = default)
     {
         var trimmedSource = sourcePackPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var parent = Path.GetDirectoryName(trimmedSource)
@@ -49,7 +53,7 @@ public static class AlchitexStaging
         var tempPath = Path.Combine(parent, tempName);
 
         Directory.CreateDirectory(tempPath);
-        CopyDirectoryRecursive(trimmedSource, tempPath);
+        CopyDirectoryRecursive(trimmedSource, tempPath, cancellationToken);
 
         Trace.WriteLine($"[ALCHITEX] Staged working copy: '{sourcePackPath}' -> '{tempPath}'.");
         return tempPath;
@@ -91,7 +95,7 @@ public static class AlchitexStaging
         return candidate;
     }
 
-    private static void CopyDirectoryRecursive(string sourceDir, string destDir)
+    private static void CopyDirectoryRecursive(string sourceDir, string destDir, CancellationToken cancellationToken)
     {
         foreach (var dir in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
         {
@@ -101,6 +105,11 @@ public static class AlchitexStaging
 
         foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
         {
+            // Per file rather than per folder: one texture is a small enough unit that Abort
+            // lands immediately, and abandoning a half-copied temp folder costs nothing - it
+            // still wears the prefix, so the sweep takes it.
+            cancellationToken.ThrowIfCancellationRequested();
+
             var relative = Path.GetRelativePath(sourceDir, file);
             var target = Path.Combine(destDir, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);

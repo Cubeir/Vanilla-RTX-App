@@ -77,7 +77,7 @@ public static class AlchitexPipeline
         try
         {
             progress?.Report(new AlchitexProgress(0, 0, "Staging working copy...", AlchitexPhase.Staging));
-            workingPackPath = await Task.Run(() => AlchitexStaging.CreateTempCopy(sourcePackPath), cancellationToken);
+            workingPackPath = await Task.Run(() => AlchitexStaging.CreateTempCopy(sourcePackPath, cancellationToken), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -91,12 +91,24 @@ public static class AlchitexPipeline
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            var materials = MaterialsConfig.Load(AssetUpdater.Resolve(AssetUpdater.MaterialsJson));
-            var blacklist = PbrBlacklist.Load(AssetUpdater.Resolve(AssetUpdater.PbrBlacklistJson));
-
             // ── Phase 2: texture sets ────────────────────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Scanning textures...", AlchitexPhase.ScanningTextures));
-            TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options, blacklist);
+
+            // Off the caller's thread, which is the UI thread. None of this looks heavy and
+            // all of it is: materials.json is ~800KB of JSON, and the orchestrator resolves
+            // every texture set in the pack and probes an image header per texture to
+            // resolve Auto mode. On a 64x pack that is thousands of files, and it was
+            // freezing the window solid - the white titlebar and "not responding" the
+            // developer was seeing mid-run.
+            var (materials, blacklist) = await Task.Run(() =>
+            (
+                MaterialsConfig.Load(AssetUpdater.Resolve(AssetUpdater.MaterialsJson)),
+                PbrBlacklist.Load(AssetUpdater.Resolve(AssetUpdater.PbrBlacklistJson))
+            ), cancellationToken);
+
+            await Task.Run(
+                () => TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options, blacklist),
+                cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -122,21 +134,25 @@ public static class AlchitexPipeline
 
             // ── Phase 4: manifest, terrain data, icon ────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Finalizing...", AlchitexPhase.Finalizing));
-            var finalManifestName = PostProcess.UpdateManifest(workingPackPath, appVersion);
-            PostProcess.UpdateTerrainTexture(workingPackPath, finalManifestName);
-            PostProcess.RegeneratePackIcon(workingPackPath, alchitexAssetsPath);
+            var finalManifestName = await Task.Run(() =>
+            {
+                var name = PostProcess.UpdateManifest(workingPackPath, appVersion);
+                PostProcess.UpdateTerrainTexture(workingPackPath, name);
+                PostProcess.RegeneratePackIcon(workingPackPath, alchitexAssetsPath);
+                return name;
+            }, cancellationToken);
 
             // Last pass that touches the pack's files, by requirement - it lists what's on
             // disk at the time it runs.
             progress?.Report(new AlchitexProgress(0, 0, "Regenerating bookkeeping files...", AlchitexPhase.Bookkeeping));
-            PostProcess.RegenerateBookkeepingFiles(workingPackPath);
+            await Task.Run(() => PostProcess.RegenerateBookkeepingFiles(workingPackPath), cancellationToken);
 
             // Last chance to catch a token signaled during that last phase before the
             // folder becomes "real" - cooperative cancellation means it might not have
             // been observed yet.
             cancellationToken.ThrowIfCancellationRequested();
 
-            var finalPath = AlchitexStaging.PromoteToFinalName(workingPackPath, packDisplayName);
+            var finalPath = await Task.Run(() => AlchitexStaging.PromoteToFinalName(workingPackPath, packDisplayName), CancellationToken.None);
 
             progress?.Report(new AlchitexProgress(1, 1, "Done.", AlchitexPhase.Done));
             return new AlchitexResult(true, finalPath, null, finalManifestName);
