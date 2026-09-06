@@ -1169,9 +1169,6 @@
     <None Update="Modules\Alchitex\Assets\logo.large.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Modules\Alchitex\Assets\logo.small.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Modules\Alchitex\Assets\reactor.logo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
