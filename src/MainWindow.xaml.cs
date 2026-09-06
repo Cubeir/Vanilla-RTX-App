@@ -34,14 +34,6 @@ using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
 
 namespace Vanilla_RTX_App;
 
-// EXPAND ON LAZIFY SURFACE NORMALS
-// Do it simple, take the luminosity map of each texture
-// raise it all till highest hits the ceiling (255) (no contrast maximization), apply that to blue channel of each normal (linear/simple blending, 0-255)
-// Might wanna become a user of Alchitex's heightmap/normal generation methods and Rework lazifier entirely!
-// Thing is, lazifier's job is different, it literally lazifies, its meant to be used on good packs. If we generate semi-good normals, it DEFEATS the point!
-
-// IDEA: MOVE the BetterRTX "Add custom presets" button to be at the VERY top instead, and expand the text to say, or install from one of the pre-made presets provided by BetterRTX
-
 /// <summary>
 /// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
 /// or for defaults to remain accessible, as well as the methods to save and load these variables
@@ -2844,6 +2836,8 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
 
+// IDEA: MOVE the BetterRTX "Add custom presets" button to be at the VERY top instead, and expand the text to say, or install from one of the pre-made presets provided by BetterRTX
+
 - Make it harder for increase ambient lighting in combination with a high initial emissive multiplier to mess things up
 apply maybe 1/3 of it, so initial mult of 16, ends up giving a additional like, 5, to the emissive mult, instead of 16
 normally it adds only 1, and make the logic lean towards rounding down...
@@ -2854,7 +2848,8 @@ by default, 1 is the minimum
 6 mult -> 3
 etc...
 figure a good logic
-lower initial mults leave no impact on ambient lighting 
+lower than 1.0 initial mults leave no impact on ambient lighting toggle, it still adds its 1 green over everything.
+Initial Mult of 2, adds 2, mult of 3, adds 3, mult of 4, adds 4, always rounded down.
 
 - Inviestigate and fix the egdecase where previewer stops displaying toggle images,
 the one that'sb een happening with preview button for a while now... fix it 

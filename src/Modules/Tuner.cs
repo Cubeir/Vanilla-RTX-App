@@ -3,19 +3,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using static Vanilla_RTX_App.Modules.Helpers;
-using static Vanilla_RTX_App.Modules.ProcessorVariables;
 using static Vanilla_RTX_App.EnvironmentVariables;
 using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
+using static Vanilla_RTX_App.Modules.ProcessorVariables;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -29,7 +25,7 @@ internal static class ProcessorVariables
     // But the app later pivoted towards "making everything dumb simple" and this option wouldn't have been "simple" enough.
     public const bool FOG_UNIFORM_HEIGHT = false;
     // Excess of the multiplier is applied to other pixels, but heavily dampenend using this number
-    public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1; 
+    public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1070,9 +1066,42 @@ public class Tuner
 
         using var normalFb = new FastBitmap(normalBmp, writable: true);
 
-        return isHeightmap
-            ? LazifyHeightmap(normalFb, stretched, alpha, width, height)
-            : LazifyNormalMap(normalFb, stretched, alpha, width, height);
+        if (isHeightmap)
+            return LazifyHeightmap(normalFb, stretched, alpha, width, height);
+
+        // A normal map's blue channel is POM depth, which Bedrock reads as recession from
+        // the surface: 255 is flush, 0 is deepest. Ceiling-maximizing the same luminance --
+        // a pure upward scale until the brightest pixel lands at 255 -- puts the texture's
+        // brightest spot at the surface and everything else a proportional depth beneath it,
+        // which is as close to a real height reading as luminance alone can get.
+        //
+        // Deliberately NOT the min->max stretch above: that one forces the darkest pixel to
+        // full depth on every texture regardless of how shallow its real range is, which is
+        // acceptable for R/G (they only ever describe slope) and wrong for depth.
+        var ceiling = new byte[width, height];
+
+        if (maxV == 0)
+        {
+            // Nothing to scale up from -- a texture with no luminance carries no relief to
+            // read. Flat surface, which lets the blend below flatten the pack's POM in
+            // proportion to the slider, the same way the range == 0 branch above hands R/G
+            // a flat 128 and lets them smear toward neutral.
+            for (var y = 0; y < height; y++)
+                for (var x = 0; x < width; x++)
+                    ceiling[x, y] = 255;
+        }
+        else
+        {
+            // Rounded, not truncated: the brightest pixel has to land exactly on 255 or the
+            // texture never quite reaches the surface. 200 * (255.0 / 200) lands a hair under
+            // 255 in floating point and truncates to 254.
+            double lift = 255.0 / maxV;
+            for (var y = 0; y < height; y++)
+                for (var x = 0; x < width; x++)
+                    ceiling[x, y] = (byte)Math.Clamp(Math.Round(greyscale[x, y] * lift), 0, 255);
+        }
+
+        return LazifyNormalMap(normalFb, stretched, ceiling, alpha, width, height);
     }
 
     private static bool LazifyHeightmap(FastBitmap fb, byte[,] stretched, int alpha, int width, int height)
@@ -1096,7 +1125,7 @@ public class Tuner
         return wroteBack;
     }
 
-    private static bool LazifyNormalMap(FastBitmap fb, byte[,] stretched, int alpha, int width, int height)
+    private static bool LazifyNormalMap(FastBitmap fb, byte[,] stretched, byte[,] ceiling, int alpha, int width, int height)
     {
         var expW = width * 3;
         var expH = height * 3;
@@ -1197,10 +1226,20 @@ public class Tuner
                 var finalR = (byte)Math.Clamp(128 + (bR - 128) * intensityRatio, 0, 255);
                 var finalG = (byte)Math.Clamp(128 + (bG - 128) * intensityRatio, 0, 255);
 
-                if (finalR != orig.R || finalG != orig.G)
+                // Blue is blended in recession space rather than raw value space, because
+                // its neutral is 255 (the surface) and not 128 -- the overlay/renormalization
+                // machinery above is built around R/G's centre and would be meaningless here.
+                // A plain alpha blend, matching what LazifyHeightmap does with the same alpha:
+                // both describe relief, so both weaken the same way as the slider comes down.
+                var lazyRecession = 255 - ceiling[x, y];
+                var origRecession = 255 - orig.B;
+                var recession = (alpha * lazyRecession + (255 - alpha) * origRecession) / 255;
+                var finalB = (byte)Math.Clamp(255 - recession, 0, 255);
+
+                if (finalR != orig.R || finalG != orig.G || finalB != orig.B)
                 {
                     wroteBack = true;
-                    fb[x, y] = Color.FromArgb(orig.A, finalR, finalG, 255);
+                    fb[x, y] = Color.FromArgb(orig.A, finalR, finalG, finalB);
                 }
             }
         }
