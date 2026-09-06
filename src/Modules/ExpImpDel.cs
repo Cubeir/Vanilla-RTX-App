@@ -371,7 +371,7 @@ public static class ExpImpDel
         var folderName = SanitizeFolderName(rawFolderName);
         var finalDestination = ResolveUniqueDestination(destination, folderName);
 
-        ReportStatus($"Extracting '{Path.GetFileName(archivePath)}' → '{Path.GetFileName(finalDestination)}'…");
+        ReportStatus($"Extracting '{Path.GetFileName(archivePath)}' -> '{Path.GetFileName(finalDestination)}'…");
 
         Directory.CreateDirectory(finalDestination);
 
