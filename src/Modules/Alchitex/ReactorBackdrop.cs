@@ -113,13 +113,13 @@ internal sealed class ReactorBackdrop
     // -- Motion ---------------------------------------------------------------
 
     // The tick rate is the frame rate. See the class remarks for why it is this low.
-    private const double TickMs = 200;
+    private const double TickMs = 175;
 
     // A tick costs one composition frame whatever it touches, so this is about how fast the
     // field turns over, not about cost. It scales with the field so a large window doesn't
     // look frozen.
-    private const int MinTilesPerTick = 8;
-    private const int MaxTilesPerTick = 32;
+    private const int MinTilesPerTick = 12;
+    private const int MaxTilesPerTick = 36;
     private const int TilesPerTickDivisor = 100;
 
     // Dispersing tiles step through these rather than jumping, so the edge dissolves.
