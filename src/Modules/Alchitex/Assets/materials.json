@@ -7957,7 +7957,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "copper_lantern": {
         "mer": {
@@ -13104,7 +13105,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "exposed_copper_lantern": {
         "mer": {
@@ -14386,7 +14388,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_black": {
         "mer": {
@@ -14413,7 +14416,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_blue": {
         "mer": {
@@ -14440,7 +14444,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_brown": {
         "mer": {
@@ -14467,7 +14472,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_cyan": {
         "mer": {
@@ -14494,7 +14500,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_gray": {
         "mer": {
@@ -14521,7 +14528,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_green": {
         "mer": {
@@ -14548,7 +14556,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_light_blue": {
         "mer": {
@@ -14575,7 +14584,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_lime": {
         "mer": {
@@ -14602,7 +14612,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_magenta": {
         "mer": {
@@ -14629,7 +14640,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_orange": {
         "mer": {
@@ -14656,7 +14668,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top": {
         "mer": {
@@ -14683,7 +14696,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_black": {
         "mer": {
@@ -14710,7 +14724,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_blue": {
         "mer": {
@@ -14737,7 +14752,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_brown": {
         "mer": {
@@ -14764,7 +14780,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_cyan": {
         "mer": {
@@ -14791,7 +14808,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_gray": {
         "mer": {
@@ -14818,7 +14836,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_green": {
         "mer": {
@@ -14845,7 +14864,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_light_blue": {
         "mer": {
@@ -14872,7 +14892,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_lime": {
         "mer": {
@@ -14899,7 +14920,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_magenta": {
         "mer": {
@@ -14926,7 +14948,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_orange": {
         "mer": {
@@ -14953,7 +14976,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_pink": {
         "mer": {
@@ -14980,7 +15004,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_purple": {
         "mer": {
@@ -15007,7 +15032,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_red": {
         "mer": {
@@ -15034,7 +15060,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_silver": {
         "mer": {
@@ -15061,7 +15088,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_white": {
         "mer": {
@@ -15088,7 +15116,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pane_top_yellow": {
         "mer": {
@@ -15115,7 +15144,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_pink": {
         "mer": {
@@ -15142,7 +15172,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_purple": {
         "mer": {
@@ -15169,7 +15200,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_red": {
         "mer": {
@@ -15196,7 +15228,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_silver": {
         "mer": {
@@ -15223,7 +15256,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_white": {
         "mer": {
@@ -15250,7 +15284,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glass_yellow": {
         "mer": {
@@ -15277,7 +15312,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "glazed_terracotta_black": {
         "mer": {
@@ -16881,7 +16917,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "honey_side": {
         "mer": {
@@ -16908,7 +16945,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "honey_top": {
         "mer": {
@@ -16935,7 +16973,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hopper_inside": {
         "mer": {
@@ -20842,7 +20881,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "oxidized_copper_lantern": {
         "mer": {
@@ -26301,7 +26341,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "small_amethyst_bud": {
         "mer": {
@@ -29851,7 +29892,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "tnt_bottom": {
         "mer": {
@@ -31926,7 +31968,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "weathered_copper_lantern": {
         "mer": {
