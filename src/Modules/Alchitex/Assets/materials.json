@@ -571,7 +571,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "bamboo_door_top": {
@@ -598,7 +599,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "bamboo_fence": {
@@ -3477,9 +3479,9 @@
     "chain_command_block_back": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3504,9 +3506,9 @@
     "chain_command_block_back_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3531,9 +3533,9 @@
     "chain_command_block_conditional": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3558,9 +3560,9 @@
     "chain_command_block_conditional_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3585,9 +3587,9 @@
     "chain_command_block_front": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3612,9 +3614,9 @@
     "chain_command_block_front_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 15,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3639,9 +3641,9 @@
     "chain_command_block_side": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3666,9 +3668,9 @@
     "chain_command_block_side_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -3694,11 +3696,11 @@
         "mer": {
             "metal_min": 115,
             "metal_max": 164,
-            "emissive_min": 0,
-            "emissive_max": 14,
+            "emissive_min": 1,
+            "emissive_max": 16,
             "roughness_min": 91,
             "roughness_max": 128,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -3741,7 +3743,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "cherry_door_top": {
@@ -3768,13 +3771,14 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "cherry_leaves": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 1,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 120,
@@ -3801,7 +3805,7 @@
     "cherry_leaves_opaque": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 1,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 120,
@@ -8169,7 +8173,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "copper_door_top": {
@@ -8196,7 +8201,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "copper_grate": {
@@ -9906,7 +9912,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "crimson_door_top": {
@@ -9933,7 +9940,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "crimson_fungus": {
@@ -16665,7 +16673,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "exposed_copper_door_top": {
@@ -16692,7 +16701,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "exposed_copper_grate": {
@@ -23369,7 +23379,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "mangrove_door_top": {
@@ -23396,7 +23407,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "mangrove_leaves": {
@@ -25187,7 +25199,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "oxidized_copper_door_top": {
@@ -25214,7 +25227,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "oxidized_copper_grate": {
@@ -25566,7 +25580,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "pale_oak_door_top": {
@@ -25593,7 +25608,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "pale_oak_leaves": {
@@ -35909,7 +35925,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "warped_door_top": {
@@ -35936,7 +35953,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "warped_fungus": {
@@ -36530,7 +36548,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "weathered_copper_door_top": {
@@ -36557,7 +36576,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "weathered_copper_grate": {
