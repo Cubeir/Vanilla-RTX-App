@@ -120,7 +120,7 @@ public static class AlchitexPipeline
 
             // ── Phase 3: Texture post processing water & glass, etc.. ───────────────────────────────────────
             progress?.Report(new AlchitexProgress(0, 0, "Post-processing...", AlchitexPhase.WaterAndGlass));
-            await Task.Run(() => RunWaterGlassPass(workingPackPath), cancellationToken);
+            await Task.Run(() => RunWaterGlassPass(workingPackPath, materials), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -297,7 +297,7 @@ public static class AlchitexPipeline
 
     // ── Step 3: water & glass ────────────────────────────────────────────────
 
-    private static void RunWaterGlassPass(string packRoot)
+    private static void RunWaterGlassPass(string packRoot, MaterialsConfig materials)
     {
         // Root-pack blocks folder(s) first: if the zip fallback ends up needed anywhere,
         // it only ever gets deployed once (see the loop below) - a subpack that doesn't
@@ -328,17 +328,23 @@ public static class AlchitexPipeline
             }
         }
 
-        // Glass fixups apply to every resolved color texture in the pack (both
-        // pre-existing and freshly generated), since they only ever touch the color
-        // layer, never MERS/normal/heightmap. TextureSetHelper already recurses the
-        // whole pack root, subpacks included - fine to use here since we only need
-        // Color.FilePath, which isn't file-existence-gated the way Mer/NormalOrHeight are.
+        // The blend pass applies to every resolved color texture in the pack (both
+        // pre-existing and freshly generated), since it only ever touches the color layer,
+        // never MERS/normal/heightmap. TextureSetHelper already recurses the whole pack
+        // root, subpacks included - fine to use here since we only need Color.FilePath,
+        // which isn't file-existence-gated the way Mer/NormalOrHeight are.
+        //
+        // Which textures want it is materials.json's answer (blend_suitable), not a name
+        // match - see PostProcess.MakeBlendSuitable for what the name match used to get
+        // wrong. The decision is made here rather than inside the pass so there is exactly
+        // one place that knows the rule.
         foreach (var rs in TextureSetHelper.ResolveTextureSets(packRoot))
         {
             if (rs.Color.FilePath == null) continue;
+            if (!materials.Resolve(Path.GetFileNameWithoutExtension(rs.Color.FilePath)).BlendSuitable) continue;
 
-            try { PostProcess.ProcessColorTextureIfGlassLike(rs.Color.FilePath); }
-            catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed glass pass on '{rs.Color.FilePath}': {ex.Message}"); }
+            try { PostProcess.MakeBlendSuitable(rs.Color.FilePath); }
+            catch (Exception ex) { Trace.WriteLine($"[ALCHITEX] Failed the blend pass on '{rs.Color.FilePath}': {ex.Message}"); }
         }
     }
 }

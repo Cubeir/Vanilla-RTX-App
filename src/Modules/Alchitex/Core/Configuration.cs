@@ -207,6 +207,21 @@ public sealed class MaterialEntry
     [JsonPropertyName("invisible_emission")] public InvisibleEmissionParams? InvisibleEmission { get; set; }
     [JsonPropertyName("heightmap")] public HeightmapParams? Heightmap { get; set; }
     [JsonPropertyName("normal")] public NormalParams? Normal { get; set; }
+
+    /// <summary>
+    /// This texture is rendered by Minecraft RTX's "blend" material instance - glass, glass
+    /// panes, tinted glass, hard glass, copper grates, slime, honey - so its colour texture
+    /// gets rewritten to suit that renderer. See PostProcess.MakeBlendSuitable.
+    ///
+    /// A flat list of names, and deliberately data rather than code: the set is fixed and
+    /// small, but which *file* holds each of them is a pack's own business, and the list is
+    /// online-updatable here (§4.17) where a name match inside the pipeline needed a release.
+    /// The legacy pass substring-matched "glass" and "copper_grate", which both missed most
+    /// of the set and caught anything else with "glass" in its name.
+    ///
+    /// Not derivable from a finished pack, so the bootstrapper never writes it.
+    /// </summary>
+    [JsonPropertyName("blend_suitable")] public bool? BlendSuitable { get; set; }
 }
 
 // ── Resolved forms: what the generators actually read ─────────────────────────────────
@@ -239,6 +254,9 @@ public sealed class ResolvedMaterial
     public ResolvedInvisibleEmission InvisibleEmission { get; init; }
     public ResolvedHeightmap Heightmap { get; init; }
     public ResolvedNormal Normal { get; init; }
+
+    /// <summary>See MaterialEntry.BlendSuitable.</summary>
+    public bool BlendSuitable { get; init; }
 }
 
 /// <summary>
@@ -286,6 +304,11 @@ public static class MaterialDefaults
     public const bool NormalSkip = false;
 
     public const NormalPadding NormalPaddingType = NormalPadding.Tile;
+
+    // Off, and for the same reason the two skips are: it falls back through the "default"
+    // entry, so a stray true there would rewrite every colour texture in the pack as though
+    // it were glass.
+    public const bool BlendSuitable = false;
 
     public const string RecursiveChannel = "R";
 }
@@ -496,6 +519,7 @@ public sealed class MaterialsConfig
                 normal?.Invert ?? defNormal?.Invert ?? MaterialDefaults.NormalInvert,
                 normal?.Skip ?? defNormal?.Skip ?? MaterialDefaults.NormalSkip,
                 NormalizePadding(normal?.PaddingType ?? defNormal?.PaddingType, entryName)),
+            BlendSuitable = entry.BlendSuitable ?? _default.BlendSuitable ?? MaterialDefaults.BlendSuitable,
         };
     }
 

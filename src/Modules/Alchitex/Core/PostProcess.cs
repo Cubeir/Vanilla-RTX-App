@@ -304,147 +304,210 @@ public static class PostProcess
 
     #endregion
 
-    #region Glass
+    #region Blend render method suitability
 
-    // TODO(tuning): visual knobs for RTX glass fixups, ported unchanged from legacy RTX
-    // Reactor.
-    private const byte GlassNearOpaqueThreshold = 248; // pixels this opaque or more are left untouched by ApplyGlassModifier
-    private const float GlassSaturationBoost = 0.1f;   // added to saturation so glass reads more vivid under RTX's refraction model
-    private const int GlassMidAlpha = 128;              // reference midpoint the opacity-reduction coefficient is derived from
-    private const int GlassMinOpacity = 64;             // floor - ApplyGlassModifier's reduced opacity never drops below this
-    private const byte BasicGlassOpacityThreshold = 64; // opacity at/below which ApplyBasicGlassModifier whites a pixel out entirely
+    // Minecraft RTX renders a fixed set of blocks with the "blend" material instance: glass,
+    // glass panes, tinted glass, hard glass (Education Edition), copper grates, slime and
+    // honey. What follows exists because a texture authored to look right in Fancy graphics
+    // is usually authored *wrong* for that renderer, in two specific ways.
+    //
+    // -- WHAT THE RENDERER ACTUALLY DOES ---------------------------------------------------
+    //
+    // Two independent things decide how much light reaches the far side of a blend surface:
+    //
+    //   alpha       - transparency. At full opacity the block reads as an ordinary solid; the
+    //                 refraction and internal reflection only appear below it.
+    //   the colour  - clarity. The colour acts as a per-channel filter on what passes
+    //                 through. Fully black at alpha 0 transmits nothing at all; fully white
+    //                 at alpha 0 is crystal-clear glass.
+    //
+    // The second is the one texture artists don't expect, and it is why deeply saturated
+    // glass comes out nearly opaque under RTX. A pure red (255,0,0) absorbs *all* the green
+    // and blue; (255,64,64) reads as almost the same red to the eye while letting far more
+    // light through. So the quantity that matters is the **smallest channel** - the amount of
+    // white light the filter passes - which in HSV terms is exactly value x (1 - saturation).
+    //
+    // -- THE THREE THINGS THIS DOES --------------------------------------------------------
+    //
+    //   1. Maximise transparency without flattening it. Every translucent pixel drops by the
+    //      same amount, until the most transparent one reaches 0. Uniform, so the texture's
+    //      internal composition survives intact.
+    //   2. Open the holes. A pixel that is near-invisible *and* near-black is a hole - a gap
+    //      in a copper grate, the empty middle of a pane - and black at zero alpha blocks all
+    //      light, which is never what a hole is for. It becomes white at the same alpha.
+    //   3. Lift transmission, keeping the colour. See LiftTransmission - this is the part
+    //      with an actual idea in it.
+    //
+    // Opaque pixels are spared by all three. Alpha at or above BlendOpaqueThreshold was set
+    // deliberately, reads as solid in Fancy, and should read as solid here too.
+    //
+    // -- WHAT THIS REPLACED, AND WHY IT WAS BACKWARDS --------------------------------------
+    //
+    // The legacy pass (two of them, actually - a "glass" modifier and a "basic glass" one,
+    // dispatched by substring-matching the file name) did the opposite of the above on both
+    // counts. It forced `value = 1.0` on every translucent pixel, erasing the difference
+    // between clear, grey, smoked and black glass outright; and it *added* 0.1 saturation,
+    // which by the paragraph above makes glass strictly more absorptive - the single change
+    // most guaranteed to darken it. It also whited out every pixel below alpha 64 regardless
+    // of colour, so a deliberately tinted low-alpha pane lost its tint entirely.
+
+    // TODO(tuning): every constant below wants an artist's eye against real generated glass.
+
+    /// <summary>At or above this alpha a pixel is left completely alone. It was set opaque on
+    /// purpose, and a block that reads solid in Fancy should read solid under RTX.</summary>
+    private const byte BlendOpaqueThreshold = 245;
+
+    /// <summary>How invisible, and how black, a pixel has to be before it counts as a hole
+    /// rather than as dark glass. Both deliberately tight - this rule rewrites a pixel's
+    /// colour outright, so it may only fire where there is demonstrably no artwork to
+    /// destroy.</summary>
+    private const byte BlendHoleAlpha = 8;
+    private const byte BlendHoleChannel = 8;
+
+    /// <summary>The share of white light a fully-saturated pixel should transmit, as a
+    /// fraction of full. 0.30 is not arbitrary: it takes a pure (255,0,0) to (255,77,77),
+    /// which is within a couple of levels of the hand-picked (255,64,64) that motivated this
+    /// work.</summary>
+    private const double BlendMinTransmission = 0.30;
 
     /// <summary>
-    /// Dispatch for a single color texture: applies the right glass fixup based on its file
-    /// name, same rules legacy RTX Reactor applied inline during its main loop. No-op for
-    /// anything that isn't glass-like.
-    /// </summary>
-    /// <summary>
-    /// Reads the texture once, applies whichever glass passes its name calls for, and writes
-    /// the result once - as a real .tga beside the original (§4.4: .tga outranks .png/.jpg/
-    /// .jpeg, so the game reads ours and the source is simply never loaded again; the source
-    /// stays put for anything in this app still holding its path).
+    /// Exponent on the saturation gate. Below 1 makes the gate rise quickly, so anything
+    /// genuinely chromatic gets most of the correction while near-greys still get almost
+    /// none; above 1 spares near-greys harder at the cost of under-serving mid-saturation
+    /// colours.
     ///
-    /// The single read/write is not just tidiness. Plain glass runs through BOTH modifiers,
-    /// and when each one owned its own read-modify-write they chained only because each was
-    /// writing back into the file the next one read. Writing .tga while still reading the
-    /// original would have left the second pass reading the untouched source and silently
-    /// discarding the first's work. Passing one bitmap through both removes the hazard
-    /// rather than working around it.
+    /// 0.5 rather than a plain 1.0 because 1.0 measurably under-served the middle. An olive
+    /// (95,107,42) - saturation 0.61, transmitting 16% - came out lifted by four levels,
+    /// which is nothing; at 0.5 it reaches 60, a 43% gain, while a barely-tinted dark grey
+    /// (50,48,45) is still left alone because its target lands below what it already
+    /// transmits. Genuinely coloured glass is the case this pass exists for.
     /// </summary>
-    public static void ProcessColorTextureIfGlassLike(string imagePath)
+    private const double BlendChromaBias = 0.5;
+
+    /// <summary>
+    /// Rewrites one colour texture to render correctly under the blend material instance.
+    ///
+    /// Whether a texture wants this is materials.json's call (`blend_suitable`), not a name
+    /// match here - see AlchitexPipeline.RunWaterGlassPass. The legacy version substring-matched
+    /// "glass" and "copper_grate", which both missed the rest of the fixed set (slime, honey,
+    /// tinted and hard glass) and caught anything else with "glass" in its name.
+    ///
+    /// Reads once, writes once, as a real .tga beside the original (§4.4: .tga outranks
+    /// .png/.jpg/.jpeg, so the game reads ours and the source is simply never loaded again;
+    /// the source stays put for anything in this app still holding its path).
+    /// </summary>
+    public static void MakeBlendSuitable(string imagePath)
     {
-        var nameLower = Path.GetFileNameWithoutExtension(imagePath).ToLowerInvariant();
-
-        var isGlass = nameLower.Contains("glass");
-        var isBasicGlassLike = isGlass || nameLower.Contains("copper_grate");
-
-        if (!isBasicGlassLike) return;
-
         using var bitmap = Helpers.ReadImage(imagePath, maxOpacity: false);
 
         // Scoped so the writable view is released before WriteImageAsTGA reads the bitmap.
         using (var fb = new FastBitmap(bitmap, writable: true))
         {
-            if (isGlass) ApplyGlassModifier(fb);
-            if (isBasicGlassLike) ApplyBasicGlassModifier(fb);
+            ApplyBlendAdaptation(fb, FindTranslucentAlphaFloor(fb));
         }
 
         Helpers.WriteImageAsTGA(bitmap, Path.ChangeExtension(imagePath, ".tga"));
     }
 
-    /// <summary>
-    /// Boosts saturation/value and applies a square-falloff opacity reduction curve so
-    /// glass reads correctly under RTX's refraction model. Ported unchanged from legacy
-    /// GlassModifier.
-    /// </summary>
-    /// <remarks>Operates on a bitmap rather than a path: see ProcessColorTextureIfGlassLike
-    /// for why the read and the write belong to the caller.</remarks>
-    private static void ApplyGlassModifier(FastBitmap fb)
+    /// <summary>The lowest alpha among the translucent pixels, or -1 if there are none - a
+    /// fully opaque texture is left exactly as it was, which is the right answer for a solid
+    /// slime block.</summary>
+    private static int FindTranslucentAlphaFloor(FastBitmap fb)
     {
-        var coefficient = ((GlassMidAlpha - GlassMinOpacity) * Math.Pow(255, 2)) / GlassMidAlpha;
+        var floor = -1;
+
+        for (var y = 0; y < fb.Height; y++)
+        {
+            for (var x = 0; x < fb.Width; x++)
+            {
+                int alpha = fb[x, y].A;
+                if (alpha >= BlendOpaqueThreshold) continue;
+                if (floor < 0 || alpha < floor) floor = alpha;
+            }
+        }
+
+        return floor;
+    }
+
+    private static void ApplyBlendAdaptation(FastBitmap fb, int alphaFloor)
+    {
+        // Subtracting the floor from every translucent pixel slides the whole range down
+        // until its most transparent pixel reaches 0, without compressing it - so "which part
+        // of this texture is more see-through than which" is preserved exactly while the
+        // texture as a whole becomes as transparent as its own composition allows.
+        var shift = Math.Max(alphaFloor, 0);
 
         for (var y = 0; y < fb.Height; y++)
         {
             for (var x = 0; x < fb.Width; x++)
             {
                 var c = fb[x, y];
-                if (c.A > GlassNearOpaqueThreshold) continue;
+                if (c.A >= BlendOpaqueThreshold) continue;
 
-                var (hue, sat, val) = RgbToHsv(c.R, c.G, c.B);
-                val = 1.0f;
-                sat = Math.Min(1.0f, sat + GlassSaturationBoost);
-                var boosted = HsvToRgb(hue, sat, val);
+                var alpha = (byte)(c.A - shift);
 
-                var reduced = Math.Max(c.A - (int)(Math.Pow(c.A / 255.0, 2) * coefficient), GlassMinOpacity);
+                if (alpha <= BlendHoleAlpha &&
+                    c.R <= BlendHoleChannel && c.G <= BlendHoleChannel && c.B <= BlendHoleChannel)
+                {
+                    // A hole, not a colour. White at this alpha is a clear opening; black at
+                    // this alpha is a pane you cannot see through, which is what a grate's
+                    // gaps used to render as.
+                    fb[x, y] = Color.FromArgb(alpha, 255, 255, 255);
+                    continue;
+                }
 
-                fb[x, y] = Color.FromArgb(reduced, boosted.R, boosted.G, boosted.B);
+                var (r, g, b) = LiftTransmission(c.R, c.G, c.B);
+                fb[x, y] = Color.FromArgb(alpha, r, g, b);
             }
         }
     }
 
     /// <summary>
-    /// Whites-out (fully transparent white) any pixel with opacity &lt;= BasicGlassOpacityThreshold -
-    /// required for regular/tinted glass and copper grate to display correctly under RTX.
-    /// Ported unchanged from legacy BasicGlassModifier.
+    /// Raises how much white light a colour transmits, without changing what colour it is.
+    ///
+    /// **The whole operation is a lerp toward white, and that is the idea.** Mixing every
+    /// channel toward 255 by the same fraction scales every channel *difference* by the same
+    /// (1 - k), and hue in HSV is defined purely by the ratios between those differences - so
+    /// the hue comes out bit-for-bit unchanged while saturation falls and value rises. The
+    /// three things wanted here are one operation, not three that have to be reconciled.
+    ///
+    /// **How far** is set by the smallest channel, because that is literally the achromatic
+    /// transmission - the amount of light that gets through regardless of hue. It is lifted
+    /// toward BlendMinTransmission.
+    ///
+    /// **How much of that lift applies** is gated on saturation, and that gate is what keeps
+    /// this from wrecking half the textures it touches:
+    ///
+    ///   - A saturated pixel is dark *because it is absorbing*, so it gets the full lift.
+    ///   - A grey pixel absorbs nothing selectively; it is dark because an artist made it
+    ///     dark. Gate = 0, so it is returned untouched. Grey, smoked and silver glass keep
+    ///     what makes them distinct, and a black region inside a lime texture stays black.
+    ///   - Anything already transmitting enough is returned untouched whatever its
+    ///     saturation, since the lift is measured against the shortfall and there isn't one.
+    ///
+    /// That is the dichotomy stated as one formula rather than as a special case, which
+    /// matters because a Minecraft texture is free to contain both kinds of pixel at once.
     /// </summary>
-    /// <remarks>Operates on a bitmap rather than a path: see ProcessColorTextureIfGlassLike
-    /// for why the read and the write belong to the caller.</remarks>
-    private static void ApplyBasicGlassModifier(FastBitmap fb)
+    private static (byte R, byte G, byte B) LiftTransmission(byte r, byte g, byte b)
     {
-        for (var y = 0; y < fb.Height; y++)
-        {
-            for (var x = 0; x < fb.Width; x++)
-            {
-                var c = fb[x, y];
-                if (c.A <= BasicGlassOpacityThreshold)
-                    fb[x, y] = Color.FromArgb(0, 255, 255, 255);
-            }
-        }
+        int max = Math.Max(r, Math.Max(g, b));
+        int min = Math.Min(r, Math.Min(g, b));
+
+        // Pure black with no hue to preserve, and not transparent enough to be a hole (that
+        // was handled above). Deliberately opaque-black glass; leave it.
+        if (max == 0) return (r, g, b);
+
+        var saturation = (max - min) / (double)max;
+        var target = BlendMinTransmission * 255.0 * Math.Pow(saturation, BlendChromaBias);
+
+        if (min >= target) return (r, g, b);
+
+        var k = (target - min) / (255.0 - min);
+        return (MixToWhite(r, k), MixToWhite(g, k), MixToWhite(b, k));
     }
 
-    private static (float h, float s, float v) RgbToHsv(byte r, byte g, byte b)
-    {
-        float min = Math.Min(r, Math.Min(g, b));
-        float max = Math.Max(r, Math.Max(g, b));
-        float delta = max - min;
-
-        float h = 0f;
-        if (delta > 0)
-        {
-            if (max == r) h = (g - b) / delta % 6;
-            else if (max == g) h = (b - r) / delta + 2;
-            else h = (r - g) / delta + 4;
-            h *= 60;
-            if (h < 0) h += 360;
-        }
-
-        float s = max > 0 ? delta / max : 0;
-        float v = max / 255f;
-        return (h, s, v);
-    }
-
-    private static (byte R, byte G, byte B) HsvToRgb(float h, float s, float v)
-    {
-        var c = v * s;
-        var x = c * (1 - Math.Abs(h / 60 % 2 - 1));
-        var m = v - c;
-
-        var (r, g, b) = h switch
-        {
-            < 60 => (c, x, 0f),
-            < 120 => (x, c, 0f),
-            < 180 => (0f, c, x),
-            < 240 => (0f, x, c),
-            < 300 => (x, 0f, c),
-            _ => (c, 0f, x),
-        };
-
-        return (
-            (byte)Math.Clamp((int)((r + m) * 255), 0, 255),
-            (byte)Math.Clamp((int)((g + m) * 255), 0, 255),
-            (byte)Math.Clamp((int)((b + m) * 255), 0, 255));
-    }
+    private static byte MixToWhite(byte channel, double k)
+        => (byte)Math.Clamp((int)Math.Round(channel + k * (255 - channel)), 0, 255);
 
     #endregion
 
