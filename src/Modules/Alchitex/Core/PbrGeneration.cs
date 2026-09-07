@@ -75,10 +75,15 @@ public static class TextureSetOrchestrator
 {
     public readonly record struct Result(int Created, int SkippedAlreadyCovered, int SkippedJunk, int Failed);
 
+    /// <param name="materials">Consulted only for the per-texture heightmap/normal "skip"
+    /// flags. Everything else in a material is a question about pixels, which is phase 2b's
+    /// business - this phase only decides which layers a texture set claims, and skip is the
+    /// one material setting that changes that answer.</param>
     public static Result GenerateMissingTextureSets(
         string packRoot,
         AlchitexOptions options,
-        PbrBlacklist blacklist)
+        PbrBlacklist blacklist,
+        MaterialsConfig materials)
     {
         var created = 0;
         var skippedJunk = 0;
@@ -211,8 +216,22 @@ public static class TextureSetOrchestrator
                         set["metalness_emissive_roughness_subsurface"] = mersName;
 
                     var secondaryMode = ResolveSecondaryMode(options.SecondaryPbr, colorPath);
+
+                    // "skip" means this texture behaves as though Secondary PBR were None,
+                    // for this texture alone: no layer in the set, so phase 2b never sees a
+                    // target and the block stays flat. Deliberately NOT a fallback to the
+                    // other kind - an artist skipping a normal map is saying this block wants
+                    // no derived relief, not that it wants the other sort. Lava is the case:
+                    // any height read off it is invented.
+                    var material = materials.Resolve(nameNoExt);
+
                     switch (secondaryMode)
                     {
+                        case SecondaryPbrMode.Normal when material.Normal.Skip:
+                        case SecondaryPbrMode.Heightmap when material.Heightmap.Skip:
+                            Trace.WriteLine($"[ALCHITEX] '{nameNoExt}': materials.json skips its {secondaryMode.ToString().ToLowerInvariant()} - writing the texture set without a secondary layer.");
+                            break;
+
                         case SecondaryPbrMode.Normal:
                             if (Claim("_normal") is { } normalName) set["normal"] = normalName;
                             break;
@@ -1020,7 +1039,117 @@ public static class NormalMapGenerator
     private const int GradientHistogramBins = 1024;
     private const double GradientHistogramMax = 2.0;
 
+    /// <summary>
+    /// Entry point. Handles the flipbook case and then defers to GenerateFrame, which is
+    /// the real generator and knows nothing about strips.
+    /// </summary>
     public static Bitmap Generate(
+        Bitmap colorBitmap,
+        ResolvedNormal normalParams,
+        ResolvedHeightmap heightmapParams)
+    {
+        var frames = ResolveFlipbookFrames(colorBitmap.Width, colorBitmap.Height);
+
+        if (frames < 2)
+            return GenerateFrame(colorBitmap, normalParams, heightmapParams);
+
+        try
+        {
+            return GenerateFlipbook(colorBitmap, normalParams, heightmapParams, frames);
+        }
+        catch (Exception ex)
+        {
+            // Cosmetic-grade fallback on purpose: a strip that couldn't be taken apart is
+            // still a texture that needs a normal map, and the whole-strip result is what
+            // this produced before frames were understood at all. Worse, never broken.
+            Trace.WriteLine($"[ALCHITEX] Couldn't generate a normal map frame-by-frame for a {colorBitmap.Width}x{colorBitmap.Height} flipbook ({ex.Message}) - falling back to treating it as one image.");
+            return GenerateFrame(colorBitmap, normalParams, heightmapParams);
+        }
+    }
+
+    /// <summary>
+    /// How many square frames a texture is, by Minecraft's own convention: an animated
+    /// texture is a vertical strip of frames each as tall as the texture is wide. 1 means
+    /// "not a flipbook", which is every ordinary block texture.
+    ///
+    /// Deliberately just the arithmetic, with no attempt to read the pack's
+    /// flipbook_textures.json. That file is authoritative and this is a guess, but the guess
+    /// is only ever wrong in one direction that matters - a genuinely tall, non-animated
+    /// texture whose height happens to be an exact multiple of its width - and being wrong
+    /// there costs a normal map generated per square region instead of across the whole
+    /// thing, not a broken pack. Reading the manifest to be sure is exactly the kind of
+    /// per-case correctness this module trades away for staying simple.
+    /// </summary>
+    private static int ResolveFlipbookFrames(int width, int height)
+        => width > 0 && height > width && height % width == 0 ? height / width : 1;
+
+    /// <summary>
+    /// A flipbook's frames are separate pictures that happen to be stored in one file. Run
+    /// whole, every gradient at a frame boundary reads the next frame of the animation as if
+    /// it were the ground below - and with Tile padding the top of frame 0 wraps to the
+    /// bottom of the last frame as well - so every seam in the strip becomes a hard edge in
+    /// the normal map. Cutting the strip up first makes each frame get exactly the treatment
+    /// a single texture would, padding included.
+    /// </summary>
+    private static Bitmap GenerateFlipbook(
+        Bitmap colorBitmap,
+        ResolvedNormal normalParams,
+        ResolvedHeightmap heightmapParams,
+        int frames)
+    {
+        var size = colorBitmap.Width;
+        var output = new Bitmap(size, colorBitmap.Height, PixelFormat.Format32bppArgb);
+
+        try
+        {
+            for (var frame = 0; frame < frames; frame++)
+            {
+                var top = frame * size;
+
+                using var source = CopyRegion(colorBitmap, top, size, size);
+                using var generated = GenerateFrame(source, normalParams, heightmapParams);
+
+                BlitInto(output, generated, top);
+            }
+        }
+        catch
+        {
+            output.Dispose();
+            throw;
+        }
+
+        return output;
+    }
+
+    /// <summary>One frame out of a strip. Pixels are copied through FastBitmap rather than
+    /// GDI+ drawing, which mangles colour under a collapsed alpha channel - and alpha-0
+    /// pixels carrying real colour are load-bearing here (ColorField.IsRealColorData).</summary>
+    private static Bitmap CopyRegion(Bitmap source, int top, int width, int height)
+    {
+        var region = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+
+        using (var srcFb = new FastBitmap(source, writable: false))
+        using (var dstFb = new FastBitmap(region, writable: true))
+        {
+            for (var y = 0; y < height; y++)
+                for (var x = 0; x < width; x++)
+                    dstFb[x, y] = srcFb[x, top + y];
+        }
+
+        return region;
+    }
+
+    private static void BlitInto(Bitmap destination, Bitmap frame, int top)
+    {
+        using var dstFb = new FastBitmap(destination, writable: true);
+        using var srcFb = new FastBitmap(frame, writable: false);
+
+        for (var y = 0; y < frame.Height; y++)
+            for (var x = 0; x < frame.Width; x++)
+                dstFb[x, top + y] = srcFb[x, y];
+    }
+
+    private static Bitmap GenerateFrame(
         Bitmap colorBitmap,
         ResolvedNormal normalParams,
         ResolvedHeightmap heightmapParams)
@@ -1033,7 +1162,7 @@ public static class NormalMapGenerator
 
         var gradX = new float[w, h];
         var gradY = new float[w, h];
-        ComputeSobelGradients(height, w, h, gradX, gradY);
+        ComputeSobelGradients(height, w, h, normalParams.Padding, gradX, gradY);
 
         var reference = ResolveGradientReference(gradX, gradY, w, h);
 
@@ -1142,11 +1271,33 @@ public static class NormalMapGenerator
     /// dominated by the ~32% anisotropy inherent to staircasing a diagonal onto a pixel
     /// grid. Not worth the change.)
     /// </summary>
-    private static void ComputeSobelGradients(float[,] height, int w, int h, float[,] gradX, float[,] gradY)
+    private static void ComputeSobelGradients(
+        float[,] height, int w, int h, NormalPadding padding, float[,] gradX, float[,] gradY)
     {
         ReadOnlySpan<float> kx = stackalloc float[] { -1, 0, 1, -2, 0, 2, -1, 0, 1 };
         ReadOnlySpan<float> ky = stackalloc float[] { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
         const float weightSum = 4f; // 1 + 2 + 1 down each signed side of the kernel
+
+        // The padding modes are entirely this pair of choices, per axis: wrap to the far
+        // edge (the texture repeats that way) or clamp to the nearest row/column (it doesn't,
+        // and the edge should read as flat rather than as a step).
+        //
+        // That is the whole implementation, and it is worth seeing why the 3x3-canvas picture
+        // in NormalPadding reduces to it. "Copies left and right, top and bottom flooded from
+        // the strip's own edge rows" is: wrap x, clamp y. The flood is what clamping IS. And
+        // because the two axes are decided independently, a corner sample clamps on both and
+        // lands on the corner pixel - so ColorFill fills its corners with no special case.
+        //
+        // Padding is NOT a local edit to the edges, and expecting it to be will mislead you
+        // when comparing output. ResolveGradientReference takes a percentile over the whole
+        // texture, so a wrap that invents a hard edge inflates that reference and suppresses
+        // every genuine gradient in the map. Measured on a plain vertical ramp - the
+        // grass_side shape - the invented top-edge step read 123/128 off flat, and removing
+        // it took the *interior* from 44 to 124: the real surface was being flattened almost
+        // threefold by a seam that isn't there. Choosing the right mode is worth more than the
+        // edge pixels alone suggest.
+        var wrapX = padding is NormalPadding.Tile or NormalPadding.Horizontal;
+        var wrapY = padding is NormalPadding.Tile or NormalPadding.Vertical;
 
         for (var y = 0; y < h; y++)
         {
@@ -1159,8 +1310,8 @@ public static class NormalMapGenerator
                 {
                     for (var i = -1; i <= 1; i++)
                     {
-                        var nx = ((x + i) % w + w) % w;
-                        var ny = ((y + j) % h + h) % h;
+                        var nx = wrapX ? ((x + i) % w + w) % w : Math.Clamp(x + i, 0, w - 1);
+                        var ny = wrapY ? ((y + j) % h + h) % h : Math.Clamp(y + j, 0, h - 1);
                         var v = height[nx, ny];
                         dx += v * kx[k];
                         dy += v * ky[k];

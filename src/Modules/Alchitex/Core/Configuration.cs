@@ -133,6 +133,13 @@ public sealed class HeightmapParams
     /// <summary>Full color inversion. Workaround for the game-side bug where certain
     /// assets always render their heightmap inverted.</summary>
     [JsonPropertyName("invert")] public bool? Invert { get; set; }
+
+    /// <summary>Don't give this texture a heightmap at all - the texture set comes out with
+    /// no secondary PBR layer, exactly as if Secondary PBR had been set to None for this one
+    /// texture. For blocks where any derived relief is wrong rather than merely imperfect;
+    /// lava is the standing example. Not derivable from a pack, so the bootstrapper never
+    /// writes it.</summary>
+    [JsonPropertyName("skip")] public bool? Skip { get; set; }
 }
 
 public sealed class NormalParams
@@ -148,6 +155,46 @@ public sealed class NormalParams
     /// affects the blue channel - that's always parallax-occlusion height data, see
     /// PbrGeneration.NormalMapGenerator.</summary>
     [JsonPropertyName("invert")] public bool? Invert { get; set; }
+
+    /// <summary>Don't give this texture a normal map at all - see HeightmapParams.Skip.</summary>
+    [JsonPropertyName("skip")] public bool? Skip { get; set; }
+
+    /// <summary>What lies outside the texture's edges while its gradients are measured:
+    /// "horizontal", "vertical" or "colorfill". Anything else - absent, misspelt, a value
+    /// that isn't one of the three - means the default, which is that the texture tiles
+    /// against itself in both directions. See NormalPadding.</summary>
+    [JsonPropertyName("padding_type")] public string? PaddingType { get; set; }
+}
+
+/// <summary>
+/// What the normal map generator finds when it looks past an edge.
+///
+/// The generator never builds a padded image; it decides per sample what an out-of-bounds
+/// neighbour resolves to, which is the same answer for a fraction of the work. Describing it
+/// as a 3x3 canvas of copies is still the right way to picture it:
+///
+///   Tile        the texture repeats in both directions - the centre cell of a full 3x3 grid
+///               of copies. Correct for the overwhelming majority of blocks, and specifically
+///               for the isometric ones Bedrock randomly rotates, where any two edges can end
+///               up meeting.
+///   Horizontal  copies left and right only (a 1x3 strip), with everything above and below
+///               flooded by that strip's own top and bottom rows. For a texture that tiles
+///               sideways but has a real top and bottom - grass_side is the case that
+///               motivated it, where wrapping puts the dirt directly above the grass and
+///               invents a hard edge across the top of every block.
+///   Vertical    the same, rotated: copies above and below, left and right flooded from the
+///               strip's own edge columns.
+///   ColorFill   no copies at all. Every side is flooded from its own edge row or column, and
+///               the corners take the corner pixel, so nothing is left blank. For a texture
+///               that tiles in neither direction and whose edges should read as flat rather
+///               than as a step.
+/// </summary>
+public enum NormalPadding
+{
+    Tile,
+    Horizontal,
+    Vertical,
+    ColorFill,
 }
 
 /// <summary>One entry as written in materials.json - either an exact texture-name match or
@@ -180,9 +227,9 @@ public readonly record struct ResolvedInvisibleEmission(int R, int G, int B, int
 
 public readonly record struct ResolvedRecursivePass(string Channel, ResolvedMer Mer);
 
-public readonly record struct ResolvedHeightmap(double Intensity, bool Invert);
+public readonly record struct ResolvedHeightmap(double Intensity, bool Invert, bool Skip);
 
-public readonly record struct ResolvedNormal(double Intensity, bool Invert);
+public readonly record struct ResolvedNormal(double Intensity, bool Invert, bool Skip, NormalPadding Padding);
 
 public sealed class ResolvedMaterial
 {
@@ -231,6 +278,14 @@ public static class MaterialDefaults
 
     public const double NormalIntensity = 0.25;
     public const bool NormalInvert = false;
+
+    // Both skips default off, and that matters more than it looks: like invisible_emission
+    // these fall back through the "default" entry, so a stray "skip": true sitting there
+    // would flatten every block in the pack.
+    public const bool HeightmapSkip = false;
+    public const bool NormalSkip = false;
+
+    public const NormalPadding NormalPaddingType = NormalPadding.Tile;
 
     public const string RecursiveChannel = "R";
 }
@@ -321,28 +376,68 @@ public sealed class MaterialsConfig
     /// </summary>
     public static MaterialsConfig Load(string materialsJsonPath)
     {
+        var entries = new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
+
         try
         {
             var raw = File.ReadAllText(materialsJsonPath);
 
+            // Comments and trailing commas are allowed because this file is hand-edited
+            // across thousands of entries, and neither is worth losing a run over.
+            //
             // Top-level shape is a flat dictionary: exact-texture-name (or "default") ->
-            // entry. Comment-style keys like "// comment" are valid JSON string keys and
-            // simply become unused dictionary entries; they're never looked up so they're
-            // harmless - this lets materials.json carry human-readable notes without a
-            // custom parser, at the cost of "// comment" keys sitting in memory unused.
-            var parsed = JsonSerializer.Deserialize(raw, AlchitexJsonContext.Default.DictionaryStringMaterialEntry);
-
-            if (parsed == null || parsed.Count == 0)
+            // entry. Comment-style KEYS like "// note" are valid JSON strings and simply
+            // become dictionary entries nothing ever looks up, so they are harmless too.
+            using var document = JsonDocument.Parse(raw, new JsonDocumentOptions
             {
-                Trace.WriteLine($"[ALCHITEX] materials.json at '{materialsJsonPath}' parsed to empty - using built-in defaults only.");
-                return new MaterialsConfig(new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase));
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            });
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                Trace.WriteLine($"[ALCHITEX] materials.json at '{materialsJsonPath}' is a {document.RootElement.ValueKind}, not an object of texture names - using built-in defaults only.");
+                return new MaterialsConfig(entries);
             }
 
-            var caseInsensitive = new Dictionary<string, MaterialEntry>(parsed, StringComparer.OrdinalIgnoreCase);
-            return new MaterialsConfig(caseInsensitive);
+            // Deserialized one entry at a time on purpose. Doing the whole document in one
+            // call means a single bad value - "invert": "yes", a stray string where a number
+            // belongs - throws before anything is returned, and the artist loses every one of
+            // their thousands of entries to one typo, silently, with the run still completing
+            // in flat defaults. Per entry, that same typo costs exactly that texture, and the
+            // log says which one.
+            //
+            // A misspelt *field* needs none of this: System.Text.Json ignores members it
+            // doesn't recognise, so "rougness_max" simply doesn't apply and that property
+            // falls back like any absent one. Only a value of the wrong TYPE can throw.
+            var failed = 0;
+
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                try
+                {
+                    var entry = property.Value.Deserialize(AlchitexJsonContext.Default.MaterialEntry);
+                    if (entry != null) entries[property.Name] = entry;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    Trace.WriteLine($"[ALCHITEX] materials.json entry '{property.Name}' couldn't be read ({ex.Message}) - skipping it. That texture falls back to \"default\".");
+                }
+            }
+
+            if (failed > 0)
+                Trace.WriteLine($"[ALCHITEX] materials.json: {failed} entr{(failed == 1 ? "y" : "ies")} skipped, {entries.Count} loaded.");
+
+            if (entries.Count == 0)
+                Trace.WriteLine($"[ALCHITEX] materials.json at '{materialsJsonPath}' parsed to empty - using built-in defaults only.");
+
+            return new MaterialsConfig(entries);
         }
         catch (Exception ex)
         {
+            // Only reachable now for a file that can't be read or isn't JSON at all - a
+            // per-entry problem never gets here.
             Trace.WriteLine($"[ALCHITEX] Failed to load materials.json at '{materialsJsonPath}': {ex.Message}. Falling back to built-in defaults for every texture.");
             return new MaterialsConfig(new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase));
         }
@@ -394,10 +489,13 @@ public sealed class MaterialsConfig
             InvisibleEmission = MergeInvisibleEmission(entry, entryName),
             Heightmap = new ResolvedHeightmap(
                 Unit(heightmap?.Intensity ?? defHeightmap?.Intensity, MaterialDefaults.HeightmapIntensity, entryName, "heightmap.intensity"),
-                heightmap?.Invert ?? defHeightmap?.Invert ?? MaterialDefaults.HeightmapInvert),
+                heightmap?.Invert ?? defHeightmap?.Invert ?? MaterialDefaults.HeightmapInvert,
+                heightmap?.Skip ?? defHeightmap?.Skip ?? MaterialDefaults.HeightmapSkip),
             Normal = new ResolvedNormal(
                 Unit(normal?.Intensity ?? defNormal?.Intensity, MaterialDefaults.NormalIntensity, entryName, "normal.intensity"),
-                normal?.Invert ?? defNormal?.Invert ?? MaterialDefaults.NormalInvert),
+                normal?.Invert ?? defNormal?.Invert ?? MaterialDefaults.NormalInvert,
+                normal?.Skip ?? defNormal?.Skip ?? MaterialDefaults.NormalSkip,
+                NormalizePadding(normal?.PaddingType ?? defNormal?.PaddingType, entryName)),
         };
     }
 
@@ -478,6 +576,27 @@ public sealed class MaterialsConfig
             "invisible_emission.strength");
 
         return new ResolvedInvisibleEmission(r, g, b, strength);
+    }
+
+    /// <summary>Same shape as NormalizeChannel: an unrecognised value is logged and falls
+    /// back rather than failing the entry, because the whole point of naming the padding mode
+    /// in the file is that an artist types it by hand.</summary>
+    private static NormalPadding NormalizePadding(string? padding, string entryName)
+    {
+        switch (padding?.Trim().ToLowerInvariant())
+        {
+            case "horizontal": return NormalPadding.Horizontal;
+            case "vertical": return NormalPadding.Vertical;
+            case "colorfill": return NormalPadding.ColorFill;
+            case "default":
+            case "tile":
+            case "":
+            case null:
+                return MaterialDefaults.NormalPaddingType;
+        }
+
+        Trace.WriteLine($"[ALCHITEX] materials.json entry '{entryName}': normal.padding_type is '{padding}', which isn't horizontal, vertical or colorfill - using {MaterialDefaults.NormalPaddingType}.");
+        return MaterialDefaults.NormalPaddingType;
     }
 
     private static string NormalizeChannel(string? channel, string entryName, int index)

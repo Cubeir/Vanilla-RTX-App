@@ -107,7 +107,7 @@ public static class AlchitexPipeline
             ), cancellationToken);
 
             await Task.Run(
-                () => TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options, blacklist),
+                () => TextureSetOrchestrator.GenerateMissingTextureSets(workingPackPath, options, blacklist, materials),
                 cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();

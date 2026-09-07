@@ -265,7 +265,7 @@ public static class PbrTestBench
             var blacklist = PbrBlacklist.Load(AssetUpdater.Resolve(AssetUpdater.PbrBlacklistJson));
 
             progress?.Report(new AlchitexPipeline.AlchitexProgress(0, 0, "Scanning textures...", AlchitexPhase.ScanningTextures));
-            var orchestrated = TextureSetOrchestrator.GenerateMissingTextureSets(benchRoot, options, blacklist);
+            var orchestrated = TextureSetOrchestrator.GenerateMissingTextureSets(benchRoot, options, blacklist, materials);
 
             cancellationToken.ThrowIfCancellationRequested();
 
