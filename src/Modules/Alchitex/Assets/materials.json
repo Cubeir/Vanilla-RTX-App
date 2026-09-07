@@ -20346,7 +20346,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_black": {
         "mer": {
@@ -20373,7 +20374,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_blue": {
         "mer": {
@@ -20400,7 +20402,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_brown": {
         "mer": {
@@ -20427,7 +20430,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_cyan": {
         "mer": {
@@ -20454,7 +20458,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_gray": {
         "mer": {
@@ -20481,7 +20486,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_green": {
         "mer": {
@@ -20508,7 +20514,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_light_blue": {
         "mer": {
@@ -20535,7 +20542,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_lime": {
         "mer": {
@@ -20562,7 +20570,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_magenta": {
         "mer": {
@@ -20589,7 +20598,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_orange": {
         "mer": {
@@ -20616,7 +20626,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_pink": {
         "mer": {
@@ -20643,7 +20654,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_purple": {
         "mer": {
@@ -20670,7 +20682,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_red": {
         "mer": {
@@ -20697,7 +20710,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_silver": {
         "mer": {
@@ -20724,7 +20738,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_white": {
         "mer": {
@@ -20751,7 +20766,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hard_glass_yellow": {
         "mer": {
@@ -20778,7 +20794,8 @@
         "normal": {
             "intensity": 0.25,
             "invert": false
-        }
+        },
+        "blend_suitable": true
     },
     "hay_block_side": {
         "mer": {
