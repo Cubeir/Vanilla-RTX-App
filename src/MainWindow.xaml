@@ -334,7 +334,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="SuspendUIAnimationsToggle_Click"
-                        ToolTipService.ToolTip="Disables unique UI animations throughout the app while active."
+                        ToolTipService.ToolTip="Disables unique UI animations throughout the app while active, could save some battery life on laptops."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>
