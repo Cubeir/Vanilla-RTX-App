@@ -49,76 +49,114 @@ public static class PostProcess
 
     #region Water
 
+    // Minecraft RTX gives water its own scrolling normals that a pack cannot override, and
+    // takes the rest of its material from the colour texture's ALPHA: higher alpha means
+    // lower roughness, i.e. more mirror-like water. So a water texture carries no PBR at all
+    // (water is blacklisted in pbr_blacklist.json) - the whole job here is turning an
+    // ordinary painted water texture into "brightness encoded as alpha over a flat bright
+    // fill", which is the only shape that renders as good water.
+
     // TODO(tuning): visual knobs for water-to-grey conversion.
-    // Floor opacity - Bedrock RTX has visible glitches if any water pixel's opacity drops
-    // below this after conversion. Ported unchanged from legacy RTX Reactor.
+
+    /// <summary>Floor opacity. Below this Bedrock RTX starts casting shadows *underneath*
+    /// the water surface - nonsensical, but it is what the renderer does, so the encoded
+    /// range is 129-255 rather than 0-255. Ported unchanged from legacy RTX Reactor.</summary>
     private const int MinWaterOpacity = 129;
-    // How many "votes" the single brightest pixel gets against the plain average when
-    // picking ConvertWaterToGrey's flat RGB fill color - higher leans the result more
-    // toward the brightest spot in the source texture, 0 would just be a plain average.
-    private const double BrightestPixelWeight = 2.0;
 
     /// <summary>
-    /// Converts a color water texture into the flat-grey, brightness-as-opacity form
-    /// Bedrock RTX expects (water_flow_grey / water_still_grey), and writes it as a
-    /// sibling "_grey"-suffixed TGA next to the original. Opacity math (brightness as
-    /// alpha, renormalized to a MinWaterOpacity floor) ported unchanged from legacy RTX
-    /// Reactor's ConvertWater; the flat RGB fill is no longer a fixed grey - see below.
+    /// Bend applied to brightness before it becomes alpha. 1.0 would be the straight line
+    /// from (darkest -> 129) to (brightest -> 255); above 1.0 the curve sags below that
+    /// line, so every pixel except the two endpoints lands at a *lower* alpha than a linear
+    /// mapping would give it.
+    ///
+    /// That is the point rather than a side effect: lower alpha is lower roughness, so
+    /// bending the curve hands more of the texture sharper reflections while leaving its
+    /// composition - which pixel is brighter than which - completely intact. At 1.5 a
+    /// mid-brightness pixel lands at 174 instead of 192.
+    /// </summary>
+    private const double WaterOpacityCurve = 1.5;
+
+    /// <summary>How far the flat fill is pushed toward white after averaging. 0.5 is a
+    /// halfway blend, which is what makes the fill land in the 192-225 band for almost any
+    /// input - see ResolveFlatFill.</summary>
+    private const double WaterWhitePull = 0.5;
+
+    /// <summary>
+    /// Converts a colour water texture into the flat-fill, brightness-as-alpha form Bedrock
+    /// RTX expects (water_still_grey / water_flow_grey), written as a sibling "_grey" TGA.
+    ///
+    /// Two independent things come out of the source texture:
+    ///
+    ///   ALPHA carries the composition. Per-pixel brightness is stretched onto 129-255 (see
+    ///   MinWaterOpacity) and bent by WaterOpacityCurve. Brightness is where the artist said
+    ///   "this part is watery", and alpha is how the renderer reads that.
+    ///
+    ///   RGB is thrown away and replaced by one flat value. It has to be: the game tints
+    ///   water per biome by multiplying this texture, so any colour baked in here would
+    ///   double up with every biome's own. "Grey" in the vanilla file name is literal.
+    ///
+    /// **The stretch used to be a shift, and that was a real bug.** The old code added
+    /// (129 - darkest) to every pixel and clamped, so a texture whose brightness already
+    /// spanned 0-255 had everything above 126 clamped flat to 255 - half the composition
+    /// gone, on exactly the well-drawn textures that had the most to lose. A stretch maps
+    /// darkest to 129 and brightest to 255 with everything in between kept in proportion,
+    /// which is what the floor was always meant to do.
     /// </summary>
     public static void ConvertWaterToGrey(string imagePath)
     {
         using var source = Helpers.ReadImage(imagePath, maxOpacity: false);
-        using var output = new Bitmap(source.Width, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-        var brightness = new int[source.Width, source.Height];
+        var width = source.Width;
+        var height = source.Height;
+
+        var brightness = new int[width, height];
+        var minBrightness = 255;
         var maxBrightness = 0;
-        long brightnessSum = 0;
+        var linearSum = 0.0;
 
         using (var srcFb = new FastBitmap(source, writable: false))
         {
-            for (var y = 0; y < source.Height; y++)
+            for (var y = 0; y < height; y++)
             {
-                for (var x = 0; x < source.Width; x++)
+                for (var x = 0; x < width; x++)
                 {
                     var p = srcFb[x, y];
+
+                    // Flat average, the module's standing convention for "value" (§4.11) -
+                    // not perceptual luminosity, which would weight blue at 7% and read most
+                    // water textures as nearly black.
                     var b = (p.R + p.G + p.B) / 3;
                     brightness[x, y] = b;
+
+                    if (b < minBrightness) minBrightness = b;
                     if (b > maxBrightness) maxBrightness = b;
-                    brightnessSum += b;
+
+                    linearSum += SrgbToLinear(p.R) + SrgbToLinear(p.G) + SrgbToLinear(p.B);
                 }
             }
         }
 
-        var pixelCount = source.Width * source.Height;
-        var averageBrightness = pixelCount > 0 ? brightnessSum / (double)pixelCount : 0;
-        // Usually-bright result, nudged toward the texture's own brightest pixel rather
-        // than a fixed grey.
-        var greyChannel = (byte)Math.Clamp(
-            (int)Math.Round((maxBrightness * BrightestPixelWeight + averageBrightness) / (BrightestPixelWeight + 1.0)),
-            0, 255);
+        var channelCount = width * height * 3;
+        var fill = ResolveFlatFill(channelCount > 0 ? linearSum / channelCount : 0.0);
+        var span = maxBrightness - minBrightness;
+
+        using var output = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
         using (var outFb = new FastBitmap(output, writable: true))
         {
-            var minAlpha = 255;
-            for (var y = 0; y < source.Height; y++)
+            for (var y = 0; y < height; y++)
             {
-                for (var x = 0; x < source.Width; x++)
+                for (var x = 0; x < width; x++)
                 {
-                    var b = brightness[x, y];
-                    outFb[x, y] = Color.FromArgb(b, greyChannel, greyChannel, greyChannel);
-                    if (b < minAlpha) minAlpha = b;
-                }
-            }
+                    // A texture with no brightness range at all has no composition to
+                    // preserve, so it gets maximum clarity rather than an arbitrary midpoint.
+                    var t = span > 0 ? (brightness[x, y] - minBrightness) / (double)span : 1.0;
 
-            // Renormalize opacity so the darkest pixel lands at MinWaterOpacity.
-            var adjust = MinWaterOpacity - minAlpha;
-            for (var y = 0; y < source.Height; y++)
-            {
-                for (var x = 0; x < source.Width; x++)
-                {
-                    var p = outFb[x, y];
-                    var newAlpha = Math.Clamp(p.A + adjust, 0, 255);
-                    outFb[x, y] = Color.FromArgb(newAlpha, p.R, p.G, p.B);
+                    var alpha = (byte)Math.Clamp(
+                        (int)Math.Round(MinWaterOpacity + Math.Pow(t, WaterOpacityCurve) * (255 - MinWaterOpacity)),
+                        MinWaterOpacity, 255);
+
+                    outFb[x, y] = Color.FromArgb(alpha, fill, fill, fill);
                 }
             }
         }
@@ -136,6 +174,46 @@ public static class PostProcess
     }
 
     /// <summary>
+    /// The single grey the whole texture is filled with, from the mean of its channels in
+    /// LINEAR light, pulled halfway toward white.
+    ///
+    /// Linear-light matters and is not pedantry: averaging sRGB values directly
+    /// under-reports a texture's real brightness badly. Half black and half white averages
+    /// to 128 in sRGB and to 188 done properly - and water wants the bright answer, because
+    /// a dark fill reads as murky no matter what the alpha says.
+    ///
+    /// The pull toward white then does the rest, and the halfway point is what makes the
+    /// result land in a useful band for any input at all: a fully black texture still comes
+    /// out at 128, a mid-grey one at 192, a bright one at ~222. A texture that was already
+    /// bright is nudged less in absolute terms than a dark one, which is the right
+    /// behaviour - it needed less help.
+    ///
+    /// Pulling toward white rather than toward the texture's own brightest pixel is
+    /// deliberate. The brightest pixel is only useful if it happens to *be* bright; white is
+    /// bright by definition, so the floor this puts under the result doesn't depend on the
+    /// input having a lucky highlight in it.
+    /// </summary>
+    private static byte ResolveFlatFill(double meanLinear)
+    {
+        var mean = LinearToSrgb(meanLinear) * 255.0;
+        var pulled = mean + (255.0 - mean) * WaterWhitePull;
+
+        return (byte)Math.Clamp((int)Math.Round(pulled), 0, 255);
+    }
+
+    private static double SrgbToLinear(byte channel)
+    {
+        var c = channel / 255.0;
+        return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    private static double LinearToSrgb(double linear)
+    {
+        var l = Math.Clamp(linear, 0.0, 1.0);
+        return l <= 0.0031308 ? 12.92 * l : 1.055 * Math.Pow(l, 1.0 / 2.4) - 0.055;
+    }
+
+    /// <summary>
     /// Tries to make sure `blocksFolder` ends up with a proper RTX-encoded
     /// water_still_grey.tga and water_flow_grey.tga, per texture independently (not
     /// atomic across the pair - each one can get there from a different source). A pack's
@@ -149,16 +227,17 @@ public static class PostProcess
     /// file): the pack's own "_grey"-named texture if present, otherwise the colored/
     /// inventory variant (packs sometimes ship only that and forget the in-world grey one
     /// the game actually tints per-biome).
-    /// Returns true only if this folder ends up with BOTH grey textures present by the
-    /// time this returns, regardless of which of the two means produced each one - the
-    /// caller (AlchitexPipeline.RunWaterGlassPass) uses this to decide whether the zip
-    /// fallback is still needed anywhere in the pack.
+    /// Returns whether this folder produced ANY grey water at all - not whether it produced
+    /// both. The two textures are resolved independently and either can succeed alone, and
+    /// the caller's question is a pack-level one: the packaged fallback exists for a pack
+    /// with no water textures whatsoever, not for a folder that happens to be missing one.
+    /// See AlchitexPipeline.RunWaterGlassPass.
     /// </summary>
     public static bool EnsureGreyWaterTextures(string blocksFolder)
     {
-        var still = EnsureOneGreyWaterTexture(blocksFolder, "water_still");
-        var flow = EnsureOneGreyWaterTexture(blocksFolder, "water_flow");
-        return still && flow;
+        // Both, always - `|` rather than `||`, or a successful "still" would skip "flow".
+        return EnsureOneGreyWaterTexture(blocksFolder, "water_still")
+             | EnsureOneGreyWaterTexture(blocksFolder, "water_flow");
     }
 
     private static bool EnsureOneGreyWaterTexture(string blocksFolder, string baseName)
@@ -216,9 +295,10 @@ public static class PostProcess
     /// <summary>
     /// Extracts Alchitex's packaged water-fallback.zip (four flat files, no folders inside -
     /// both grey TGAs and their .texture_set.json descriptors) directly into `blocksFolder`,
-    /// overwriting anything already there. Only called when EnsureGreyWaterTextures couldn't
-    /// produce a complete grey water pair for a folder from the pack's own assets, and only
-    /// once per pack - see AlchitexPipeline.RunWaterGlassPass. Never invents content - if the
+    /// overwriting anything already there. Only called when the pack turned out to have no
+    /// water textures anywhere at all, in which case it goes into EVERY blocks folder - see
+    /// AlchitexPipeline.RunWaterGlassPass for why that is the right shape. Never invents
+    /// content - if the
     /// packaged zip isn't present under Assets/, this logs exactly what's missing and leaves
     /// the pack without fallback water rather than pretending to have handled it. Returns
     /// true only on a successful extraction.

@@ -299,33 +299,42 @@ public static class AlchitexPipeline
 
     private static void RunWaterGlassPass(string packRoot, MaterialsConfig materials)
     {
-        // Root-pack blocks folder(s) first: if the zip fallback ends up needed anywhere,
-        // it only ever gets deployed once (see the loop below) - a subpack that doesn't
-        // define its own water inherits the root pack's at runtime, so it needs to land on
-        // root, not on whichever subpack happens to be enumerated first.
-        var blocksFolders = AlchitexStaging.DiscoverBlocksFolders(packRoot)
-            .OrderBy(f => f.Replace('\\', '/').Contains("/subpacks/", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
-            .ToList();
+        var blocksFolders = AlchitexStaging.DiscoverBlocksFolders(packRoot);
 
-        var zipFallbackDeployed = false;
+        // Water, in two phases, and the split is the design.
+        //
+        // Phase one converts whatever each folder has of its own, per folder and per texture
+        // independently - a folder with water_still and water_flow_grey derives one from each
+        // source, and a folder with nothing derives nothing. Subpacks inherit the root pack's
+        // textures at runtime, so a subpack that ships no water of its own needs none written.
+        var anyWaterFound = false;
 
         foreach (var blocksFolder in blocksFolders)
         {
-            bool hasCompleteGreyWater;
             try
             {
-                hasCompleteGreyWater = PostProcess.EnsureGreyWaterTextures(blocksFolder);
+                anyWaterFound |= PostProcess.EnsureGreyWaterTextures(blocksFolder);
             }
             catch (Exception ex)
             {
                 Trace.WriteLine($"[ALCHITEX] Failed processing water textures in '{blocksFolder}': {ex.Message}");
-                hasCompleteGreyWater = false;
             }
+        }
 
-            if (!hasCompleteGreyWater && !zipFallbackDeployed)
-            {
-                zipFallbackDeployed = PostProcess.DeployFallbackWaterZip(blocksFolder);
-            }
+        // Phase two is the packaged fallback, and it is reached only when the pack had no
+        // water texture ANYWHERE - which means the game would otherwise fall back to vanilla's
+        // own, and vanilla water renders opaque and rough under RTX. At that point every
+        // blocks folder gets the crystal-clear placeholder, not just the root: there is no
+        // pack water for a subpack to inherit, so leaving any folder empty leaves it broken.
+        //
+        // Deliberately all-or-nothing against the whole pack rather than per folder. A pack
+        // that derived water somewhere has water; dropping a generic placeholder into the
+        // folders that didn't would overwrite nothing useful and could only conflict with
+        // what the pack actually authored.
+        if (!anyWaterFound)
+        {
+            foreach (var blocksFolder in blocksFolders)
+                PostProcess.DeployFallbackWaterZip(blocksFolder);
         }
 
         // The blend pass applies to every resolved color texture in the pack (both
