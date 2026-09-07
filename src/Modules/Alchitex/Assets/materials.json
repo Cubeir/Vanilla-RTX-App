@@ -3994,10 +3994,10 @@
     "chiseled_bookshelf_a": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4021,10 +4021,10 @@
     "chiseled_bookshelf_ab": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4048,10 +4048,10 @@
     "chiseled_bookshelf_abc": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4075,10 +4075,10 @@
     "chiseled_bookshelf_abcd": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4102,10 +4102,10 @@
     "chiseled_bookshelf_abcde": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4129,10 +4129,10 @@
     "chiseled_bookshelf_abcdf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4156,10 +4156,10 @@
     "chiseled_bookshelf_abce": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4183,10 +4183,10 @@
     "chiseled_bookshelf_abcef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4210,10 +4210,10 @@
     "chiseled_bookshelf_abcf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4237,10 +4237,10 @@
     "chiseled_bookshelf_abd": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4264,10 +4264,10 @@
     "chiseled_bookshelf_abde": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4291,10 +4291,10 @@
     "chiseled_bookshelf_abdef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4318,10 +4318,10 @@
     "chiseled_bookshelf_abdf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4345,10 +4345,10 @@
     "chiseled_bookshelf_abe": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4372,10 +4372,10 @@
     "chiseled_bookshelf_abef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4399,10 +4399,10 @@
     "chiseled_bookshelf_abf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4426,10 +4426,10 @@
     "chiseled_bookshelf_ac": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4453,10 +4453,10 @@
     "chiseled_bookshelf_acd": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4480,10 +4480,10 @@
     "chiseled_bookshelf_acde": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4507,10 +4507,10 @@
     "chiseled_bookshelf_acdef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4534,10 +4534,10 @@
     "chiseled_bookshelf_acdf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4561,10 +4561,10 @@
     "chiseled_bookshelf_ace": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4588,10 +4588,10 @@
     "chiseled_bookshelf_acef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4615,10 +4615,10 @@
     "chiseled_bookshelf_acf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4642,10 +4642,10 @@
     "chiseled_bookshelf_ad": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4669,10 +4669,10 @@
     "chiseled_bookshelf_ade": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4696,10 +4696,10 @@
     "chiseled_bookshelf_adef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4723,10 +4723,10 @@
     "chiseled_bookshelf_adf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4750,10 +4750,10 @@
     "chiseled_bookshelf_ae": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4777,10 +4777,10 @@
     "chiseled_bookshelf_aef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4804,10 +4804,10 @@
     "chiseled_bookshelf_af": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4831,10 +4831,10 @@
     "chiseled_bookshelf_b": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4858,10 +4858,10 @@
     "chiseled_bookshelf_bc": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4885,10 +4885,10 @@
     "chiseled_bookshelf_bcd": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4912,10 +4912,10 @@
     "chiseled_bookshelf_bcde": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4939,10 +4939,10 @@
     "chiseled_bookshelf_bcdef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4966,10 +4966,10 @@
     "chiseled_bookshelf_bcdf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -4993,10 +4993,10 @@
     "chiseled_bookshelf_bce": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5020,10 +5020,10 @@
     "chiseled_bookshelf_bcef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5047,10 +5047,10 @@
     "chiseled_bookshelf_bcf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5074,10 +5074,10 @@
     "chiseled_bookshelf_bd": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5101,10 +5101,10 @@
     "chiseled_bookshelf_bde": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5128,10 +5128,10 @@
     "chiseled_bookshelf_bdef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5155,10 +5155,10 @@
     "chiseled_bookshelf_bdf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5182,10 +5182,10 @@
     "chiseled_bookshelf_be": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5209,10 +5209,10 @@
     "chiseled_bookshelf_bef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5236,10 +5236,10 @@
     "chiseled_bookshelf_bf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5290,10 +5290,10 @@
     "chiseled_bookshelf_cd": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5317,10 +5317,10 @@
     "chiseled_bookshelf_cde": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5344,10 +5344,10 @@
     "chiseled_bookshelf_cdef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5371,10 +5371,10 @@
     "chiseled_bookshelf_cdf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5398,10 +5398,10 @@
     "chiseled_bookshelf_ce": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5425,10 +5425,10 @@
     "chiseled_bookshelf_cef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5452,10 +5452,10 @@
     "chiseled_bookshelf_cf": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5479,10 +5479,10 @@
     "chiseled_bookshelf_d": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5506,10 +5506,10 @@
     "chiseled_bookshelf_de": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5533,10 +5533,10 @@
     "chiseled_bookshelf_def": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5560,10 +5560,10 @@
     "chiseled_bookshelf_df": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5587,10 +5587,10 @@
     "chiseled_bookshelf_e": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5614,10 +5614,10 @@
     "chiseled_bookshelf_ef": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5668,10 +5668,10 @@
     "chiseled_bookshelf_f": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5695,10 +5695,10 @@
     "chiseled_bookshelf_occupied": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 192,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 28,
+            "roughness_min": 128,
             "roughness_max": 241,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5808,9 +5808,9 @@
             "emissive_max": 0,
             "roughness_min": 10,
             "roughness_max": 23,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -5833,7 +5833,7 @@
             "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 99,
+            "roughness_min": 100,
             "roughness_max": 250,
             "invert_metal": false,
             "invert_emissive": false,
@@ -5918,7 +5918,7 @@
             "roughness_max": 144,
             "invert_metal": false,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 32,
@@ -6080,7 +6080,7 @@
             "roughness_max": 232,
             "invert_metal": false,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -6107,7 +6107,7 @@
             "roughness_max": 232,
             "invert_metal": false,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -6134,7 +6134,7 @@
             "roughness_max": 179,
             "invert_metal": false,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -6215,7 +6215,7 @@
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -6478,9 +6478,9 @@
     "command_block": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 213,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 15,
+            "emissive_max": 0,
             "roughness_min": 55,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6505,9 +6505,9 @@
     "command_block_back": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6532,9 +6532,9 @@
     "command_block_back_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 15,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6559,9 +6559,9 @@
     "command_block_conditional": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6586,9 +6586,9 @@
     "command_block_conditional_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6613,9 +6613,9 @@
     "command_block_front": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6640,9 +6640,9 @@
     "command_block_front_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6667,9 +6667,9 @@
     "command_block_side": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6694,9 +6694,9 @@
     "command_block_side_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -6721,10 +6721,10 @@
     "comparator_off": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 51,
+            "metal_max": 16,
             "emissive_min": 0,
-            "emissive_max": 6,
-            "roughness_min": 13,
+            "emissive_max": 0,
+            "roughness_min": 64,
             "roughness_max": 157,
             "invert_metal": false,
             "invert_emissive": false,
@@ -6735,7 +6735,22 @@
             "max": 0,
             "invert": false
         },
-        "recursive": [],
+        "recursive": [
+            {
+                "channel": "R",
+                "mer": {
+                    "metal_min": 32,
+                    "metal_max": 64,
+                    "emissive_min": 0,
+                    "emissive_max": 0,
+                    "roughness_min": 92,
+                    "roughness_max": 144,
+                    "invert_metal": true,
+                    "invert_emissive": false,
+                    "invert_roughness": true
+                }
+            }
+        ],
         "heightmap": {
             "intensity": 1,
             "invert": false
@@ -6748,10 +6763,10 @@
     "comparator_on": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 51,
+            "metal_max": 16,
             "emissive_min": 0,
-            "emissive_max": 14,
-            "roughness_min": 13,
+            "emissive_max": 0,
+            "roughness_min": 64,
             "roughness_max": 157,
             "invert_metal": false,
             "invert_emissive": false,
@@ -6762,7 +6777,22 @@
             "max": 0,
             "invert": false
         },
-        "recursive": [],
+        "recursive": [
+            {
+                "channel": "R",
+                "mer": {
+                    "metal_min": 32,
+                    "metal_max": 64,
+                    "emissive_min": 84,
+                    "emissive_max": 96,
+                    "roughness_min": 92,
+                    "roughness_max": 144,
+                    "invert_metal": true,
+                    "invert_emissive": false,
+                    "invert_roughness": true
+                }
+            }
+        ],
         "heightmap": {
             "intensity": 1,
             "invert": false
@@ -29060,9 +29090,9 @@
     "repeating_command_block_back": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -29114,9 +29144,9 @@
     "repeating_command_block_conditional": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -29168,9 +29198,9 @@
     "repeating_command_block_front": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -29195,9 +29225,9 @@
     "repeating_command_block_front_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -29222,9 +29252,9 @@
     "repeating_command_block_side": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
@@ -29249,9 +29279,9 @@
     "repeating_command_block_side_mipmap": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 225,
+            "metal_max": 64,
             "emissive_min": 0,
-            "emissive_max": 16,
+            "emissive_max": 0,
             "roughness_min": 36,
             "roughness_max": 255,
             "invert_metal": false,
