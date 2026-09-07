@@ -32969,5 +32969,4527 @@
             "intensity": 0.25,
             "invert": false
         }
+    },
+    "chemical_heat": {
+        "mer": {
+            "metal_min": 115,
+            "metal_max": 164,
+            "emissive_min": 0,
+            "emissive_max": 14,
+            "roughness_min": 91,
+            "roughness_max": 128,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 64,
+            "max": 192,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "compound_creator_inside": {
+        "mer": {
+            "metal_min": 190,
+            "metal_max": 225,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 64,
+            "roughness_max": 89,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "compound_creator_inside_bottom": {
+        "mer": {
+            "metal_min": 190,
+            "metal_max": 225,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 64,
+            "roughness_max": 89,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "compound_creator_side_a": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 245,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 81,
+            "roughness_max": 254,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "compound_creator_side_b": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 245,
+            "emissive_min": 0,
+            "emissive_max": 12,
+            "roughness_min": 5,
+            "roughness_max": 254,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "compound_creator_side_c": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 240,
+            "emissive_min": 0,
+            "emissive_max": 12,
+            "roughness_min": 4,
+            "roughness_max": 254,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "compound_creator_top": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 209,
+            "emissive_min": 0,
+            "emissive_max": 12,
+            "roughness_min": 9,
+            "roughness_max": 81,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_000_unknown": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 255,
+            "emissive_min": 0,
+            "emissive_max": 12,
+            "roughness_min": 46,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_001_h": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_002_he": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_003_li": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 143,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 115,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_004_be": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 197,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 38,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_005_b": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_006_c": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_007_n": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_008_o": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_009_f": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 19,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_010_ne": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_011_na": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 143,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 115,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_012_mg": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 197,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 38,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_013_al": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_014_si": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_015_p": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_016_s": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_017_cl": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 19,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_018_ar": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_019_k": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 143,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 115,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_020_ca": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 197,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 38,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_021_sc": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_022_ti": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 6,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_023_v": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_024_cr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_025_mn": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_026_fe": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_027_co": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_028_ni": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_029_cu": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_030_zn": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_031_ga": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_032_ge": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_033_as": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_034_se": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 92,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_035_br": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 19,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_036_kr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_037_rb": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 143,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 115,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_038_sr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 197,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 38,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_039_y": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_040_zr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_041_nb": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_042_mo": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_043_tc": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_044_ru": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_045_rh": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_046_pd": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_047_ag": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_048_cd": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_049_in": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_050_sn": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_051_sb": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_052_te": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_053_i": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 19,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_054_xe": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_055_cs": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 143,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 115,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_056_ba": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 197,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 38,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_057_la": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_058_ce": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_059_pr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_060_nd": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_061_pm": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_062_sm": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_063_eu": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_064_gd": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_065_tb": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_066_dy": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_067_ho": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_068_er": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_069_tm": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_070_yb": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_071_lu": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 194,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 33,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_072_hf": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_073_ta": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_074_w": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_075_re": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_076_os": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_077_ir": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_078_pt": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_079_au": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_080_hg": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_081_tl": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_082_pb": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_083_bi": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_084_po": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 192,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 84,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_085_at": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 19,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_086_rn": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_087_fr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 143,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 46,
+            "roughness_max": 115,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_088_ra": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 197,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 38,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_089_ac": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_090_th": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_091_pa": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_092_u": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_093_np": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_094_pu": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_095_am": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_096_cm": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_097_bk": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_098_cf": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_099_es": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_100_fm": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_101_md": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_102_no": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_103_lr": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 163,
+            "emissive_min": 0,
+            "emissive_max": 6,
+            "roughness_min": 46,
+            "roughness_max": 75,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_104_rf": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_105_db": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_106_sg": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_107_bh": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_108_hs": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_109_mt": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_110_ds": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_111_rg": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_112_cn": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 253,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 10,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_113_nh": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_114_fl": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_115_mc": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_116_lv": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 210,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 41,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_117_ts": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 19,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_118_og": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 7,
+            "roughness_max": 64,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_constructor_back": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 94,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_constructor_front": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 57,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_constructor_side_a": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 57,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_constructor_side_b": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 8,
+            "roughness_min": 5,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "element_constructor_top": {
+        "mer": {
+            "metal_min": 200,
+            "metal_max": 248,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 77,
+            "roughness_max": 99,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 4,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_black": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_blue": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_brown": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_cyan": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_gray": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 4,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_green": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_light_blue": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_lime": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 4,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_magenta": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_orange": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_pink": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_purple": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_red": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 4,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_silver": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 3,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_white": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 4,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "hard_glass_yellow": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 4,
+            "roughness_max": 42,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 192,
+            "max": 255,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "lab_table_bottom": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 148,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "lab_table_front": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 16,
+            "roughness_min": 5,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "lab_table_side_a": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 5,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "lab_table_side_b": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 5,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "lab_table_side_c": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 12,
+            "roughness_min": 4,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "lab_table_top": {
+        "mer": {
+            "metal_min": 200,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 77,
+            "roughness_max": 100,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "material_reducer_bottom": {
+        "mer": {
+            "metal_min": 228,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 90,
+            "roughness_max": 100,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "material_reducer_front": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 24,
+            "roughness_min": 5,
+            "roughness_max": 244,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "material_reducer_side": {
+        "mer": {
+            "metal_min": 200,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 77,
+            "roughness_max": 100,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "material_reducer_top": {
+        "mer": {
+            "metal_min": 7,
+            "metal_max": 250,
+            "emissive_min": 0,
+            "emissive_max": 12,
+            "roughness_min": 4,
+            "roughness_max": 225,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "tnt_bottom_underwater": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 144,
+            "roughness_max": 193,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "tnt_side_underwater": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 0,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 111,
+            "roughness_max": 223,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "tnt_top_underwater": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 46,
+            "emissive_min": 0,
+            "emissive_max": 0,
+            "roughness_min": 119,
+            "roughness_max": 223,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "torch_blue": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 32,
+            "emissive_min": 0,
+            "emissive_max": 19,
+            "roughness_min": 124,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "invisible_emission": {
+            "color": [
+                0,
+                42,
+                212
+            ],
+            "strength": 23
+        },
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "torch_green": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 32,
+            "emissive_min": 0,
+            "emissive_max": 19,
+            "roughness_min": 124,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "invisible_emission": {
+            "color": [
+                156,
+                255,
+                204
+            ],
+            "strength": 23
+        },
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "torch_purple": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 32,
+            "emissive_min": 0,
+            "emissive_max": 19,
+            "roughness_min": 124,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "invisible_emission": {
+            "color": [
+                204,
+                0,
+                197
+            ],
+            "strength": 23
+        },
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "torch_red": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 32,
+            "emissive_min": 0,
+            "emissive_max": 19,
+            "roughness_min": 124,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "invisible_emission": {
+            "color": [
+                217,
+                0,
+                0
+            ],
+            "strength": 23
+        },
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
+    },
+    "torch_underwater": {
+        "mer": {
+            "metal_min": 0,
+            "metal_max": 32,
+            "emissive_min": 0,
+            "emissive_max": 42,
+            "roughness_min": 155,
+            "roughness_max": 255,
+            "invert_metal": false,
+            "invert_emissive": false,
+            "invert_roughness": true
+        },
+        "sss": {
+            "min": 0,
+            "max": 0,
+            "invert": false
+        },
+        "recursive": [],
+        "invisible_emission": {
+            "color": [
+                0,
+                255,
+                200
+            ],
+            "strength": 195
+        },
+        "heightmap": {
+            "intensity": 1,
+            "invert": false
+        },
+        "normal": {
+            "intensity": 0.25,
+            "invert": false
+        }
     }
 }
