@@ -34,11 +34,11 @@ internal static class ProcessorVariables
     public const double EMISSIVE_EXCESS_INTENSITY_DAMPEN = 0.1;
 
     /// <summary>
-    /// Lazified POM is floored at the lazify alpha so a strong lazify can't also be a deep one,
-    /// but the floor stops climbing here -- at 255 an uncapped floor leaves zero depth range and
-    /// the pass has nothing left to say. 200 keeps a usable slice of relief at the far end.
+    /// Deepest a lazified POM pixel may sit below the surface. Luminance is a guess at height,
+    /// so the pass gets a shallow slice of the range to be wrong in rather than the whole of it;
+    /// the pack's own POM, blended in alongside, is the part that is allowed to be deep.
     /// </summary>
-    public const int LAZIFY_POM_MAX_FLOOR = 200;
+    public const int LAZIFY_POM_FLOOR = 200;
 
     /// <summary>
     /// Ambient light tracks the emissivity multiplier 1:1 up to the knee, then saturates along
@@ -1120,31 +1120,42 @@ public class Tuner
         // full depth on every texture regardless of how shallow its real range is, which is
         // acceptable for R/G (they only ever describe slope) and wrong for depth.
         //
-        // The lift is then floored at the lazify alpha itself and the whole range
-        // interpolated up into [alpha, 255]. Ceiling-maximizing keys the entire texture off
-        // its single brightest pixel, so one outlier drags everything else deep -- acacia
-        // leaves with a flower came out far deeper than the same leaves without one, purely
-        // because the flower was brighter than any leaf. Tying the floor to alpha bounds how
-        // deep the guess may go exactly when it is about to be weighted most heavily, and
-        // leaves it free to go deep when the blend below will barely apply it, capped at
-        // LAZIFY_POM_MAX_FLOOR so the top of the slider still says something. The remap is
-        // affine, so the texture's relative composition passes through intact either way.
+        // The lifted range is then stretched into [LAZIFY_POM_FLOOR, 255], but only when it
+        // actually reaches below the floor -- a texture whose darkest pixel already sits above
+        // it is left exactly as the lift left it, since there is nothing to rein in. Depth is
+        // capped rather than scaled by the slider because luminance is only a guess at height,
+        // and a guess should occupy a shallow slice of the range no matter how confidently it
+        // is being applied. Both ends of the stretch are anchored, so the texture's relative
+        // composition passes through intact.
+        //
+        // minV/maxV come from the edge-padded colourmap, where every transparent pixel has
+        // already been overwritten with the nearest opaque colour. That is what keeps a
+        // flower's transparent black corners out of these bounds; drop the padding pass and
+        // this needs an explicit alpha mask instead.
         var ceiling = new byte[width, height];
-        var depthFloor = Math.Min(alpha, LAZIFY_POM_MAX_FLOOR);
-        double span = (255 - depthFloor) / 255.0;
+
+        // maxV == 0 means every pixel is the brightest pixel, so raising the brightest to 255
+        // raises all of them: a black texture is uniformly flush. Needs its own branch only
+        // because the multiply cannot express it.
+        double liftScale = maxV == 0 ? 0.0 : 255.0 / maxV;
+        double lowest = maxV == 0 ? 255.0 : minV * liftScale;
+
+        // Below the floor, both ends move: darkest to the floor, brightest stays pinned at the
+        // surface. At or above it, an identity.
+        double floorBase = lowest < LAZIFY_POM_FLOOR ? LAZIFY_POM_FLOOR : lowest;
+        double floorScale = lowest < LAZIFY_POM_FLOOR
+            ? (255.0 - LAZIFY_POM_FLOOR) / (255.0 - lowest)
+            : 1.0;
 
         for (var y = 0; y < height; y++)
             for (var x = 0; x < width; x++)
             {
-                // maxV == 0 means every pixel is the brightest pixel, so raising the
-                // brightest to 255 raises all of them: a black texture is uniformly flush.
-                // Needs its own branch only because the multiply cannot express it.
-                //
                 // Rounded, not truncated: the brightest pixel has to land exactly on 255 or
                 // the texture never quite reaches the surface. 200 * (255.0 / 200) lands a
                 // hair under 255 in floating point and truncates to 254.
-                double lifted = maxV == 0 ? 255.0 : greyscale[x, y] * (255.0 / maxV);
-                ceiling[x, y] = (byte)Math.Clamp(Math.Round(depthFloor + lifted * span), 0, 255);
+                double lifted = maxV == 0 ? 255.0 : greyscale[x, y] * liftScale;
+                ceiling[x, y] = (byte)Math.Clamp(
+                    Math.Round(floorBase + (lifted - lowest) * floorScale), 0, 255);
             }
 
         return LazifyNormalMap(normalFb, stretched, ceiling, alpha, width, height);
