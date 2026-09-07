@@ -204,7 +204,7 @@
             "emissive_max": 0,
             "roughness_min": 48,
             "roughness_max": 107,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -231,7 +231,7 @@
             "emissive_max": 0,
             "roughness_min": 61,
             "roughness_max": 109,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -258,7 +258,7 @@
             "emissive_max": 0,
             "roughness_min": 47,
             "roughness_max": 110,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -285,7 +285,7 @@
             "emissive_max": 0,
             "roughness_min": 47,
             "roughness_max": 110,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -1064,8 +1064,8 @@
         "mer": {
             "metal_min": 0,
             "metal_max": 238,
-            "emissive_min": 0,
-            "emissive_max": 84,
+            "emissive_min": 25,
+            "emissive_max": 92,
             "roughness_min": 7,
             "roughness_max": 73,
             "invert_metal": false,
@@ -1117,7 +1117,7 @@
     "beehive_front": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 178,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 58,
@@ -1144,10 +1144,10 @@
     "beehive_front_honey": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 178,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 17,
+            "roughness_min": 48,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -1155,7 +1155,7 @@
         },
         "sss": {
             "min": 0,
-            "max": 64,
+            "max": 0,
             "invert": false
         },
         "recursive": [],
@@ -1171,7 +1171,7 @@
     "beehive_side": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 178,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 58,
@@ -1246,7 +1246,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "beetroots_stage_1": {
@@ -1273,7 +1274,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "beetroots_stage_2": {
@@ -1300,7 +1302,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "beetroots_stage_3": {
@@ -1327,7 +1330,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "bee_nest_bottom": {
@@ -1360,7 +1364,7 @@
     "bee_nest_front": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 104,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 150,
@@ -1387,10 +1391,10 @@
     "bee_nest_front_honey": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 7,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 20,
+            "roughness_min": 44,
             "roughness_max": 213,
             "invert_metal": false,
             "invert_emissive": false,
@@ -1398,7 +1402,7 @@
         },
         "sss": {
             "min": 0,
-            "max": 64,
+            "max": 0,
             "invert": false
         },
         "recursive": [],
