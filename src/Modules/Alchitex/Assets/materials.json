@@ -56,7 +56,7 @@
     "acacia_trapdoor": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 219,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 82,
@@ -88,7 +88,7 @@
             "emissive_max": 0,
             "roughness_min": 0,
             "roughness_max": 19,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -115,7 +115,7 @@
             "emissive_max": 26,
             "roughness_min": 0,
             "roughness_max": 17,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -150,9 +150,9 @@
             "emissive_max": 0,
             "roughness_min": 35,
             "roughness_max": 88,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -177,9 +177,9 @@
             "emissive_max": 0,
             "roughness_min": 35,
             "roughness_max": 88,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -928,7 +928,7 @@
     "barrel_side": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 235,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 67,
@@ -955,7 +955,7 @@
     "barrel_top": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 231,
+            "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
             "roughness_min": 67,
@@ -2183,7 +2183,7 @@
             "emissive_max": 0,
             "roughness_min": 0,
             "roughness_max": 34,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -2534,7 +2534,7 @@
             "emissive_max": 10,
             "roughness_min": 0,
             "roughness_max": 17,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -21915,7 +21915,7 @@
             "emissive_max": 17,
             "roughness_min": 0,
             "roughness_max": 17,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -23734,7 +23734,7 @@
             "emissive_max": 15,
             "roughness_min": 0,
             "roughness_max": 17,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
@@ -30635,7 +30635,7 @@
             "emissive_max": 11,
             "roughness_min": 0,
             "roughness_max": 17,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
             "invert_roughness": true
         },
