@@ -26,7 +26,23 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 /// entry is left completely untouched - only genuinely new names get written, so the
 /// artist can always go straight to whatever's new after a run instead of re-diffing the
 /// whole file. The output is always written back with "default" first, then every other
-/// key alphabetical, so new entries land in a predictable, easy-to-locate place.
+/// key alphabetical, so new entries land in a predictable, easy-to-locate place - and
+/// because that ordering is applied to the whole set, a file that had drifted out of order
+/// comes back sorted.
+///
+/// -- THE OUTPUT IS A FOLDER, NOT A FILE, AND THAT IS A BUG FIX ------------------------
+///
+/// The caller picks the folder materials.json lives in; this appends to whatever is already
+/// there. It used to take the path from a save-file picker so the artist could point at
+/// their existing materials.json directly - which read beautifully and destroyed the file.
+/// WinRT's FileSavePicker CREATES OR TRUNCATES the chosen file as part of returning it, so
+/// by the time the merge got round to reading "the existing file" it was reading zero bytes,
+/// found nothing to merge, and wrote back only the entries derived from this run. Every
+/// hand-tuned entry, gone, with the tool reporting success. A picker that hands back a path
+/// is not the same as a picker that hands back a path *and has already emptied it*.
+///
+/// Nothing here writes to disk until the merged result is complete - read fully into memory,
+/// merge, sort, one write.
 ///
 /// What gets derived per new texture, straight from the baked MER/MERS pixels:
 ///   - metal_min/max, emissive_min/max, roughness_min/max - the observed min/max of the
@@ -48,7 +64,8 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 /// </summary>
 public static class MaterialsBootstrapper
 {
-    public sealed record BootstrapResult(int EntriesWritten, int Skipped, int Failed, string OutputPath);
+    public sealed record BootstrapResult(
+        int EntriesWritten, int Skipped, int Failed, int ExistingEntries, string OutputPath);
 
     // Only used for JsonNode.ToJsonString, which walks an already-built node tree and so
     // needs no reflection over MaterialEntry. Every call that actually (de)serializes a
@@ -62,10 +79,14 @@ public static class MaterialsBootstrapper
     /// <summary>
     /// Reads every texture set under `sourcePackRoot` (root pack + any subpacks - both
     /// TextureSetHelper.ResolveTextureSets and Directory.GetFiles already recurse the
-    /// whole pack) and merges newly-derived entries into `outputPath` (a full materials.json
-    /// file path, chosen via a save-file dialog). Existing entries are never touched - see
-    /// the class doc comment. The file is backed up first regardless (`.bak-<timestamp>`),
-    /// as a safety net even though this is a merge rather than an overwrite.
+    /// whole pack) and merges newly-derived entries into `outputPath` - a full materials.json
+    /// file path, built by the caller from a picked FOLDER (see the class doc for why that
+    /// distinction is a bug fix rather than a preference). Existing entries are never
+    /// touched, and nothing is written until the merge is complete.
+    ///
+    /// No backup is taken. Two things replace it, and both are better than a .bak file the
+    /// developer never asked for: the merge is append-only, and LoadExistingEntries throws
+    /// rather than proceeding if it can't read what's already there.
     /// </summary>
     public static BootstrapResult GenerateFromExistingPack(string sourcePackRoot, string outputPath)
     {
@@ -74,8 +95,10 @@ public static class MaterialsBootstrapper
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
+        // Read the whole existing file into memory FIRST, and don't touch the file on disk
+        // until the merged result is ready to be written in one go.
         var merged = LoadExistingEntries(outputPath);
-        BackUpExistingFileIfPresent(outputPath);
+        var existingEntries = merged.Count;
 
         var written = 0;
         var skipped = 0;
@@ -91,7 +114,7 @@ public static class MaterialsBootstrapper
             // defaults in its property initializers, but every property is nullable now
             // (that's what makes per-property fallback possible), so an empty entry
             // serializes to nothing at all and the file would ship a `"default": {}`.
-            merged["default"] = BuildDefaultEntry();
+            merged["default"] = ToNode(BuildDefaultEntry());
             written++;
         }
 
@@ -124,7 +147,7 @@ public static class MaterialsBootstrapper
                 }
 
                 var includeSss = resolved.SetNode["metalness_emissive_roughness_subsurface"] != null;
-                merged[name] = DeriveEntry(loaded.ColorBmp, loaded.MerBmp, includeSss);
+                merged[name] = ToNode(DeriveEntry(loaded.ColorBmp, loaded.MerBmp, includeSss));
                 written++;
             }
             catch (Exception ex)
@@ -142,49 +165,79 @@ public static class MaterialsBootstrapper
 
         WriteOrdered(merged, outputPath);
 
-        Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: wrote {written} new entries ({skipped} skipped, {failed} failed) to '{outputPath}'.");
-        return new BootstrapResult(written, skipped, failed, outputPath);
+        Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: merged {written} new entries into {existingEntries} existing ({skipped} skipped, {failed} failed) -> '{outputPath}'.");
+        return new BootstrapResult(written, skipped, failed, existingEntries, outputPath);
     }
 
-    /// <summary>Loads `outputPath`'s existing entries to merge into, if it exists.
-    /// A parse failure degrades to "treat as empty" rather than throwing - the backup
-    /// taken right after this call still protects whatever was actually on disk.</summary>
-    private static Dictionary<string, MaterialEntry> LoadExistingEntries(string outputPath)
+    /// <summary>
+    /// The existing file's entries, as raw JSON nodes, or empty if there is no file yet.
+    ///
+    /// **Nodes rather than deserialized MaterialEntry objects, deliberately.** The merge is
+    /// append-only - an existing entry is never read, only kept - so there is no reason to
+    /// model one, and modelling one is actively harmful: anything MaterialEntry can't
+    /// represent (a hand-written field with a typo'd type, a property added in a later
+    /// version, a comment-style key) would be silently normalised away or drop the whole
+    /// entry. At node level every existing entry round-trips exactly as written.
+    ///
+    /// **Throws** if the file exists but isn't a JSON object. That is the safety net that
+    /// replaces the backup this used to take: the alternative - carrying on with an empty
+    /// set - would rewrite the artist's whole file as just the newly derived entries, which
+    /// is the one outcome worth failing loudly over.
+    /// </summary>
+    private static Dictionary<string, JsonNode> LoadExistingEntries(string outputPath)
     {
-        if (!File.Exists(outputPath))
-            return new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
+        var entries = new Dictionary<string, JsonNode>(StringComparer.OrdinalIgnoreCase);
 
-        try
+        if (!File.Exists(outputPath)) return entries;
+
+        var raw = File.ReadAllText(outputPath);
+        if (string.IsNullOrWhiteSpace(raw)) return entries;
+
+        // Comments and trailing commas, same as MaterialsConfig.Load - this file is hand
+        // edited, and refusing to merge into it over a comment would be absurd.
+        var parsed = JsonNode.Parse(raw, documentOptions: new JsonDocumentOptions
         {
-            var raw = File.ReadAllText(outputPath);
-            var parsed = JsonSerializer.Deserialize(raw, AlchitexJsonContext.Default.DictionaryStringMaterialEntry);
-            return parsed != null
-                ? new Dictionary<string, MaterialEntry>(parsed, StringComparer.OrdinalIgnoreCase)
-                : new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
-        }
-        catch (Exception ex)
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+        });
+
+        if (parsed is not JsonObject root)
+            throw new InvalidDataException($"'{outputPath}' exists but isn't a JSON object of texture names - refusing to overwrite it.");
+
+        foreach (var property in root)
         {
-            Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: couldn't parse existing '{outputPath}' ({ex.Message}) - treating as empty for this merge; a backup of the original is taken before writing.");
-            return new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
+            // Detached from its parent document, or it can't be re-parented on write.
+            if (property.Value is not null) entries[property.Key] = property.Value.DeepClone();
         }
+
+        Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: merging into {entries.Count} existing entries from '{outputPath}'.");
+        return entries;
     }
 
-    /// <summary>Writes the merged entry set with "default" first, then every other key
-    /// alphabetical (OrdinalIgnoreCase) - so newly-appended entries land in a predictable,
-    /// easy-to-locate place rather than wherever Dictionary enumeration happened to put
-    /// them.</summary>
-    private static void WriteOrdered(Dictionary<string, MaterialEntry> entries, string outputPath)
+    private static JsonNode ToNode(MaterialEntry entry)
+        => JsonSerializer.SerializeToNode(entry, AlchitexJsonContext.Default.MaterialEntry)!;
+
+    /// <summary>
+    /// Writes the merged set with "default" first, then every other key alphabetical
+    /// (OrdinalIgnoreCase).
+    ///
+    /// This sorts the WHOLE set, existing entries included - not just the new ones - so a
+    /// file that had drifted out of order (hand-appended, merged from another pack) comes
+    /// back sorted for free. That is also what makes "where did my new entries go" answerable
+    /// without diffing: they are wherever the alphabet puts them.
+    /// </summary>
+    private static void WriteOrdered(Dictionary<string, JsonNode> entries, string outputPath)
     {
         var ordered = new JsonObject();
 
         if (entries.TryGetValue("default", out var defaultEntry))
-            ordered["default"] = JsonSerializer.SerializeToNode(defaultEntry, AlchitexJsonContext.Default.MaterialEntry);
+            ordered["default"] = defaultEntry;
 
         foreach (var key in entries.Keys
                      .Where(k => !string.Equals(k, "default", StringComparison.OrdinalIgnoreCase))
                      .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
         {
-            ordered[key] = JsonSerializer.SerializeToNode(entries[key], AlchitexJsonContext.Default.MaterialEntry);
+            ordered[key] = entries[key];
         }
 
         File.WriteAllText(outputPath, ordered.ToJsonString(WriteOptions));
@@ -518,20 +571,4 @@ public static class MaterialsBootstrapper
             Invert = MaterialDefaults.NormalInvert,
         },
     };
-
-    private static void BackUpExistingFileIfPresent(string outputPath)
-    {
-        if (!File.Exists(outputPath)) return;
-
-        var backupPath = $"{outputPath}.bak-{DateTime.Now:yyyyMMdd_HHmmss}";
-        try
-        {
-            File.Copy(outputPath, backupPath, overwrite: false);
-            Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: backed up existing materials.json to '{backupPath}' before overwriting.");
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[ALCHITEX] MaterialsBootstrapper: couldn't back up existing materials.json ({ex.Message}) - proceeding anyway.");
-        }
-    }
 }

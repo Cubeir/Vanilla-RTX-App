@@ -1529,11 +1529,16 @@ public sealed partial class Alchitex : Window
 
     private async void GenerateMaterialsConfigButton_Click(object sender, RoutedEventArgs e)
     {
-        var sourceFolder = await PickFolderAsync();
+        var sourceFolder = await PickFolderAsync("Use as source pack");
         if (sourceFolder == null) return;
 
-        var outputPath = await PickSaveMaterialsFileAsync();
-        if (outputPath == null) return;
+        // A folder, not the materials.json itself. Pointing a save-file picker at the
+        // existing file reads better and empties it before this ever opens it - see
+        // MaterialsBootstrapper's class comment.
+        var destinationFolder = await PickFolderAsync("Merge into this folder");
+        if (destinationFolder == null) return;
+
+        var outputPath = System.IO.Path.Combine(destinationFolder, "materials.json");
 
         SetGenerationControlsEnabled(false);
         GenerateProgressBar.Visibility = Visibility.Visible;
@@ -1544,8 +1549,12 @@ public sealed partial class Alchitex : Window
         {
             var result = await WhileWaitingAsync(
                 () => Task.Run(() => MaterialsBootstrapper.GenerateFromExistingPack(sourceFolder, outputPath)));
-            SetStatusThenRevert($"materials.json updated: {result.EntriesWritten} new entries " +
-                                $"({result.Skipped} skipped, {result.Failed} failed) -> {result.OutputPath}");
+            // ExistingEntries is in the message on purpose: a merge that silently found
+            // nothing to merge into is exactly the failure this tool used to have, and
+            // "into 0 existing" says so at a glance.
+            SetStatusThenRevert($"materials.json: {result.EntriesWritten} new entries merged into " +
+                                $"{result.ExistingEntries} existing ({result.Skipped} skipped, " +
+                                $"{result.Failed} failed) -> {result.OutputPath}");
         }
         catch (Exception ex)
         {
@@ -1561,16 +1570,19 @@ public sealed partial class Alchitex : Window
     }
 
     /// <summary>
-    /// Single-folder picker helper, used for the bootstrap button's source pack.
+    /// Single-folder picker helper. The bootstrap button opens it twice in a row - source
+    /// pack, then where materials.json lives - so <paramref name="commitText"/> labels the
+    /// confirm button, or the second dialog is indistinguishable from the first.
     /// Debug-only tool, so the standard OS folder picker is simplest to build and least
     /// likely to need maintenance later.
     /// </summary>
-    private async Task<string?> PickFolderAsync()
+    private async Task<string?> PickFolderAsync(string? commitText = null)
     {
         var picker = new FolderPicker();
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
         picker.FileTypeFilter.Add("*");
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
+        if (commitText != null) picker.CommitButtonText = commitText;
 
         var folder = await picker.PickSingleFolderAsync();
         return folder?.Path;
@@ -1798,24 +1810,6 @@ public sealed partial class Alchitex : Window
         }
     }
 
-    /// <summary>
-    /// Save-file picker for the bootstrap button's output materials.json - lets the
-    /// artist target their existing materials.json directly (for the merge/append
-    /// workflow - see MaterialsBootstrapper) instead of picking a destination folder and
-    /// always landing on a fixed filename.
-    /// </summary>
-    private async Task<string?> PickSaveMaterialsFileAsync()
-    {
-        var picker = new FileSavePicker();
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
-        picker.SuggestedFileName = "materials";
-        picker.DefaultFileExtension = ".json";
-        picker.FileTypeChoices.Add("JSON", new List<string> { ".json" });
-        picker.SuggestedStartLocation = PickerLocationId.Desktop;
-
-        var file = await picker.PickSaveFileAsync();
-        return file?.Path;
-    }
 }
 
 
