@@ -1768,7 +1768,7 @@
             "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 32,
+            "roughness_min": 37,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -1783,7 +1783,7 @@
             {
                 "channel": "R",
                 "mer": {
-                    "emissive_min": 64,
+                    "emissive_min": 192,
                     "emissive_max": 255
                 }
             }
@@ -3209,6 +3209,7 @@
         },
         "recursive": [],
         "heightmap": {
+            "skip": true,
             "intensity": 1,
             "invert": false
         },
@@ -10663,7 +10664,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "dirt_podzol_top": {
@@ -14249,7 +14251,7 @@
             "metal_max": 0,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 32,
+            "roughness_min": 70,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -14264,7 +14266,7 @@
             {
                 "channel": "R",
                 "mer": {
-                    "emissive_min": 64,
+                    "emissive_min": 192,
                     "emissive_max": 255
                 }
             }
@@ -15930,7 +15932,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "grass_path_top": {
@@ -15984,7 +15987,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "grass_side_snowed": {
@@ -16011,7 +16015,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "grass_top": {
@@ -17742,6 +17747,7 @@
         },
         "recursive": [],
         "heightmap": {
+            "skip": true,
             "intensity": 1,
             "invert": false
         },
@@ -17769,6 +17775,7 @@
         },
         "recursive": [],
         "heightmap": {
+            "skip": true,
             "intensity": 1,
             "invert": false
         },
@@ -19915,7 +19922,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "mycelium_top": {
