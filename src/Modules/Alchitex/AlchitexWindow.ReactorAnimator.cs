@@ -34,6 +34,12 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///     confirmation dialog, a pack being uninstalled, a folder sweep. A single bright cell
 ///     orbits the eight perimeter tiles with a fading tail behind it, which is the one
 ///     stance here that reads as "this is not finished, and it is not your turn yet".
+///   - Flower dance: the pointer resting on the reactor with nothing else going on - the one
+///     gesture every other stance in this class ignores. The four corners and the four
+///     edge-midpoints swap places within their own ring, independently and on their own
+///     schedule, around a centre that keeps changing on its own; the bloom rises rather than
+///     falling, the opposite of press-and-hold. Means nothing about the pipeline, unlike
+///     everything else here - it exists purely so hovering has an answer at all.
 ///
 /// How often a phase reports decides what kind of behavior it can have, and getting this
 /// wrong is invisible in code and obvious on screen:
@@ -184,10 +190,12 @@ public sealed class ReactorAnimator
     private DispatcherTimer? _orbitTimer;
     private DispatcherTimer? _abortHintTimer;
     private DispatcherTimer? _abortHintEndTimer;
+    private DispatcherTimer? _flowerTimer;
     private DateTime _lastPulseUtc = DateTime.MinValue;
     private bool _isGenerating;
     private bool _isAbortHintActive;
     private bool _isWaiting;
+    private bool _isFlowerDancing;
     private bool _isInitialized;
 
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
@@ -243,6 +251,7 @@ public sealed class ReactorAnimator
         StopPressHold();
         StopOrbit();
         StopBloomLoop();
+        StopFlowerDance();
         ReleaseGrid();
         _isGenerating = false;
 
@@ -259,6 +268,10 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
+        // Pressing overrides the flower dance outright - two timers painting the same tiles
+        // would fight each other every tick, and "weaker" has to win over "stronger" the
+        // instant the finger comes down.
+        StopFlowerDance();
         ReleaseGrid();
         SetBloom(_random.NextDouble() * 0.10, 110);
 
@@ -296,6 +309,11 @@ public sealed class ReactorAnimator
     public void BeginGeneration()
     {
         if (!_isInitialized) return;
+
+        // Defensive rather than load-bearing given the button's own wiring: a press always
+        // precedes a click and already stops the dance, but keyboard activation doesn't
+        // necessarily go through PointerPressed first.
+        StopFlowerDance();
 
         _isGenerating = true;
         StartBloomLoop();
@@ -338,6 +356,7 @@ public sealed class ReactorAnimator
         _isWaiting = true;
         _orbitPhase = null; // the wait stance takes the orbit over from any phase using it
         StopPressHold();
+        StopFlowerDance(); // a dialog can open while the pointer is just resting on the button
         ReleaseGrid();
 
         _orbitHead = 0;
@@ -503,6 +522,7 @@ public sealed class ReactorAnimator
 
         if (_isAbortHintActive) return;
         _isAbortHintActive = true;
+        StopFlowerDance(); // shouldn't be up mid-run, but the cross has to win regardless
         ReleaseGrid();
 
         foreach (var (row, col) in AbortCross)
@@ -610,6 +630,147 @@ public sealed class ReactorAnimator
             if (r == row && c == col) return true;
 
         return false;
+    }
+
+    // ── Flower dance stance ──────────────────────────────────────────────────
+    //
+    // The four corners and the four edge-midpoints, read as two independent rings around a
+    // held centre - the "petals" the name comes from. Corners carry the two darkest blues,
+    // edges the two brightest, so the shape reads as an entirely different silhouette to the
+    // abort cross or the waiting orbit at a glance - no straight edges, no travelling band.
+
+    private static readonly (int Row, int Col)[] FlowerCorners =
+    {
+        (0, 0), (0, 2), (2, 2), (2, 0),
+    };
+
+    private static readonly (int Row, int Col)[] FlowerEdges =
+    {
+        (0, 1), (1, 2), (2, 1), (1, 0),
+    };
+
+    // Palette[3]/[4] are the two darkest blues, Palette[0]/[1] the two brightest - the same
+    // contrast the resting diagonal itself spans, just regrouped into two rings instead of
+    // one ramp.
+    private static readonly int[] FlowerCornerShades = { 3, 4 };
+    private static readonly int[] FlowerEdgeShades = { 0, 1 };
+
+    private const double FlowerStepMs = 130;
+    private const double FlowerSwapDurationMs = 110;
+    private const double FlowerCenterDurationMs = 90;
+    private const double FlowerBloomMs = 260;
+    private const double FlowerBloomMin = 0.90;
+    private const double FlowerBloomMax = 1.00;
+
+    // Index into FlowerCornerShades/FlowerEdgeShades, one per ring slot. Null whenever the
+    // dance isn't running - StepFlower and PaintFlower both bail on that rather than assume
+    // BeginFlowerDance always ran first.
+    private int[]? _flowerCornerAssignment;
+    private int[]? _flowerEdgeAssignment;
+
+    /// <summary>
+    /// Pointer resting on the reactor with nothing running: the two rings start swapping
+    /// their tiles' colours amongst themselves, independently and on their own schedule, and
+    /// the bloom rises rather than falls - the opposite of press-and-hold, and the only
+    /// stance in this class that answers "the pointer is here" rather than "here's what the
+    /// pipeline is doing".
+    ///
+    /// The caller is expected to check IsGenerating first - BeginAbortHint owns hover during
+    /// a run - but this bails on its own too, so a race between the two can't leave the
+    /// flower running underneath the cross. Safe to call twice; the second call is a no-op.
+    /// </summary>
+    public void BeginFlowerDance()
+    {
+        if (!_isInitialized || _isGenerating || _isFlowerDancing) return;
+
+        _isFlowerDancing = true;
+        StopPressHold();
+        ReleaseGrid();
+
+        // Checkerboard start - opposite ring slots matching - so the very first frame already
+        // reads as a flower instead of needing a few ticks to separate out of a solid colour.
+        _flowerCornerAssignment = new[] { 0, 1, 0, 1 };
+        _flowerEdgeAssignment = new[] { 0, 1, 0, 1 };
+
+        PaintFlower(FlowerSwapDurationMs);
+        AnimateTile(1, 1, _random.Next(Palette.Length), FlowerCenterDurationMs);
+        SetBloom(FlowerBloomMin + _random.NextDouble() * (FlowerBloomMax - FlowerBloomMin), FlowerBloomMs);
+
+        if (AnimationsSuspended) return;
+
+        StopFlowerTimer();
+        _flowerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(FlowerStepMs) };
+        _flowerTimer.Tick += (s, e) => StepFlower();
+        _flowerTimer.Start();
+    }
+
+    /// <summary>Pointer left while just hovering. Settles the grid and the bloom back to
+    /// rest, the same as every other stance that isn't mid-run.</summary>
+    public void EndFlowerDance()
+    {
+        if (!_isInitialized || !_isFlowerDancing) return;
+
+        EnterRest();
+    }
+
+    private void StepFlower()
+    {
+        if (_flowerCornerAssignment == null || _flowerEdgeAssignment == null) return;
+
+        // Each ring swaps one randomly-chosen adjacent pair most ticks, staggered
+        // independently - the same "on its own schedule" trick the abort cross uses on its
+        // three reds, so the two rings never read as locked to the same beat.
+        if (_random.NextDouble() < 0.7) SwapAdjacent(_flowerCornerAssignment);
+        if (_random.NextDouble() < 0.7) SwapAdjacent(_flowerEdgeAssignment);
+
+        PaintFlower(FlowerSwapDurationMs);
+
+        // The centre answers to neither ring's schedule - a fresh, independent roll every
+        // single tick, which is what makes it read as "rapidly" against rings that only
+        // swap most ticks.
+        AnimateTile(1, 1, _random.Next(Palette.Length), FlowerCenterDurationMs);
+    }
+
+    private void SwapAdjacent(int[] ring)
+    {
+        var i = _random.Next(ring.Length);
+        var j = (i + 1) % ring.Length;
+        (ring[i], ring[j]) = (ring[j], ring[i]);
+    }
+
+    private void PaintFlower(double durationMs)
+    {
+        if (_flowerCornerAssignment == null || _flowerEdgeAssignment == null) return;
+
+        for (var i = 0; i < FlowerCorners.Length; i++)
+        {
+            var (row, col) = FlowerCorners[i];
+            AnimateTile(row, col, FlowerCornerShades[_flowerCornerAssignment[i]], durationMs);
+        }
+
+        for (var i = 0; i < FlowerEdges.Length; i++)
+        {
+            var (row, col) = FlowerEdges[i];
+            AnimateTile(row, col, FlowerEdgeShades[_flowerEdgeAssignment[i]], durationMs);
+        }
+    }
+
+    /// <summary>Tears down the dance's timer and state without touching the grid or the
+    /// bloom - callers that need those settled go through EnterRest instead.</summary>
+    private void StopFlowerDance()
+    {
+        StopFlowerTimer();
+        _isFlowerDancing = false;
+        _flowerCornerAssignment = null;
+        _flowerEdgeAssignment = null;
+    }
+
+    private void StopFlowerTimer()
+    {
+        if (_flowerTimer == null) return;
+
+        _flowerTimer.Stop();
+        _flowerTimer = null;
     }
 
     // ── Per-phase behavior ───────────────────────────────────────────────────
@@ -1282,6 +1443,7 @@ public sealed class ReactorAnimator
         StopPressHold();
         StopOrbit();
         StopAbortHint();
+        StopFlowerDance();
         StopBloomLoop();
 
         _bloomShot?.Stop();

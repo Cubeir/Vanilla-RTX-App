@@ -386,18 +386,27 @@ public sealed partial class Alchitex : Window
         _reactor = new ReactorAnimator(ReactorTileGrid, ReactorBloom);
         _reactor.Initialize();
 
-        // Press-and-hold and the abort stance are both pointer states, not clicks - the
-        // button's own Click event fires too late and only once. Which one a given gesture
-        // means depends entirely on whether a run is going: idle, the reactor winds up;
-        // running, it shows the red X and a click stops the run.
+        // Press-and-hold, the flower dance and the abort stance are all pointer states, not
+        // clicks - the button's own Click event fires too late and only once. Which one a
+        // given gesture means depends entirely on whether a run is going: idle, hovering
+        // starts the flower dance and pressing winds the reactor up; running, hovering shows
+        // the red X instead and a click stops the run.
         GenerateButton.AddHandler(UIElement.PointerEnteredEvent,
-            new PointerEventHandler((s, e) => { if (IsGenerating) _reactor?.BeginAbortHint(); }), handledEventsToo: true);
+            new PointerEventHandler((s, e) =>
+            {
+                if (IsGenerating) _reactor?.BeginAbortHint();
+                else _reactor?.BeginFlowerDance();
+            }), handledEventsToo: true);
 
         GenerateButton.AddHandler(UIElement.PointerExitedEvent,
             new PointerEventHandler((s, e) =>
             {
                 _reactor?.EndAbortHint();
-                if (!IsGenerating) _reactor?.EndPressHold();
+                if (!IsGenerating)
+                {
+                    _reactor?.EndPressHold();
+                    _reactor?.EndFlowerDance();
+                }
             }), handledEventsToo: true);
 
         GenerateButton.AddHandler(UIElement.PointerPressedEvent,
