@@ -333,8 +333,8 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <!-- Alchitex controls - fixed height -->
-                        <RowDefinition Height="Auto" />
-                        <!-- progress bar, doubling as the divider -->
+                        <RowDefinition Height="6" />
+                        <!-- bevel seam, doubling as the progress bar's track -->
                         <RowDefinition Height="Auto" />
                         <!-- announcements -->
                     </Grid.RowDefinitions>
@@ -609,17 +609,45 @@
                     </Grid>
 
 
-                    <!-- ── Progress bar, sitting on the seam between the controls and
-                         the announcements ── -->
-                    <ProgressBar x:Name="GenerateProgressBar"
-                                 Grid.Row="1"
-                                 Visibility="Collapsed"
-                                 IsIndeterminate="False"
-                                 Minimum="0"
-                                 Maximum="1"
-                                 Margin="0"
-                                 CornerRadius="0"
-                                 HorizontalAlignment="Stretch" />
+                    <!-- ── Seam: 6px bevel between the controls and the announcements,
+                         which the progress bar shares rather than replaces. Two flat
+                         3px fills read as one carved-in groove - dark edge above
+                         (nearer the controls), light edge below (nearer the
+                         announcements) - the same two-fill trick as the options/queue
+                         bevel above, just horizontal and inverted.
+
+                         At rest the bevel alone reads as the seam. While generation
+                         runs, the bar is made exactly as thick as the seam (6px, same
+                         RowSpan) so it covers both lines outright instead of sitting
+                         as a thin sliver on top of them. ── -->
+                    <Grid Grid.Row="1"
+                          Height="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="3" />
+                            <!-- bevel, dark edge -->
+                            <RowDefinition Height="3" />
+                            <!-- bevel, light edge -->
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                                Opacity="0.66" />
+                        <Border Grid.Row="1"
+                                Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                                Opacity="0.33" />
+
+                        <ProgressBar x:Name="GenerateProgressBar"
+                                     Grid.RowSpan="2"
+                                     Height="6"
+                                     VerticalAlignment="Stretch"
+                                     Visibility="Collapsed"
+                                     IsIndeterminate="False"
+                                     Minimum="0"
+                                     Maximum="1"
+                                     Margin="0"
+                                     CornerRadius="0"
+                                     HorizontalAlignment="Stretch" />
+                    </Grid>
 
                     <!-- ── PSA / announcements ── -->
                     <Border x:Name="AnnouncementBackground"
