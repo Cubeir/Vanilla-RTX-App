@@ -120,7 +120,7 @@
                         Grid.Row="1"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
-                        Padding="16,20,38,20"
+                        Padding="16,16,40,16"
                         Margin="20,8,20,16"
                         CornerRadius="5"
                         IsTextScaleFactorEnabled="False"
