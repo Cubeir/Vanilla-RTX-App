@@ -652,10 +652,10 @@
 
                                 <Border Grid.Row="0"
                                         Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                                        Opacity="0.66" />
+                                        Opacity="0.8" />
                                 <Border Grid.Row="1"
                                         Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                                        Opacity="0.33" />
+                                        Opacity="0.4" />
 
                                 <ProgressBar x:Name="GenerateProgressBar"
                                              Grid.RowSpan="2"

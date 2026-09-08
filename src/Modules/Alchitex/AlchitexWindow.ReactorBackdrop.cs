@@ -113,7 +113,7 @@ internal sealed class ReactorBackdrop
     // -- Motion ---------------------------------------------------------------
 
     // The tick rate is the frame rate. See the class remarks for why it is this low.
-    private const double TickMs = 175;
+    private const double TickMs = 150;
 
     // A tick costs one composition frame whatever it touches, so this is about how fast the
     // field turns over, not about cost. It scales with the field so a large window doesn't
