@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Elevated helper for Helpers.ReplaceFilesWithElevation (see that method's remarks for the
+    full design rationale). This project is intentionally NOT wired into the main app's
+    build/publish graph via a ProjectReference: its published, self-contained, single-file
+    output is checked into src\Assets\Tools\ and picked up by the main csproj as an ordinary
+    per-platform Content asset, the same way every other binary asset in this repo is shipped
+    (see CLAUDE.md §7 - assets are a hand-maintained list, not something rebuilt on every
+    compile). Republish and re-copy after any change here - see the Publish-FileReplaceHelper
+    section of README/CLAUDE.md-adjacent notes, or just re-run the three publish commands for
+    win-x86/win-x64/win-arm64 and overwrite the checked-in exes.
+
+    Self-contained + single-file rather than framework-dependent: this has to be able to run
+    standalone with zero ambiguity about whether a matching .NET runtime happens to be
+    sitting in the same folder. It's small (trimmed, no WinAppSDK/WinRT/XAML dependency at
+    all - just System.IO), so the size cost of bundling its own runtime is modest.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Vanilla_RTX_App.FileReplaceHelper</RootNamespace>
+    <AssemblyName>FileReplaceHelper</AssemblyName>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Publish settings - only take effect on `dotnet publish`, not plain `dotnet build`. -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+    <!-- No console window - Process.Start with Verb="runas" (required for elevation) ignores
+         CreateNoWindow/WindowStyle, so this is the only way to guarantee the elevated helper
+         never flashes a window. It still writes to stderr for anyone running it manually. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+</Project>

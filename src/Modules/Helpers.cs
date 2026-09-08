@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -407,15 +408,25 @@ public static class Helpers
 
     #endregion NETWORK
 
-    // TODO: Re-examine the approach, could it be improved? or is it reliable enough?
-    // maybe not saving a file and directly launching the command? -- AVs are the most concerning thing about this, possibly?
     /// <summary>
-    /// Copies a set of files using a single elevated batch script (one UAC prompt for all files).
-    /// Returns true only if the elevated process exits with code 0.
+    /// Copies a set of files by launching FileReplaceHelper.exe (one UAC prompt for all
+    /// files). Returns true only if the elevated process exits with code 0.
+    ///
+    /// This used to write a temp .bat file and elevate cmd.exe against it - functionally
+    /// fine (it never failed a user), but "drop a script to temp and immediately run it
+    /// elevated" is exactly the shape stricter AVs sometimes flag. FileReplaceHelper is a
+    /// small, purpose-built, self-contained exe whose own manifest requests
+    /// requireAdministrator, so Windows shows the standard elevation prompt the moment it's
+    /// launched - no cmd.exe, no shell, no script on disk. Source/dest pairs go straight in
+    /// as command-line arguments; see src\Tools\FileReplaceHelper for the helper itself and
+    /// its own remarks on why it's a checked-in asset rather than a live project reference.
+    ///
+    /// The app itself is never elevated and never restarts either way - only the helper
+    /// process is, per invocation, same as before.
     /// </summary>
     /// <param name="filesToReplace">List of (sourcePath, destPath) pairs to copy.</param>
     /// <param name="logPrefix">Tag used in Trace output, e.g. "[BetterRTX]", "[DLSS]", "[LUTManager]".</param>
-    /// <param name="tempFilePrefix">Prefix for the temp batch file name, to keep temp files identifiable per-feature.</param>
+    /// <param name="tempFilePrefix">Unused - kept so existing call sites don't need to change.</param>
     public static async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace,
         string logPrefix = "[Helpers]", string tempFilePrefix = "file_replace")
     {
@@ -427,35 +438,31 @@ public static class Helpers
                 return false;
             }
 
+            var helperPath = Path.Combine(AppContext.BaseDirectory, "Tools", "FileReplaceHelper.exe");
+            if (!File.Exists(helperPath))
+            {
+                Trace.WriteLine($"{logPrefix} FileReplaceHelper.exe not found at expected path: {helperPath}");
+                return false;
+            }
+
             return await Task.Run(() =>
             {
-                var scriptLines = new List<string> { "@echo off" };
-                foreach (var (sourcePath, destPath) in filesToReplace)
-                    scriptLines.Add($"copy /Y \"{sourcePath}\" \"{destPath}\" >nul 2>&1");
-                scriptLines.Add("exit %ERRORLEVEL%");
+                var arguments = string.Join(' ', filesToReplace
+                    .SelectMany(f => new[] { f.sourcePath, f.destPath })
+                    .Select(p => $"\"{p}\""));
 
-                var batchScript = string.Join("\r\n", scriptLines);
-                var tempBatchPath = Path.Combine(
-                    Path.GetTempPath(),
-                    $"{tempFilePrefix}_{Guid.NewGuid():N}.bat");
+                Trace.WriteLine($"{logPrefix} Launching elevated helper for {filesToReplace.Count} file(s)");
 
-                File.WriteAllText(tempBatchPath, batchScript);
-
-                Trace.WriteLine($"{logPrefix} Batch script: {tempBatchPath}");
-                Trace.WriteLine($"{logPrefix} Contents:\n{batchScript}");
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = helperPath,
+                    Arguments = arguments,
+                    Verb = "runas",
+                    UseShellExecute = true
+                };
 
                 try
                 {
-                    var startInfo = new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        Arguments = $"/c \"{tempBatchPath}\"",
-                        Verb = "runas",
-                        UseShellExecute = true,
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden
-                    };
-
                     var process = Process.Start(startInfo);
                     if (process != null)
                     {
@@ -467,15 +474,10 @@ public static class Helpers
                     Trace.WriteLine($"{logPrefix} Process.Start returned null");
                     return false;
                 }
-                finally
+                catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED - user declined the UAC prompt
                 {
-                    try
-                    {
-                        Thread.Sleep(300);
-                        if (File.Exists(tempBatchPath))
-                            File.Delete(tempBatchPath);
-                    }
-                    catch { }
+                    Trace.WriteLine($"{logPrefix} User declined the elevation prompt");
+                    return false;
                 }
             });
         }
