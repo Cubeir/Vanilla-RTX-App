@@ -611,6 +611,7 @@
                     <Border x:Name="AnnouncementBackground"
                             Grid.Row="1"
                             Padding="6"
+                            BorderThickness="0"
                             CornerRadius="0"
                             Margin="0"
                             HorizontalAlignment="Stretch"
@@ -651,6 +652,7 @@
                                 </Grid.RowDefinitions>
 
                                 <Border Grid.Row="0"
+                                        Margin="0,1,0,0"
                                         Background="{ThemeResource CardBackgroundFillColorSecondary}"
                                         Opacity="0.8" />
                                 <Border Grid.Row="1"
