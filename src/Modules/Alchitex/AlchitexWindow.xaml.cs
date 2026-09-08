@@ -833,16 +833,10 @@ public sealed partial class Alchitex : Window
     /// </summary>
     private void MainScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e) => SyncAnnouncementMinHeight();
 
-    /// <summary>The 6px bevel seam between the controls and the announcements is a fixed
-    /// row height regardless of whether the progress bar is currently occupying it - the
-    /// bar is sized to exactly fill the seam rather than add to it - so unlike the controls
-    /// area's height, this doesn't need to be read off a live element.</summary>
-    private const double ControlsSeamHeight = 6;
-
     private void SyncAnnouncementMinHeight()
     {
         AnnouncementBackground.MinHeight = Math.Max(
-            0, MainScrollViewer.ActualHeight - AlchitexControlsArea.Height - ControlsSeamHeight);
+            0, MainScrollViewer.ActualHeight - AlchitexControlsArea.Height);
     }
 
     // ── PBR generation ───────────────────────────────────────────────────────
