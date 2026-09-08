@@ -147,7 +147,7 @@ public sealed partial class PsaCard : UserControl
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         if (_kind != PsaKind.Pinned)
-            AnimateOpacity(DismissButton, to: 0.7, durationMs: FADE_IN_MS);
+            AnimateOpacity(DismissButton, to: 0.9, durationMs: FADE_IN_MS);
     }
 
     private void Card_PointerExited(object sender, PointerRoutedEventArgs e)
