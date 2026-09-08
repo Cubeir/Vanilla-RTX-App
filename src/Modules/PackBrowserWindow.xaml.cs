@@ -60,7 +60,7 @@ public sealed partial class PackBrowserWindow : Window
     /// PackBrowserBadgeVFX ever name them.
     /// </summary>
     internal const string ChemistryTag = "Chemistry";
-    internal const string UnknownCapabilityTag = "Unknown";
+    internal const string UnknownCapabilityTag = "Unknown Capability";
 
     private static readonly string VibrantVisualsPoopJoke =
         $"Vibrant Visuals{(Random.Shared.Next(100) == 49 ? " 💩" : "")}";
@@ -299,7 +299,7 @@ public sealed partial class PackBrowserWindow : Window
     /// <summary>
     /// Resolves a display version string from a manifest header version token.
     /// Accepts a three-element int array [1,26,15] or a strict X.Y.Z string.
-    /// Anything else returns "Unknown" — matching the game's own fallback behaviour.
+    /// Anything else returns "Unknown"
     /// For legacy manifests, pass the raw string via <paramref name="rawString"/>.
     /// </summary>
     private string ResolveVersion(JToken? versionToken, string? rawString = null)
