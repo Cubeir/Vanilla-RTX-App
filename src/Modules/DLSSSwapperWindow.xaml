@@ -108,86 +108,149 @@
                                     Spacing="12"
                                     Margin="0,0,0,0" />
                         <StackPanel x:Name="DllListContainer"
-                                    Spacing="8"
-                                    Padding="0,0,0,8"/>
+                                    Spacing="12"
+                                    Padding="0,0,0,12"/>
                     </StackPanel>
                 </ScrollViewer>
 
                 <!-- ══════════════════════════════════════════
                      FIXED: Add DLSS files
                 ═══════════════════════════════════════════ -->
-                <Button x:Name="AddDllButton"
-                        Grid.Row="1"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Stretch"
-                        Padding="36,16,40,16"
+                <Border Grid.Row="1"
                         Margin="0"
                         CornerRadius="0"
-                        IsTextScaleFactorEnabled="False"
+                        BorderThickness="0"
                         Translation="0,2,512"
-                        AllowDrop="True"
-                        Click="AddDllButton_Click"
-                        DragOver="AddDllButton_DragOver"
-                        DragEnter="AddDllButton_DragEnter"
-                        DragLeave="AddDllButton_DragLeave"
-                        Drop="AddDllButton_Drop">
-                    <Button.Shadow>
+                        Background="Transparent">
+                    <Border.Shadow>
                         <ThemeShadow />
-                    </Button.Shadow>
-                    <Grid>
+                    </Border.Shadow>
+
+                    <Grid MinHeight="96"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Bottom">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75" />
-                            <ColumnDefinition Width="15" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="15" />
-                            <ColumnDefinition Width="Auto" />
+                            <!-- Add DLSS files -->
+                            <ColumnDefinition Width="1.8*" />
+                            <!-- Gap 6 px -->
+                            <ColumnDefinition Width="6" />
+                            <!-- Download DLSS files -->
+                            <ColumnDefinition Width="1*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0"
-                                Width="75"
-                                Height="75"
-                                CornerRadius="5"
-                                Background="Transparent">
-                            <FontIcon Glyph="&#xE710;"
-                                      FontSize="48"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      IsTextScaleFactorEnabled="False" />
-                        </Border>
+                        <!-- ── ADD DLSS FILES ─────────────────────── -->
+                        <Button x:Name="AddDllButton"
+                                Grid.Column="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="20,0,20,0"
+                                CornerRadius="0"
+                                BorderThickness="0"
+                                IsTextScaleFactorEnabled="False"
+                                AllowDrop="True"
+                                Click="AddDllButton_Click"
+                                DragOver="AddDllButton_DragOver"
+                                DragEnter="AddDllButton_DragEnter"
+                                DragLeave="AddDllButton_DragLeave"
+                                Drop="AddDllButton_Drop"
+                                ToolTipService.ToolTip="Drag and drop or browse for a DLSS DLL file to add (.dll or .zip with the dlls)">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="96" />
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="2"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="Add DLSS files"
-                                       FontWeight="SemiBold"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       IsTextScaleFactorEnabled="False" />
-                            <TextBlock Text="Drag and drop or browse for a DLSS DLL file to add (.dll or .zip with the dlls)"
-                                       FontSize="12"
-                                       Opacity="0.75"
-                                       Margin="0,2,0,0"
-                                       TextWrapping="Wrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       IsTextScaleFactorEnabled="False" />
-                        </StackPanel>
+                                <Border Grid.Column="0"
+                                        Width="96"
+                                        Height="96"
+                                        CornerRadius="5,0,0,5"
+                                        Background="Transparent">
+                                    <FontIcon Glyph="&#xE710;"
+                                              FontSize="44"
+                                              FontWeight="ExtraLight"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsTextScaleFactorEnabled="False" />
+                                </Border>
 
-                        <HyperlinkButton Grid.Column="4"
-                                         Content="Download DLSS files from here"
+                                <StackPanel Grid.Column="2"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="Add DLSS files"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               IsTextScaleFactorEnabled="False" />
+                                    <TextBlock Text="Drag and drop or browse for a DLSS DLL file to add (.dll or .zip with the dlls)"
+                                               FontSize="12"
+                                               Opacity="0.75"
+                                               Margin="0,2,0,0"
+                                               TextWrapping="Wrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- ── DOWNLOAD DLSS FILES ────────────────── -->
+                        <HyperlinkButton Grid.Column="2"
                                          NavigateUri="https://www.techpowerup.com/download/nvidia-dlss-dll/"
-                                         VerticalAlignment="Center"
-                                         FontWeight="Medium"
-                                         FontSize="14"
-                                         Padding="16,8,16,8"
-                                         Translation="0,0,8"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch"
+                                         HorizontalContentAlignment="Center"
+                                         Padding="0"
+                                         CornerRadius="0"
+                                         BorderThickness="0"
                                          IsTextScaleFactorEnabled="False"
-                                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                         CornerRadius="6">
-                            <HyperlinkButton.Shadow>
-                                <ThemeShadow />
-                            </HyperlinkButton.Shadow>
+                                         ToolTipService.ToolTip="Opens techpowerup.com/download/nvidia-dlss-dll">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Spacing="4">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Spacing="12">
+                                    <FontIcon Glyph="&#xE71B;"
+                                              FontSize="20"
+                                              VerticalAlignment="Center"
+                                              IsTextScaleFactorEnabled="False" />
+                                    <TextBlock Text="Download DLSS files"
+                                               FontWeight="SemiBold"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                                <TextBlock Text="Opens techpowerup.com"
+                                           FontSize="11"
+                                           Opacity="0.67"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
                         </HyperlinkButton>
+
+                        <!-- ── BEVELLED SPLIT SEAM ──────────────────── -->
+                        <Grid Grid.Column="0"
+                              HorizontalAlignment="Right"
+                              Width="3"
+                              Margin="0,0,-3,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
+
+                        <Grid Grid.Column="2"
+                              HorizontalAlignment="Left"
+                              Width="3"
+                              Margin="-3,0,0,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
                     </Grid>
-                </Button>
+                </Border>
             </Grid>
 
             <!-- Empty State -->

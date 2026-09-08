@@ -358,8 +358,9 @@ public sealed partial class DLSSSwapperWindow : Window
             IsEnabled = !isTooOld,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 38, 20),
-            Margin = new Thickness(0, 5, 0, 5),
+            Padding = new Thickness(0, 0, 40, 0),
+            Margin = new Thickness(0, 0, 0, 4),
+            MinHeight = 96,
             CornerRadius = new CornerRadius(5),
             Tag = dll,
             IsTextScaleFactorEnabled = false,
@@ -380,24 +381,25 @@ public sealed partial class DLSSSwapperWindow : Window
         };
 
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var iconBorder = new Border
         {
-            Width = 75,
-            Height = 75,
-            CornerRadius = new CornerRadius(5),
+            Width = 96,
+            Height = 96,
+            CornerRadius = new CornerRadius(5, 0, 0, 5),
             Background = new SolidColorBrush(Colors.Transparent)
         };
 
         var icon = new FontIcon
         {
             Glyph = "\uF156",
-            FontSize = 48,
+            FontSize = 44,
+            FontWeight = FontWeights.ExtraLight,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             IsTextScaleFactorEnabled = false

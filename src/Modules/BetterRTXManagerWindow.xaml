@@ -118,80 +118,141 @@
                 <!-- ══════════════════════════════════════════
                      FIXED: Add customized preset (.rtpack)
                 ═══════════════════════════════════════════ -->
-                <Button x:Name="AddPresetButton"
-                        Grid.Row="1"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Stretch"
-                        Padding="20,-4,40,-4"
+                <Border Grid.Row="1"
                         Margin="0"
-                        MinHeight="96"
                         CornerRadius="0"
-                        IsTextScaleFactorEnabled="False"
+                        BorderThickness="0"
                         Translation="0,2,512"
-                        AllowDrop="True"
-                        Click="AddPresetButton_Click"
-                        DragOver="AddPresetButton_DragOver"
-                        DragEnter="AddPresetButton_DragEnter"
-                        DragLeave="AddPresetButton_DragLeave"
-                        Drop="AddPresetButton_Drop">
-                    <Button.Shadow>
+                        Background="Transparent">
+                    <Border.Shadow>
                         <ThemeShadow />
-                    </Button.Shadow>
-                    <Grid>
+                    </Border.Shadow>
+
+                    <Grid MinHeight="96"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Bottom">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="96" />
-                            <ColumnDefinition Width="24" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="15" />
-                            <ColumnDefinition Width="Auto" />
+                            <!-- Add customized preset -->
+                            <ColumnDefinition Width="1.8*" />
+                            <!-- Gap 6 px -->
+                            <ColumnDefinition Width="6" />
+                            <!-- Create your own preset -->
+                            <ColumnDefinition Width="1*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0"
-                                Width="96"
-                                Height="96"
-                                CornerRadius="5,0,0,5"
-                                Background="Transparent">
-                            <FontIcon Glyph="&#xE710;"
-                                      FontSize="44"
-                                      FontWeight="ExtraLight"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      IsTextScaleFactorEnabled="False" />
-                        </Border>
+                        <!-- ── ADD CUSTOMIZED PRESET ──────────────── -->
+                        <Button x:Name="AddPresetButton"
+                                Grid.Column="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                HorizontalContentAlignment="Stretch"
+                                Padding="20,0,20,0"
+                                CornerRadius="0"
+                                BorderThickness="0"
+                                IsTextScaleFactorEnabled="False"
+                                AllowDrop="True"
+                                Click="AddPresetButton_Click"
+                                DragOver="AddPresetButton_DragOver"
+                                DragEnter="AddPresetButton_DragEnter"
+                                DragLeave="AddPresetButton_DragLeave"
+                                Drop="AddPresetButton_Drop"
+                                ToolTipService.ToolTip="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="96" />
+                                    <ColumnDefinition Width="24" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="2"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="Add customized preset (.rtpack)"
-                                       FontWeight="SemiBold"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       IsTextScaleFactorEnabled="False" />
-                            <TextBlock Text="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website"
-                                       FontSize="12"
-                                       Opacity="0.75"
-                                       Margin="0,2,0,0"
-                                       TextWrapping="Wrap"
-                                       TextTrimming="CharacterEllipsis"
-                                       IsTextScaleFactorEnabled="False" />
-                        </StackPanel>
+                                <Border Grid.Column="0"
+                                        Width="96"
+                                        Height="96"
+                                        CornerRadius="5,0,0,5"
+                                        Background="Transparent">
+                                    <FontIcon Glyph="&#xE710;"
+                                              FontSize="44"
+                                              FontWeight="ExtraLight"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              IsTextScaleFactorEnabled="False" />
+                                </Border>
 
-                        <HyperlinkButton Grid.Column="4"
-                                         Content="Create your own BetterRTX preset"
+                                <StackPanel Grid.Column="2"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="Add customized preset (.rtpack)"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="NoWrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               IsTextScaleFactorEnabled="False" />
+                                    <TextBlock Text="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website"
+                                               FontSize="12"
+                                               Opacity="0.75"
+                                               Margin="0,2,0,0"
+                                               TextWrapping="Wrap"
+                                               TextTrimming="CharacterEllipsis"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+
+                        <!-- ── CREATE YOUR OWN PRESET ─────────────── -->
+                        <HyperlinkButton Grid.Column="2"
                                          NavigateUri="https://bedrock.graphics/creator"
-                                         VerticalAlignment="Center"
-                                         FontWeight="Medium"
-                                         FontSize="14"
-                                         Padding="16,8,16,8"
-                                         Translation="0,0,8"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch"
+                                         HorizontalContentAlignment="Center"
+                                         Padding="0"
+                                         CornerRadius="0"
+                                         BorderThickness="0"
                                          IsTextScaleFactorEnabled="False"
-                                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                         CornerRadius="6">
-                            <HyperlinkButton.Shadow>
-                                <ThemeShadow />
-                            </HyperlinkButton.Shadow>
+                                         ToolTipService.ToolTip="Opens bedrock.graphics/creator">
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Spacing="4">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Spacing="12">
+                                    <FontIcon Glyph="&#xE71B;"
+                                              FontSize="20"
+                                              VerticalAlignment="Center"
+                                              IsTextScaleFactorEnabled="False" />
+                                    <TextBlock Text="Create your own preset"
+                                               FontWeight="SemiBold"
+                                               FontSize="14"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                                <TextBlock Text="Opens bedrock.graphics/creator"
+                                           FontSize="11"
+                                           Opacity="0.67"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
                         </HyperlinkButton>
+
+                        <!-- ── BEVELLED SPLIT SEAM ──────────────────── -->
+                        <Grid Grid.Column="0"
+                              HorizontalAlignment="Right"
+                              Width="3"
+                              Margin="0,0,-3,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
+
+                        <Grid Grid.Column="2"
+                              HorizontalAlignment="Left"
+                              Width="3"
+                              Margin="-3,0,0,0"
+                              IsHitTestVisible="False">
+                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                    BorderThickness="3,0,0,0" />
+                        </Grid>
                     </Grid>
-                </Button>
+                </Border>
             </Grid>
 
             <!-- Empty State -->
