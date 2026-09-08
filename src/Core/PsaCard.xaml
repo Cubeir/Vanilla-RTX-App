@@ -10,7 +10,7 @@
             CornerRadius="6"
             Padding="6"
             Translation="0,0,32"
-            Background="Transparent">
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
         <Border.Shadow>
             <ThemeShadow />
         </Border.Shadow>

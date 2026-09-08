@@ -1,8 +1,10 @@
 using System;
 using System.Diagnostics;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Vanilla_RTX_App.Core;
@@ -98,23 +100,26 @@ public sealed partial class PsaCard : UserControl
         }
 
         // ── Per-kind background, opacity, dismiss setup ───────────────────────
+        // CardBorder's Background is set in XAML via {ThemeResource CardBackgroundFillColorDefaultBrush}
+        // rather than fetched here via Application.Current.Resources[...] — that indexer doesn't
+        // follow the element's actual theme, so it rendered the same (effectively dark) shade in
+        // both Light and Dark mode. ThemeResource in XAML re-resolves against the real theme and
+        // updates live on theme changes, which a code-behind lookup can't do without replicating
+        // ThemeService's ThemeDictionaries workaround.
         switch (item.Kind)
         {
             case PsaKind.Pinned:
                 DismissButton.Visibility = Visibility.Collapsed;
-                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
-                    Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
                 ContentText.Opacity = 0.95;
                 break;
 
             case PsaKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, FormatCooldownTooltip(_cooldownMinutes)); // tooltip
-                CardBorder.Background = (Microsoft.UI.Xaml.Media.Brush)
-                    Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
                 ContentText.Opacity = 0.9;
                 break;
 
             case PsaKind.Permanent:
+                CardBorder.Background = new SolidColorBrush(Colors.Transparent);
                 CardBorder.Translation = System.Numerics.Vector3.Zero;
                 CardBorder.Shadow = null;
                 ContentText.Opacity = 0.85;
