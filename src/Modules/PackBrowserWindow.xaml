@@ -125,7 +125,7 @@
                         Margin="0"
                         CornerRadius="0"
                         BorderThickness="0"
-                        Translation="0,0,512"
+                        Translation="0,2,512"
                         Background="Transparent">
                     <Border.Shadow>
                         <ThemeShadow />

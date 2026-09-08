@@ -124,7 +124,7 @@
                         Margin="0"
                         CornerRadius="0"
                         IsTextScaleFactorEnabled="False"
-                        Translation="0,0,32"
+                        Translation="0,2,512"
                         AllowDrop="True"
                         Click="AddDllButton_Click"
                         DragOver="AddDllButton_DragOver"

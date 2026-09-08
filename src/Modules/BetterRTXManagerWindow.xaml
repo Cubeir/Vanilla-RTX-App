@@ -127,7 +127,7 @@
                         MinHeight="96"
                         CornerRadius="0"
                         IsTextScaleFactorEnabled="False"
-                        Translation="0,0,32"
+                        Translation="0,2,512"
                         AllowDrop="True"
                         Click="AddPresetButton_Click"
                         DragOver="AddPresetButton_DragOver"
