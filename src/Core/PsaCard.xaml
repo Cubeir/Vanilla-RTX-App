@@ -49,6 +49,8 @@
                     Visibility="Visible"
                     Opacity="1.0"
                     Style="{ThemeResource SubtleButtonStyle}"
+                    BorderBrush="#40808080"
+                    BorderThickness="1"
                     Width="22"
                     Height="22"
                     Padding="0"
