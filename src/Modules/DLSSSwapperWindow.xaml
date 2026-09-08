@@ -131,7 +131,7 @@
                           VerticalAlignment="Bottom">
                         <Grid.ColumnDefinitions>
                             <!-- Add DLSS files -->
-                            <ColumnDefinition Width="1.8*" />
+                            <ColumnDefinition Width="2.5*" />
                             <!-- Gap 6 px -->
                             <ColumnDefinition Width="6" />
                             <!-- Download DLSS files -->
@@ -194,6 +194,15 @@
                         </Button>
 
                         <!-- ── DOWNLOAD DLSS FILES ────────────────── -->
+                        <!-- Solid backdrop behind the hyperlink button: HyperlinkButton's own
+                             background is too translucent against the window now that it's
+                             not sitting on top of the Add button anymore. This mimics a
+                             regular button's background while leaving hover/pressed states
+                             to the hyperlink itself. -->
+                        <Rectangle Grid.Column="2"
+                                   Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                   IsHitTestVisible="False" />
+
                         <HyperlinkButton Grid.Column="2"
                                          NavigateUri="https://www.techpowerup.com/download/nvidia-dlss-dll/"
                                          HorizontalAlignment="Stretch"
@@ -203,15 +212,16 @@
                                          CornerRadius="0"
                                          BorderThickness="0"
                                          IsTextScaleFactorEnabled="False"
-                                         ToolTipService.ToolTip="Opens techpowerup.com/download/nvidia-dlss-dll">
+                                         ToolTipService.ToolTip="Opens techpowerup.com/download/nvidia-dlss-dll, a website which hosts all known DLSS .dll files.">
                             <StackPanel HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         Spacing="4">
                                 <StackPanel Orientation="Horizontal"
                                             HorizontalAlignment="Center"
-                                            Spacing="12">
+                                            Spacing="8">
                                     <FontIcon Glyph="&#xE71B;"
                                               FontSize="20"
+                                              Margin="0,3,0,0"
                                               VerticalAlignment="Center"
                                               IsTextScaleFactorEnabled="False" />
                                     <TextBlock Text="Download DLSS files"
@@ -220,7 +230,7 @@
                                                VerticalAlignment="Center"
                                                IsTextScaleFactorEnabled="False" />
                                 </StackPanel>
-                                <TextBlock Text="Opens techpowerup.com"
+                                <TextBlock Text="Go to techpowerup.com"
                                            FontSize="11"
                                            Opacity="0.67"
                                            TextWrapping="Wrap"

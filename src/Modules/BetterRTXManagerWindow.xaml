@@ -133,7 +133,7 @@
                           VerticalAlignment="Bottom">
                         <Grid.ColumnDefinitions>
                             <!-- Add customized preset -->
-                            <ColumnDefinition Width="1.8*" />
+                            <ColumnDefinition Width="2.5*" />
                             <!-- Gap 6 px -->
                             <ColumnDefinition Width="6" />
                             <!-- Create your own preset -->
@@ -196,6 +196,15 @@
                         </Button>
 
                         <!-- ── CREATE YOUR OWN PRESET ─────────────── -->
+                        <!-- Solid backdrop behind the hyperlink button: HyperlinkButton's own
+                             background is too translucent against the window now that it's
+                             not sitting on top of the Add button anymore. This mimics a
+                             regular button's background while leaving hover/pressed states
+                             to the hyperlink itself. -->
+                        <Rectangle Grid.Column="2"
+                                   Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                   IsHitTestVisible="False" />
+
                         <HyperlinkButton Grid.Column="2"
                                          NavigateUri="https://bedrock.graphics/creator"
                                          HorizontalAlignment="Stretch"
@@ -205,15 +214,16 @@
                                          CornerRadius="0"
                                          BorderThickness="0"
                                          IsTextScaleFactorEnabled="False"
-                                         ToolTipService.ToolTip="Opens bedrock.graphics/creator">
+                                         ToolTipService.ToolTip="Opens bedrock.graphics/creator, where you can customize a preset, build it, and download it as a .rtpack file.">
                             <StackPanel HorizontalAlignment="Center"
                                         VerticalAlignment="Center"
                                         Spacing="4">
                                 <StackPanel Orientation="Horizontal"
                                             HorizontalAlignment="Center"
-                                            Spacing="12">
+                                            Spacing="8">
                                     <FontIcon Glyph="&#xE71B;"
                                               FontSize="20"
+                                              Margin="0,3,0,0"
                                               VerticalAlignment="Center"
                                               IsTextScaleFactorEnabled="False" />
                                     <TextBlock Text="Create your own preset"
@@ -222,7 +232,7 @@
                                                VerticalAlignment="Center"
                                                IsTextScaleFactorEnabled="False" />
                                 </StackPanel>
-                                <TextBlock Text="Opens bedrock.graphics/creator"
+                                <TextBlock Text="Go to bedrock.graphics/creator"
                                            FontSize="11"
                                            Opacity="0.67"
                                            TextWrapping="Wrap"
