@@ -2359,7 +2359,7 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
             {
-                Log("RTX Reactor generates proper RTX support for texture packs, it works best on packs with no PBR textures of their own.", LogLevel.Alchitex);
+                Log($"RTX Reactor adds proper RTX support to texture packs, it works best on packs tagged as {PackBrowserWindow.AlchitexCandidateTag}.", LogLevel.Alchitex);
             }
 #if DEBUG
             // Debug builds open the window with an empty queue on purpose. RTX Reactor's

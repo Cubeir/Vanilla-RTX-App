@@ -379,7 +379,7 @@
                                     Translation="0,0,64">
                                 <Border.Background>
                                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                                                  TintOpacity="0.6"
+                                                  TintOpacity="0.75"
                                                   FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                 </Border.Background>
                                 <Border.Shadow>
@@ -617,7 +617,7 @@
                             VerticalAlignment="Bottom">
                         <Border.Background>
                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                                          TintOpacity="0.6"
+                                          TintOpacity="0.75"
                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                         </Border.Background>
 
