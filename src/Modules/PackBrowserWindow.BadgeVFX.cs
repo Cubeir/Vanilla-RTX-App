@@ -230,9 +230,9 @@ internal static class PackBrowserBadgeVFX
 
         // Over the top of the breathing glow rather than instead of it
         host.Children.Add(BuildShineSweep(badge, storyboards,
-            band: ColorHelper.FromArgb(105, 225, 255, 190),
-            fastestPass: 0.7, slowestPass: 1.4,
-            shortestRest: 4.0, longestRest: 12.0));
+            band: ColorHelper.FromArgb(170, 225, 255, 190),
+            fastestPass: 0.6, slowestPass: 1.1,
+            shortestRest: 1.5, longestRest: 4.5));
 
         var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
 
@@ -632,6 +632,14 @@ internal static class PackBrowserBadgeVFX
         var host = new Grid();
         var storyboards = new List<Storyboard>();
 
+        // The three paths below are hand-placed around one fixed layout - the magenta blob
+        // always starting top-right, etc. Rolled once per badge and reused for all three
+        // blobs' paths, so a row of Chemistry badges doesn't have the same corner turning
+        // purple every time while the relative choreography between the three (who chases
+        // who) stays exactly as authored.
+        var (flipX, flipY, swapXY) = (Desync.Next(2) == 0, Desync.Next(2) == 0, Desync.Next(2) == 0);
+        Point[] Roll(params Point[] path) => TransformChemistryPath(path, flipX, flipY, swapXY);
+
         // Three blobs on deliberately unrelated periods: large and slow, middling, small and
         // quick. Where they cross, their colours stack; where they part, the teal comes back
         // through. That is the whole "fluids not yet mixed" read – one blob on its own just
@@ -640,15 +648,15 @@ internal static class PackBrowserBadgeVFX
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
             reagent: ChemistryCyan, reacted: ChemistryPurple,
             radius: 0.85, radiusSwing: 0.18, lowOpacity: 0.50,
-            centerPath: new[] { new Point(0.22, 0.62), new Point(0.55, 0.28), new Point(0.82, 0.66), new Point(0.48, 0.80) },
-            originPath: new[] { new Point(0.30, 0.45), new Point(0.62, 0.60), new Point(0.40, 0.30) },
+            centerPath: Roll(new Point(0.22, 0.62), new Point(0.55, 0.28), new Point(0.82, 0.66), new Point(0.48, 0.80)),
+            originPath: Roll(new Point(0.30, 0.45), new Point(0.62, 0.60), new Point(0.40, 0.30)),
             slowest: 6.0, fastest: 9.0));
 
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
             reagent: ChemistryMagenta, reacted: ChemistryPurple,
             radius: 0.62, radiusSwing: 0.16, lowOpacity: 0.38,
-            centerPath: new[] { new Point(0.78, 0.30), new Point(0.40, 0.72), new Point(0.15, 0.35), new Point(0.60, 0.20) },
-            originPath: new[] { new Point(0.60, 0.55), new Point(0.35, 0.40), new Point(0.65, 0.35) },
+            centerPath: Roll(new Point(0.78, 0.30), new Point(0.40, 0.72), new Point(0.15, 0.35), new Point(0.60, 0.20)),
+            originPath: Roll(new Point(0.60, 0.55), new Point(0.35, 0.40), new Point(0.65, 0.35)),
             slowest: 3.0, fastest: 6.0));
 
         // The purple one drifts back toward magenta rather than onward to anything new, so
@@ -656,14 +664,32 @@ internal static class PackBrowserBadgeVFX
         host.Children.Add(BuildChemistryBlob(badge, storyboards,
             reagent: ChemistryPurple, reacted: ChemistryMagenta,
             radius: 0.45, radiusSwing: 0.12, lowOpacity: 0.28,
-            centerPath: new[] { new Point(0.45, 0.20), new Point(0.18, 0.58), new Point(0.68, 0.78), new Point(0.88, 0.42) },
-            originPath: new[] { new Point(0.42, 0.38), new Point(0.55, 0.66), new Point(0.30, 0.52) },
+            centerPath: Roll(new Point(0.45, 0.20), new Point(0.18, 0.58), new Point(0.68, 0.78), new Point(0.88, 0.42)),
+            originPath: Roll(new Point(0.42, 0.38), new Point(0.55, 0.66), new Point(0.30, 0.52)),
             slowest: 1.0, fastest: 2.0));
 
         var overlay = new Border { Child = host, CornerRadius = badge.CornerRadius };
 
         LayerOverlay(badge, overlay);
         BeginOnLoaded(overlay, storyboards);
+    }
+
+    /// <summary>
+    /// One of the 8 symmetries of a square (the dihedral group D4), applied about the
+    /// badge's own center (0.5, 0.5) so every path stays inside the same 0..1 space it was
+    /// authored in. Mirroring and swapping axes independently, rather than just picking a
+    /// rotation, is what keeps a re-rolled layout from ever landing back on the original.
+    /// </summary>
+    private static Point[] TransformChemistryPath(Point[] path, bool flipX, bool flipY, bool swapXY)
+    {
+        var result = new Point[path.Length];
+        for (int i = 0; i < path.Length; i++)
+        {
+            var x = flipX ? 1.0 - path[i].X : path[i].X;
+            var y = flipY ? 1.0 - path[i].Y : path[i].Y;
+            result[i] = swapXY ? new Point(y, x) : new Point(x, y);
+        }
+        return result;
     }
 
     private static Border BuildChemistryBlob(
@@ -802,7 +828,7 @@ internal static class PackBrowserBadgeVFX
 
         // The window's width, in badge widths. The travel below is padded by this on each
         // side, so the band is fully off the badge at both ends of a pass.
-        const double windowWidth = 0.7;
+        const double windowWidth = 0.85;
 
         var brush = new LinearGradientBrush
         {
@@ -877,7 +903,16 @@ internal static class PackBrowserBadgeVFX
     //  badge intermittently failing. It is the least important thing in the row and
     //  is meant to look it. The sweep it used to carry now belongs to RTX, where
     //  looking special is the entire point.
+    //
+    //  It used to be the whole badge fading in and out together, which reads as one
+    //  wash rather than a fault. Cut into a handful of random-width vertical bars —
+    //  a barcode – each with its own independent cycle, so only some of the badge
+    //  drops out at a time and no two bars stutter in step. That is what makes it
+    //  read as a signal failing rather than a light flickering.
     // ════════════════════════════════════════════════════════════════════
+    private const int UnknownGlitchMinBars = 3;
+    private const int UnknownGlitchMaxBars = 6;
+
     private static void ApplyUnknownGlitch(Border badge)
     {
         var storyboards = new List<Storyboard>();
@@ -888,24 +923,49 @@ internal static class PackBrowserBadgeVFX
     }
 
     /// <summary>
-    /// The badge occasionally failing to hold still: two or three flashes of wash at odd
-    /// intervals. Discrete key frames, so nothing here interpolates, making it cheaper to run.
+    /// Splits the badge into a random number of random-width vertical bars, each an
+    /// independent flashing element, and lays them out in a Grid sized by Star weights
+    /// so the widths vary without the bars ever needing to know the badge's actual size.
     /// </summary>
     private static Border BuildUnknownGlitch(Border badge, List<Storyboard> storyboards)
     {
-        var glitch = new Border
-        {
-            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 210, 210, 210)),
-            CornerRadius = badge.CornerRadius,
-            Opacity = 0
-        };
+        var barCount = Desync.Next(UnknownGlitchMinBars, UnknownGlitchMaxBars + 1);
 
+        var bars = new Grid();
+        for (int i = 0; i < barCount; i++)
+        {
+            // 0.4..2.0 star-weight spread is what makes some bars read as thin slivers and
+            // others as wide slabs, rather than a neat evenly-sliced strip.
+            bars.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Jitter(0.4, 2.0), GridUnitType.Star) });
+
+            var bar = new Border
+            {
+                Background = new SolidColorBrush(ColorHelper.FromArgb(255, 210, 210, 210)),
+                Opacity = 0
+            };
+            Grid.SetColumn(bar, i);
+            bars.Children.Add(bar);
+
+            AttachGlitchBlink(bar, storyboards);
+        }
+
+        return new Border { Child = bars, CornerRadius = badge.CornerRadius };
+    }
+
+    /// <summary>
+    /// The badge occasionally failing to hold still: two or three flashes of wash at odd
+    /// intervals. Discrete key frames, so nothing here interpolates, making it cheaper to
+    /// run. Cycle length and start offset are rolled independently per call, which is what
+    /// keeps a row of bars from ever stuttering together.
+    /// </summary>
+    private static void AttachGlitchBlink(FrameworkElement target, List<Storyboard> storyboards)
+    {
         var cycle = Jitter(4.0, 8.0);
         var blink = new DoubleAnimationUsingKeyFrames
         {
             Duration = TimeSpan.FromSeconds(cycle),
             RepeatBehavior = RepeatBehavior.Forever,
-            BeginTime = TimeSpan.FromSeconds(Jitter(1.0, 6.0))
+            BeginTime = TimeSpan.FromSeconds(Jitter(0.5, 6.0))
         };
 
         // Placed as fractions of the cycle rather than in seconds, so the jittered period
@@ -919,14 +979,12 @@ internal static class PackBrowserBadgeVFX
         AddBlink(blink, cycle, 0.80, 0.00);
         AddBlink(blink, cycle, 1.00, 0.00);
 
-        Storyboard.SetTarget(blink, glitch);
+        Storyboard.SetTarget(blink, target);
         Storyboard.SetTargetProperty(blink, "Opacity");
 
         var sb = new Storyboard();
         sb.Children.Add(blink);
         storyboards.Add(sb);
-
-        return glitch;
     }
 
     private static void AddBlink(DoubleAnimationUsingKeyFrames anim, double cycle, double atFraction, double opacity) =>
