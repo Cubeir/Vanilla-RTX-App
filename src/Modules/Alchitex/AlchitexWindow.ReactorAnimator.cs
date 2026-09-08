@@ -24,10 +24,14 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///
 /// Vocabulary, by state:
 ///   - Rest: the tiles' default diagonal arrangement (brightest top-right, darkest
-///     bottom-left, straight off the reference art) and the bloom sitting at a random
-///     25-50%, re-rolled every time it comes back to rest so it never looks pinned.
-///   - Press-and-hold: tiles fire erratically, a couple at a time, while the bloom drops
-///     to near zero - the reactor visibly winding up under the finger.
+///     bottom-left, straight off the reference art) and the bloom settled at a fixed middle
+///     opacity (RestBloomOpacity) - deliberately not randomized. The bloom now has three
+///     tiers with real contrast between them (press near-zero, rest in the middle,
+///     flower-dance hover near max), and a random rest could land close enough to the hover
+///     tier that unhovering stopped reading as a drop at all.
+///   - Press-and-hold: a dark droplet ripples out from the centre, again and again for as
+///     long as the button is held, while the bloom collapses to near zero - the reactor
+///     visibly having its charge drawn out from the middle, in waves, under the finger.
 ///   - Generating: one behavior per phase (see Pulse). Underneath all of them the bloom
 ///     breathes on a loop, which is what separates "running" from "idle" at a glance.
 ///   - Waiting: the reactor is powered but blocked on something outside itself - a
@@ -37,8 +41,8 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///   - Flower dance: the pointer resting on the reactor with nothing else going on - the one
 ///     gesture every other stance in this class ignores. The four corners and the four
 ///     edge-midpoints swap places within their own ring, independently and on their own
-///     schedule, around a centre that keeps changing on its own; the bloom rises rather than
-///     falling, the opposite of press-and-hold. Means nothing about the pipeline, unlike
+///     schedule, around a centre that keeps changing on its own; the bloom rises to near
+///     max, the opposite of press-and-hold. Means nothing about the pipeline, unlike
 ///     everything else here - it exists purely so hovering has an answer at all.
 ///
 /// How often a phase reports decides what kind of behavior it can have, and getting this
@@ -164,8 +168,11 @@ public sealed class ReactorAnimator
     // getting the abort red off the grid.
     private const double SettleMs = 190;
 
-    private const double RestBloomMin = 0.45;
-    private const double RestBloomMax = 0.85;
+    // Fixed rather than rolled - the bloom now has three deliberate tiers (press near-zero,
+    // rest here, flower-dance hover near max) and a random rest risked landing close enough
+    // to the hover tier that unhovering didn't read as a drop. Middle has to mean middle,
+    // every time, or the other two tiers lose their contrast.
+    private const double RestBloomOpacity = 0.55;
 
     private readonly Grid _tileGrid;
     private readonly Image? _bloom;
@@ -243,7 +250,8 @@ public sealed class ReactorAnimator
 
     // ── States ───────────────────────────────────────────────────────────────
 
-    /// <summary>Back to the default arrangement, with a freshly rolled bloom level.</summary>
+    /// <summary>Back to the default arrangement, with the bloom settling at its fixed middle
+    /// tier - see RestBloomOpacity.</summary>
     public void EnterRest()
     {
         if (!_isInitialized) return;
@@ -259,11 +267,12 @@ public sealed class ReactorAnimator
             for (var col = 0; col < GridSize; col++)
                 AnimateTile(row, col, RestLayout[row, col], SettleMs);
 
-        SetBloom(RestBloomMin + _random.NextDouble() * (RestBloomMax - RestBloomMin), SettleMs);
+        SetBloom(RestBloomOpacity, SettleMs);
     }
 
-    /// <summary>Pointer down on the reactor: tiles start firing erratically and the bloom
-    /// collapses, as though the charge is being drawn out of it.</summary>
+    /// <summary>Pointer down on the reactor: a dark droplet ripples out from the centre,
+    /// again and again for as long as the button is held, while the bloom collapses - as
+    /// though the charge is being drawn out of it in waves.</summary>
     public void BeginPressHold()
     {
         if (!_isInitialized) return;
@@ -275,15 +284,18 @@ public sealed class ReactorAnimator
         ReleaseGrid();
         SetBloom(_random.NextDouble() * 0.10, 110);
 
-        // One erratic burst either way, so a quick click still registers visually with
-        // animations suspended or a timer that never gets to tick.
-        FlickerRandomTiles(2, 55);
+        // One ripple either way, so a quick click still registers visually with animations
+        // suspended or a timer that never gets to tick.
+        PlayRipple(brighten: false);
 
         if (AnimationsSuspended) return;
 
+        // Timed to the ripple's own duration rather than something shorter, so consecutive
+        // droplets land back-to-back - a faster interval would retrigger PlayTileSequence
+        // mid-ripple and cut the wave off before it reached the corners.
         StopPressHold();
-        _pressHoldTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(75) };
-        _pressHoldTimer.Tick += (s, e) => FlickerRandomTiles(_random.Next(1, 4), 55);
+        _pressHoldTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(RippleDurationMs) };
+        _pressHoldTimer.Tick += (s, e) => PlayRipple(brighten: false);
         _pressHoldTimer.Start();
     }
 
@@ -940,6 +952,11 @@ public sealed class ReactorAnimator
     private const double RippleRiseMs = 110;
     private const double RippleFallMs = 230;
 
+    // How long one ripple takes corner to corner, start to settled - shared with
+    // BeginPressHold, which uses it as the repeat interval for the droplet effect so
+    // consecutive ripples land back-to-back rather than cutting each other off mid-sequence.
+    private const double RippleDurationMs = (GridSize - 1) * RippleRingDelayMs + RippleRiseMs + RippleFallMs;
+
     /// <summary>
     /// A drop landing in the middle: the centre moves first, then the four edge tiles, then
     /// the corners, each ring one delay behind the last.
@@ -973,16 +990,10 @@ public sealed class ReactorAnimator
             }
         }
 
-        ClaimGrid((GridSize - 1) * RippleRingDelayMs + RippleRiseMs + RippleFallMs);
+        ClaimGrid(RippleDurationMs);
     }
 
     // ── Behaviors ────────────────────────────────────────────────────────────
-
-    private void FlickerRandomTiles(int count, double durationMs)
-    {
-        for (var i = 0; i < count; i++)
-            AnimateTile(_random.Next(GridSize), _random.Next(GridSize), _random.Next(Palette.Length), durationMs);
-    }
 
     /// <summary>The four axes a gradient can travel along. Ranks are scaled so every axis
     /// spans the whole palette across the grid, whether it crosses three tiles or five.</summary>
