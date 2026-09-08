@@ -335,9 +335,6 @@ public sealed partial class DLSSSwapperWindow : Window
                 }
             }
 
-            var addButton = CreateAddDllButton();
-            DllListContainer.Children.Add(addButton);
-
             Trace.WriteLine("[DLSS] DLL loading complete");
         }
         catch (Exception ex)
@@ -512,119 +509,6 @@ public sealed partial class DLSSSwapperWindow : Window
                 Trace.WriteLine($"[DLSS] Error deleting DLL: {ex.Message}");
             }
         }
-    }
-
-    private Button CreateAddDllButton()
-    {
-        var button = new Button
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 20, 38, 20),
-            Margin = new Thickness(0, 5, 0, 5),
-            CornerRadius = new CornerRadius(5),
-            IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32),
-            AllowDrop = true
-        };
-
-        button.DragOver += AddDllButton_DragOver;
-        button.Drop += AddDllButton_Drop;
-        button.DragEnter += AddDllButton_DragEnter;
-        button.DragLeave += AddDllButton_DragLeave;
-
-        var buttonShadow = new ThemeShadow();
-        button.Shadow = buttonShadow;
-        button.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                buttonShadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(75) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var iconBorder = new Border
-        {
-            Width = 75,
-            Height = 75,
-            CornerRadius = new CornerRadius(5),
-            Background = new SolidColorBrush(Colors.Transparent)
-        };
-
-        var icon = new FontIcon
-        {
-            Glyph = "\uE710",
-            FontSize = 48,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        };
-
-        iconBorder.Child = icon;
-        Grid.SetColumn(iconBorder, 0);
-        grid.Children.Add(iconBorder);
-
-        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-
-        var titleText = new TextBlock
-        {
-            Text = "Add DLSS files",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        var descText = new TextBlock
-        {
-            Text = "Drag and drop or browse for a DLSS DLL file to add (.dll or .zip with the dlls)",
-            FontSize = 12,
-            Opacity = 0.75,
-            Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.Wrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        infoPanel.Children.Add(titleText);
-        infoPanel.Children.Add(descText);
-        Grid.SetColumn(infoPanel, 2);
-        grid.Children.Add(infoPanel);
-
-        var hyperlinkButton = new HyperlinkButton
-        {
-            Content = "Download DLSS files from here",
-            NavigateUri = new Uri("https://www.techpowerup.com/download/nvidia-dlss-dll/"),
-            VerticalAlignment = VerticalAlignment.Center,
-            FontWeight = FontWeights.Medium,
-            FontSize = 14,
-            Padding = new Thickness(16, 8, 16, 8),
-            Translation = new System.Numerics.Vector3(0, 0, 8), 
-            IsTextScaleFactorEnabled = false,
-            Background = Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] as Brush,
-            CornerRadius = new CornerRadius(6)
-        };
-
-        var hyperLinkShadow = new ThemeShadow();
-        hyperlinkButton.Shadow = hyperLinkShadow;
-        hyperlinkButton.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                hyperLinkShadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        Grid.SetColumn(hyperlinkButton, 4);
-        grid.Children.Add(hyperlinkButton);
-
-        button.Content = grid;
-        button.Click += AddDllButton_Click;
-
-        return button;
     }
 
     private void AddDllButton_DragEnter(object sender, DragEventArgs e)

@@ -1177,10 +1177,6 @@ public sealed partial class BetterRTXManagerWindow : Window
                 PresetListContainer.Children.Add(button);
             }
 
-            // Always last in the list, regardless of what else is (or isn't) displayed
-            var addPresetButton = CreateAddPresetButton();
-            PresetListContainer.Children.Add(addPresetButton);
-
             // Handle empty state
             if (downloadedPresets.Count == 0 && notDownloadedPresets.Count == 0 && defaultPreset == null)
             {
@@ -1502,119 +1498,6 @@ public sealed partial class BetterRTXManagerWindow : Window
 
 
     #region custom preset handlers
-    private Button CreateAddPresetButton()
-    {
-        var button = new Button
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(0, 0, 40, 0),
-            Margin = new Thickness(0, 0, 0, 4),
-            MinHeight = 96,
-            CornerRadius = new CornerRadius(5),
-            IsTextScaleFactorEnabled = false,
-            Translation = new System.Numerics.Vector3(0, 0, 32),
-            AllowDrop = true
-        };
-
-        button.DragOver += AddPresetButton_DragOver;
-        button.Drop += AddPresetButton_Drop;
-        button.DragEnter += AddPresetButton_DragEnter;
-        button.DragLeave += AddPresetButton_DragLeave;
-
-        var buttonShadow = new ThemeShadow();
-        button.Shadow = buttonShadow;
-        button.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                buttonShadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(15) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var iconBorder = new Border
-        {
-            Width = 96,
-            Height = 96,
-            CornerRadius = new CornerRadius(5, 0, 0, 5),
-            Background = new SolidColorBrush(Colors.Transparent)
-        };
-
-        iconBorder.Child = new FontIcon
-        {
-            Glyph = "\uE710",
-            FontSize = 44,
-            FontWeight = FontWeights.ExtraLight,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTextScaleFactorEnabled = false
-        };
-
-        Grid.SetColumn(iconBorder, 0);
-        grid.Children.Add(iconBorder);
-
-        var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-
-        var titleText = new TextBlock
-        {
-            Text = "Add customized preset (.rtpack)",
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            TextWrapping = TextWrapping.NoWrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        var descText = new TextBlock
-        {
-            Text = "Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website",
-            FontSize = 12,
-            Opacity = 0.75,
-            Margin = new Thickness(0, 2, 0, 0),
-            TextWrapping = TextWrapping.Wrap,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            IsTextScaleFactorEnabled = false
-        };
-
-        infoPanel.Children.Add(titleText);
-        infoPanel.Children.Add(descText);
-        Grid.SetColumn(infoPanel, 2);
-        grid.Children.Add(infoPanel);
-
-        var hyperlinkButton = new HyperlinkButton
-        {
-            Content = "Create your own BetterRTX preset",
-            NavigateUri = new Uri("https://bedrock.graphics/creator"),
-            VerticalAlignment = VerticalAlignment.Center,
-            FontWeight = FontWeights.Medium,
-            FontSize = 14,
-            Padding = new Thickness(16, 8, 16, 8),
-            Translation = new System.Numerics.Vector3(0, 0, 8),
-            IsTextScaleFactorEnabled = false,
-            Background = Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] as Brush,
-            CornerRadius = new CornerRadius(6)
-        };
-
-        var hyperLinkShadow = new ThemeShadow();
-        hyperlinkButton.Shadow = hyperLinkShadow;
-        hyperlinkButton.Loaded += (s, e) =>
-        {
-            if (ShadowReceiverGrid != null)
-                hyperLinkShadow.Receivers.Add(ShadowReceiverGrid);
-        };
-
-        Grid.SetColumn(hyperlinkButton, 4);
-        grid.Children.Add(hyperlinkButton);
-
-        button.Content = grid;
-        button.Click += AddPresetButton_Click;
-
-        return button;
-    }
     private async void AddPresetButton_Click(object sender, RoutedEventArgs e)
     {
         try
