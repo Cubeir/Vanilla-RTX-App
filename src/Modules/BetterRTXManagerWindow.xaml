@@ -235,6 +235,7 @@
                                 <TextBlock Text="Go to bedrock.graphics/creator"
                                            FontSize="11"
                                            Opacity="0.67"
+                                           FontWeight="Medium"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
                                            IsTextScaleFactorEnabled="False" />

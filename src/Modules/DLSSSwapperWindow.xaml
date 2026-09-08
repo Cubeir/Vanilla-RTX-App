@@ -233,6 +233,7 @@
                                 <TextBlock Text="Go to techpowerup.com"
                                            FontSize="11"
                                            Opacity="0.67"
+                                           FontWeight="Medium"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
                                            IsTextScaleFactorEnabled="False" />

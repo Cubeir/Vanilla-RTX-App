@@ -2855,25 +2855,6 @@ A hub for keeping a track of Minecraft RTX bugs...
 you should be maintaining this list PUBLICLY ON mcpedl.com/vanilla-rtx, there's already a section for it
 go update that instead and complete it, append it with bugs with no workarounds or ones pack doesn't cover.
 
-========
-📁 - Replace the current Helper ReplaceFilesWithElevation helper with something more friendly and native?!?
-Use IFileOperation COM API, it automatically handles UAC with a professional native UI
-Avoid cmd.exe entirely, DON'T risk AV flags.
-A more reliable, native way to replace files by requesting UAC, when app itself doesn't have admin perms...
-
-OR AT THE VERY LEAST, refactor the code to launch the commands directly in CMD via command line arguments,
-Bypass the IO operation entirely?!
-
-Useful ideas came out those notes you got on MSTODO, revisit it
-
-But pause for a moment:
-The whole idea is to, without having to restart the app, do the opeartion
-but if app is already elevated, a native way should let the app perform the operation without issues.
-the whole cmd approach's deal was to make sure user gives uac perm PER operation request, not NEEDING THE APP TO RESTART
-maybe passing command directly to cmd.exe needs app to be admin! and thus restart! that's why you did it the way you did it.
-but still, if there are more native, better ways, opt for them, teast.
-==========
-
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
 
