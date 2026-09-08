@@ -122,8 +122,8 @@
                      BOTTOM ACTION BAR
                 ═══════════════════════════════════════════ --> 
                 <Border Grid.Row="2"
-                        Margin="20,5,20,16"
-                        CornerRadius="5,5,5,5"
+                        Margin="0"
+                        CornerRadius="0"
                         BorderThickness="0"
                         Translation="0,0,512"
                         Background="Transparent">
@@ -154,7 +154,7 @@
                                         VerticalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch"
                                         BorderThickness="0"
-                                        CornerRadius="5,0,0,5"
+                                        CornerRadius="0"
                                         IsTextScaleFactorEnabled="False"
                                         ToolTipService.ToolTip="Select all by tag or deselect all">
                             <Grid>
@@ -210,7 +210,7 @@
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
-                                CornerRadius="0,5,5,0"
+                                CornerRadius="0"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
                                 ToolTipService.ToolTip="Allows you to import your resource packs in bulk, supports .zip and .mcpacks formats, multiple packs bundled inside .mcaddon, as well as bulk import from packs inside a folder.">
