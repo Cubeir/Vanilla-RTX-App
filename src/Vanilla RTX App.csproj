@@ -25,16 +25,6 @@
     <None Remove="Modules\ReviewPromptControl.xaml" />
   </ItemGroup>
 
-  <!-- Tools\FileReplaceHelper is its own separate project (see FileReplaceHelper.csproj),
-       nested under this project's own directory. Without these, its files get swept up by
-       this project's default item globs too and fail to compile here. -->
-  <ItemGroup>
-    <Compile Remove="Tools\FileReplaceHelper\**" />
-    <None Remove="Tools\FileReplaceHelper\**" />
-    <EmbeddedResource Remove="Tools\FileReplaceHelper\**" />
-    <Page Remove="Tools\FileReplaceHelper\**" />
-  </ItemGroup>
-
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
@@ -52,28 +42,6 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-  </ItemGroup>
-  <!--
-    FileReplaceHelper: the elevated helper Helpers.ReplaceFilesWithElevation launches for
-    admin-only file replacement (see that method's remarks). Only the exe matching the
-    platform actually being built is shipped, aliased via Link to a stable path so the
-    calling code doesn't need to know which RID it's running under. Not a ProjectReference -
-    see src\Tools\FileReplaceHelper\FileReplaceHelper.csproj for why its self-contained,
-    single-file output is a checked-in asset here instead of something rebuilt every compile.
-  -->
-  <ItemGroup>
-    <Content Include="Assets\Tools\FileReplaceHelper.x64.exe" Condition="'$(Platform)'=='x64'">
-      <Link>Tools\FileReplaceHelper.exe</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Tools\FileReplaceHelper.x86.exe" Condition="'$(Platform)'=='x86'">
-      <Link>Tools\FileReplaceHelper.exe</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Tools\FileReplaceHelper.arm64.exe" Condition="'$(Platform)'=='ARM64'">
-      <Link>Tools\FileReplaceHelper.exe</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.17.1" />
