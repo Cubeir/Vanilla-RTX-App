@@ -197,6 +197,13 @@ public sealed partial class MainWindow : Window
     private bool _isClosing = false;
     private bool _isInitializing = true;
 
+    // Set the moment MainWindow_Loaded finishes resolving the Minecraft data location cache
+    // (see the _isInitializing = false line below) - anything that depends on that cache
+    // being trustworthy, like .mcpack file-activation import, awaits this instead of
+    // guessing at how long startup takes.
+    private readonly TaskCompletionSource _initializedTcs = new();
+    private Task WaitUntilInitializedAsync() => _initializedTcs.Task;
+
     private readonly ProgressBarManager _progressManager;
 
     public readonly PackUpdater _updater = new();
@@ -571,6 +578,7 @@ public sealed partial class MainWindow : Window
 
             _isInitializing = false; // This makes sure ONLY the earlier call from UpdateUI -> TogglePreview_checked is blocked from running similar operations as below, aka, Unblocks these operations from running in regular Preview button toggles
             MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
+            _initializedTcs.TrySetResult(); // The data-location cache is now trustworthy - see WaitUntilInitializedAsync
             UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status
             Bindings.Update(); // Update bindings cause of a x:Bind gotcha where values come alive after some unrelated property change
 
@@ -647,6 +655,11 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             App.WriteCrashLog("Mainwindow_Loaded ", ex?.Message ?? "Unknown error", ex!.ToString());
+
+            // A crash here that lands above the TrySetResult in the try block would
+            // otherwise leave WaitUntilInitializedAsync awaiting forever - better to let a
+            // waiting import go ahead and fail on its own than hang silently.
+            _initializedTcs.TrySetResult();
         }
     }
 
@@ -1399,39 +1412,27 @@ public sealed partial class MainWindow : Window
 
 
 
-    // Shared between the manual button and .mcpack file-activation (ImportPackFilesAsync) -
-    // both disable the same controls while a pack browser is up.
-    private static readonly string[] PackBrowserDisabledControls =
-    [
-        "LaunchMinecraftButton", "TargetPreviewToggle",
-         "LaunchAlchitexButton", "LaunchPackUpdateButton",
-          "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton", "ClearButton", "ResetButton"
-    ];
-
     private async void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
+        string[] ToDisable =
+        [
+            "LaunchMinecraftButton", "TargetPreviewToggle",
+             "LaunchAlchitexButton", "LaunchPackUpdateButton",
+              "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton", "ClearButton", "ResetButton"
+        ];
         // If user data isn't valid for the current edition, repurpose this click
         // to let the user locate the data folder manually instead.
         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
         {
-            WindowControlsManager.ToggleSpecificControls(this, false, PackBrowserDisabledControls);
+            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
             await HandleManualDataLocationAsync();
-            WindowControlsManager.ToggleSpecificControls(this, true, PackBrowserDisabledControls);
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
             return;
         }
 
         // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
-        OpenPackBrowserWindow();
-    }
 
-    /// <summary>
-    /// Constructs, sizes, tracks and activates a PackBrowserWindow the same way for every
-    /// caller - the manual button and .mcpack file-activation both funnel through here, so
-    /// the two ways of getting a pack browser open can never drift apart.
-    /// </summary>
-    private Modules.PackBrowserWindow OpenPackBrowserWindow()
-    {
-        WindowControlsManager.ToggleSpecificControls(this, false, PackBrowserDisabledControls);
+        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
         var packBrowserWindow = new Modules.PackBrowserWindow();
         var mainAppWindow = this.AppWindow;
@@ -1445,7 +1446,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(packBrowserWindow);
 
-            WindowControlsManager.ToggleSpecificControls(this, true, PackBrowserDisabledControls);
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
             if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
@@ -1465,31 +1466,39 @@ public sealed partial class MainWindow : Window
 
         _childWindows.Add(packBrowserWindow);
         WindowControlsManager.Activate(packBrowserWindow);
-        return packBrowserWindow;
     }
 
     /// <summary>
-    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs) - opens
-    /// the pack browser exactly as if the user had clicked "Browse Packs" and then dropped
-    /// these files on it, reusing an already-open window rather than spawning a second one
-    /// if the user already has one up.
+    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs) -
+    /// deliberately independent of PackBrowserWindow rather than opening one on the user's
+    /// behalf. Opening a window on top of a window the user never asked for turned out to
+    /// look exactly as bad as it sounds, and it raced PackBrowserWindow's own "no Minecraft
+    /// data location yet" fallback into popping a folder picker in front of the user
+    /// unprompted (MainWindow_Loaded resolves that cache asynchronously; this could run
+    /// before it had). This calls ExpImpDel directly instead - the same utility both
+    /// PackBrowserWindow's Add-pack button and its drag-and-drop already call downstream -
+    /// and reports progress through the same Log() the rest of the window uses, one pack at
+    /// a time, no windows and no pickers involved either way.
     /// </summary>
     public async Task ImportPackFilesAsync(IReadOnlyList<string> filePaths)
     {
         if (filePaths.Count == 0) return;
 
-        // Same gate the manual button uses - there's nowhere to import to otherwise, and
-        // this is the only path that can resolve one.
-        if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
-            await HandleManualDataLocationAsync();
+        // Waits for MainWindow_Loaded to have actually resolved the Minecraft data location
+        // - see the remarks above for why guessing at a fixed delay isn't good enough here.
+        await WaitUntilInitializedAsync();
 
-        var packBrowserWindow = _childWindows.OfType<Modules.PackBrowserWindow>().FirstOrDefault();
-        if (packBrowserWindow != null)
-            WindowControlsManager.Activate(packBrowserWindow);
-        else
-            packBrowserWindow = OpenPackBrowserWindow();
+        var names = filePaths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
+        Log($"Starting to import:\n{string.Join(Environment.NewLine, names)}", LogLevel.Informational);
 
-        await packBrowserWindow.ImportFilesAsync(filePaths);
+        foreach (var path in filePaths)
+        {
+            var name = Path.GetFileNameWithoutExtension(path) ?? path;
+            var success = await ExpImpDel.ImportFromPathsAsync(new[] { path });
+
+            Log(success ? $"Finished importing: {name}" : $"Failed to import: {name}",
+                success ? LogLevel.Success : LogLevel.Error);
+        }
     }
 
 
