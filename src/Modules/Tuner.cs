@@ -38,7 +38,7 @@ internal static class ProcessorVariables
     /// so the pass gets a shallow slice of the range to be wrong in rather than the whole of it;
     /// the pack's own POM, blended in alongside, is the part that is allowed to be deep.
     /// </summary>
-    public const int LAZIFY_POM_FLOOR = 178;
+    public const int LAZIFY_POM_FLOOR = 155;
 
     /// <summary>
     /// Ambient light tracks the emissivity multiplier 1:1 up to the knee, then saturates along
