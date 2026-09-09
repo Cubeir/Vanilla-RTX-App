@@ -5,6 +5,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Windows.Storage.Pickers;
@@ -678,4 +680,85 @@ public static class ExpImpDel
     }
 
     #endregion
+}
+
+
+/// <summary>
+/// Ready-made ContentDialog implementations for ExpImpDel.ConfirmOverwrite and
+/// ConfirmNonResourceImport, parameterized on whichever window is doing the importing.
+/// PackBrowserWindow's Add-pack button/drag-and-drop and MainWindow's .mcpack
+/// file-activation path both wire these in as-is.
+/// </summary>
+public static class ImportDialogs
+{
+    public static Task<bool> ShowOverwriteDialogAsync(Window window, string packName, string existingPath)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        window.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var existingFolderName = Path.GetFileName(
+                    existingPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+                var dialog = new ContentDialog
+                {
+                    Title = "Pack already installed",
+                    Content = $"\"{packName}\" is already installed at \"{existingFolderName}\".\n\nReplace it with the incoming version?",
+                    PrimaryButtonText = "Replace",
+                    CloseButtonText = "Skip",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = window.Content.XamlRoot,
+                    RequestedTheme = ((FrameworkElement)window.Content).ActualTheme
+                };
+
+                var result = await dialog.ShowAsync();
+                tcs.SetResult(result == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[ImportDialogs] Overwrite dialog error: {ex.Message}");
+                tcs.SetResult(false);
+            }
+        });
+
+        return tcs.Task;
+    }
+
+    /// <summary>
+    /// Shown when a pack's manifest has no module of type "resources", or when the type
+    /// could not be determined. Defaults to Skip (safe).
+    /// </summary>
+    public static Task<bool> ShowNonResourceDialogAsync(Window window, string packName)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        window.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "Not a resource pack",
+                    Content = $"\"{packName}\" does not appear to be a resource pack, no module of type \"resources\" was found in its manifest.\n\nImport it anyway?",
+                    PrimaryButtonText = "Import anyway",
+                    CloseButtonText = "Skip",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = window.Content.XamlRoot,
+                    RequestedTheme = ((FrameworkElement)window.Content).ActualTheme
+                };
+
+                var result = await dialog.ShowAsync();
+                tcs.SetResult(result == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[ImportDialogs] Non-resource dialog error: {ex.Message}");
+                tcs.SetResult(false);
+            }
+        });
+
+        return tcs.Task;
+    }
 }

@@ -97,8 +97,8 @@ public sealed partial class PackBrowserWindow : Window
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.browse.ico"));
 
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
-        ExpImpDel.ConfirmOverwrite = ShowOverwriteDialogAsync;
-        ExpImpDel.ConfirmNonResourceImport = ShowNonResourceDialogAsync;
+        ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(this, packName, existingPath);
+        ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(this, packName);
 
         if (Content is FrameworkElement root)
             root.Loaded += PackBrowserWindow_Loaded;
@@ -198,80 +198,9 @@ public sealed partial class PackBrowserWindow : Window
         await RunImportAsync(() => ExpImpDel.ImportFromPathsAsync(paths));
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    //  Confirmation dialogs
-    // ════════════════════════════════════════════════════════════════════════
-
-    private async Task<bool> ShowOverwriteDialogAsync(string packName, string existingPath)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-
-        DispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                var existingFolderName = Path.GetFileName(
-                    existingPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-
-                var dialog = new ContentDialog
-                {
-                    Title = "Pack already installed",
-                    Content = $"\"{packName}\" is already installed at \"{existingFolderName}\".\n\nReplace it with the incoming version?",
-                    PrimaryButtonText = "Replace",
-                    CloseButtonText = "Skip",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.Content.XamlRoot,
-                    RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
-                };
-
-                var result = await dialog.ShowAsync();
-                tcs.SetResult(result == ContentDialogResult.Primary);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[PackBrowser] Overwrite dialog error: {ex.Message}");
-                tcs.SetResult(false);
-            }
-        });
-
-        return await tcs.Task;
-    }
-
-    /// <summary>
-    /// Shown when a pack's manifest has no module of type "resources", or when the
-    /// type could not be determined. Defaults to Skip (safe).
-    /// </summary>
-    private async Task<bool> ShowNonResourceDialogAsync(string packName)
-    {
-        var tcs = new TaskCompletionSource<bool>();
-
-        DispatcherQueue.TryEnqueue(async () =>
-        {
-            try
-            {
-                var dialog = new ContentDialog
-                {
-                    Title = "Not a resource pack",
-                    Content = $"\"{packName}\" does not appear to be a resource pack, no module of type \"resources\" was found in its manifest.\n\nImport it anyway?",
-                    PrimaryButtonText = "Import anyway",
-                    CloseButtonText = "Skip",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.Content.XamlRoot,
-                    RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
-                };
-
-                var result = await dialog.ShowAsync();
-                tcs.SetResult(result == ContentDialogResult.Primary);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[PackBrowser] Non-resource dialog error: {ex.Message}");
-                tcs.SetResult(false);
-            }
-        });
-
-        return await tcs.Task;
-    }
+    // Confirmation dialogs (Pack already installed / Not a resource pack) now live in
+    // ExpImpDel.ImportDialogs, shared with MainWindow's .mcpack file-activation path - see
+    // the constructor's ConfirmOverwrite/ConfirmNonResourceImport wiring above.
 
     // ════════════════════════════════════════════════════════════════════════
     //  JSON parsing — tolerant of // and /* */ comments in manifests
