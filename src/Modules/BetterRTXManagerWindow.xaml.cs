@@ -1856,15 +1856,21 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     // internal (not private) so ImportPresetFilesHeadlessAsync can call it directly on a
     // never-shown instance - see that method's remarks. Only ever touches _cacheFolder.
-    internal async Task<bool> ImportCustomPresetAsync(string archivePath)
+    //
+    // Returns a message alongside success/failure - unlike ExpImpDel this has no
+    // ImportStatusChanged event of its own to relay, and the headless caller has no window
+    // UI to fall back on, so this is the only way it can tell the user *why* something
+    // failed rather than just that it did.
+    internal async Task<(bool Success, string Message)> ImportCustomPresetAsync(string archivePath)
     {
+        var fileName = Path.GetFileName(archivePath);
         string? stagingFolder = null;
         try
         {
             if (!File.Exists(archivePath))
             {
                 Trace.WriteLine($"[BetterRTX] [CustomImport] ✗ File not found: {archivePath}");
-                return false;
+                return (false, $"'{fileName}' not found.");
             }
 
             Trace.WriteLine($"[BetterRTX] [CustomImport] Importing: {archivePath}");
@@ -1900,7 +1906,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             if (parsed == null || string.IsNullOrEmpty(parsed.Uuid))
             {
                 Trace.WriteLine($"[BetterRTX] [CustomImport] ✗ Not a valid BetterRTX preset: {archivePath}");
-                return false;
+                return (false, $"'{fileName}' is not a valid BetterRTX preset (no readable manifest).");
             }
 
             // Same convention downloaded presets use: folder named after the pack's
@@ -1914,12 +1920,12 @@ public sealed partial class BetterRTXManagerWindow : Window
             stagingFolder = null; // moved successfully, nothing left to clean up
 
             Trace.WriteLine($"[BetterRTX] [CustomImport] ✓ Imported \"{parsed.Name}\" to: {destinationFolder}");
-            return true;
+            return (true, $"Imported \"{parsed.Name}\".");
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[BetterRTX] [CustomImport] ✗ Error importing {archivePath}: {ex.Message}");
-            return false;
+            return (false, $"'{fileName}' failed to import: {ex.Message}");
         }
         finally
         {
@@ -1951,11 +1957,21 @@ public sealed partial class BetterRTXManagerWindow : Window
     /// ImportCustomPresetAsync's already-correct extraction logic rather than duplicating
     /// it - it's Close()d in the finally block specifically so its constructor-time
     /// ThemeService.ThemeChanged subscription (and its own HWND) don't outlive this call.
+    ///
+    /// Files are processed strictly one at a time - MainWindow.ImportBetterRTXPresetFilesAsync
+    /// already serializes calls to this method globally, but the loop below is what makes a
+    /// single call importing several presets itself patient rather than firing every
+    /// extraction into the cache folder at once. <paramref name="onStatus"/>, if given, is
+    /// called once per file with a human-readable result - the caller's route to real
+    /// per-file feedback, since this has no ImportStatusChanged-style event of its own the
+    /// way ExpImpDel does.
     /// </summary>
-    internal static async Task<(int Succeeded, int Total)> ImportPresetFilesHeadlessAsync(IReadOnlyList<string> filePaths)
+    internal static async Task<(int Succeeded, int Total)> ImportPresetFilesHeadlessAsync(
+        IReadOnlyList<string> filePaths, Action<string>? onStatus = null)
     {
         var candidates = filePaths
             .Where(p => SupportedCustomPresetExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         if (candidates.Count == 0) return (0, 0);
@@ -1964,7 +1980,25 @@ public sealed partial class BetterRTXManagerWindow : Window
         if (cacheFolder == null)
         {
             Trace.WriteLine("[BetterRTX] [CustomImport] Headless import aborted - could not establish cache folder.");
+            onStatus?.Invoke("Could not locate the preset cache folder - import aborted.");
             return (0, candidates.Count);
+        }
+
+        // Best-effort sweep of anything a previous run left behind - a __staging_ folder is,
+        // by construction, either mid-import or abandoned (see ImportCustomPresetAsync's own
+        // cleanup), so one still sitting here on entry can only be a crash/interruption from
+        // before this process started, never something live.
+        try
+        {
+            foreach (var stale in Directory.EnumerateDirectories(cacheFolder, "__staging_*"))
+            {
+                try { Directory.Delete(stale, true); }
+                catch (Exception ex) { Trace.WriteLine($"[BetterRTX] [CustomImport] Couldn't sweep stale staging folder '{stale}': {ex.Message}"); }
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [CustomImport] Staging sweep failed: {ex.Message}");
         }
 
         var window = new BetterRTXManagerWindow { _cacheFolder = cacheFolder };
@@ -1974,8 +2008,10 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             foreach (var path in candidates)
             {
-                if (await window.ImportCustomPresetAsync(path))
-                    succeeded++;
+                var (ok, message) = await window.ImportCustomPresetAsync(path);
+                if (ok) succeeded++;
+
+                onStatus?.Invoke(message);
             }
         }
         finally
@@ -2006,8 +2042,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         int successCount = 0;
         foreach (var path in candidates)
         {
-            if (await ImportCustomPresetAsync(path))
-                successCount++;
+            var (ok, _) = await ImportCustomPresetAsync(path);
+            if (ok) successCount++;
         }
 
         Trace.WriteLine($"[BetterRTX] [CustomImport] Imported {successCount}/{candidates.Count} preset(s) successfully");
