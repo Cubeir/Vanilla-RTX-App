@@ -1492,6 +1492,8 @@ public sealed partial class MainWindow : Window
         await packBrowserWindow.ImportFilesAsync(filePaths);
     }
 
+
+
     public async Task HandleManualDataLocationAsync()
     {
         _ = BlinkingLamp(false, true, 0.5, 1.0);
@@ -2387,6 +2389,7 @@ public sealed partial class MainWindow : Window
         if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
 
         // Packs increasingly declare "pbr"/"raytraced" while shipping little or no actual content for the graphics mode, and those
+        // are precisely RTX Reactor's audience (Faithful 32x and friends), yet none of them can ever earn the candidate tag.
         // The tag is now advisory only, anything the user  selected can be sent through, and RTX Reactor confirms per pack,
         // in its own window, before touching one that either already claims PBR or looks like a poor fit.
         if (SelectedPacks.Count == 0)
