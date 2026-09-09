@@ -2349,12 +2349,9 @@ public sealed partial class MainWindow : Window
     {
         if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
 
-        // Candidacy used to gate this button entirely. It no longer does: packs increasingly
-        // declare "pbr"/"raytraced" while shipping little or no actual PBR content, and those
-        // are precisely RTX Reactor's audience (Faithful 32x and friends), yet none of them
-        // can ever earn the candidate tag. The tag is now advisory only - anything the user
-        // selected can be sent through, and RTX Reactor confirms per pack, in its own window,
-        // before touching one that either already claims PBR or looks like a poor fit.
+        // Packs increasingly declare "pbr"/"raytraced" while shipping little or no actual content for the graphics mode, and those
+        // The tag is now advisory only, anything the user  selected can be sent through, and RTX Reactor confirms per pack,
+        // in its own window, before touching one that either already claims PBR or looks like a poor fit.
         if (SelectedPacks.Count == 0)
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
@@ -2363,9 +2360,9 @@ public sealed partial class MainWindow : Window
             }
 #if DEBUG
             // Debug builds open the window with an empty queue on purpose. RTX Reactor's
-            // dev-only tools - the materials.json bootstrapper and the PBR test bench - don't
+            // dev-only tools: the materials.json bootstrapper and the PBR test bench, don't
             // read the pack queue at all, so requiring a pack just to reach them is pure
-            // friction during development. Generate still refuses an empty queue on its own.
+            // friction during development. Generate refuses an empty queue on its own anyway.
             Log("No packs selected - opening RTX Reactor anyway (Debug build).", LogLevel.Alchitex);
 #else
             Log("You must select at least one resource pack to use this feature on.", LogLevel.Warning);
@@ -2377,7 +2374,6 @@ public sealed partial class MainWindow : Window
         {
             Log($"None of your selected packs is tagged '{PackBrowserWindow.AlchitexCandidateTag}' - RTX Reactor will ask you to confirm each one before generating.", LogLevel.Alchitex);
         }
-
 
         string[] ToDisable =
         [
@@ -2406,8 +2402,8 @@ public sealed partial class MainWindow : Window
             else if (!string.IsNullOrEmpty(alchitexWindow.StatusMessage))
             {
                 Log(alchitexWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
             }
+            _ = BlinkingLamp(true, true, 0.0);
         };
 
         _childWindows.Add(alchitexWindow);

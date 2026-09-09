@@ -1439,7 +1439,7 @@ public sealed partial class Alchitex : Window
         {
             var dialog = new ContentDialog
             {
-                Title = $"{packName} may not be suitable for RTX enhancement!",
+                Title = $"{packName} may not be suitable for RTX enhancement by RTX Reactor!",
                 Content =
                     $"\"{packName}\" isn't tagged as an \"{PackBrowserWindow.AlchitexCandidateTag}\" - it has few block " +
                     "textures to work with, or uses a pack format too old to build RTX support on.\n\n" +
