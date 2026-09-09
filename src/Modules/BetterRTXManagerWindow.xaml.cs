@@ -2003,6 +2003,19 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         var window = new BetterRTXManagerWindow { _cacheFolder = cacheFolder };
 
+        // Load-bearing, not defensive: the constructor wires root.Loaded to
+        // BetterRTXManagerWindow_Loaded, which - it turns out - CAN fire even on an instance
+        // that's never Activate()d. Left wired, that runs the window's full heavyweight
+        // startup (Minecraft path resolution, the BetterRTX API fetch, and critically
+        // LoadLocalPresetsAsync scanning this same _cacheFolder) concurrently with the import
+        // loop below, on the same instance - which is exactly what produced the "pack_icon.png
+        // is being used by another process" and "Could not find a part of the path
+        // ...__staging_..." errors: the window's own scan was racing this method over the
+        // same staging folder mid-extraction and mid-cleanup. Detaching it here is what
+        // actually guarantees that pipeline can never run, rather than just hoping it won't.
+        if (window.Content is FrameworkElement root)
+            root.Loaded -= window.BetterRTXManagerWindow_Loaded;
+
         var succeeded = 0;
         try
         {

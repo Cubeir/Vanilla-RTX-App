@@ -137,21 +137,87 @@ public partial class App : Application
     /// through here, whether the launch was cold or handed off from a losing second
     /// instance (see ConsumePendingImportFile), so a mixed selection - unlikely, but Explorer
     /// permits it - still routes correctly instead of one type winning outright.
+    ///
+    /// FilterRecentlyHandledFiles runs first and is the actual fix for Windows activating the
+    /// FTA handler more than once for a single "Open with" - observed firsthand producing two
+    /// or three separate deliveries of the identical file list within a couple of seconds of
+    /// each other. MainWindow's per-type import locks keep those deliveries from interleaving
+    /// if they do both reach an import call, but that still means real import work runs
+    /// twice and surfaces as duplicate/already-installed warnings for files that were never
+    /// actually duplicates - exactly what was showing up in testing. Recognizing "I've just
+    /// seen this exact path" here means the second delivery never reaches an import call at
+    /// all, which is the "sanitize before we import" this exists for.
     /// </summary>
     private static async Task RouteIncomingFilesAsync(IReadOnlyList<string> paths)
     {
         if (paths.Count == 0 || MainWindow.Instance == null) return;
 
-        var rtpackFiles = paths
+        var deduped = FilterRecentlyHandledFiles(paths);
+        if (deduped.Count == 0) return;
+
+        var rtpackFiles = deduped
             .Where(p => Path.GetExtension(p).Equals(".rtpack", StringComparison.OrdinalIgnoreCase))
             .ToList();
-        var packFiles = paths.Except(rtpackFiles).ToList();
+        var packFiles = deduped.Except(rtpackFiles).ToList();
 
         if (packFiles.Count > 0)
             await MainWindow.Instance.ImportPackFilesAsync(packFiles);
 
         if (rtpackFiles.Count > 0)
             await MainWindow.Instance.ImportBetterRTXPresetFilesAsync(rtpackFiles);
+    }
+
+    // How close together two deliveries of the same path have to be to be treated as the
+    // same underlying user action rather than a deliberate later re-import. Windows'
+    // double-activation quirk delivers the duplicate within a couple of seconds at most
+    // (direct cold-launch args vs. the wake-event hand-off both firing off one Explorer
+    // action); this is generous well past that without being long enough to ever swallow a
+    // genuine second click.
+    private static readonly TimeSpan RecentFileActivationWindow = TimeSpan.FromSeconds(15);
+
+    private static readonly Dictionary<string, DateTime> RecentlyHandledFiles = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly object RecentlyHandledFilesLock = new();
+
+    /// <summary>
+    /// Drops any path this process has already accepted for import within
+    /// RecentFileActivationWindow, and records the rest as freshly accepted. Keyed on the raw
+    /// path as Windows/Explorer hand it over - every delivery of "the same file" for one user
+    /// action carries an identical path string, so no normalization is needed.
+    /// </summary>
+    private static List<string> FilterRecentlyHandledFiles(IReadOnlyList<string> paths)
+    {
+        var now = DateTime.UtcNow;
+        var result = new List<string>(paths.Count);
+
+        lock (RecentlyHandledFilesLock)
+        {
+            // Occasional sweep so a long-running instance doesn't accumulate entries forever.
+            if (RecentlyHandledFiles.Count > 200)
+            {
+                foreach (var stale in RecentlyHandledFiles
+                    .Where(kv => now - kv.Value > RecentFileActivationWindow)
+                    .Select(kv => kv.Key)
+                    .ToList())
+                {
+                    RecentlyHandledFiles.Remove(stale);
+                }
+            }
+
+            foreach (var path in paths)
+            {
+                if (RecentlyHandledFiles.TryGetValue(path, out var lastSeen)
+                    && now - lastSeen < RecentFileActivationWindow)
+                {
+                    Trace.WriteLine($"[FileActivation] Dropping duplicate delivery of '{path}' - accepted for import {(now - lastSeen).TotalSeconds:F1}s ago.");
+                    continue;
+                }
+
+                RecentlyHandledFiles[path] = now;
+                result.Add(path);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

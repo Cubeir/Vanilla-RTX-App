@@ -1469,25 +1469,31 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Serializes every file-activation-triggered import - .mcpack and .rtpack alike - onto
-    /// one global queue. Windows can (and, observed firsthand, does) activate the FTA handler
-    /// more than once for a single multi-select "Open with": one process wins the launch
-    /// mutex and imports its files directly, but a second process can lose that race and
-    /// still be carrying the very same file list, which it hands off to the first through the
-    /// wake-event/pending-file mechanism in App.xaml.cs. Without this lock, that hand-off
-    /// runs concurrently with the original import - two overlapping calls to
-    /// ExpImpDel.ImportFromPathsAsync racing to extract the same source files at once, which
-    /// is exactly what produced duplicate "_1" folders and mismatched log interleaving:
-    /// ExpImpDel's own duplicate-UUID check reads the destination folder to see if a pack is
-    /// already installed, and that read can land before the first call has finished writing
-    /// the very manifest it's looking for.
+    /// Serializes .mcpack imports specifically - see ImportBetterRTXPresetFilesAsync's own
+    /// RtpackImportLock for why .rtpack gets a separate one rather than sharing this: they
+    /// deploy to completely unrelated folders (Minecraft's resource_packs vs. this app's own
+    /// RTX_Cache) and share no state, so there's no reason a slow .rtpack import should make
+    /// an .mcpack drop wait, or vice versa.
     ///
-    /// Held for the full duration of a batch, not per file - so a second activation arriving
+    /// What this guards against: Windows can (and, observed firsthand, does) activate the FTA
+    /// handler more than once for a single multi-select "Open with" - one process wins the
+    /// launch mutex and imports its files directly, but a second process can lose that race
+    /// and still be carrying the very same file list, which it hands off to the first through
+    /// the wake-event/pending-file mechanism in App.xaml.cs. App.xaml.cs's own
+    /// FilterRecentlyHandledFiles is the first line of defence against that - it drops a
+    /// duplicate file list before either import path ever sees it - but this lock is what
+    /// keeps two *different* concurrent .mcpack requests (not duplicates of each other, just
+    /// two genuinely separate drops close together) from interleaving into the same Log()
+    /// output and racing ExpImpDel's own duplicate-UUID check, which reads the destination
+    /// folder to see if a pack is already installed and can be fooled by a read landing
+    /// before an unrelated concurrent import has finished writing its own manifest.
+    ///
+    /// Held for the full duration of a batch, not per file - so a second request arriving
     /// mid-batch queues behind the entire first one rather than interleaving with it, which is
     /// what actually guarantees "one at a time" instead of merely "one file at a time within
     /// whichever call happens to be running".
     /// </summary>
-    private static readonly SemaphoreSlim FileActivationImportLock = new(1, 1);
+    private static readonly SemaphoreSlim McpackImportLock = new(1, 1);
 
     /// <summary>
     /// Entry point for .mcpack file-type-association activation (see App.xaml.cs) -
@@ -1516,7 +1522,7 @@ public sealed partial class MainWindow : Window
         // - see the remarks above for why guessing at a fixed delay isn't good enough here.
         await WaitUntilInitializedAsync();
 
-        await FileActivationImportLock.WaitAsync();
+        await McpackImportLock.WaitAsync();
         try
         {
             var names = paths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
@@ -1546,9 +1552,20 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
-            FileActivationImportLock.Release();
+            McpackImportLock.Release();
         }
     }
+
+    /// <summary>
+    /// Serializes .rtpack imports specifically - kept separate from McpackImportLock
+    /// deliberately: .mcpack and .rtpack deploy to completely different, unrelated folders
+    /// (Minecraft's own resource_packs vs. this app's RTX_Cache) and share no state, so there
+    /// is no correctness reason for a slow import of one type to hold up the other. The
+    /// double-activation hazard McpackImportLock's remarks describe applies here just the
+    /// same, and App.xaml.cs's FilterRecentlyHandledFiles is the same first line of defence -
+    /// this lock is only for genuinely separate concurrent .rtpack requests.
+    /// </summary>
+    private static readonly SemaphoreSlim RtpackImportLock = new(1, 1);
 
     /// <summary>
     /// Entry point for .rtpack file-type-association activation (see App.xaml.cs) - same
@@ -1558,12 +1575,6 @@ public sealed partial class MainWindow : Window
     /// all (see its own remarks for why that's safe here specifically). Applying an imported
     /// preset to the game still only ever happens through the window itself, unaffected by
     /// this - this only gets a preset into the list waiting there next time it's opened.
-    ///
-    /// Shares FileActivationImportLock with ImportPackFilesAsync rather than having its own -
-    /// the same double-activation hazard applies here (a second, losing process can still be
-    /// carrying the same .rtpack list, handed off through the same wake-event mechanism), and
-    /// there is no benefit to letting an .mcpack batch and an .rtpack batch race each other
-    /// into the same Log() output.
     /// </summary>
     public async Task ImportBetterRTXPresetFilesAsync(IReadOnlyList<string> filePaths)
     {
@@ -1572,7 +1583,7 @@ public sealed partial class MainWindow : Window
 
         await WaitUntilInitializedAsync();
 
-        await FileActivationImportLock.WaitAsync();
+        await RtpackImportLock.WaitAsync();
         try
         {
             var names = paths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
@@ -1594,7 +1605,7 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
-            FileActivationImportLock.Release();
+            RtpackImportLock.Release();
         }
     }
 
