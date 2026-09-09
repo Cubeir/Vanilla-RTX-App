@@ -10932,7 +10932,7 @@
             {
                 "channel": "G",
                 "mer": {
-                    "metal_min": 64,
+                    "metal_min": 84,
                     "metal_max": 235,
                     "emissive_min": 0,
                     "emissive_max": 0,
@@ -16453,10 +16453,10 @@
     "element_constructor_back": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 250,
+            "metal_max": 64,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 94,
+            "roughness_min": 64,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -16480,10 +16480,10 @@
     "element_constructor_front": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 250,
+            "metal_max": 64,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 57,
+            "roughness_min": 64,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -16507,10 +16507,10 @@
     "element_constructor_side_a": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 250,
+            "metal_max": 64,
             "emissive_min": 0,
             "emissive_max": 0,
-            "roughness_min": 57,
+            "roughness_min": 64,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -16534,10 +16534,10 @@
     "element_constructor_side_b": {
         "mer": {
             "metal_min": 0,
-            "metal_max": 250,
+            "metal_max": 64,
             "emissive_min": 0,
             "emissive_max": 8,
-            "roughness_min": 5,
+            "roughness_min": 64,
             "roughness_max": 255,
             "invert_metal": false,
             "invert_emissive": false,
@@ -16560,7 +16560,7 @@
     },
     "element_constructor_top": {
         "mer": {
-            "metal_min": 200,
+            "metal_min": 128,
             "metal_max": 248,
             "emissive_min": 0,
             "emissive_max": 0,
@@ -16633,8 +16633,8 @@
             {
                 "channel": "G",
                 "mer": {
-                    "metal_min": 30,
-                    "metal_max": 184,
+                    "metal_min": 84,
+                    "metal_max": 235,
                     "emissive_min": 0,
                     "emissive_max": 0,
                     "roughness_min": 0,
@@ -16664,7 +16664,7 @@
             "roughness_max": 63,
             "invert_metal": false,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
