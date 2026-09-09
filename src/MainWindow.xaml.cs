@@ -1547,7 +1547,7 @@ public sealed partial class MainWindow : Window
 
             Log(succeeded == paths.Count
                 ? $"Finished importing {succeeded} pack{(paths.Count == 1 ? "" : "s")}."
-                : $"Imported {succeeded}/{paths.Count} pack{(paths.Count == 1 ? "" : "s")} - if one looked wrong rather than just already installed, use Browse Packs to import it manually and see what it says.",
+                : $"Imported {succeeded}/{paths.Count} pack{(paths.Count == 1 ? "" : "s")} - Use {BrowsePacksButtonText} menu to import it manually, and see what it says.",
                 succeeded == paths.Count ? LogLevel.Success : LogLevel.Warning);
         }
         finally
