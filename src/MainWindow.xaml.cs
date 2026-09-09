@@ -1497,7 +1497,7 @@ public sealed partial class MainWindow : Window
             var success = await ExpImpDel.ImportFromPathsAsync(new[] { path });
 
             Log(success ? $"Finished importing: {name}" : $"Failed to import: {name}",
-                success ? LogLevel.Import : LogLevel.Warning);
+                success ? LogLevel.Success : LogLevel.Warning);
         }
     }
 
@@ -1517,20 +1517,20 @@ public sealed partial class MainWindow : Window
         await WaitUntilInitializedAsync();
 
         var names = filePaths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
-        Log($"Starting to import BetterRTX preset(s):\n{string.Join(Environment.NewLine, names)}", LogLevel.BetterRTX);
+        Log($"Importing {filePaths.Count} BetterRTX preset{(filePaths.Count == 1 ? "" : "s")}:\n{string.Join(Environment.NewLine, names)}", LogLevel.BetterRTX);
 
         var (succeeded, total) = await Modules.BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync(filePaths);
 
         if (total == 0)
         {
-            Log("No supported .rtpack file(s) to import.", LogLevel.Warning);
+            Log($"No supported .rtpack file{(total == 1 ? "" : "s")} to import.", LogLevel.Warning);
             return;
         }
 
         Log(succeeded == total
-            ? $"Finished importing {succeeded} BetterRTX preset(s). Open BetterRTX Manager to install one."
-            : $"Imported {succeeded}/{total} BetterRTX preset(s) - see the trace log for what failed.",
-            succeeded == total ? LogLevel.BetterRTX : LogLevel.Warning);
+            ? $"Finished importing {succeeded} BetterRTX preset{(total == 1 ? "" : "s")}. Open BetterRTX Manager to install one."
+            : $"Imported {succeeded}/{total} BetterRTX preset{(total == 1 ? "" : "s")} – see the trace log for what failed.",
+            succeeded == total ? LogLevel.Success : LogLevel.Warning);
     }
 
 
@@ -2659,8 +2659,8 @@ public sealed partial class MainWindow : Window
     private static readonly Lock _logGate = new();
 
     // Typewriter state, only ever touched on the UI thread, inside TypewriterTick()
-    // Logger writes fast; typewriter reveals it to the UI on its own schedule — always the
-    // oldest not-yet-shown entry first, left-to-right within it — so chronology holds up
+    // Logger writes fast; typewriter reveals it to the UI on its own schedule – always the
+    // oldest not-yet-shown entry first, left-to-right within it – so chronology holds up
     // AND each message types start-to-finish instead of finish-to-start.
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _typewriterTimer;
     private ScrollViewer? _logScrollViewer;
@@ -2693,10 +2693,10 @@ public sealed partial class MainWindow : Window
     }))();
 
 
-    // Structural marker ONLY — never rendered, never typed character-by-character, never
+    // Structural marker ONLY – never rendered, never typed character-by-character, never
     private const string EntrySentinel = "\uE000\uE001";
 
-    // Idle/typing cursor — sits at the current write-head
+    // Idle/typing cursor – sits at the current write-head
     private const bool ShowTypingCursor = true;
     private const int CursorBlinkMs = 750;
     private const string CursorOnGlyph = " |";
@@ -2778,10 +2778,10 @@ public sealed partial class MainWindow : Window
                     current = current[..cut];
                     LogText = current;
 
-                    // Trimmed content came off the tail — exactly where _settledLength measures
-                    // from — so shrink it by the same amount. If the cut reached into content that
+                    // Trimmed content came off the tail – exactly where _settledLength measures
+                    // from – so shrink it by the same amount. If the cut reached into content that
                     // wasn't fully settled yet (only possible under an extreme backlog like a stress
-                    // test), just reset both — the next tick starts clean against the trimmed text.
+                    // test), just reset both – the next tick starts clean against the trimmed text.
                     if (trimmedAmount > _settledLength)
                     {
                         _settledLength = 0;
@@ -2823,7 +2823,7 @@ public sealed partial class MainWindow : Window
             int activeStart = sepIndex >= 0 ? sepIndex + EntrySentinel.Length : 0;
             int activeTextLength = searchLength - activeStart; // entry's OWN text only, sentinel excluded
 
-            int remaining = unshownLength - _activeRevealed; // whole backlog left — drives speed-up
+            int remaining = unshownLength - _activeRevealed; // whole backlog left – drives speed-up
             int charsThisTick = (int)Math.Max(BaselineCharsPerTick, Math.Ceiling(remaining * CatchUpFraction));
 
             _activeRevealed = Math.Min(activeTextLength, _activeRevealed + charsThisTick);
@@ -2831,7 +2831,7 @@ public sealed partial class MainWindow : Window
 
             if (_activeRevealed >= activeTextLength)
             {
-                // Entry fully typed — fold it (and its sentinel, converted to a real blank
+                // Entry fully typed – fold it (and its sentinel, converted to a real blank
                 // line) into settled INSTANTLY. The separator is never itself "typed."
                 _settledLength = current.Length - activeStart;
                 _activeRevealed = 0;
@@ -2881,7 +2881,7 @@ public sealed partial class MainWindow : Window
     }
 
     // Never reveal a cut that splits a surrogate pair or strands an emoji's
-    // variation-selector/combining mark — grows past them instead of stopping mid-glyph.
+    // variation-selector/combining mark – grows past them instead of stopping mid-glyph.
     private static int SnapForward(string s, int rangeStart, int localIndex)
     {
         int i = rangeStart + localIndex;
