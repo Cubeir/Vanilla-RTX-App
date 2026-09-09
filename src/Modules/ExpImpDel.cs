@@ -7,8 +7,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Windows.Storage.Pickers;
 using static Vanilla_RTX_App.MainWindow;
 
@@ -291,18 +289,18 @@ public static class ExpImpDel
         }
 
         bool isLegacy = Path.GetFileName(manifestEntry.FullName)
-            .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
+            .Equals(PackManifest.LegacyFileName, StringComparison.OrdinalIgnoreCase);
 
         // Parse manifest once — extracts resource-type flag (from modules) and
         // header UUID (for dupe detection). Single stream read, no redundancy.
-        ParsedManifest? parsed = null;
+        PackManifest? parsed = null;
         try
         {
             using var ms = new MemoryStream();
             using (var entryStream = manifestEntry.Open())
                 await entryStream.CopyToAsync(ms);
             ms.Position = 0;
-            parsed = ParseManifestFull(ms, isLegacy);
+            parsed = PackManifest.FromStream(ms, isLegacy, manifestEntry.FullName);
         }
         catch (Exception ex)
         {
@@ -427,92 +425,14 @@ public static class ExpImpDel
     }
 
     // ── Manifest parsing ──────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Everything needed from one manifest parse:
-    /// <list type="bullet">
-    ///   <item><see cref="HeaderUuid"/> — for dupe detection (header section only).</item>
-    ///   <item><see cref="HeaderName"/> — display name for dialog messages.</item>
-    ///   <item><see cref="HasResourceModule"/> — type check (modules section only).</item>
-    /// </list>
-    /// Separation of concerns: UUID/identity lives in the header; resource/behaviour
-    /// distinction lives in the modules array. Neither bleeds into the other.
-    /// </summary>
-    private record ParsedManifest(
-        string? HeaderUuid,
-        string? HeaderName,
-        bool HasResourceModule);
-
-    /// <summary>
-    /// Parses a manifest stream into a <see cref="ParsedManifest"/>.
-    /// Handles both modern manifest.json and legacy pack_manifest.json.
-    /// Tolerant of // and /* */ comments via JsonLoadSettings.
-    /// </summary>
-    private static ParsedManifest? ParseManifestFull(Stream manifestStream, bool isLegacy)
-    {
-        using var sr = new StreamReader(manifestStream, leaveOpen: true);
-        var json = sr.ReadToEnd();
-
-        JObject root;
-        try
-        {
-            using var stringReader = new StringReader(json);
-            using var jsonReader = new JsonTextReader(stringReader) { DateParseHandling = DateParseHandling.None };
-            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
-            root = JObject.Load(jsonReader, loadSettings);
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[Import] JSON parse error in manifest: {ex.Message}");
-            return null;
-        }
-
-        if (isLegacy)
-        {
-            // Legacy: UUID lives at header.pack_id; modules[] nested inside header.
-            var header = root["header"];
-            return new ParsedManifest(
-                HeaderUuid: header?["pack_id"]?.ToString(),
-                HeaderName: header?["name"]?.ToString(),
-                HasResourceModule: HasModuleOfTypeResources(header?["modules"]));
-        }
-        else
-        {
-            // Modern: UUID lives at header.uuid; modules[] at root level.
-            return new ParsedManifest(
-                HeaderUuid: root["header"]?["uuid"]?.ToString(),
-                HeaderName: root["header"]?["name"]?.ToString(),
-                HasResourceModule: HasModuleOfTypeResources(root["modules"]));
-        }
-    }
-
-    /// <summary>
-    /// Returns true if the modules token contains at least one entry whose "type"
-    /// equals "resources" (case-insensitive). Returns false for null/empty/missing.
-    /// </summary>
-    private static bool HasModuleOfTypeResources(JToken? modulesToken)
-    {
-        if (modulesToken?.Type != JTokenType.Array) return false;
-
-        return modulesToken
-            .Children<JObject>()
-            .Any(m => m["type"]?.ToString()
-                          .Equals("resources", StringComparison.OrdinalIgnoreCase) == true);
-    }
-
-    private static ParsedManifest? ParseManifestFullFromFile(string manifestPath, bool isLegacy)
-    {
-        try
-        {
-            using var fs = File.OpenRead(manifestPath);
-            return ParseManifestFull(fs, isLegacy);
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[Import] Could not parse manifest at '{manifestPath}': {ex.Message}");
-            return null;
-        }
-    }
+    //
+    // Three things are needed from one parse, and PackManifest exposes all three:
+    //   HeaderUuid        — dupe detection (header section only; legacy reads header.pack_id)
+    //   HeaderName        — display name for the confirmation dialogs
+    //   HasResourceModule — resource-vs-behaviour check (modules section only; legacy nests
+    //                       them inside the header)
+    // Separation of concerns is preserved: identity lives in the header, the resource/behaviour
+    // distinction lives in the modules array, and neither bleeds into the other.
 
     // ── Dupe detection — header UUID only ────────────────────────────────────
 
@@ -552,19 +472,19 @@ public static class ExpImpDel
     /// </summary>
     private static string? CheckDirForMatch(string dir, string headerUuid)
     {
-        var modern = Path.Combine(dir, "manifest.json");
+        var modern = Path.Combine(dir, PackManifest.ModernFileName);
         if (File.Exists(modern))
         {
-            var parsed = ParseManifestFullFromFile(modern, isLegacy: false);
+            var parsed = PackManifest.FromFile(modern);
             if (parsed?.HeaderUuid?.Equals(headerUuid, StringComparison.OrdinalIgnoreCase) == true)
                 return dir;
             return null; // modern manifest found, no match — don't also check legacy
         }
 
-        var legacy = Path.Combine(dir, "pack_manifest.json");
+        var legacy = Path.Combine(dir, PackManifest.LegacyFileName);
         if (File.Exists(legacy))
         {
-            var parsed = ParseManifestFullFromFile(legacy, isLegacy: true);
+            var parsed = PackManifest.FromFile(legacy);
             if (parsed?.HeaderUuid?.Equals(headerUuid, StringComparison.OrdinalIgnoreCase) == true)
                 return dir;
         }

@@ -250,7 +250,7 @@ public static class TextureSetOrchestrator
                     ["minecraft:texture_set"] = set,
                 };
 
-                File.WriteAllText(jsonPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                MinecraftJson.WriteIndented(jsonPath, root);
                 created++;
             }
             catch (Exception ex)
@@ -322,20 +322,22 @@ public static class TextureSetOrchestrator
         {
             try
             {
-                var text = File.ReadAllText(jsonPath);
-                if (string.IsNullOrWhiteSpace(text)) continue;
-
-                var set = JsonNode.Parse(text)?.AsObject()?["minecraft:texture_set"]?.AsObject();
+                // Through MinecraftJson, not a bare JsonNode.Parse: these files come from
+                // third-party packs, so comments and trailing commas turn up in them, and a
+                // duplicate key makes plain JsonNode.Parse succeed and then throw later at
+                // the first enumeration. Either way the set was silently skipped and that
+                // texture came out with no PBR at all.
+                var set = MinecraftJson.ParseObjectFile(jsonPath)?["minecraft:texture_set"] as JsonObject;
                 if (set == null) continue;
 
-                var colorName = (string?)set["color"];
+                var colorName = MinecraftJson.GetString(set["color"]);
                 if (string.IsNullOrEmpty(colorName)) continue;
 
                 var folder = Path.GetDirectoryName(jsonPath)!;
                 var colorPath = TextureSetHelper.FindTextureFile(folder, colorName);
                 if (colorPath == null) continue; // color texture itself missing - nothing to do
 
-                var mersName = (string?)set["metalness_emissive_roughness_subsurface"];
+                var mersName = MinecraftJson.GetString(set["metalness_emissive_roughness_subsurface"]);
                 if (string.IsNullOrEmpty(mersName))
                 {
                     // Not one of ours (or hand-authored as plain MER) - Alchitex only
@@ -348,8 +350,8 @@ public static class TextureSetOrchestrator
                 string? secondaryPath = null;
                 var isHeightmap = false;
 
-                var normalName = (string?)set["normal"];
-                var heightmapName = (string?)set["heightmap"];
+                var normalName = MinecraftJson.GetString(set["normal"]);
+                var heightmapName = MinecraftJson.GetString(set["heightmap"]);
 
                 if (!string.IsNullOrEmpty(normalName))
                 {

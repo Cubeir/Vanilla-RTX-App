@@ -327,6 +327,10 @@ public static class MaterialDefaults
 // needs a [JsonSerializable] line here and a Default.<Type> call site, not a bare
 // JsonSerializer.Deserialize<T>.
 //
+// The blacklist is no longer listed here: it is a flat array of strings with no POCO to
+// strip, so it is read as nodes through MinecraftJson instead - which also makes it
+// tolerant of the comments and trailing commas JsonSerializer refused.
+//
 // Read options mirror what the hand-rolled JsonSerializerOptions used to set: hand-edited
 // pack files carry comments and trailing commas, and property names shouldn't be
 // case-sensitive.
@@ -342,7 +346,6 @@ public static class MaterialDefaults
     WriteIndented = true)]
 [JsonSerializable(typeof(Dictionary<string, MaterialEntry>))]
 [JsonSerializable(typeof(MaterialEntry))]
-[JsonSerializable(typeof(List<string>))]
 // InvisibleEmissionParams.Color is a List<int>. Nested types get picked up through
 // MaterialEntry, but this shape is listed explicitly for the same reason everything else
 // here is: a missing metadata entry fails silently, and only in a trimmed Release build.
@@ -411,11 +414,11 @@ public sealed class MaterialsConfig
             // Top-level shape is a flat dictionary: exact-texture-name (or "default") ->
             // entry. Comment-style KEYS like "// note" are valid JSON strings and simply
             // become dictionary entries nothing ever looks up, so they are harmless too.
-            using var document = JsonDocument.Parse(raw, new JsonDocumentOptions
-            {
-                CommentHandling = JsonCommentHandling.Skip,
-                AllowTrailingCommas = true,
-            });
+            // JsonDocument rather than MinecraftJson's node tree, because entries are
+            // deserialized one at a time from their JsonElements (see below) - but the
+            // leniency policy is the shared one, so materials.json and a third-party pack's
+            // manifest agree on what "valid enough" means.
+            using var document = JsonDocument.Parse(raw, MinecraftJson.TolerantDocumentOptions);
 
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
@@ -695,8 +698,13 @@ public sealed class PbrBlacklist
     {
         try
         {
+            // Read as nodes, not deserialized: JsonSerializer parses strictly, so a single
+            // "//" comment in this hand-maintained file threw and left the run with *nothing*
+            // blacklisted - silently, since the catch below degrades rather than fails. It is
+            // an online-updatable asset (AssetUpdater), so a typo shipped remotely would have
+            // cost every user their blacklist until the next fix.
             var raw = File.ReadAllText(blacklistJsonPath);
-            var parsed = JsonSerializer.Deserialize(raw, AlchitexJsonContext.Default.ListString) ?? new List<string>();
+            var parsed = MinecraftJson.GetStringArray(MinecraftJson.ParseNode(raw));
             return new PbrBlacklist(parsed.Select(p => p.ToLowerInvariant()).ToList());
         }
         catch (Exception ex)

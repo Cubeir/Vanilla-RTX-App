@@ -12,8 +12,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using WinRT.Interop;
 using WinUIEx;
@@ -203,57 +201,26 @@ public sealed partial class PackBrowserWindow : Window
     // the constructor's ConfirmOverwrite/ConfirmNonResourceImport wiring above.
 
     // ════════════════════════════════════════════════════════════════════════
-    //  JSON parsing — tolerant of // and /* */ comments in manifests
-    // ════════════════════════════════════════════════════════════════════════
-
-    private static JObject ParseManifestJson(string json)
-    {
-        try
-        {
-            using var sr = new StringReader(json);
-            using var reader = new JsonTextReader(sr) { DateParseHandling = DateParseHandling.None };
-            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
-            return JObject.Load(reader, loadSettings);
-        }
-        catch
-        {
-            return JObject.Parse(json);
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
     //  Version string resolution
     // ════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Resolves a display version string from a manifest header version token.
-    /// Accepts a three-element int array [1,26,15] or a strict X.Y.Z string.
-    /// Anything else returns "Unknown"
-    /// For legacy manifests, pass the raw string via <paramref name="rawString"/>.
+    /// Resolves a display version string from a parsed manifest. Accepts a three-element
+    /// non-negative int array [1,26,15], or a strict X.Y.Z string - which is where a legacy
+    /// manifest's header.packs_version lands. Anything else (a two-element array, a float
+    /// component, "v1.2", a missing field) reads as "Unknown" rather than showing the user a
+    /// half-right number.
+    ///
+    /// Reading the manifest itself - tolerant of comments, trailing commas and duplicate keys,
+    /// and of both the modern and legacy field layouts - is PackManifest's job now.
     /// </summary>
-    private string ResolveVersion(JToken? versionToken, string? rawString = null)
+    private string ResolveVersion(PackManifest manifest)
     {
-        if (versionToken != null)
-        {
-            if (versionToken.Type == JTokenType.Array)
-            {
-                var parts = versionToken.ToArray();
-                if (parts.Length == 3 && parts.All(p => int.TryParse(p.ToString(), out int v) && v >= 0))
-                    return string.Join(".", parts.Select(p => p.ToString()));
-                return "Unknown";
-            }
+        if (manifest.VersionTriplet is int[] triplet)
+            return string.Join(".", triplet);
 
-            if (versionToken.Type == JTokenType.String)
-            {
-                var s = versionToken.ToString();
-                return StrictSemVerRegex.IsMatch(s) ? s : "Unknown";
-            }
-
-            return "Unknown";
-        }
-
-        if (!string.IsNullOrWhiteSpace(rawString))
-            return StrictSemVerRegex.IsMatch(rawString) ? rawString : "Unknown";
+        if (manifest.VersionString is string raw && !string.IsNullOrWhiteSpace(raw))
+            return StrictSemVerRegex.IsMatch(raw) ? raw : "Unknown";
 
         return "Unknown";
     }
@@ -783,7 +750,7 @@ public sealed partial class PackBrowserWindow : Window
                      EnvironmentVariables.Persistent.IsTargetingPreview))
         {
             // Pass 1: modern manifest.json
-            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "manifest.json", minDepth: 1, maxDepth: 2))
+            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, PackManifest.ModernFileName, minDepth: 1, maxDepth: 2))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
                 if (packDir == null || !seenDirs.Add(packDir)) continue;
@@ -793,12 +760,11 @@ public sealed partial class PackBrowserWindow : Window
                     var packData = await ParsePackAsync(packDir, manifestPath);
                     if (packData != null) packs.Add(packData);
                 }
-                catch (JsonException jsonEx) { Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}"); }
                 catch (Exception ex) { Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}"); }
             }
 
             // Pass 2: legacy pack_manifest.json (seenDirs skips dirs already handled above)
-            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, "pack_manifest.json", minDepth: 1, maxDepth: 2))
+            foreach (var manifestPath in Helpers.FindFilesAtDepth(scanPath, PackManifest.LegacyFileName, minDepth: 1, maxDepth: 2))
             {
                 var packDir = Path.GetDirectoryName(manifestPath);
                 if (packDir == null || !seenDirs.Add(packDir)) continue;
@@ -808,7 +774,6 @@ public sealed partial class PackBrowserWindow : Window
                     var packData = await ParsePackAsync(packDir, manifestPath);
                     if (packData != null) packs.Add(packData);
                 }
-                catch (JsonException jsonEx) { Trace.WriteLine($"[PackBrowser] Invalid JSON in {manifestPath}: {jsonEx.Message}"); }
                 catch (Exception ex) { Trace.WriteLine($"[PackBrowser] Error parsing pack {packDir}: {ex.Message}"); }
             }
         }
@@ -822,15 +787,16 @@ public sealed partial class PackBrowserWindow : Window
 
     private async Task<PackData?> ParsePackAsync(string packDir, string manifestPath)
     {
-        var json = await File.ReadAllTextAsync(manifestPath);
-        var root = ParseManifestJson(json);
+        var manifest = await PackManifest.FromFileAsync(manifestPath);
+        if (manifest == null)
+        {
+            Trace.WriteLine($"[PackBrowser] Unreadable manifest, skipping pack: {manifestPath}");
+            return null;
+        }
 
-        bool isLegacyFormat = Path.GetFileName(manifestPath)
-            .Equals("pack_manifest.json", StringComparison.OrdinalIgnoreCase);
-
-        return isLegacyFormat
-            ? await ParseLegacyPackManifestAsync(packDir, root)
-            : await ParseModernManifestAsync(packDir, root);
+        return manifest.IsLegacy
+            ? await ParseLegacyPackManifestAsync(packDir, manifest)
+            : await ParseModernManifestAsync(packDir, manifest);
     }
 
     /// <summary>
@@ -839,20 +805,15 @@ public sealed partial class PackBrowserWindow : Window
     /// Legacy packs are exempt from the Alchitex candidate tag; see
     /// <see cref="AlchitexLegacyPacksEligible"/>.
     /// </summary>
-    private async Task<PackData> ParseLegacyPackManifestAsync(string packDir, JObject root)
+    private async Task<PackData> ParseLegacyPackManifestAsync(string packDir, PackManifest manifest)
     {
-        var header = root["header"];
-
-        string packName = Helpers.StripMinecraftFormatting(header?["name"]?.ToString() ?? string.Empty);
-        string packDesc = Helpers.StripMinecraftFormatting(header?["description"]?.ToString() ?? string.Empty);
+        string packName = Helpers.StripMinecraftFormatting(manifest.HeaderName ?? string.Empty);
+        string packDesc = Helpers.StripMinecraftFormatting(manifest.HeaderDescription ?? string.Empty);
 
         if (string.IsNullOrWhiteSpace(packName)) packName = Path.GetFileName(packDir);
         if (string.IsNullOrWhiteSpace(packDesc)) packDesc = Helpers.SanitizePathForDisplay(packDir);
 
-        string rawVersion = header?["packs_version"]?.ToString()
-                         ?? header?["version"]?.ToString()
-                         ?? string.Empty;
-        string version = ResolveVersion(versionToken: null, rawString: rawVersion);
+        string version = ResolveVersion(manifest);
 
         var capabilityTags = new List<string>();
         bool potentiallySuitable = false;
@@ -886,7 +847,7 @@ public sealed partial class PackBrowserWindow : Window
     /// Parses the modern manifest.json format.
     /// Version must be a three-element int array or a strict X.Y.Z string.
     /// </summary>
-    private async Task<PackData> ParseModernManifestAsync(string packDir, JObject root)
+    private async Task<PackData> ParseModernManifestAsync(string packDir, PackManifest manifest)
     {
         var capabilityTags = new List<string>();
         var packType = "Incompatible";
@@ -895,14 +856,13 @@ public sealed partial class PackBrowserWindow : Window
         // after the functional ones, without reordering anything that already works.
         bool hasChemistry = false, hasUnknownCapability = false;
 
-        var capabilities = root["capabilities"];
-        if (capabilities != null && capabilities.Type == JTokenType.Array)
+        if (manifest.Capabilities.Count > 0)
         {
             bool hasRaytraced = false, hasPbr = false;
 
-            foreach (var cap in capabilities)
+            foreach (var cap in manifest.Capabilities)
             {
-                var capLower = cap.ToString().Trim().ToLowerInvariant();
+                var capLower = cap.Trim().ToLowerInvariant();
                 if (capLower.Length == 0) continue;
 
                 if (capLower == "raytraced") hasRaytraced = true;
@@ -943,11 +903,10 @@ public sealed partial class PackBrowserWindow : Window
         if (hasChemistry) capabilityTags.Add(ChemistryTag);
         if (hasUnknownCapability) capabilityTags.Add(UnknownCapabilityTag);
 
-        string version = ResolveVersion(root["header"]?["version"]);
+        string version = ResolveVersion(manifest);
 
-        var header = root["header"];
-        string packName = header?["name"]?.ToString() ?? "pack.name";
-        string packDesc = header?["description"]?.ToString() ?? "pack.description";
+        string packName = manifest.HeaderName ?? "pack.name";
+        string packDesc = manifest.HeaderDescription ?? "pack.description";
 
         if (packName == "pack.name" || packDesc == "pack.description")
         {

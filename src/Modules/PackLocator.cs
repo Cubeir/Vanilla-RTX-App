@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -75,27 +73,24 @@ public class PackLocator
             {
                 try
                 {
-                    var json = File.ReadAllText(file);
-                    var data = ParseManifestJson(json);
+                    var data = PackManifest.FromFile(file);
                     if (data == null)
                     {
                         results.Add("⚠️ Detected a package with a malformed manifest (likely from a third-party, you can ignore this warning).");
                         continue;
                     }
 
-                    var version = ParseTripletVersion(data["header"]?["version"]);
+                    var version = data.VersionTriplet;
                     if (version == null)
                         continue; // not a triplet version → definitively not one of our tracked packs
 
                     if (CompareVersion(version, MinVersion) < 0)
                         continue;
 
-                    string? headerUUID = data["header"]?["uuid"]?.ToString();
+                    string? headerUUID = data.HeaderUuid;
                     string folder = Path.GetDirectoryName(file)!;
 
-                    string? moduleUUID = null;
-                    if (data["modules"] is JArray modules && modules.Count > 0)
-                        moduleUUID = modules[0]["uuid"]?.ToString();
+                    string? moduleUUID = data.FirstModuleUuid;
 
                     if (string.Equals(headerUUID, VANILLA_RTX_HEADER_UUID, StringComparison.OrdinalIgnoreCase) &&
                         string.Equals(moduleUUID, VANILLA_RTX_MODULE_UUID, StringComparison.OrdinalIgnoreCase))
@@ -166,38 +161,11 @@ public class PackLocator
     }
 
 
-    private static JObject? ParseManifestJson(string json)
-    {
-        try
-        {
-            using var sr = new StringReader(json);
-            using var reader = new JsonTextReader(sr) { DateParseHandling = DateParseHandling.None };
-            var loadSettings = new JsonLoadSettings { CommentHandling = CommentHandling.Ignore };
-            return JObject.Load(reader, loadSettings);
-        }
-        catch
-        {
-            try { return JObject.Parse(json); }
-            catch { return null; }
-        }
-    }
-    /// Our three tracked packs always ship version as a triplet int array, e.g. [1, 0, 6].
-    /// Anything else (SemVer but string, malformed, missing) can't be one of ours, returns
-    /// null so the caller skips the entry without throwing.
-    private static int[]? ParseTripletVersion(JToken? versionToken)
-    {
-        if (versionToken is not JArray arr || arr.Count != 3)
-            return null;
-
-        var result = new int[3];
-        for (int i = 0; i < 3; i++)
-        {
-            if (arr[i].Type != JTokenType.Integer)
-                return null;
-            result[i] = (int)arr[i];
-        }
-        return result;
-    }
+    // Manifest reading (tolerant parse, header/module UUIDs, the strict triplet version our
+    // three tracked packs always ship) now lives in PackManifest, shared with every other
+    // module that reads a manifest. The semantic this class relies on is unchanged and is
+    // baked into that class: a manifest we can't read, or one whose version isn't a plain
+    // three-integer array, definitively isn't one of ours - skip it, never throw.
 
 
     /// <summary>

@@ -15,7 +15,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Newtonsoft.Json.Linq;
 using Vanilla_RTX_App.Core;
 using Windows.Storage;
 using WinRT.Interop;
@@ -890,20 +889,31 @@ public sealed partial class BetterRTXManagerWindow : Window
             }
 
             var presets = new List<ApiPresetData>();
-            var jsonArray = JArray.Parse(jsonData);
+
+            // Walked as nodes rather than deserialized into ApiPresetData: the DTO's setters are
+            // only ever called reflectively, which a trimmed Release build strips, and the API is
+            // a third party's - an entry of an unexpected shape should cost that entry, not the
+            // whole list.
+            var jsonArray = MinecraftJson.ParseArray(jsonData);
+            if (jsonArray == null)
+            {
+                Trace.WriteLine("[BetterRTX] ⚠ API response was not a JSON array");
+                return presets;
+            }
 
             foreach (var item in jsonArray)
             {
-                var preset = new ApiPresetData
+                if (item is not System.Text.Json.Nodes.JsonObject entry) continue;
+
+                presets.Add(new ApiPresetData
                 {
-                    Uuid = item["uuid"]?.Value<string>(),
-                    Slug = item["slug"]?.Value<string>(),
-                    Name = item["name"]?.Value<string>(),
-                    Stub = item["stub"]?.Value<string>(),
-                    Tonemapping = item["tonemapping"]?.Value<string>(),
-                    Bloom = item["bloom"]?.Value<string>()
-                };
-                presets.Add(preset);
+                    Uuid = MinecraftJson.GetString(entry["uuid"]),
+                    Slug = MinecraftJson.GetString(entry["slug"]),
+                    Name = MinecraftJson.GetString(entry["name"]),
+                    Stub = MinecraftJson.GetString(entry["stub"]),
+                    Tonemapping = MinecraftJson.GetString(entry["tonemapping"]),
+                    Bloom = MinecraftJson.GetString(entry["bloom"])
+                });
             }
 
             return presets;
@@ -965,30 +975,18 @@ public sealed partial class BetterRTXManagerWindow : Window
             var manifestPath = manifestFiles[0];
             var manifestDir = Path.GetDirectoryName(manifestPath);
 
-            var json = await File.ReadAllTextAsync(manifestPath);
-            var root = JObject.Parse(json);
+            var manifest = await PackManifest.FromFileAsync(manifestPath);
+            if (manifest == null)
+            {
+                Trace.WriteLine($"[BetterRTX] ⚠ Unreadable manifest: {manifestPath}");
+                return null;
+            }
 
-            string? uuid = null;
+            string? uuid = manifest.HeaderUuid;
             string name = Path.GetFileName(presetFolder);
 
-            // Try to get header.uuid
-            var header = root["header"];
-            if (header != null)
-            {
-                var uuidToken = header["uuid"];
-                if (uuidToken != null)
-                {
-                    uuid = uuidToken.Value<string>();
-                }
-
-                var nameToken = header["name"];
-                if (nameToken != null)
-                {
-                    var parsedName = nameToken.Value<string>();
-                    if (!string.IsNullOrWhiteSpace(parsedName))
-                        name = parsedName;
-                }
-            }
+            if (!string.IsNullOrWhiteSpace(manifest.HeaderName))
+                name = manifest.HeaderName;
 
             if (string.IsNullOrEmpty(uuid))
             {

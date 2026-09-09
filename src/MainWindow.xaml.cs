@@ -3015,11 +3015,6 @@ public sealed partial class MainWindow : Window
 - Inviestigate and fix the egdecase where previewer stops displaying toggle images,
 the one that'sb een happening with preview button for a while now... fix it 
 
--> For example, declare file picker?
-Allow the app to be registered as the opener of .mcpack files next to Minecraft itself? that'd be pretty good!
-allows the app to, depending on what it targets, import to both MC, and MC Preview
-This is a really cool idea honestly, Definitely do it, implement it the right way.
-
 - Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
 a page, filled by Online Texts, reporting on all the bugs
 Rich textboxes as containers with clickable links as pasted in the onlinetexts hopefully?
@@ -3041,30 +3036,46 @@ go update that instead and complete it, append it with bugs with no workarounds 
 Deletion and Exports, its pretty cool it gradually filling up with each export.
 
 - Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of
-// Done for now, but still, do this:
-- Slowly ditch Newtonsoft.JSON for System.Text.JSON, it satisfies all your needs tbh + one less package
-And see why some packages have trim warnings within themselves, solve if possible
-and solve NU1900 too, wtf is going on?!
-
->> OnlineTexts and PackUpdater no longer use Newtonsoft.
-But maybe, you should think of something, unifying reusable methods, e.g. for parsing manifest versions
-packlocator uses it, pack updater uses it, pack browser uses it, expimpdel uses it, but each more targeted, with unique implementations
-Make it broader.
-The following classes must be migrated away from newtonsoft:
-Tuner, PackLocator, PackBrowserWindow, ExpImpDel, BetterRTXManager
-
-Then you can delete the package!
-
-A unification of HOW manifests are parsed across PackLocator, PackUpdater, ExpImpDel, etc.. will be due.
-all while moving away from newtonsoft.json
-a versatile parser that satisfies the needs of all three or more.
-Also,
-About pack updater
-It's whole deal is "Find UUIDs" "find version fields" lkke. we're only looking to extract those in the json. also, what vets compared? only header uuid/version, right?
-also we have packLocator, who's job elsewhere is literally to find existing packs, but with some details,
-only returns one/latest with particular rules, if it cojld be expanded on, to serve updater's needs without changing how it behaves
-existing use, that'd be great too, it's also another place to migrate from newtonsoft to system.text.json, its job is to find our packs  we look for our packs,
-if a manifest is malformed, it def isn't ours, that's the semantic there... in pack locator
+// DONE. Newtonsoft.JSON is gone - the package reference, its TrimmerRootAssembly entry and
+// every call site. The whole app is on System.Text.Json now.
+//
+// What replaced the scattered parsers:
+//   Modules/MinecraftJson.cs  - the one reader for files we didn't author. Tolerates line and
+//     block comments, trailing commas, DUPLICATE KEYS and raw control characters inside string
+//     values (a pack author pressing Enter mid-description; 2 of 123 real sample manifests do
+//     this, and STJ refuses the whole document over it where Newtonsoft and Bedrock both
+//     accept it). Plus the value coercions every module was reinventing: GetString/GetInt/
+//     TryGetDouble/GetBool/GetIntArray/GetStringArray/SelectPath. Nothing in it reflects, so
+//     none of it can rot under PublishTrimmed.
+//   Modules/PackManifest.cs   - the one manifest reader, the union of what every module wanted:
+//     HeaderUuid (modern header.uuid / legacy header.pack_id), HeaderName, HeaderDescription,
+//     FormatVersion, Modules + FirstModuleUuid + HasResourceModule, Capabilities/HasCapability,
+//     VersionTriplet / VersionArray / VersionDisplay / VersionString. Modern and legacy layouts
+//     are both handled inside it, so no caller branches on format any more. Never throws:
+//     unreadable -> null, missing or wrong-kind field -> null/empty. PackLocator's semantic is
+//     the class's semantic now - if a manifest is malformed, it definitively isn't ours.
+//
+// Migrated onto it: PackLocator, PackUpdater, PackBrowserWindow, ExpImpDel, BetterRTXManager,
+// Tuner (fog), Helpers.TextureSetHelper, Alchitex PostProcess/PbrGeneration/MaterialsBootstrapper.
+// PackUpdater vets exactly what it always did and now says so in one place: header.uuid +
+// modules[0].uuid for identity, header.version for freshness.
+//
+// Verified before the package was pulled: a differential harness ran the OLD Newtonsoft logic
+// and the new PackManifest over all 123 manifests in the 127-archive sample corpus and compared
+// every extracted field -> 0 differences, 0 regressions. Plus 148 unit checks over the shapes
+// that bite (duplicate keys, raw newlines, quoted numbers, legacy layout, the SummerFields
+// terrain_texture.json). Release publishes trimmed with 0 IL2026 and only the two pre-existing
+// third-party IL2104s; Newtonsoft.Json.dll no longer ships at all.
+//
+// Two latent bugs turned up on the way and are fixed:
+//   - PbrBlacklist.Load used JsonSerializer, which parses strictly, so one line comment in
+//     pbr_blacklist.json blacklisted NOTHING - silently, since the catch degrades. It's an
+//     online-updatable asset, so a typo shipped remotely would have cost every user.
+//   - Alchitex's DiscoverGenerationTargets used a bare JsonNode.Parse with no leniency at all,
+//     so a third-party .texture_set.json with a comment was skipped and that texture got no PBR.
+//
+// Still open from this item: see why Microsoft.Windows.SDK.NET and WinRT.Runtime produce trim
+// warnings within themselves, and solve NU1900.
 
 
 

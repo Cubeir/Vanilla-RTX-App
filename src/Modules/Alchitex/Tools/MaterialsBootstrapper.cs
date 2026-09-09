@@ -194,15 +194,14 @@ public static class MaterialsBootstrapper
         if (string.IsNullOrWhiteSpace(raw)) return entries;
 
         // Comments and trailing commas, same as MaterialsConfig.Load - this file is hand
-        // edited, and refusing to merge into it over a comment would be absurd.
-        var parsed = JsonNode.Parse(raw, documentOptions: new JsonDocumentOptions
-        {
-            CommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-        });
-
-        if (parsed is not JsonObject root)
-            throw new InvalidDataException($"'{outputPath}' exists but isn't a JSON object of texture names - refusing to overwrite it.");
+        // edited, and refusing to merge into it over a comment would be absurd. Duplicate
+        // keys too, which is the reason this doesn't call JsonNode.Parse itself: that
+        // parses a duplicate happily and then throws ArgumentException on the foreach
+        // below, when JsonObject materialises its lazy dictionary. In a file the artist
+        // appends to by hand across thousands of entries, a repeated texture name is a
+        // typo to resolve last-one-wins, not a reason to abandon the merge.
+        var root = MinecraftJson.ParseObject(raw)
+            ?? throw new InvalidDataException($"'{outputPath}' exists but isn't a JSON object of texture names - refusing to overwrite it.");
 
         foreach (var property in root)
         {

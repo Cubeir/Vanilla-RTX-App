@@ -13,7 +13,8 @@ using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using ImageMagick;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using static Vanilla_RTX_App.MainWindow;
@@ -1891,12 +1892,13 @@ public static class TextureSetHelper
         public int InlineChannels { get; }
         /// <summary>True when the source was a hex string (e.g. "#B48CBE").</summary>
         public bool IsHex { get; }
-        public JToken SourceToken { get; }
+        /// <summary>The node this layer was read from, or null for a file-backed layer.</summary>
+        public JsonNode? SourceNode { get; }
 
-        private TextureLayerValue(JToken sourceToken, byte[] rgba, int originalChannels, bool isHex)
+        private TextureLayerValue(JsonNode sourceNode, byte[] rgba, int originalChannels, bool isHex)
         {
             IsInline = true;
-            SourceToken = sourceToken;
+            SourceNode = sourceNode;
             InlineRgba = rgba;
             InlineChannels = originalChannels;   // the count as it appeared in the file
             IsHex = isHex;
@@ -1905,24 +1907,24 @@ public static class TextureSetHelper
         private TextureLayerValue(string filePath)
         {
             FilePath = filePath;
-            SourceToken = JValue.CreateNull();
+            SourceNode = null;
         }
 
         public static TextureLayerValue FromFile(string path) => new(path);
 
-        public static TextureLayerValue? TryParseInline(JToken token)
+        public static TextureLayerValue? TryParseInline(JsonNode node)
         {
             // Hex string
-            if (token.Type == JTokenType.String)
+            if (node.GetValueKind() == JsonValueKind.String)
             {
-                var s = token.Value<string>()!.Trim();
+                var s = (MinecraftJson.GetString(node) ?? string.Empty).Trim();
                 if (s.StartsWith('#') && TryParseHex(s, out var rgba, out var originalChannels))
-                    return new TextureLayerValue(token, rgba, originalChannels, isHex: true);
+                    return new TextureLayerValue(node, rgba, originalChannels, isHex: true);
                 return null;
             }
 
             // Array of numbers (RGB triplet or RGBA quadruplet)
-            if (token is JArray arr && arr.Count is 3 or 4)
+            if (node is JsonArray arr && arr.Count is 3 or 4)
             {
                 var originalChannels = arr.Count;
                 var comps = new byte[originalChannels];
@@ -1935,7 +1937,7 @@ public static class TextureSetHelper
                 var rgba = originalChannels == 4
                     ? comps
                     : new[] { comps[0], comps[1], comps[2], (byte)255 };
-                return new TextureLayerValue(token, rgba, originalChannels, isHex: false);
+                return new TextureLayerValue(arr, rgba, originalChannels, isHex: false);
             }
 
             return null;
@@ -1966,15 +1968,12 @@ public static class TextureSetHelper
             return false;
         }
 
-        private static bool TryGetByte(JToken t, out byte b)
+        private static bool TryGetByte(JsonNode? t, out byte b)
         {
             b = 0;
-            double d;
-            if (t.Type == JTokenType.Float || t.Type == JTokenType.Integer)
-                d = t.Value<double>();
-            else if (t.Type == JTokenType.String && double.TryParse(t.Value<string>(), out d))
-            { /* ok */ }
-            else return false;
+            // Numbers and quoted numbers both count, exactly as before - a component written
+            // as "128" is as legible as one written as 128.
+            if (!MinecraftJson.TryGetDouble(t, out var d)) return false;
 
             b = (byte)Math.Clamp((int)Math.Round(d), 0, 255);
             return true;
@@ -1993,29 +1992,37 @@ public static class TextureSetHelper
         /// it was originally written in: RGB hex stays RGB hex, RGBA array stays RGBA
         /// array, etc. The alpha channel is always preserved from the bitmap as-is.
         /// </summary>
-        public JToken SerializeVirtual(Bitmap bmp)
+        public JsonNode SerializeVirtual(Bitmap bmp)
         {
             var c = bmp.GetPixel(0, 0);
             byte r = c.R, g = c.G, b = c.B, a = c.A;
 
             if (IsHex)
             {
-                return InlineChannels == 3
-                    ? new JValue($"#{r:X2}{g:X2}{b:X2}")
-                    : new JValue($"#{r:X2}{g:X2}{b:X2}{a:X2}");
+                return JsonValue.Create(InlineChannels == 3
+                    ? $"#{r:X2}{g:X2}{b:X2}"
+                    : $"#{r:X2}{g:X2}{b:X2}{a:X2}")!;
             }
 
-            return InlineChannels == 3
-                ? new JArray(r, g, b)
-                : new JArray(r, g, b, a);
+            // Built element by element rather than via the JsonArray(params) constructor so
+            // every component goes through the non-generic JsonValue.Create(int) overload -
+            // the generic Create<T>/Add<T> path is the one the trimmer flags (IL2026), and
+            // this file ships in a PublishTrimmed Release build.
+            var array = new JsonArray();
+            array.Add((JsonNode?)JsonValue.Create((int)r));
+            array.Add((JsonNode?)JsonValue.Create((int)g));
+            array.Add((JsonNode?)JsonValue.Create((int)b));
+            if (InlineChannels == 4)
+                array.Add((JsonNode?)JsonValue.Create((int)a));
+            return array;
         }
     }
 
     public sealed class ResolvedTextureSet
     {
         public string JsonFilePath { get; init; } = "";
-        public JObject RootJson { get; init; } = new();
-        public JObject SetNode { get; init; } = new();
+        public JsonObject RootJson { get; init; } = new();
+        public JsonObject SetNode { get; init; } = new();
 
         public TextureLayerValue Color { get; init; } = null!;
         public TextureLayerValue? Mer { get; init; }
@@ -2058,10 +2065,14 @@ public static class TextureSetHelper
         {
             try
             {
-                var text = File.ReadAllText(jsonFile);
-                var root = JObject.Parse(text);
+                var root = MinecraftJson.ParseObjectFile(jsonFile);
+                if (root == null)
+                {
+                    Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': not readable as a JSON object.");
+                    continue;
+                }
 
-                if (root.SelectToken("minecraft:texture_set") is not JObject set)
+                if (root["minecraft:texture_set"] is not JsonObject set)
                 {
                     Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': missing minecraft:texture_set node.");
                     continue;
@@ -2069,43 +2080,43 @@ public static class TextureSetHelper
 
                 var folder = Path.GetDirectoryName(jsonFile)!;
 
-                var colorToken = set["color"];
-                if (colorToken == null)
+                var colorNode = set["color"];
+                if (colorNode == null)
                 {
                     Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': no color layer defined.");
                     continue;
                 }
 
-                var colorLayer = ResolveLayer(folder, colorToken);
+                var colorLayer = ResolveLayer(folder, colorNode);
                 if (colorLayer == null)
                 {
                     Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': color layer could not be resolved.");
                     continue;
                 }
 
-                var merToken = set["metalness_emissive_roughness"];
-                var mersToken = set["metalness_emissive_roughness_subsurface"];
+                var merNode = set["metalness_emissive_roughness"];
+                var mersNode = set["metalness_emissive_roughness_subsurface"];
 
-                if (merToken != null && mersToken != null)
+                if (merNode != null && mersNode != null)
                 {
                     Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': both MER and MERS defined (mutually exclusive).");
                     continue;
                 }
 
-                var merLayer = ResolveLayer(folder, merToken ?? mersToken);
+                var merLayer = ResolveLayer(folder, merNode ?? mersNode);
 
-                var normalToken = set["normal"];
-                var heightmapToken = set["heightmap"];
+                var normalNode = set["normal"];
+                var heightmapNode = set["heightmap"];
 
-                if (normalToken != null && heightmapToken != null)
+                if (normalNode != null && heightmapNode != null)
                 {
                     Trace.WriteLine($"[TUNER] Skipping '{jsonFile}': both normal and heightmap defined (mutually exclusive).");
                     continue;
                 }
 
-                var normalLayer = ResolveLayer(folder, normalToken);
-                var heightmapLayer = ResolveLayer(folder, heightmapToken);
-                var isHeightmap = heightmapToken != null;
+                var normalLayer = ResolveLayer(folder, normalNode);
+                var heightmapLayer = ResolveLayer(folder, heightmapNode);
+                var isHeightmap = heightmapNode != null;
 
                 results.Add(new ResolvedTextureSet
                 {
@@ -2215,16 +2226,16 @@ public static class TextureSetHelper
         return results;
     }
 
-    private static TextureLayerValue? ResolveLayer(string folder, JToken? token)
+    private static TextureLayerValue? ResolveLayer(string folder, JsonNode? node)
     {
-        if (token == null) return null;
+        if (node == null) return null;
 
-        var inline = TextureLayerValue.TryParseInline(token);
+        var inline = TextureLayerValue.TryParseInline(node);
         if (inline != null) return inline;
 
-        if (token.Type != JTokenType.String) return null;
+        if (node.GetValueKind() != JsonValueKind.String) return null;
 
-        var name = token.Value<string>()!.Trim();
+        var name = (MinecraftJson.GetString(node) ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(name)) return null;
 
         var filePath = FindTextureFile(folder, name);
@@ -2339,7 +2350,7 @@ public static class TextureSetHelper
         {
             try
             {
-                File.WriteAllText(rs.JsonFilePath, rs.RootJson.ToString(Newtonsoft.Json.Formatting.Indented));
+                MinecraftJson.WriteIndented(rs.JsonFilePath, rs.RootJson);
             }
             catch (Exception ex)
             {

@@ -153,7 +153,7 @@ public class PackUpdater
             }
         }
 
-        (JsonObject? rtx, JsonObject? normals, JsonObject? opus)? remote = null;
+        (PackManifest? rtx, PackManifest? normals, PackManifest? opus)? remote = null;
 
         try
         {
@@ -187,13 +187,13 @@ public class PackUpdater
         return false;
     }
 
-    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (JsonObject? rtx, JsonObject? normals, JsonObject? opus) remoteManifests)
+    private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (PackManifest? rtx, PackManifest? normals, PackManifest? opus) remoteManifests)
     {
         try
         {
             using var archive = ZipFile.OpenRead(cachedPath);
 
-            async Task<JsonObject?> TryReadManifest(string partialPath)
+            async Task<PackManifest?> TryReadManifest(string partialPath)
             {
                 var entry = archive.Entries.FirstOrDefault(e =>
                     e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
@@ -202,7 +202,7 @@ public class PackUpdater
                 using var stream = entry.Open();
                 using var reader = new StreamReader(stream);
                 var json = await reader.ReadToEndAsync();
-                return ParseJsonObject(json);
+                return PackManifest.Parse(json, sourcePath: entry.FullName);
             }
 
             var rtxManifest = await TryReadManifest("Vanilla-RTX/manifest.json");
@@ -372,12 +372,12 @@ public class PackUpdater
                     var opusCached = cached["opus"];
 
                     return (
-                        (rtxCached?["version"]?.GetValue<string>(),
-                         ParseVersionSource(rtxCached?["source"]?.GetValue<string>())),
-                        (normalsCached?["version"]?.GetValue<string>(),
-                         ParseVersionSource(normalsCached?["source"]?.GetValue<string>())),
-                        (opusCached?["version"]?.GetValue<string>(),
-                         ParseVersionSource(opusCached?["source"]?.GetValue<string>()))
+                        (MinecraftJson.GetString(rtxCached?["version"]),
+                         ParseVersionSource(MinecraftJson.GetString(rtxCached?["source"]))),
+                        (MinecraftJson.GetString(normalsCached?["version"]),
+                         ParseVersionSource(MinecraftJson.GetString(normalsCached?["source"]))),
+                        (MinecraftJson.GetString(opusCached?["version"]),
+                         ParseVersionSource(MinecraftJson.GetString(opusCached?["source"])))
                     );
                 }
                 catch { /* Fall through */ }
@@ -532,8 +532,7 @@ public class PackUpdater
                     using var stream = entry.Open();
                     using var reader = new StreamReader(stream);
                     var json = await reader.ReadToEndAsync();
-                    var manifest = ParseJsonObject(json);
-                    return ExtractVersionFromManifest(manifest);
+                    return PackManifest.Parse(json, sourcePath: entry.FullName)?.VersionDisplay;
                 }
                 catch
                 {
@@ -570,84 +569,41 @@ public class PackUpdater
 
     // ======================= Helper Methods =======================
 
-    // System.Text.Json parses strictly (RFC 8259) by default: comments and trailing commas throw.
-    // Newtonsoft.Json tolerated both silently. Every manifest/JSON read in this class goes through
-    // ParseJsonObject below so parsing leniency matches what this class relied on before the
-    // Newtonsoft.Json → System.Text.Json conversion, rather than only covering one call site.
-    private static readonly JsonDocumentOptions ManifestParseOptions = new()
-    {
-        CommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
-    };
+    // Every manifest this class reads now goes through PackManifest - one tolerant parser
+    // (comments, trailing commas, duplicate keys, raw control characters in strings) and one
+    // definition of "header UUID", "module UUID" and "version", shared with PackLocator,
+    // PackBrowser, ExpImpDel, BetterRTXManager and Alchitex. What this class vets is unchanged
+    // and is now stated in one place: header.uuid + modules[0].uuid for identity,
+    // header.version for freshness.
+    //
+    // ParseJsonObject survives only for the remote-versions cache below, which is a payload
+    // this class writes to LocalSettings itself - not a manifest.
+    private static JsonObject? ParseJsonObject(string json) => MinecraftJson.ParseObject(json);
 
     /// <summary>
-    /// Parses a JSON string into a JsonObject, tolerating comments and trailing commas the way
-    /// Newtonsoft.Json's JObject.Parse did. Returns null (never throws) on malformed JSON or if
-    /// the root element isn't an object — callers treat null as "couldn't read this".
+    /// Cache-vs-remote comparison, and the only thing this class compares: header.version.
+    /// A version either side can't be read as an integer array counts as "newer", so an
+    /// unreadable manifest re-downloads rather than pinning the user to a stale cache.
     /// </summary>
-    private static JsonObject? ParseJsonObject(string json)
+    private bool IsRemoteVersionNewer(PackManifest cachedManifest, PackManifest remoteManifest)
     {
-        try
-        {
-            return JsonNode.Parse(json, documentOptions: ManifestParseOptions)?.AsObject();
-        }
-        catch
-        {
-            return null;
-        }
+        var cachedVersion = cachedManifest.VersionArray;
+        var remoteVersion = remoteManifest.VersionArray;
+
+        if (cachedVersion == null || remoteVersion == null) return true;
+
+        return CompareVersionArrays(remoteVersion, cachedVersion) > 0;
     }
 
-    /// <summary>
-    /// Reads a JSON array of integers (e.g. a manifest's "version": [1,2,3]) by walking the parsed
-    /// nodes directly instead of going through JsonSerializer/reflection-based conversion, so it
-    /// stays trim/AOT-safe (GetValue&lt;int&gt;() on an element-backed JsonValue never reflects).
-    /// </summary>
-    private static int[]? ExtractIntArray(JsonNode? node)
+    private async Task<(PackManifest? rtx, PackManifest? normals, PackManifest? opus)?> FetchRemoteManifests()
     {
-        if (node is not JsonArray array) return null;
-
-        try
-        {
-            var result = new int[array.Count];
-            for (int i = 0; i < array.Count; i++)
-            {
-                if (array[i] is not JsonValue value) return null;
-                result[i] = value.GetValue<int>();
-            }
-            return result;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private bool IsRemoteVersionNewer(JsonObject cachedManifest, JsonObject remoteManifest)
-    {
-        try
-        {
-            var cachedVersion = ExtractIntArray(cachedManifest["header"]?["version"]);
-            var remoteVersion = ExtractIntArray(remoteManifest["header"]?["version"]);
-
-            if (cachedVersion == null || remoteVersion == null) return true;
-
-            return CompareVersionArrays(remoteVersion, cachedVersion) > 0;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    private async Task<(JsonObject? rtx, JsonObject? normals, JsonObject? opus)?> FetchRemoteManifests()
-    {
-        async Task<JsonObject?> TryFetchManifest(string url)
+        async Task<PackManifest?> TryFetchManifest(string url)
         {
             try
             {
                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(15));
                 var response = await Helpers.UpdaterHttpClient.GetStringAsync(url, cts.Token);
-                return ParseJsonObject(response);
+                return PackManifest.Parse(response, sourcePath: url);
             }
             catch
             {
@@ -729,7 +685,7 @@ public class PackUpdater
             ZipFile.ExtractToDirectory(packagePath, tempExtractionDir, overwriteFiles: true);
             Trace.WriteLine("📦 Extracted package to temporary directory");
 
-            var extractedManifests = Directory.GetFiles(tempExtractionDir, "manifest.json", SearchOption.AllDirectories);
+            var extractedManifests = Directory.GetFiles(tempExtractionDir, PackManifest.ModernFileName, SearchOption.AllDirectories);
 
             var packsToProcess = new List<(string uuid, string moduleUuid, string? sourcePath, string finalName, string displayName, PackType packType)>();
 
@@ -1033,22 +989,7 @@ public class PackUpdater
         };
     }
 
-    private string? ExtractVersionFromManifest(JsonObject? manifest)
-    {
-        try
-        {
-            if (manifest == null) return null;
-
-            var versionArray = ExtractIntArray(manifest["header"]?["version"]);
-            if (versionArray == null || versionArray.Length == 0) return null;
-
-            return string.Join(".", versionArray);
-        }
-        catch
-        {
-            return null;
-        }
-    }
+    private string? ExtractVersionFromManifest(PackManifest? manifest) => manifest?.VersionDisplay;
 
     public bool IsRemoteVersionNewerThanInstalled(string? installedVersionString, string? remoteVersionString)
     {
@@ -1153,7 +1094,7 @@ public class PackUpdater
 
         foreach (var pathToClean in pathsToClean)
         {
-            var currentManifests = Directory.GetFiles(pathToClean, "manifest.json", SearchOption.AllDirectories)
+            var currentManifests = Directory.GetFiles(pathToClean, PackManifest.ModernFileName, SearchOption.AllDirectories)
                 .Where(m => !Path.GetDirectoryName(m)!.Contains("__rtxapp_"));
 
             foreach (var manifestPath in currentManifests)
@@ -1202,12 +1143,11 @@ public class PackUpdater
     {
         try
         {
-            var json = await File.ReadAllTextAsync(manifestPath);
-            var data = ParseJsonObject(json);
-            if (data == null) return null;
+            var manifest = await PackManifest.FromFileAsync(manifestPath);
+            if (manifest == null) return null;
 
-            string? headerUUID = data["header"]?["uuid"]?.GetValue<string>();
-            string? moduleUUID = data["modules"]?[0]?["uuid"]?.GetValue<string>();
+            string? headerUUID = manifest.HeaderUuid;
+            string? moduleUUID = manifest.FirstModuleUuid;
 
             if (headerUUID == null || moduleUUID == null)
                 return null;

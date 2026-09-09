@@ -5,10 +5,11 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using static Vanilla_RTX_App.EnvironmentVariables;
 using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
 using static Vanilla_RTX_App.Modules.ProcessorVariables;
@@ -567,11 +568,11 @@ public class Tuner
 
             try
             {
-                var text = File.ReadAllText(file);
-                var root = JObject.Parse(text);
+                var root = MinecraftJson.ParseObjectFile(file);
+                if (root == null) continue;
 
-                var volumetric = root.SelectToken("minecraft:fog_settings.volumetric") as JObject;
-                if (volumetric == null) continue;
+                if (MinecraftJson.SelectPath(root, "minecraft:fog_settings.volumetric") is not JsonObject volumetric)
+                    continue;
 
                 var modified = processWaterOnly
                     ? ProcessWaterCoefficients(volumetric)
@@ -579,7 +580,7 @@ public class Tuner
 
                 if (modified)
                 {
-                    var jsonString = root.ToString(Newtonsoft.Json.Formatting.Indented);
+                    var jsonString = MinecraftJson.ToIndentedString(root);
                     jsonString = RemoveScientificNotation(jsonString);
                     File.WriteAllText(file, jsonString);
                 }
@@ -590,22 +591,21 @@ public class Tuner
             }
         }
 
-        bool ProcessAirDensityAndScattering(JObject volumetric)
+        bool ProcessAirDensityAndScattering(JsonObject volumetric)
         {
             var modified = false;
-            var density = volumetric.SelectToken("density") as JObject;
-            if (density == null) return false;
+            if (volumetric["density"] is not JsonObject density) return false;
 
-            var airSection = density.SelectToken("air") as JObject;
-            var weatherSection = density.SelectToken("weather") as JObject;
+            var airSection = density["air"] as JsonObject;
+            var weatherSection = density["weather"] as JsonObject;
 
-            var densityValues = new List<(string name, JObject section, double original, double multiplied)>();
+            var densityValues = new List<(string name, JsonObject section, double original, double multiplied)>();
             var allDensities = new List<double>();
 
             double airDensityFinal = 0.0;
             double weatherDensityFinal = 0.0;
 
-            if (airSection != null && TryGetNumericValue(airSection.SelectToken("max_density"), out var airDensity))
+            if (airSection != null && TryGetNumericValue(airSection["max_density"], out var airDensity))
             {
                 allDensities.Add(airDensity);
                 if (Math.Abs(airDensity) < 0.0001)
@@ -625,7 +625,7 @@ public class Tuner
                 }
             }
 
-            if (weatherSection != null && TryGetNumericValue(weatherSection.SelectToken("max_density"), out var weatherDensity))
+            if (weatherSection != null && TryGetNumericValue(weatherSection["max_density"], out var weatherDensity))
             {
                 allDensities.Add(weatherDensity);
                 if (Math.Abs(weatherDensity) < 0.0001)
@@ -675,8 +675,7 @@ public class Tuner
                 var dampenedOverage = overage * 0.25 * proximityToMax;
                 var scatteringMultiplier = 1.0 + dampenedOverage;
 
-                var airCoefficients = volumetric.SelectToken("media_coefficients.air") as JObject;
-                var scatteringArray = airCoefficients?.SelectToken("scattering") as JArray;
+                var scatteringArray = MinecraftJson.SelectPath(volumetric, "media_coefficients.air.scattering") as JsonArray;
 
                 if (scatteringArray != null && scatteringArray.Count >= 3)
                     modified |= ProcessRgbArray(scatteringArray, scatteringMultiplier);
@@ -688,7 +687,7 @@ public class Tuner
             return modified;
         }
 
-        bool ProcessWaterCoefficients(JObject volumetric)
+        bool ProcessWaterCoefficients(JsonObject volumetric)
         {
             var modified = false;
 
@@ -706,21 +705,21 @@ public class Tuner
             var dampenedOverage = overage * 0.1 * Math.Max(proximityToMin, 0.25);
             var waterMultiplier = 1.0 + dampenedOverage;
 
-            var waterCoefficients = volumetric.SelectToken("media_coefficients.water") as JObject;
-            if (waterCoefficients == null) return false;
+            if (MinecraftJson.SelectPath(volumetric, "media_coefficients.water") is not JsonObject waterCoefficients)
+                return false;
 
-            var scatteringArray = waterCoefficients.SelectToken("scattering") as JArray;
+            var scatteringArray = waterCoefficients["scattering"] as JsonArray;
             if (scatteringArray != null && scatteringArray.Count >= 3)
                 modified |= ProcessRgbArray(scatteringArray, waterMultiplier);
 
-            var absorptionArray = waterCoefficients.SelectToken("absorption") as JArray;
+            var absorptionArray = waterCoefficients["absorption"] as JsonArray;
             if (absorptionArray != null && absorptionArray.Count >= 3)
                 modified |= ProcessRgbArray(absorptionArray, waterMultiplier);
 
             return modified;
         }
 
-        bool ProcessRgbArray(JArray rgbArray, double multiplier)
+        bool ProcessRgbArray(JsonArray rgbArray, double multiplier)
         {
             var rgbValues = new double[3];
             for (var i = 0; i < 3; i++)
@@ -740,13 +739,13 @@ public class Tuner
             return true;
         }
 
-        bool MakeDensityUniform(JObject? section)
+        bool MakeDensityUniform(JsonObject? section)
         {
             if (section == null || !FOG_UNIFORM_HEIGHT) return false;
 
-            var hasHeightFields = section.SelectToken("max_density_height") != null
-                               || section.SelectToken("zero_density_height") != null;
-            var isUniform = section.SelectToken("uniform")?.Value<bool>() ?? false;
+            var hasHeightFields = section["max_density_height"] != null
+                               || section["zero_density_height"] != null;
+            var isUniform = MinecraftJson.GetBool(section["uniform"]) ?? false;
 
             if (hasHeightFields && !isUniform)
             {
@@ -758,22 +757,21 @@ public class Tuner
             return false;
         }
 
-        bool TryGetNumericValue(JToken? token, out double value)
+        // Kept deliberately identical to the Newtonsoft version it replaces, negative
+        // included: a real number only counts when it is >= 0, while a *quoted* number is
+        // accepted at whatever it parses to. Fog files in the wild carry both.
+        bool TryGetNumericValue(JsonNode? node, out double value)
         {
             value = 0.0;
-            if (token == null) return false;
-            return token.Type switch
-            {
-                JTokenType.Float or JTokenType.Integer => (value = token.Value<double>()) >= 0,
-                JTokenType.String => double.TryParse(token.Value<string>(), out value),
-                _ => false
-            };
+            if (node == null) return false;
+            if (!MinecraftJson.TryGetDouble(node, out value)) return false;
+            return node.GetValueKind() == JsonValueKind.String || value >= 0;
         }
 
-        double GetDensityValue(JObject volumetric, string path)
+        double GetDensityValue(JsonObject volumetric, string path)
         {
-            var token = volumetric.SelectToken(path);
-            return TryGetNumericValue(token, out var value) ? value : 0.0;
+            var node = MinecraftJson.SelectPath(volumetric, path);
+            return TryGetNumericValue(node, out var value) ? value : 0.0;
         }
 
         double ClampAndRound(double value)
