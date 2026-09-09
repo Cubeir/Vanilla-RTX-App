@@ -1501,6 +1501,38 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Entry point for .rtpack file-type-association activation (see App.xaml.cs) - same
+    /// idea as ImportPackFilesAsync, just for BetterRTX custom presets. Does not open
+    /// BetterRTXManagerWindow: importing a preset into the app's local cache is handled by
+    /// BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync, which never shows a window at
+    /// all (see its own remarks for why that's safe here specifically). Applying an imported
+    /// preset to the game still only ever happens through the window itself, unaffected by
+    /// this - this only gets a preset into the list waiting there next time it's opened.
+    /// </summary>
+    public async Task ImportBetterRTXPresetFilesAsync(IReadOnlyList<string> filePaths)
+    {
+        if (filePaths.Count == 0) return;
+
+        await WaitUntilInitializedAsync();
+
+        var names = filePaths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
+        Log($"Starting to import BetterRTX preset(s):\n{string.Join(Environment.NewLine, names)}", LogLevel.BetterRTX);
+
+        var (succeeded, total) = await Modules.BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync(filePaths);
+
+        if (total == 0)
+        {
+            Log("No supported .rtpack file(s) to import.", LogLevel.Warning);
+            return;
+        }
+
+        Log(succeeded == total
+            ? $"Finished importing {succeeded} BetterRTX preset(s). Open BetterRTX Manager to install one."
+            : $"Imported {succeeded}/{total} BetterRTX preset(s) - see the trace log for what failed.",
+            succeeded == total ? LogLevel.BetterRTX : LogLevel.Warning);
+    }
+
 
 
     public async Task HandleManualDataLocationAsync()

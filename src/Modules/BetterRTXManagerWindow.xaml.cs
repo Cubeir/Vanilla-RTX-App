@@ -561,7 +561,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    private string? EstablishCacheFolder()
+    // internal (not private) and static (doesn't touch `this`) so ImportPresetFilesHeadlessAsync
+    // can resolve the cache location without needing any other part of the window's startup.
+    internal static string? EstablishCacheFolder()
     {
         try
         {
@@ -1852,7 +1854,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
-    private async Task<bool> ImportCustomPresetAsync(string archivePath)
+    // internal (not private) so ImportPresetFilesHeadlessAsync can call it directly on a
+    // never-shown instance - see that method's remarks. Only ever touches _cacheFolder.
+    internal async Task<bool> ImportCustomPresetAsync(string archivePath)
     {
         string? stagingFolder = null;
         try
@@ -1926,6 +1930,62 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
     }
 
+
+    /// <summary>
+    /// Headless entry point for .rtpack file-type-association activation (see App.xaml.cs /
+    /// MainWindow.ImportBetterRTXPresetFilesAsync). Imports straight into the app's local
+    /// preset cache without ever showing a window - not a "patch it to work anyway", but
+    /// because importing a custom preset genuinely never needed anything beyond
+    /// _cacheFolder (see ImportCustomPresetAsync): no Minecraft install path, no BetterRTX
+    /// API fetch, no on-screen list to populate. All of that exists to let the window show
+    /// and apply presets, which this doesn't do - applying one still only happens through
+    /// the window itself, disclaimer and all, completely unaffected by this method.
+    ///
+    /// The one thing a window normally does that this deliberately skips is the disclaimer
+    /// dialog (ShowDisclaimerDialogAsync) - it needs a live XamlRoot, which an instance
+    /// that's never Activate()d doesn't reliably have, and importing into the cache doesn't
+    /// touch the game or BetterRTX's files at all, so gating it behind "have you agreed to
+    /// use BetterRTX yet" isn't actually necessary the way it is for applying a preset.
+    ///
+    /// The BetterRTXManagerWindow instance constructed here exists purely to reuse
+    /// ImportCustomPresetAsync's already-correct extraction logic rather than duplicating
+    /// it - it's Close()d in the finally block specifically so its constructor-time
+    /// ThemeService.ThemeChanged subscription (and its own HWND) don't outlive this call.
+    /// </summary>
+    internal static async Task<(int Succeeded, int Total)> ImportPresetFilesHeadlessAsync(IReadOnlyList<string> filePaths)
+    {
+        var candidates = filePaths
+            .Where(p => SupportedCustomPresetExtensions.Contains(Path.GetExtension(p), StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        if (candidates.Count == 0) return (0, 0);
+
+        var cacheFolder = EstablishCacheFolder();
+        if (cacheFolder == null)
+        {
+            Trace.WriteLine("[BetterRTX] [CustomImport] Headless import aborted - could not establish cache folder.");
+            return (0, candidates.Count);
+        }
+
+        var window = new BetterRTXManagerWindow { _cacheFolder = cacheFolder };
+
+        var succeeded = 0;
+        try
+        {
+            foreach (var path in candidates)
+            {
+                if (await window.ImportCustomPresetAsync(path))
+                    succeeded++;
+            }
+        }
+        finally
+        {
+            window.Close();
+        }
+
+        Trace.WriteLine($"[BetterRTX] [CustomImport] Headless import: {succeeded}/{candidates.Count} preset(s) imported.");
+        return (succeeded, candidates.Count);
+    }
 
     // Bulk operation wrapper for custom preset imports
     private async Task ImportCustomPresetsAsync(IEnumerable<string> filePaths)

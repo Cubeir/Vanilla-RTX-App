@@ -104,11 +104,11 @@ public partial class App : Application
                     MainWindow.Instance.Restore();            // un-minimizes/un-maximizes, WinUIEx
                     MainWindow.Instance.SetForegroundWindow(); // brings to foreground, WinUIEx
 
-                    // A second launch that lost the race for the mutex leaves its .mcpack
-                    // paths here rather than its files - see the write above.
+                    // A second launch that lost the race for the mutex leaves its
+                    // .mcpack/.rtpack paths here rather than its files - see the write above.
                     var pendingFiles = ConsumePendingImportFile();
                     if (pendingFiles.Count > 0)
-                        await MainWindow.Instance.ImportPackFilesAsync(pendingFiles);
+                        await RouteIncomingFilesAsync(pendingFiles);
                 });
             }
         });
@@ -119,23 +119,48 @@ public partial class App : Application
         await Task.Delay(175); // A delay ensures the xaml is constructed before window tries to appear.
         _window.Activate();
 
-        // Cold launch via .mcpack ("Open with", double-click) rather than the normal icon -
-        // this process won the mutex outright, so its own activation args carry the files
-        // directly; no hand-off file involved.
+        // Cold launch via .mcpack/.rtpack ("Open with", double-click) rather than the normal
+        // icon - this process won the mutex outright, so its own activation args carry the
+        // files directly; no hand-off file involved.
         var launchFiles = GetActivationFilePaths();
         if (launchFiles.Count > 0)
-            _ = MainWindow.Instance?.ImportPackFilesAsync(launchFiles);
+            _ = RouteIncomingFilesAsync(launchFiles);
     }
 
-    // ── .mcpack file activation ──────────────────────────────────────────────
+    // ── .mcpack / .rtpack file activation ────────────────────────────────────
 
     /// <summary>
-    /// Reads the paths this process was actually launched with, if it was a .mcpack file
-    /// activation ("Open with", double-click) - empty otherwise, including for the ordinary
-    /// icon-launch case. The classic LaunchActivatedEventArgs OnLaunched receives doesn't
-    /// carry file activation data for a full-trust packaged app; that lives on
-    /// AppInstance.GetCurrent's own activation args regardless of which OnLaunched overload
-    /// fired.
+    /// Splits incoming activation paths by extension and hands each group to the window
+    /// method that owns that file type - .mcpack/.zip/.mcaddon to
+    /// MainWindow.ImportPackFilesAsync, .rtpack to
+    /// MainWindow.ImportBetterRTXPresetFilesAsync. Both file-type associations funnel
+    /// through here, whether the launch was cold or handed off from a losing second
+    /// instance (see ConsumePendingImportFile), so a mixed selection - unlikely, but Explorer
+    /// permits it - still routes correctly instead of one type winning outright.
+    /// </summary>
+    private static async Task RouteIncomingFilesAsync(IReadOnlyList<string> paths)
+    {
+        if (paths.Count == 0 || MainWindow.Instance == null) return;
+
+        var rtpackFiles = paths
+            .Where(p => Path.GetExtension(p).Equals(".rtpack", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var packFiles = paths.Except(rtpackFiles).ToList();
+
+        if (packFiles.Count > 0)
+            await MainWindow.Instance.ImportPackFilesAsync(packFiles);
+
+        if (rtpackFiles.Count > 0)
+            await MainWindow.Instance.ImportBetterRTXPresetFilesAsync(rtpackFiles);
+    }
+
+    /// <summary>
+    /// Reads the paths this process was actually launched with, if it was a file activation
+    /// ("Open with", double-click on a .mcpack or .rtpack) - empty otherwise, including for
+    /// the ordinary icon-launch case. The classic LaunchActivatedEventArgs OnLaunched
+    /// receives doesn't carry file activation data for a full-trust packaged app; that lives
+    /// on AppInstance.GetCurrent's own activation args regardless of which OnLaunched
+    /// overload fired.
     /// </summary>
     private static List<string> GetActivationFilePaths()
     {
@@ -162,11 +187,12 @@ public partial class App : Application
         Path.Combine(ApplicationData.Current.LocalFolder.Path, "pending_pack_import.txt");
 
     /// <summary>
-    /// One path per line - plain text rather than JSON is a deliberate choice here, not
-    /// laziness: Release publishes trimmed, and JsonSerializer's generic overloads need a
-    /// source-generated context to survive that (see AlchitexJsonContext for the pattern and
-    /// what happens without it). A flat file of paths needs none of that, and a Windows path
-    /// can never itself contain a newline.
+    /// One path per line, .mcpack and .rtpack mixed together freely - RouteIncomingFilesAsync
+    /// is what sorts them back out by extension on the reading side. Plain text rather than
+    /// JSON is a deliberate choice here, not laziness: Release publishes trimmed, and
+    /// JsonSerializer's generic overloads need a source-generated context to survive that
+    /// (see AlchitexJsonContext for the pattern and what happens without it). A flat file of
+    /// paths needs none of that, and a Windows path can never itself contain a newline.
     /// </summary>
     private static void WritePendingImportFile(List<string> paths)
     {

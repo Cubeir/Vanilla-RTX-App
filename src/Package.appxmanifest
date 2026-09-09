@@ -64,7 +64,20 @@
               <uap:FileType>.mcpack</uap:FileType>
             </uap:SupportedFileTypes>
             <uap:DisplayName>Minecraft Resource Pack</uap:DisplayName>
-            <uap:Logo>Assets\icons\Square44x44Logo.png</uap:Logo>
+            <uap:Logo>Assets\icons\import.mcpack.png</uap:Logo>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <!-- Same idea for .rtpack (BetterRTX custom presets) - see
+             MainWindow.ImportBetterRTXPresetFilesAsync and
+             BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync for what happens when the
+             app is opened this way. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="rtpack">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.rtpack</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>Minecraft RTX Shader Pack</uap:DisplayName>
+            <uap:Logo>Assets\icons\import.rtpack.png</uap:Logo>
           </uap:FileTypeAssociation>
         </uap:Extension>
       </Extensions>
