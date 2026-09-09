@@ -1489,7 +1489,7 @@ public sealed partial class MainWindow : Window
         await WaitUntilInitializedAsync();
 
         var names = filePaths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
-        Log($"Starting to import:\n{string.Join(Environment.NewLine, names)}", LogLevel.Informational);
+        Log($"Starting to import:\n{string.Join(Environment.NewLine, names)}", LogLevel.Import);
 
         foreach (var path in filePaths)
         {
@@ -1497,7 +1497,7 @@ public sealed partial class MainWindow : Window
             var success = await ExpImpDel.ImportFromPathsAsync(new[] { path });
 
             Log(success ? $"Finished importing: {name}" : $"Failed to import: {name}",
-                success ? LogLevel.Success : LogLevel.Error);
+                success ? LogLevel.Import : LogLevel.Warning);
         }
     }
 
@@ -2619,7 +2619,7 @@ public sealed partial class MainWindow : Window
     public enum LogLevel
     {
         Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex, Cache,
-        DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset
+        DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset, Import
     }
 
     // The single source of truth, Log() only ever writes here
@@ -2693,6 +2693,7 @@ public sealed partial class MainWindow : Window
             LogLevel.BetterRTX => "🧈 ",
             LogLevel.LUT => "🎨 ",
             LogLevel.VanillaRTX => "⛏️ ",
+            LogLevel.Import => "📥 ",
             null => "",
             _ => "💩 "
         };
