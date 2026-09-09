@@ -1515,6 +1515,8 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public async Task ImportPackFilesAsync(IReadOnlyList<string> filePaths)
     {
+        string[] ToDisable = ["BrowsePacksButton"];
+
         var paths = filePaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (paths.Count == 0) return;
 
@@ -1525,6 +1527,8 @@ public sealed partial class MainWindow : Window
         await McpackImportLock.WaitAsync();
         try
         {
+            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+
             var names = paths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
             Log($"Starting to import:\n{string.Join(Environment.NewLine, names)}", LogLevel.Import);
 
@@ -1547,12 +1551,14 @@ public sealed partial class MainWindow : Window
 
             Log(succeeded == paths.Count
                 ? $"Finished importing {succeeded} pack{(paths.Count == 1 ? "" : "s")}."
-                : $"Imported {succeeded}/{paths.Count} pack{(paths.Count == 1 ? "" : "s")} - Use {BrowsePacksButtonText} menu to import it manually, and see what it says.",
+                : $"Imported {succeeded} out of {paths.Count} pack{(paths.Count == 1 ? "" : "s")} - Use '{BrowsePacksButtonText.Text}' menu to import it manually, and see what it says.",
                 succeeded == paths.Count ? LogLevel.Success : LogLevel.Warning);
         }
         finally
         {
             McpackImportLock.Release();
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+
         }
     }
 
@@ -1578,6 +1584,8 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public async Task ImportBetterRTXPresetFilesAsync(IReadOnlyList<string> filePaths)
     {
+        string[] ToDisable = ["LaunchBetterRTXManagerButton"];
+
         var paths = filePaths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (paths.Count == 0) return;
 
@@ -1586,6 +1594,8 @@ public sealed partial class MainWindow : Window
         await RtpackImportLock.WaitAsync();
         try
         {
+            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+
             var names = paths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
             Log($"Importing {paths.Count} BetterRTX preset{(paths.Count == 1 ? "" : "s")}:\n{string.Join(Environment.NewLine, names)}", LogLevel.BetterRTX);
 
@@ -1600,11 +1610,12 @@ public sealed partial class MainWindow : Window
 
             Log(succeeded == total
                 ? $"Finished importing {succeeded} BetterRTX preset{(total == 1 ? "" : "s")}. Open BetterRTX Manager to install one."
-                : $"Imported {succeeded}/{total} BetterRTX preset{(total == 1 ? "" : "s")} - if one looked wrong rather than just failing outright, use BetterRTX Manager's own Add button to import it manually and see what it says.",
+                : $"Imported {succeeded} out of {total} BetterRTX preset{(total == 1 ? "" : "s")} - Use BetterRTX Manager's own Add button to import manually instead.",
                 succeeded == total ? LogLevel.Success : LogLevel.Warning);
         }
         finally
         {
+            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
             RtpackImportLock.Release();
         }
     }
