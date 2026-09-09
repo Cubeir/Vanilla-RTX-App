@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ImageMagick;
 using ImageMagick.Drawing; // Drawables, DrawableFillColor, DrawableRectangle
+using Vanilla_RTX_App.Modules.Json;
 
 namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 

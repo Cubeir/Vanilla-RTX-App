@@ -8,7 +8,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Modules.Json;
 
 /// <summary>
 /// The app's one JSON reading/writing layer for files it did not author itself: Bedrock

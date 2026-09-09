@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Vanilla_RTX_App.Modules.Json;
 using Vanilla_RTX_App.Modules; // FastBitmap, TextureSetHelper
 using Vanilla_RTX_App.Modules.Alchitex.Core; // MaterialEntry, MerParams, SssParams, HeightmapParams, NormalParams, RecursivePass
 

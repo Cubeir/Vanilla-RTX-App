@@ -10,6 +10,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Vanilla_RTX_App.Modules.Json;
 using static Vanilla_RTX_App.EnvironmentVariables;
 using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
 using static Vanilla_RTX_App.Modules.ProcessorVariables;

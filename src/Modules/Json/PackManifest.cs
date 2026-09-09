@@ -7,7 +7,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Modules.Json;
 
 /// <summary>
 /// One entry in a manifest's <c>modules</c> array. <see cref="Node"/> is the live object, so a

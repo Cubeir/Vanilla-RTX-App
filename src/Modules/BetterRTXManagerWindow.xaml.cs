@@ -16,6 +16,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Modules.Json;
 using Windows.Storage;
 using WinRT.Interop;
 using WinUIEx;

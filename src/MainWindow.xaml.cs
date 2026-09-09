@@ -23,6 +23,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
+using Vanilla_RTX_App.Modules.Json;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
@@ -3040,20 +3041,21 @@ Deletion and Exports, its pretty cool it gradually filling up with each export.
 // every call site. The whole app is on System.Text.Json now.
 //
 // What replaced the scattered parsers:
-//   Modules/MinecraftJson.cs  - the one reader for files we didn't author. Tolerates line and
-//     block comments, trailing commas, DUPLICATE KEYS and raw control characters inside string
-//     values (a pack author pressing Enter mid-description; 2 of 123 real sample manifests do
+//   Modules/Json/MinecraftJson.cs - the one reader for files we didn't author. Tolerates line
+//     and block comments, trailing commas, DUPLICATE KEYS and raw control characters inside
+//     string values (a pack author pressing Enter mid-description; 2 of 123 real manifests do
 //     this, and STJ refuses the whole document over it where Newtonsoft and Bedrock both
 //     accept it). Plus the value coercions every module was reinventing: GetString/GetInt/
 //     TryGetDouble/GetBool/GetIntArray/GetStringArray/SelectPath. Nothing in it reflects, so
 //     none of it can rot under PublishTrimmed.
-//   Modules/PackManifest.cs   - the one manifest reader, the union of what every module wanted:
-//     HeaderUuid (modern header.uuid / legacy header.pack_id), HeaderName, HeaderDescription,
-//     FormatVersion, Modules + FirstModuleUuid + HasResourceModule, Capabilities/HasCapability,
-//     VersionTriplet / VersionArray / VersionDisplay / VersionString. Modern and legacy layouts
-//     are both handled inside it, so no caller branches on format any more. Never throws:
-//     unreadable -> null, missing or wrong-kind field -> null/empty. PackLocator's semantic is
-//     the class's semantic now - if a manifest is malformed, it definitively isn't ours.
+//   Modules/Json/PackManifest.cs  - the one manifest reader, the union of what every module
+//     wanted: HeaderUuid (modern header.uuid / legacy header.pack_id), HeaderName,
+//     HeaderDescription, FormatVersion, Modules + FirstModuleUuid + HasResourceModule,
+//     Capabilities/HasCapability, VersionTriplet / VersionArray / VersionDisplay /
+//     VersionString. Both layouts are handled inside it, so no caller branches on format.
+//     Never throws: unreadable -> null, missing or wrong-kind field -> null/empty.
+//     PackLocator's semantic is the class's now - a malformed manifest definitively
+//     isn't ours.
 //
 // Migrated onto it: PackLocator, PackUpdater, PackBrowserWindow, ExpImpDel, BetterRTXManager,
 // Tuner (fog), Helpers.TextureSetHelper, Alchitex PostProcess/PbrGeneration/MaterialsBootstrapper.

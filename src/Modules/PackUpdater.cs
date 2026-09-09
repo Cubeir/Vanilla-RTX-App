@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using Vanilla_RTX_App.Modules.Json;
 using Windows.Storage;
 using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are stored there for locating packs
 
