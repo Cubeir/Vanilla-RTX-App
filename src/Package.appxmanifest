@@ -51,6 +51,23 @@
         <uap:InitialRotationPreference>
           <uap:Rotation Preference="landscape"/></uap:InitialRotationPreference>
       </uap:VisualElements>
+
+      <Extensions>
+        <!-- Registers the app as an option in "Open with" / double-click for .mcpack files,
+             alongside Minecraft's own association - this does not claim the default handler,
+             Windows requires the user to set that explicitly. See App.xaml.cs (file
+             activation handling) and MainWindow.ImportPackFilesAsync for what happens when
+             the app is actually opened this way. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="mcpack">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.mcpack</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>Minecraft Resource Pack</uap:DisplayName>
+            <uap:Logo>Assets\icons\Square44x44Logo.png</uap:Logo>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

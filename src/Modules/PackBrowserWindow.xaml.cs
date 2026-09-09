@@ -802,6 +802,17 @@ public sealed partial class PackBrowserWindow : Window
         await RunImportAsync(() => ExpImpDel.ImportPackAsync(hwnd));
     }
 
+    /// <summary>
+    /// Imports the given files through the same path drag-and-drop uses - the entry point
+    /// MainWindow.ImportPackFilesAsync calls for .mcpack file-type-association activation
+    /// (double-click, "Open with"), so a file handed to an already-open window is absorbed
+    /// exactly like a drop, and one handed to a freshly-constructed window works the moment
+    /// the constructor has run (ConfirmOverwrite/ConfirmNonResourceImport are wired there,
+    /// before Loaded even fires).
+    /// </summary>
+    public Task ImportFilesAsync(IEnumerable<string> paths) =>
+        RunImportAsync(() => ExpImpDel.ImportFromPathsAsync(paths));
+
     // ════════════════════════════════════════════════════════════════════════
     //  Import orchestration
     // ════════════════════════════════════════════════════════════════════════

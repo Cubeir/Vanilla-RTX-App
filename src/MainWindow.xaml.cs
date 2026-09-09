@@ -1399,27 +1399,39 @@ public sealed partial class MainWindow : Window
 
 
 
+    // Shared between the manual button and .mcpack file-activation (ImportPackFilesAsync) -
+    // both disable the same controls while a pack browser is up.
+    private static readonly string[] PackBrowserDisabledControls =
+    [
+        "LaunchMinecraftButton", "TargetPreviewToggle",
+         "LaunchAlchitexButton", "LaunchPackUpdateButton",
+          "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton", "ClearButton", "ResetButton"
+    ];
+
     private async void BrowsePacksButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] ToDisable =
-        [
-            "LaunchMinecraftButton", "TargetPreviewToggle",
-             "LaunchAlchitexButton", "LaunchPackUpdateButton",
-              "TuneSelectionButton", "ExportButton", "DeleteButton", "BrowsePacksButton", "ClearButton", "ResetButton"
-        ];
         // If user data isn't valid for the current edition, repurpose this click
         // to let the user locate the data folder manually instead.
         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
         {
-            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+            WindowControlsManager.ToggleSpecificControls(this, false, PackBrowserDisabledControls);
             await HandleManualDataLocationAsync();
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            WindowControlsManager.ToggleSpecificControls(this, true, PackBrowserDisabledControls);
             return;
         }
 
         // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
+        OpenPackBrowserWindow();
+    }
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+    /// <summary>
+    /// Constructs, sizes, tracks and activates a PackBrowserWindow the same way for every
+    /// caller - the manual button and .mcpack file-activation both funnel through here, so
+    /// the two ways of getting a pack browser open can never drift apart.
+    /// </summary>
+    private Modules.PackBrowserWindow OpenPackBrowserWindow()
+    {
+        WindowControlsManager.ToggleSpecificControls(this, false, PackBrowserDisabledControls);
 
         var packBrowserWindow = new Modules.PackBrowserWindow();
         var mainAppWindow = this.AppWindow;
@@ -1433,7 +1445,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(packBrowserWindow);
 
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            WindowControlsManager.ToggleSpecificControls(this, true, PackBrowserDisabledControls);
 
             if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
@@ -1453,6 +1465,31 @@ public sealed partial class MainWindow : Window
 
         _childWindows.Add(packBrowserWindow);
         WindowControlsManager.Activate(packBrowserWindow);
+        return packBrowserWindow;
+    }
+
+    /// <summary>
+    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs) - opens
+    /// the pack browser exactly as if the user had clicked "Browse Packs" and then dropped
+    /// these files on it, reusing an already-open window rather than spawning a second one
+    /// if the user already has one up.
+    /// </summary>
+    public async Task ImportPackFilesAsync(IReadOnlyList<string> filePaths)
+    {
+        if (filePaths.Count == 0) return;
+
+        // Same gate the manual button uses - there's nowhere to import to otherwise, and
+        // this is the only path that can resolve one.
+        if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
+            await HandleManualDataLocationAsync();
+
+        var packBrowserWindow = _childWindows.OfType<Modules.PackBrowserWindow>().FirstOrDefault();
+        if (packBrowserWindow != null)
+            WindowControlsManager.Activate(packBrowserWindow);
+        else
+            packBrowserWindow = OpenPackBrowserWindow();
+
+        await packBrowserWindow.ImportFilesAsync(filePaths);
     }
 
     public async Task HandleManualDataLocationAsync()
