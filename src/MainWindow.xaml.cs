@@ -1565,6 +1565,12 @@ public sealed partial class MainWindow : Window
                 ? $"Finished importing {succeeded} pack{(paths.Count == 1 ? "" : "s")}."
                 : $"Imported {succeeded} out of {paths.Count} pack{(paths.Count == 1 ? "" : "s")} - Use '{BrowsePacksButtonText.Text}' menu to import it manually, and see what it says.",
                 succeeded == paths.Count ? LogLevel.Success : LogLevel.Warning);
+
+            // If the user already has PackBrowserWindow open, its list was built before this
+            // import landed - refresh it so it isn't left showing stale contents.
+            if (succeeded > 0)
+                foreach (var packBrowser in _childWindows.OfType<Modules.PackBrowserWindow>())
+                    await packBrowser.LoadPacksAsync();
         }
         finally
         {
@@ -1624,6 +1630,12 @@ public sealed partial class MainWindow : Window
                 ? $"Finished importing {succeeded} BetterRTX preset{(total == 1 ? "" : "s")}. Open BetterRTX Manager to install one."
                 : $"Imported {succeeded} out of {total} BetterRTX preset{(total == 1 ? "" : "s")} - Use BetterRTX Manager's own Add button to import manually instead.",
                 succeeded == total ? LogLevel.Success : LogLevel.Warning);
+
+            // If the user already has BetterRTXManagerWindow open, its list was built before
+            // this import landed - refresh it so it isn't left showing stale contents.
+            if (succeeded > 0)
+                foreach (var managerWindow in _childWindows.OfType<Modules.BetterRTXManagerWindow>())
+                    await managerWindow.RefreshLocalPresetsAsync();
         }
         finally
         {

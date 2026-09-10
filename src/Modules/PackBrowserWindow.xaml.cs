@@ -230,7 +230,11 @@ public sealed partial class PackBrowserWindow : Window
     //  Pack list loading
     // ════════════════════════════════════════════════════════════════════════
 
-    private async Task LoadPacksAsync()
+    // Internal rather than private so MainWindow can re-run it on an already-open browser
+    // after a headless .mcpack file-activation import lands (see
+    // MainWindow.ImportPackFilesAsync) - otherwise the list would keep showing what was
+    // installed before that import until the user closed and reopened this window.
+    internal async Task LoadPacksAsync()
     {
         PackListContainer.Children.Clear();
         _packButtonMap.Clear();

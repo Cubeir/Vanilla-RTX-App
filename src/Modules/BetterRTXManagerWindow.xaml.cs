@@ -2035,6 +2035,20 @@ public sealed partial class BetterRTXManagerWindow : Window
         return (succeeded, candidates.Count);
     }
 
+    /// <summary>
+    /// Reloads and redisplays the local presets list - the same pair of calls
+    /// ImportCustomPresetsAsync makes after its own import loop. Exposed so MainWindow can
+    /// call it on an already-open manager window once a headless .rtpack file-activation
+    /// import lands (see MainWindow.ImportBetterRTXPresetFilesAsync,
+    /// ImportPresetFilesHeadlessAsync above) - otherwise this window's list would keep
+    /// showing what was installed before that import until closed and reopened.
+    /// </summary>
+    internal async Task RefreshLocalPresetsAsync()
+    {
+        await LoadLocalPresetsAsync();
+        await DisplayPresetsAsync();
+    }
+
     // Bulk operation wrapper for custom preset imports
     private async Task ImportCustomPresetsAsync(IEnumerable<string> filePaths)
     {
