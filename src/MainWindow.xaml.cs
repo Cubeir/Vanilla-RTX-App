@@ -3033,21 +3033,10 @@ public sealed partial class MainWindow : Window
     #endregion
 }
 
-/* ### BACKLOG/TODO OF HIGHCORTISOL SOFTWARE LTD (STRICTLY CONFIDENTIAL)
+/* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)
 
 - Inviestigate and fix the egdecase where previewer stops displaying toggle images,
 the one that'sb een happening with preview button for a while now... fix it 
-
-- Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
-a page, filled by Online Texts, reporting on all the bugs
-Rich textboxes as containers with clickable links as pasted in the onlinetexts hopefully?
-make something work with the existing system
-
-A hub for keeping a track of Minecraft RTX bugs...
-
-// Don't actually do it, not a bad idea idea but send it to gulag, because
-you should be maintaining this list PUBLICLY ON mcpedl.com/vanilla-rtx, there's already a section for it
-go update that instead and complete it, append it with bugs with no workarounds or ones pack doesn't cover.
 
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
@@ -3058,55 +3047,9 @@ go update that instead and complete it, append it with bugs with no workarounds 
 - Adopt the ProgressBar manager to properly update for:D
 Deletion and Exports, its pretty cool it gradually filling up with each export.
 
-- Hunt down every trim-induced warning, update the methods it mentions, and get rid of them... just to have more peace of
-// DONE. Newtonsoft.JSON is gone - the package reference, its TrimmerRootAssembly entry and
-// every call site. The whole app is on System.Text.Json now.
-//
-// What replaced the scattered parsers:
-//   Modules/Json/MinecraftJson.cs - the one reader for files we didn't author. Tolerates line
-//     and block comments, trailing commas, DUPLICATE KEYS and raw control characters inside
-//     string values (a pack author pressing Enter mid-description; 2 of 123 real manifests do
-//     this, and STJ refuses the whole document over it where Newtonsoft and Bedrock both
-//     accept it). Plus the value coercions every module was reinventing: GetString/GetInt/
-//     TryGetDouble/GetBool/GetIntArray/GetStringArray/SelectPath. Nothing in it reflects, so
-//     none of it can rot under PublishTrimmed.
-//   Modules/Json/PackManifest.cs  - the one manifest reader, the union of what every module
-//     wanted: HeaderUuid (modern header.uuid / legacy header.pack_id), HeaderName,
-//     HeaderDescription, FormatVersion, Modules + FirstModuleUuid + HasResourceModule,
-//     Capabilities/HasCapability, VersionTriplet / VersionArray / VersionDisplay /
-//     VersionString. Both layouts are handled inside it, so no caller branches on format.
-//     Never throws: unreadable -> null, missing or wrong-kind field -> null/empty.
-//     PackLocator's semantic is the class's now - a malformed manifest definitively
-//     isn't ours.
-//
-// Migrated onto it: PackLocator, PackUpdater, PackBrowserWindow, ExpImpDel, BetterRTXManager,
-// Tuner (fog), Helpers.TextureSetHelper, Alchitex PostProcess/PbrGeneration/MaterialsBootstrapper.
-// PackUpdater vets exactly what it always did and now says so in one place: header.uuid +
-// modules[0].uuid for identity, header.version for freshness.
-//
-// Verified before the package was pulled: a differential harness ran the OLD Newtonsoft logic
-// and the new PackManifest over all 123 manifests in the 127-archive sample corpus and compared
-// every extracted field -> 0 differences, 0 regressions. Plus 148 unit checks over the shapes
-// that bite (duplicate keys, raw newlines, quoted numbers, legacy layout, the SummerFields
-// terrain_texture.json). Release publishes trimmed with 0 IL2026 and only the two pre-existing
-// third-party IL2104s; Newtonsoft.Json.dll no longer ships at all.
-//
-// Two latent bugs turned up on the way and are fixed:
-//   - PbrBlacklist.Load used JsonSerializer, which parses strictly, so one line comment in
-//     pbr_blacklist.json blacklisted NOTHING - silently, since the catch degrades. It's an
-//     online-updatable asset, so a typo shipped remotely would have cost every user.
-//   - Alchitex's DiscoverGenerationTargets used a bare JsonNode.Parse with no leniency at all,
-//     so a third-party .texture_set.json with a comment was skipped and that texture got no PBR.
-//
-// Still open from this item: see why Microsoft.Windows.SDK.NET and WinRT.Runtime produce trim
-// warnings within themselves, and solve NU1900.
-
-
-
 - Do the TODOs scattered in the code
 
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
-
 
 - More previewer asset ideas:
 random block renders thrown in there
@@ -3114,7 +3057,6 @@ iconns/logos of features of app thrown in there too, one for each would be enoug
 Idea, of a render of a Tuner block, but each side features one of the feature-unique icons you've made!
 Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
 Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
-
 
 - Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
 Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
@@ -3134,19 +3076,28 @@ if that succeeds, can move on.
 // ============================================================================================================
 /* THE GULAG - These ideas are here for a reason, they are either shite, or just need more work put into thems
 
+
+- Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
+a page, filled by Online Texts, reporting on all the bugs
+Rich textboxes as containers with clickable links as pasted in the onlinetexts hopefully?
+make something work with the existing system
+
+A hub for keeping a track of Minecraft RTX bugs...
+
+// Don't actually do it, not a bad idea idea but send it to gulag, because
+you should be maintaining this list PUBLICLY ON mcpedl.com/vanilla-rtx, there's already a section for it
+go update that instead and complete it, append it with bugs with no workarounds or ones pack doesn't cover.
+
 - IDEA:
 Update the documentation, be more through, make ### sections for each button/feature name
 make alt-clicking a feature in the app, take the user to the readme.md in THAT section! aka a quick way to read on features
 with detailed tooltips in the app, this is so unneeded, but y'know? ideas are ideas
 
-
------
-
 - If BetterRTX Manager is ever to be reworked to separate Servicing from Presentation
 the whole code path related to backing up defaults can be pruned.
 instead, adapt another approach that redirects mat.bin files via materials.index.json in the materials folder.
 
-🌟 A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
+Also A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
 In there, allow LOTS OF things
 - functionality of existing titlebar buttons
 allowing register/de-registering of of the app as a .mcpack opener (which directs packs through packbrowser's import)
@@ -3161,30 +3112,15 @@ e.g. the constructor
 
 then you can eliminate the whole messy codepath related to Holding shift to perform elevated actions!
 
------------
 
-Just an idea to keep on the sidelines:
-make other windows have their logo/icons similar to main window and alchitex
-potentially add the titlebar to all of them as well... maybe that's too far, dunno rn...
-but it can look good?! unique icons for each module, awesome titlebars
-etc..
-you could rice each feature more, pretty backgrounds, whatnot!
-
--> json says he might unify the output of /creator with what the /api gives.
-good news!
-// IDEA: RTX Creator can become a reality, powerd by bedrock.graphics if it lasts
-use webview, direct, while building aclhitex, route a pipeline through there:
-manually creating each block by twiddling knobs, pretty cool, manual edits possible
-talk to json about it some time, It's a cool idea for the long run
-It's what RTX Reactor was initially supposed to be, before the idea mutated.
 
 - Add something to actively resolve junctions/symlinks everywhere
-apparently some third party launchers use them for other things, like userdata, as well -- but wait for at least
-a single report of failure before touching anything
+apparently some third party launchers use them for other things, like userdata, as well..
+..but wait for at least a single report of failure related to this before touching anything
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
-- IDEA: A section in PSAs, and a page in the app, dedicated to KEEP A LIST OF THE BUGS!
+- IDEA: A section in PSAs + a page in the app, dedicated to KEEP A LIST OF THE BUGS!
 So users can go vote on them, and check if a bug is relaetd to the game or not
 A FULLY COMPILED LIST!
 This is very good, as people get to discover Minecraft RTX bugs instead of being confused about them.
@@ -3194,16 +3130,6 @@ very low prio though, not too many assets, things are good
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
-
-- add the ability to TOTALLY DISABLE entire features on startup?
-PARTICULARY BETTERRTX
-Not all features need this, so a full system may not be needed, in-app announcements could serve as the host, online texts could
-be used as the parser
-DISABEL the button when betterrtx is broken, manually enable it again when not.
-
-> Prolly not a good idea warnings are enough.
-This is a terrible idea, the changes propagate slowly, and disabling features could be catastrophic for some users
-psa system is a nice to have thing
 
 - Make a  secondary image fade in and out briefly over lampinteraction when clicked
 same as bottom vessel
@@ -3216,62 +3142,5 @@ gets clicked, if the above is implemented, things can look really nice
 > This whole thing would've worked a lot easier if you weren't trying to be a smartass and minimize the number of vessels used for lampanimator/previewer
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
-useful down the line
-
->> while at it, MOVE Art Previewer vessel thingy to a new container beteween the 3x2 button grid, and tune/export/delete grid
-Taller default app height, but, here's the cool part
-Use can Collapse the window/reduce height, and all it'll do is Swallow the container, so effectively it gives user to the ability to
-"Hide or Disable" preview art section in a totally indirect way, which is pretty cool.
-Better yet, it should have a Collapse/Expand button, that Updates the Minimum height of the window itself, that'd be better! no ugly half visible previewer vessels
-Might end up redoing a whole bunch of art for this, since there's now more space, a wide area to work with.
-
-- Do the redesign?
-Offload export and delete to PackBrowser menu, allow deletion and export on the spot
-
-While using bindings for everything else, rip out old checkboxes code paths
-Replace with a dynamic dropdown instead, allow selection of AVAILABLE/Installed Vanilla RTX resource packs, decided by PackLocator
-Reset and Clear are moved to the top
-Tune selection takes spot of Surface normal intensity as surface normal itnensity is moved to the right, cuz there's now enough space.
-
-This way you can shrink the app's min height too. One Row effectively gone -- Possibly move Preview button to the Left side
-
-It sounds a bit redundant having two select packs button, actually, rip out the ENTIRE CODE PATHs for checkboxes
-PackUpdater menu prints statuses anyway, there's no use to it
-LEAVE THAT AREA EMPTY, there's no harm in it
-Make it sit Directly below the VANILLA RTX APP title text and logo roughly, so it draws more attention
-that's actually good design! And gives some breathing room/makes it look a lot less overwhelming
-
-But there are more considerations to this:
-Remove all code paths related to the checkboxes
-Do the redesign. TODAY. Delete PackLocator
-perfect user data locator's reimplementation, it should've concerned itself with filling the variables and validating it
-so other classes could use it
-Not manually constructing every little thing for callers.
->> Just make sure packs that match Your UUID instead appear at the very very top in PackBrowser, to make things nice and easy!
-Move preview button to leftmost part, make the browse packs button larger. y'know! see the concept!
-Pack locator is busted right now with your new centralized userdata locator rework
-But its ok, no need to fix it, you're doing a redesign that retires it anyway.
-But you can't just retire it?!
-It's needed for PackUpdater, that's how it knows what Vanilla RTX packs are installed.
-Maybe postpone this redesign for now. indeed. don't go too far, sleep on the idea for now.
-so yeah, you can't actually just scrap all this and call it a day? there's more involved
-
-- Make shift-clicking the LOCATE PACKS button or something allow user to manually select another path
-To be honest:
-this is a fucking mess
-you should've had a settings panel
-inside it, left the options to configure what the launch button does exactly
-configure user data and game data paths manually
-configure theme
-etc..
-could collapse all of the titlebar buttons into a gear that opens it instead
-that's pretty cool now isn't it?
-clean, clear, instead of trying to get the user to do the right thing via logs
-leave a place they can instinctively go to and configure everyting IF needed, totally optional
-you're still taking the extreme measures needed to keep as many users away from having to touch settings as possible
-but that's just better, think about it
-
-its not too late
-But it is worse. less user friendly than, handling all automatically, and exposing only as needed, as a one-time thing setup, it's just better ux
-
+useful down the line, customize its visuals, etc... to make it look like before with layering tricks
 */
