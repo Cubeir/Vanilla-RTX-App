@@ -132,7 +132,7 @@
                 135,
                 222
             ],
-            "strength": 31
+            "strength": 64
         },
         "heightmap": {
             "intensity": 1,
@@ -2589,7 +2589,7 @@
                 163,
                 223
             ],
-            "strength": 23
+            "strength": 48
         },
         "heightmap": {
             "intensity": 1,
@@ -3338,7 +3338,7 @@
                 122,
                 45
             ],
-            "strength": 74
+            "strength": 192
         },
         "heightmap": {
             "intensity": 1,
@@ -3415,7 +3415,7 @@
                 122,
                 45
             ],
-            "strength": 73
+            "strength": 192
         },
         "heightmap": {
             "intensity": 1,
@@ -16798,7 +16798,7 @@
                 44,
                 47
             ],
-            "strength": 3
+            "strength": 9
         },
         "heightmap": {
             "intensity": 1,
@@ -17852,12 +17852,13 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
+            "intensity": 0.1,
             "invert": false
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.05,
+            "invert": false,
+            "padding_type": "colorfill"
         }
     },
     "firefly_bush": {
@@ -17884,7 +17885,7 @@
                 249,
                 191
             ],
-            "strength": 55
+            "strength": 92
         },
         "heightmap": {
             "intensity": 1,
@@ -17919,7 +17920,7 @@
                 249,
                 191
             ],
-            "strength": 23
+            "strength": 92
         },
         "heightmap": {
             "skip": true,
@@ -20392,7 +20393,7 @@
                 166,
                 137
             ],
-            "strength": 92
+            "strength": 200
         },
         "heightmap": {
             "intensity": 1,
@@ -23016,7 +23017,7 @@
                 183,
                 226
             ],
-            "strength": 31
+            "strength": 48
         },
         "heightmap": {
             "intensity": 1,
@@ -24889,7 +24890,7 @@
                 158,
                 240
             ],
-            "strength": 24
+            "strength": 36
         },
         "heightmap": {
             "intensity": 1,
@@ -29953,7 +29954,7 @@
                 0,
                 0
             ],
-            "strength": 5
+            "strength": 1
         },
         "heightmap": {
             "intensity": 1,
@@ -30003,7 +30004,7 @@
                 0,
                 0
             ],
-            "strength": 64
+            "strength": 92
         },
         "heightmap": {
             "intensity": 1,
@@ -31924,7 +31925,8 @@
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": false,
+            "padding_type": "horizontal"
         }
     },
     "sculk_sensor_tendril_active": {
@@ -31966,7 +31968,7 @@
                 223,
                 235
             ],
-            "strength": 100
+            "strength": 144
         },
         "heightmap": {
             "intensity": 1,
@@ -32461,9 +32463,9 @@
             "emissive_max": 66,
             "roughness_min": 11,
             "roughness_max": 74,
-            "invert_metal": false,
+            "invert_metal": true,
             "invert_emissive": false,
-            "invert_roughness": true
+            "invert_roughness": false
         },
         "sss": {
             "min": 0,
@@ -32472,13 +32474,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 0.33,
+            "intensity": 1,
             "invert": false
         },
         "normal": {
-            "intensity": 0.05,
-            "invert": false,
-            "padding_type": "horizontal"
+            "intensity": 0.25,
+            "invert": false
         }
     },
     "sea_pickle": {
@@ -32624,7 +32625,7 @@
                 106,
                 203
             ],
-            "strength": 18
+            "strength": 20
         },
         "heightmap": {
             "intensity": 1,
@@ -33846,7 +33847,7 @@
                 247,
                 255
             ],
-            "strength": 153
+            "strength": 175
         },
         "heightmap": {
             "intensity": 1,
