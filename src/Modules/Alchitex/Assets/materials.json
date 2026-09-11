@@ -2531,11 +2531,11 @@
         ],
         "heightmap": {
             "intensity": 1,
-            "invert": false
+            "invert": true
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": true
         }
     },
     "calcite": {
@@ -24412,11 +24412,11 @@
         "recursive": [],
         "heightmap": {
             "intensity": 1,
-            "invert": false
+            "invert": true
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": true
         }
     },
     "mangrove_door_bottom": {
