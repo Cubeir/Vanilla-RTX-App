@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -44,7 +45,22 @@ public static class MinecraftJson
         AllowTrailingCommas = true,
     };
 
-    private static readonly JsonSerializerOptions IndentedWriteOptions = new() { WriteIndented = true };
+    /// <summary>
+    /// Write options for every file this app rewrites. The encoder is the part that matters:
+    /// System.Text.Json's default escapes everything non-ASCII, so a pack's own name came back
+    /// out as "MultiPixel \u00A7r-\u00A7a RTX\u00A7r" and a Chinese or accented description
+    /// became a wall of escapes. That is *equivalent* JSON - every reader decodes it the same -
+    /// but it is not what the author wrote, and a manifest nobody can read by eye is a manifest
+    /// nobody can debug. Relaxed encoding emits those characters literally, which is what
+    /// Newtonsoft did and what Bedrock's own files look like. "Unsafe" here means only that it
+    /// does not escape HTML-significant characters; these files are never interpolated into a
+    /// web page.
+    /// </summary>
+    private static readonly JsonSerializerOptions IndentedWriteOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     // ─────────────────────────── Parsing ───────────────────────────
 

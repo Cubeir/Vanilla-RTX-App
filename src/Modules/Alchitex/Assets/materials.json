@@ -1492,12 +1492,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "big_dripleaf_side2": {
@@ -1519,12 +1519,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "big_dripleaf_stem": {
@@ -1546,12 +1546,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "big_dripleaf_top": {
@@ -1573,12 +1573,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "birch_shelf": {
@@ -12126,12 +12126,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false,
+            "intensity": 0.125,
+            "invert": true,
             "padding_type": "horizontal"
         }
     },
@@ -12154,12 +12154,12 @@
         },
         "recursive": [],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false,
+            "intensity": 0.125,
+            "invert": true,
             "padding_type": "horizontal"
         }
     },
@@ -20429,12 +20429,12 @@
             "strength": 200
         },
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "golden_dandelion": {
@@ -29250,12 +29250,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_activator_powered": {
@@ -29290,12 +29290,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_detector": {
@@ -29330,12 +29330,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_detector_powered": {
@@ -29370,12 +29370,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_golden": {
@@ -29410,12 +29410,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_golden_powered": {
@@ -29450,12 +29450,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_normal": {
@@ -29490,12 +29490,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "rail_normal_turned": {
@@ -29530,12 +29530,12 @@
             }
         ],
         "heightmap": {
-            "intensity": 1,
-            "invert": false
+            "intensity": 0.5,
+            "invert": true
         },
         "normal": {
-            "intensity": 0.25,
-            "invert": false
+            "intensity": 0.125,
+            "invert": true
         }
     },
     "raw_copper_block": {
@@ -30760,11 +30760,11 @@
         "recursive": [],
         "heightmap": {
             "intensity": 1,
-            "invert": false
+            "invert": true
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
+            "invert": true
         }
     },
     "respawn_anchor_bottom": {
@@ -32341,11 +32341,11 @@
         ],
         "heightmap": {
             "intensity": 0.33,
-            "invert": false
+            "invert": true
         },
         "normal": {
             "intensity": 0.05,
-            "invert": false
+            "invert": true
         }
     },
     "seagrass": {

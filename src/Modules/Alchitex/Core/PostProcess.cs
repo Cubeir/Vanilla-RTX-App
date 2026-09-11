@@ -611,11 +611,32 @@ public static class PostProcess
 
     /// <summary>
     /// Updates manifest.json in place: new header/module uuids, an RTX tag appended to the
-    /// name/description, format_version bumped to at least 2 (capabilities are a v2+
-    /// concept - a v3 manifest is left at v3, untouched, same as every other field this
-    /// method doesn't specifically care about - subpacks/settings/etc. round-trip as-is),
-    /// min_engine_version raised if too low, and the "raytraced" capability + Alchitex
-    /// metadata added.
+    /// name/description, the "raytraced" capability added (and "pbr" dropped), Alchitex
+    /// metadata, and format_version bumped to at least 2.
+    ///
+    /// <para><b>What comes in goes out, plus exactly the edits listed above.</b> This method
+    /// is not a manifest fixer-upper. It does not normalise, upgrade, complete or repair
+    /// anything it was not asked to change: a field's value, its JSON kind, the order of
+    /// keys, the order of array entries and the presence or absence of every field this
+    /// method doesn't name are all the pack author's business, and they round-trip
+    /// untouched. If a manifest arrives broken it leaves broken - diagnosing our own output
+    /// is impossible if we are also silently rewriting things nobody asked us to.</para>
+    ///
+    /// <para>This rule was learned the hard way. An <c>EnsureMinEngineVersion</c> step used to
+    /// force <c>header.min_engine_version</c> to the int triplet <c>[1,21,50]</c> whenever it
+    /// wasn't already an int array of length 3 - which meant a SemVer *string* was rewritten
+    /// as an array, and an absent field was invented from nothing. That silently broke every
+    /// format_version 3 pack, because v3 accepts only the string form: MultiPixel came in
+    /// with <c>"min_engine_version": "1.20.60"</c> and went out with <c>[1,21,50]</c>, which
+    /// the game rejects. Nothing about producing an RTX pack requires touching that field, so
+    /// the step is gone rather than made format-aware. Branching on format_version would have
+    /// bought a second code path to maintain for a change we never needed to make.</para>
+    ///
+    /// <para>format_version is the one bump that stays, and it is not an exception to the
+    /// rule: capabilities are a v2+ concept, so a v1 manifest that kept v1 would silently
+    /// ignore the "raytraced" capability this method just added. It is the cost of an edit we
+    /// do make, not an uninvited improvement. A v2 or v3 manifest is left exactly where it
+    /// is.</para>
     ///
     /// Every field access below degrades gracefully instead of throwing on a missing or
     /// unexpectedly-shaped value (a quoted "format_version": "2" instead of a number, a
@@ -663,7 +684,6 @@ public static class PostProcess
             }
 
             EnsureFormatVersion(root);
-            EnsureMinEngineVersion(header);
 
             var (resolvedName, resolvedDescription, wasPlaceholder) = ResolvePackName(header, manifestPath);
 
@@ -713,29 +733,6 @@ public static class PostProcess
         var current = TryGetInt(root["format_version"]);
         if (current is null or < 2)
             root["format_version"] = 2;
-    }
-
-    private static void EnsureMinEngineVersion(JsonObject header)
-    {
-        if (header["min_engine_version"] is not JsonArray arr || arr.Count < 3)
-        {
-            header["min_engine_version"] = new JsonArray(1, 21, 50);
-            return;
-        }
-
-        var v0 = TryGetInt(arr[0]);
-        var v1 = TryGetInt(arr[1]);
-        var v2 = TryGetInt(arr[2]);
-
-        if (v0 is null || v1 is null || v2 is null)
-        {
-            header["min_engine_version"] = new JsonArray(1, 21, 50);
-            return;
-        }
-
-        var tooLow = v0 < 1 || (v0 == 1 && v1 < 21) || (v0 == 1 && v1 == 21 && v2 < 40);
-        if (tooLow)
-            header["min_engine_version"] = new JsonArray(1, 21, 50);
     }
 
     /// <summary>
@@ -840,17 +837,32 @@ public static class PostProcess
     /// </summary>
     private static void EnsureCapability(JsonObject root, string capability, string? removeCapability = null)
     {
-        // `as`, not `?.AsArray()` - a present-but-wrong-kind "capabilities" degrades to
-        // "treat as missing".
-        // GetStringArray already drops non-string entries in a malformed capabilities array
-        // and returns empty for a "capabilities" that is some other JSON kind entirely, so
-        // a present-but-wrong-kind value degrades to "treat as missing" as it always did.
-        var set = new HashSet<string>(MinecraftJson.GetStringArray(root["capabilities"]), StringComparer.OrdinalIgnoreCase);
+        // GetStringArray drops non-string entries in a malformed capabilities array and
+        // returns empty for a "capabilities" that is some other JSON kind entirely, so a
+        // present-but-wrong-kind value degrades to "treat as missing" as it always did.
+        //
+        // Built by walking the pack's own list in order rather than through a HashSet. A set
+        // reorders, and the order a pack declared its capabilities in is not ours to change -
+        // same rule as the rest of this method. Duplicates the pack itself wrote are kept for
+        // the same reason; only the one capability we were told to remove goes.
+        var existing = MinecraftJson.GetStringArray(root["capabilities"]);
+        var kept = new List<string>(existing.Count + 1);
+        var alreadyPresent = false;
 
-        if (removeCapability != null) set.Remove(removeCapability);
-        set.Add(capability);
+        foreach (var declared in existing)
+        {
+            if (removeCapability != null && declared.Equals(removeCapability, StringComparison.OrdinalIgnoreCase))
+                continue;
 
-        root["capabilities"] = MinecraftJson.StringArray(set);
+            if (declared.Equals(capability, StringComparison.OrdinalIgnoreCase))
+                alreadyPresent = true;
+
+            kept.Add(declared);
+        }
+
+        if (!alreadyPresent) kept.Add(capability);
+
+        root["capabilities"] = MinecraftJson.StringArray(kept);
     }
 
     #endregion
