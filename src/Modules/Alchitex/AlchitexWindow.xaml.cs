@@ -946,7 +946,7 @@ public sealed partial class Alchitex : Window
         // The reactor's tooltip says which of its two jobs a click would do right now.
         ToolTipService.SetToolTip(GenerateButton, enabled
             ? "Generate RTX support for every pack in the queue"
-            : "Abort generation.");
+            : "Abort & clean up");
     }
 
     private async void GenerateButton_Click(object sender, RoutedEventArgs e)
