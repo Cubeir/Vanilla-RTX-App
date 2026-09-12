@@ -23,16 +23,15 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
-using Vanilla_RTX_App.Modules.Json;
 using Vanilla_RTX_App.Modules.PackUpdater;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.Modules.Helpers;
 using static Vanilla_RTX_App.EnvironmentVariables;
 using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
+using static Vanilla_RTX_App.Modules.Helpers;
 
 namespace Vanilla_RTX_App;
 
@@ -3076,7 +3075,6 @@ if that succeeds, can move on.
 */
 // ============================================================================================================
 /* THE GULAG - These ideas are here for a reason, they are either shite, or just need more work put into thems
-
 
 - Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
 a page, filled by Online Texts, reporting on all the bugs

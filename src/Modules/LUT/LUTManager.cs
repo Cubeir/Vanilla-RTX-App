@@ -111,7 +111,7 @@ internal sealed class LUTManager
     public bool TryAttach(string minecraftPath)
     {
         MinecraftRoot = minecraftPath;
-        LutRootFolder = Path.Combine(AppDir, "Assets", "lut");
+        LutRootFolder = Path.Combine(AppDir, "Modules", "LUT", "Presets");
         PlaceholderImagePath = Path.Combine(LutRootFolder, FnPlaceholder);
         DefaultImagePath = Path.Combine(LutRootFolder, FnDefaultImg);
 
@@ -252,7 +252,7 @@ internal sealed class LUTManager
 
     /// <summary>
     /// Rebuilds <see cref="Presets"/>: the Default backup first, then every subfolder of
-    /// Assets\lut in name order. Incomplete ones are kept in the list deliberately - the
+    /// Modules\LUT\Presets in name order. Incomplete ones are kept in the list deliberately - the
     /// window shows them greyed out, which says more than silently omitting them would.
     /// </summary>
     public void LoadPresets()
