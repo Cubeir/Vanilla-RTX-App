@@ -12,7 +12,7 @@ using static Vanilla_RTX_App.EnvironmentVariables; // For Public Pack version va
 
 namespace Vanilla_RTX_App.Modules.PackUpdater;
 
-public sealed partial class PackUpdateWindow : Window
+public sealed partial class PackUpdaterWindow : Window
 {
     private readonly AppWindow _appWindow;
     private readonly MainWindow _mainWindow;
@@ -59,7 +59,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
     private DispatcherTimer? _installingAnimationTimer;
     private int _animationDots = 0;
 
-    public PackUpdateWindow(MainWindow mainWindow)
+    public PackUpdaterWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
 
@@ -95,17 +95,17 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
 
         this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.update.ico"));
 
-        this.Closed += PackUpdateWindow_Closed;
+        this.Closed += PackUpdaterWindow_Closed;
 
         if (Content is FrameworkElement root)
-            root.Loaded += PackUpdateWindow_Loaded;
+            root.Loaded += PackUpdaterWindow_Loaded;
     }
-    private async void PackUpdateWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void PackUpdaterWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
             if (Content is FrameworkElement root)
-                root.Loaded -= PackUpdateWindow_Loaded;
+                root.Loaded -= PackUpdaterWindow_Loaded;
 
             if (_isClosing) return;
 
@@ -122,23 +122,23 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[PackUpdateWindow] The _Loaded Event Crashed: {ex.Message}");
+            Trace.WriteLine($"[PackUpdaterWindow] The _Loaded Event Crashed: {ex.Message}");
             return;
         }
     }
 
-    private void PackUpdateWindow_Closed(object sender, WindowEventArgs e)
+    private void PackUpdaterWindow_Closed(object sender, WindowEventArgs e)
     {
         if (_isClosing) return;
         _isClosing = true;
 
         if (Content is FrameworkElement root)
-            root.Loaded -= PackUpdateWindow_Loaded;
+            root.Loaded -= PackUpdaterWindow_Loaded;
 
         StopInstallingAnimation();
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= PackUpdateWindow_Closed;
+        this.Closed -= PackUpdaterWindow_Closed;
     }
 
     private void ApplyTheme(ElementTheme theme)
