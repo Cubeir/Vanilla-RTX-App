@@ -1,5 +1,5 @@
 RTX REACTOR (ALCHITEX) LICENSE
-LICENSE VERSION: 1.1
+LICENSE VERSION: 1.2
 Copyright (c) 2026 Cubeir. All rights reserved.
 
 This license applies specifically to the Alchitex module (branded to users
@@ -61,15 +61,33 @@ again after any update that may change it.
 
 3. LICENSE FOR THE CODE
 
-  You may view, fork, and modify the Code, including as part of forking
-  the wider Vanilla RTX App repository.
+  Having a local copy of the Code – for example because it was included
+  when you cloned or downloaded the repository – does not by itself grant
+  any right beyond reading it. No license to modify, run a modified
+  version, merge, publish, distribute, sublicense, host, or otherwise
+  convey the Code, or any derivative of it, is granted by this document.
 
-  You may use the Code, modified or not, for personal, non-commercial
-  projects.
+  This protection is not limited to the literal text of the Code. It
+  extends to the ideas, techniques, algorithms, architecture, and overall
+  approach the Code embodies. You may NOT use the Code – whether copied
+  as-is, modified, rewritten, reverse-engineered, reimplemented from
+  memory or notes, or reconstructed with the assistance of an AI system
+  or any other tool – as the basis for building, distributing, selling,
+  or maintaining any other project, tool, or service that performs a
+  substantially similar function or reproduces Alchitex's specific
+  methods or pipeline, without a separate written agreement with Cubeir.
 
-  You may NOT sell the Code, sell a derivative of the Code, or otherwise
-  profit from Alchitex itself or from a project whose primary value comes
-  from Alchitex, without a separate commercial agreement.
+  This applies regardless of how the similarity came about. Independently
+  rewriting the logic after studying the Code, using an AI system to
+  read, summarize, or otherwise process the Code (or the ideas in it) to
+  help produce something similar, or any other route that arrives at
+  substantially the same design, algorithms, or behavior, is treated the
+  same as copying the Code itself for the purposes of this license.
+
+  Forking the wider Vanilla RTX App repository does not grant any of the
+  rights described here with respect to src/Modules/Alchitex/; that
+  folder remains governed exclusively by this document even inside a
+  fork.
 
   This restriction applies only to Alchitex's own files, confined to
   src/Modules/Alchitex/. It does not extend additional restrictions to
@@ -79,11 +97,13 @@ again after any update that may change it.
 
 4. WHAT THIS LICENSE DOES NOT RESTRICT
 
-  Personal use, modification, experimentation, learning from the Code,
-  and free (non-commercial) sharing of both the Code and the Output are
-  all permitted without needing to contact Cubeir. This license
-  exists to prevent commercial exploitation of Alchitex without
-  agreement, not to lock down personal or hobbyist use.
+  Using Alchitex / RTX Reactor itself as an end user, and free
+  (non-commercial) sharing of the Output, are permitted without needing
+  to contact Cubeir. Reading the Code to understand how the app works is
+  fine. What is not permitted is building on, republishing, or drawing on
+  the Code – its text or its ideas – to create something else. This
+  license exists to prevent commercial exploitation and idea theft, not
+  to prevent using the feature as intended.
 
 
 5. COMMERCIAL LICENSING
