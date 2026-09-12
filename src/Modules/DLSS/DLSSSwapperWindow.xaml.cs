@@ -34,6 +34,13 @@ public sealed partial class DLSSSwapperWindow : Window
     private readonly DLSSSwapper _swapper = new();
     private CancellationTokenSource? _scanCancellationTokenSource;
 
+    /// <summary>
+    /// True from the moment a swap is started until it has finished and the list has been
+    /// redrawn. Read and written only on the UI thread, and always cleared in a finally -
+    /// see <see cref="DllButton_Click"/>.
+    /// </summary>
+    private bool _swapInProgress;
+
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
@@ -534,28 +541,67 @@ public sealed partial class DLSSSwapperWindow : Window
 
     private async void DllButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is DllData dllData)
+        if (sender is not Button button || button.Tag is not DllData dllData)
+            return;
+
+        if (dllData.Version == _swapper.InstalledVersion)
+            return;
+
+        // A swap is an elevated file copy: it writes a batch script, raises a UAC prompt and
+        // waits. The UI thread is free for most of that, so without this a second click
+        // starts a second script and the user gets a queue of prompts (see
+        // Helpers.ReplaceFilesWithElevation, which refuses that outright as a backstop).
+        // Ignoring the click rather than disabling the button is deliberate: there is no
+        // state here that can be left stuck.
+        if (_swapInProgress)
         {
-            try
+            Trace.WriteLine("[DLSS] A swap is already in progress - ignoring this click");
+            return;
+        }
+
+        // Nothing between setting the flag and entering the try, so there is no statement that
+        // could throw its way past the finally and leave the window permanently refusing swaps.
+        _swapInProgress = true;
+        try
+        {
+            SetVersionListBusy(true);
+
+            var success = await _swapper.InstallAsync(dllData.FilePath);
+
+            if (success)
             {
-                if (dllData.Version == _swapper.InstalledVersion)
-                    return;
+                OperationSuccessful = true;
+                StatusMessage = $"Swapped to DLSS {dllData.DisplayVersion}";
 
-                var success = await _swapper.InstallAsync(dllData.FilePath);
-
-                if (success)
-                {
-                    OperationSuccessful = true;
-                    StatusMessage = $"Swapped to DLSS {dllData.DisplayVersion}";
-
-                    await _swapper.CacheInstalledDllAsync();
-                    await LoadDllsAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[DLSS] Error replacing DLL: {ex.Message}");
+                await _swapper.CacheInstalledDllAsync();
+                await LoadDllsAsync();
             }
         }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[DLSS] Error replacing DLL: {ex.Message}");
+        }
+        finally
+        {
+            SetVersionListBusy(false);
+            _swapInProgress = false;
+        }
+    }
+
+    /// <summary>
+    /// Greys the version list and stops it taking clicks while a swap runs - delete buttons
+    /// included, since they live inside it and deleting the file being copied from is the one
+    /// way to break a running swap.
+    ///
+    /// <para>Both properties are set on <c>DllListContainer</c> itself rather than on the
+    /// buttons, which the list rebuild replaces wholesale. The container is declared in XAML
+    /// and outlives every rebuild, so the restoring call in the finally always lands on the
+    /// same element the disabling call touched. <c>Panel</c> has no <c>IsEnabled</c> - that
+    /// lives on <c>Control</c> - so this is the UIElement-level equivalent.</para>
+    /// </summary>
+    private void SetVersionListBusy(bool busy)
+    {
+        DllListContainer.IsHitTestVisible = !busy;
+        DllListContainer.Opacity = busy ? 0.5 : 1.0;
     }
 }

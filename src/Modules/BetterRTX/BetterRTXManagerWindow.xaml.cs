@@ -69,6 +69,14 @@ public sealed partial class BetterRTXManagerWindow : Window
     private const int REFRESH_COOLDOWN_SECONDS = 30;
     private DispatcherTimer? _cooldownTimer;
 
+    /// <summary>
+    /// True from the moment a preset install is started until it has finished and the list has
+    /// been redrawn. Read and written only on the UI thread, and always cleared in a finally -
+    /// see <see cref="PresetButton_Click"/>. Refresh honours it too, because a soft wipe would
+    /// delete the folder an install is copying out of.
+    /// </summary>
+    private bool _applyInProgress;
+
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
@@ -377,6 +385,15 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
+        // A refresh soft-wipes the cache, which would delete the preset folder a running
+        // install is copying its .bin files out of. The 30s cooldown already stops this being
+        // spammed; this stops it colliding with an install.
+        if (_applyInProgress)
+        {
+            Trace.WriteLine("[BetterRTX] A preset is being applied - ignoring refresh");
+            return;
+        }
+
         try
         {
             Trace.WriteLine("[BetterRTX] === REFRESH BUTTON CLICKED ===");
@@ -950,11 +967,19 @@ public sealed partial class BetterRTXManagerWindow : Window
             deferral.Complete();
         }
     }
+    // DragEnter dims the button and DragLeave/Drop undo it - but DragEnter has to await the
+    // data view before it knows whether to dim at all, and a quick drag across the button
+    // delivers DragLeave before that await returns. Left alone, the dim would then land
+    // *after* the restore and stick. This token is "is the pointer still over the button?":
+    // every enter takes a new one, every leave and drop invalidate it.
+    private int _addPresetDragToken;
+
     private async void AddPresetButton_DragEnter(object sender, DragEventArgs e)
     {
         if (sender is not Button button) return;
         if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems)) return;
 
+        var token = ++_addPresetDragToken;
         var deferral = e.GetDeferral();
         try
         {
@@ -962,7 +987,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             bool hasSupportedFile = items.OfType<StorageFile>()
                 .Any(f => BetterRTXManager.SupportedCustomPresetExtensions.Contains(Path.GetExtension(f.Path), StringComparer.OrdinalIgnoreCase));
 
-            if (hasSupportedFile)
+            if (hasSupportedFile && token == _addPresetDragToken)
             {
                 button.Opacity = 0.7;
             }
@@ -980,23 +1005,23 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         if (sender is not Button button) return;
 
-        // Revert to whatever the button's style would normally give it
-        button.ClearValue(Button.BackgroundProperty);
-        button.ClearValue(Button.BorderBrushProperty);
-        button.ClearValue(Button.BorderThicknessProperty);
+        // Undo exactly what DragEnter did. It used to ClearValue Background/BorderBrush/
+        // BorderThickness instead, none of which DragEnter touches - so the dim was never
+        // lifted and the button stayed at 0.7 for the rest of the window's life, while
+        // clearing BorderThickness actively threw away the BorderThickness="0" set on it
+        // in XAML and gave it the theme's 1px border.
+        _addPresetDragToken++;
+        button.Opacity = 1.0;
     }
     private async void AddPresetButton_Drop(object sender, DragEventArgs e)
     {
         var deferral = e.GetDeferral();
         try
         {
-            // Reset the highlight regardless of what happens next
+            // Undo DragEnter's dim regardless of what happens next (see DragLeave).
+            _addPresetDragToken++;
             if (sender is Button button)
-            {
-                button.ClearValue(Button.BackgroundProperty);
-                button.ClearValue(Button.BorderBrushProperty);
-                button.ClearValue(Button.BorderThicknessProperty);
-            }
+                button.Opacity = 1.0;
 
             if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
             {
@@ -1258,13 +1283,39 @@ public sealed partial class BetterRTXManagerWindow : Window
                 }
                 if (presetToApply != null)
                 {
-                    var success = await _manager.ApplyPresetAsync(presetToApply);
-                    if (success)
+                    // Applying a preset is an elevated file copy: it writes a batch script,
+                    // raises a UAC prompt and waits, with the UI thread free for most of it.
+                    // Without this a second click starts a second script and the user gets a
+                    // queue of prompts (Helpers.ReplaceFilesWithElevation refuses that outright
+                    // as a backstop). Ignoring the click rather than disabling the button is
+                    // deliberate - there is no state here that can be left stuck.
+                    if (_applyInProgress)
                     {
-                        OperationSuccessful = true;
-                        StatusMessage = $"Installed {presetToApply.Name} successfully";
-                        Trace.WriteLine(StatusMessage);
-                        await DisplayPresetsAsync();
+                        Trace.WriteLine("[BetterRTX] A preset is already being applied - ignoring this click");
+                        return;
+                    }
+
+                    // Nothing between setting the flag and entering the try, so there is no
+                    // statement that could throw its way past the finally and leave the window
+                    // permanently refusing installs.
+                    _applyInProgress = true;
+                    try
+                    {
+                        SetPresetListBusy(true);
+
+                        var success = await _manager.ApplyPresetAsync(presetToApply);
+                        if (success)
+                        {
+                            OperationSuccessful = true;
+                            StatusMessage = $"Installed {presetToApply.Name} successfully";
+                            Trace.WriteLine(StatusMessage);
+                            await DisplayPresetsAsync();
+                        }
+                    }
+                    finally
+                    {
+                        SetPresetListBusy(false);
+                        _applyInProgress = false;
                     }
                 }
             }
@@ -1273,6 +1324,24 @@ public sealed partial class BetterRTXManagerWindow : Window
                 Trace.WriteLine($"[BetterRTX] Error applying preset: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Greys the preset list and stops it taking clicks while an install runs - delete buttons
+    /// included, since they live inside it and deleting the folder being copied from is the one
+    /// way to break a running install.
+    ///
+    /// <para>Both properties are set on <c>PresetListContainer</c> itself rather than on the
+    /// buttons, which <see cref="DisplayPresetsAsync"/> replaces wholesale. The container is
+    /// declared in XAML and outlives every redraw, so the restoring call in the finally always
+    /// lands on the same element the disabling call touched. <c>Panel</c> has no
+    /// <c>IsEnabled</c> - that lives on <c>Control</c> - so this is the UIElement-level
+    /// equivalent.</para>
+    /// </summary>
+    private void SetPresetListBusy(bool busy)
+    {
+        PresetListContainer.IsHitTestVisible = !busy;
+        PresetListContainer.Opacity = busy ? 0.5 : 1.0;
     }
 
 

@@ -35,6 +35,13 @@ public sealed partial class LUTManagerWindow : Window
     private CancellationTokenSource? _scanCancellationTokenSource;
     private bool _crossfadeInProgress = false;
 
+    /// <summary>
+    /// True from the moment an install is started until it has finished and the button has
+    /// been restored. Read and written only on the UI thread, and always cleared in a finally -
+    /// see <see cref="InstallButton_Click"/>.
+    /// </summary>
+    private bool _installInProgress;
+
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
@@ -287,7 +294,10 @@ public sealed partial class LUTManagerWindow : Window
             ? $"Installed Preset: {preset.Name}"
             : $"Selected Preset: {preset.Name}";
 
-        InstallButton.IsEnabled = preset.IsComplete;
+        // An install in flight keeps the button down even if the user picks a different preset
+        // from the dropdown while it runs - without this, selecting one would hand the button
+        // straight back and a second click would start a second elevated copy.
+        InstallButton.IsEnabled = preset.IsComplete && !_installInProgress;
 
         if (isInstalled)
         {
@@ -411,11 +421,26 @@ public sealed partial class LUTManagerWindow : Window
             return;
         }
 
-        var preset = _selectedPreset;
-        InstallButton.IsEnabled = false; // fires IsEnabledChanged -> dims bevel using current _isPresetInstalled, correct mid-install look
+        // Installing is an elevated file copy: it writes a batch script, raises a UAC prompt
+        // and waits, with the UI thread free for most of it. The disabled button below is the
+        // visible half of stopping a second one from starting; this flag is the half that
+        // doesn't depend on every path that touches IsEnabled getting it right.
+        // (Helpers.ReplaceFilesWithElevation refuses overlapping calls outright as a backstop.)
+        if (_installInProgress)
+        {
+            Trace.WriteLine("[LUTManager] An install is already in progress - ignoring this click");
+            return;
+        }
 
+        var preset = _selectedPreset;
+
+        // Nothing between setting the flag and entering the try, so there is no statement that
+        // could throw its way past the finally and leave the button permanently down.
+        _installInProgress = true;
         try
         {
+            InstallButton.IsEnabled = false; // fires IsEnabledChanged -> dims bevel using current _isPresetInstalled, correct mid-install look
+
             Trace.WriteLine($"[LUTManager] Installing preset [{preset.Name}]");
 
             bool success = await _manager.InstallAsync(preset);
@@ -446,6 +471,10 @@ public sealed partial class LUTManagerWindow : Window
         }
         finally
         {
+            // Cleared before the callback below re-enables the button, so ApplySelection - which
+            // consults this flag - agrees with what that callback is about to draw.
+            _installInProgress = false;
+
             _ = this.DispatcherQueue.TryEnqueue(() =>
             {
                 bool isInstalled = _installedPreset != null &&
