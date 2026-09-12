@@ -1251,19 +1251,19 @@
     <Page Update="Modules\Alchemist.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\LUTManagerWindow.xaml">
+    <Page Update="Modules\LUT\LUTManagerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\PackUpdaterWindow.xaml">
+    <Page Update="Modules\PackUpdater\PackUpdaterWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="Modules\ReviewPromptControl.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\BetterRTXManagerWindow.xaml">
+    <Page Update="Modules\BetterRTX\BetterRTXManagerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\DLSSSwapperWindow.xaml">
+    <Page Update="Modules\DLSS\DLSSSwapperWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="PackBrowserWindow.xaml">

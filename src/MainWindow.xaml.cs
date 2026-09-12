@@ -24,6 +24,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Vanilla_RTX_App.Modules.Json;
+using Vanilla_RTX_App.Modules.PackUpdater;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
@@ -2211,7 +2212,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var packUpdaterWindow = new Modules.PackUpdateWindow(this);
+        var packUpdaterWindow = new Modules.PackUpdater.PackUpdateWindow(this);
         var mainAppWindow = this.AppWindow;
 
         packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2248,7 +2249,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var betterRTXWindow = new Modules.BetterRTXManagerWindow();
+        var betterRTXWindow = new Modules.BetterRTX.BetterRTXManagerWindow();
 
         var mainAppWindow = this.AppWindow;
         betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2288,7 +2289,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var DLSSSwapperWindow = new Modules.DLSSSwapperWindow();
+        var DLSSSwapperWindow = new Modules.DLSS.DLSSSwapperWindow();
         var mainAppWindow = this.AppWindow;
 
         DLSSSwapperWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2328,7 +2329,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var LutManagerWindow = new Modules.LUTManagerWindow();
+        var LutManagerWindow = new Modules.LUT.LUTManagerWindow();
         var mainAppWindow = this.AppWindow;
 
         LutManagerWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2607,7 +2608,7 @@ public sealed partial class MainWindow : Window
             var names = paths.Select(p => Path.GetFileNameWithoutExtension(p) ?? p).ToList();
             Log($"Importing {paths.Count} BetterRTX preset{(paths.Count == 1 ? "" : "s")}:\n{string.Join(Environment.NewLine, names)}", LogLevel.BetterRTX);
 
-            var (succeeded, total) = await Modules.BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync(
+            var (succeeded, total) = await Modules.BetterRTX.BetterRTXManager.ImportPresetFilesHeadlessAsync(
                 paths, message => Log(message, LogLevel.BetterRTX));
 
             if (total == 0)
@@ -2624,7 +2625,7 @@ public sealed partial class MainWindow : Window
             // If the user already has BetterRTXManagerWindow open, its list was built before
             // this import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var managerWindow in _childWindows.OfType<Modules.BetterRTXManagerWindow>())
+                foreach (var managerWindow in _childWindows.OfType<Modules.BetterRTX.BetterRTXManagerWindow>())
                     await managerWindow.RefreshLocalPresetsAsync();
         }
         finally

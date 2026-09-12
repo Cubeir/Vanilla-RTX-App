@@ -10,7 +10,7 @@ using Windows.Storage;
 using WinUIEx;
 using static Vanilla_RTX_App.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Modules.PackUpdater;
 
 public sealed partial class PackUpdateWindow : Window
 {

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Vanilla_RTX_App.Modules.BetterRTX;
+using Vanilla_RTX_App.Modules.LUT;
 using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules;
@@ -70,8 +72,8 @@ public static class DefaultsGuard
                 return RTXDefaultsGuard.Skipped;
             }
 
-            var defaultHashes = BetterRTXManagerWindow.GetPresetHashes(defaultBinFiles);
-            var currentHashes = BetterRTXManagerWindow.GetCurrentlyInstalledHashes(gameMaterialsPath);
+            var defaultHashes = BetterRTXManager.GetPresetHashes(defaultBinFiles);
+            var currentHashes = BetterRTXManager.GetCurrentlyInstalledHashes(gameMaterialsPath);
 
             if (currentHashes.Count == 0)
             {
@@ -79,7 +81,7 @@ public static class DefaultsGuard
                 return RTXDefaultsGuard.Skipped;
             }
 
-            if (BetterRTXManagerWindow.AreHashesMatching(currentHashes, defaultHashes))
+            if (BetterRTXManager.AreHashesMatching(currentHashes, defaultHashes))
             {
                 log?.Invoke("[BetterRTX Guard] Game already matches Default - nothing to do.");
                 return RTXDefaultsGuard.NoActionNeeded;
@@ -103,14 +105,17 @@ public static class DefaultsGuard
         }
     }
 
-    private const string LutFile_LookUpTables = "look_up_tables.png";
-    private const string LutFile_Sky = "sky.png";
-    private const string LutFile_Water = "water_n.tga";
+    // Names, folder and hash check all come from LUTManager rather than being spelled again
+    // here - this guard exists to protect that feature's backup, so it has to be looking at
+    // the same three files in the same place, permanently.
+    private const string LutFile_LookUpTables = LUTManager.FnLut;
+    private const string LutFile_Sky = LUTManager.FnSky;
+    private const string LutFile_Water = LUTManager.FnWater;
     public static async Task<RTXDefaultsGuard> RestoreLutDefaultIfNeededAsync(bool targetPreview, Action<string>? log = null)
     {
         try
         {
-            var defaultsFolder = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "Lut_Defaults");
+            var defaultsFolder = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, LUTManager.DefaultsFolderName);
             var defaultLut = Path.Combine(defaultsFolder, LutFile_LookUpTables);
             var defaultSky = Path.Combine(defaultsFolder, LutFile_Sky);
             var defaultWater = Path.Combine(defaultsFolder, LutFile_Water);
@@ -139,9 +144,9 @@ public static class DefaultsGuard
             }
 
             bool alreadyDefault =
-                LUTManagerWindow.HashesMatch(dstLut, defaultLut) &&
-                LUTManagerWindow.HashesMatch(dstSky, defaultSky) &&
-                LUTManagerWindow.HashesMatch(dstWater, defaultWater);
+                LUTManager.HashesMatch(dstLut, defaultLut) &&
+                LUTManager.HashesMatch(dstSky, defaultSky) &&
+                LUTManager.HashesMatch(dstWater, defaultWater);
 
             if (alreadyDefault)
             {

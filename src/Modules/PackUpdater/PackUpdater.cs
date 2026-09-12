@@ -11,7 +11,7 @@ using Vanilla_RTX_App.Modules.Json;
 using Windows.Storage;
 using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are stored there for locating packs
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Modules.PackUpdater;
 
 /// =====================================================================================================================
 /// Only deals with cache, we don't care if user has Vanilla RTX installed or not, we compare versions of cache to remote
