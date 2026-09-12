@@ -43,10 +43,13 @@ public static class AlchitexVariables
         public static bool AddFogEnabled = true;
         // Off by default, and deliberately so - it deletes the user's own installed pack.
         public static bool DeleteOriginalPackEnabled = false;
-        // UTC "O" stamp of the last time a finished batch auto-scrolled to the Ko-fi
-        // section - empty means never. Written immediately (not just on window close, like
-        // the rest of Persistent) so the once-a-day cap holds even across a crash. Parse
-        // with DateTimeStyles.RoundtripKind, same trap as OnlineTexts' own cooldown.
+        // UTC "O" stamp the once-a-day Ko-fi auto-scroll cooldown counts from. Seeded to
+        // "now" the first time this window ever opens (see Alchitex_Loaded) rather than
+        // left empty until the scroll first plays - empty is read as "due immediately",
+        // which would scroll a brand new user to a donation ask before they've even seen
+        // what the feature does. Written immediately wherever it changes (not just on
+        // window close, like the rest of Persistent) so the cap holds even across a crash.
+        // Parse with DateTimeStyles.RoundtripKind, same trap as OnlineTexts' own cooldown.
         public static string LastSupportScrollUtc = "";
     }
     public static class Defaults
@@ -195,6 +198,7 @@ public sealed partial class Alchitex : Window
             AlchitexVariables.LoadSettings();
             PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements);
             BuildSupportSection();
+            SeedSupportScrollCooldownIfNeeded();
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -880,6 +884,20 @@ public sealed partial class Alchitex : Window
     private void SupportKofiButton_Click(object sender, RoutedEventArgs e)
     {
         _ = MainWindow.OpenUrl("https://ko-fi.com/cubeir");
+    }
+
+    /// <summary>
+    /// Starts the once-a-day cooldown clock the first time this window is ever opened,
+    /// rather than leaving LastSupportScrollUtc empty until the first scroll actually
+    /// plays. Only ever writes once per install - every later call sees a non-empty value
+    /// and does nothing.
+    /// </summary>
+    private void SeedSupportScrollCooldownIfNeeded()
+    {
+        if (!string.IsNullOrEmpty(AlchitexVariables.Persistent.LastSupportScrollUtc)) return;
+
+        AlchitexVariables.Persistent.LastSupportScrollUtc = DateTime.UtcNow.ToString("O");
+        AlchitexVariables.SaveSettings();
     }
 
     /// <summary>
