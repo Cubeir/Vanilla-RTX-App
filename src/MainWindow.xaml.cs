@@ -2618,7 +2618,7 @@ public sealed partial class MainWindow : Window
             }
 
             Log(succeeded == total
-                ? $"Finished importing {succeeded} BetterRTX preset{(total == 1 ? "" : "s")}. Open BetterRTX Manager to install one."
+                ? $"Finished importing {succeeded} BetterRTX preset{(succeeded == 1 ? "" : "s")}.\nOpen BetterRTX Manager to install {(succeeded == 1 ? "it" : "one")}."
                 : $"Imported {succeeded} out of {total} BetterRTX preset{(total == 1 ? "" : "s")} - Use BetterRTX Manager's own Add button to import manually instead.",
                 succeeded == total ? LogLevel.Success : LogLevel.Warning);
 
