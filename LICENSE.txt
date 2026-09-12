@@ -38,6 +38,27 @@ Files downloaded or modified by this software retain their original license as d
 This software is provided "as is", without any warranty.
 See the GNU General Public License for more details.
 
+ADDITIONAL TERM UNDER GPLv3 SECTION 7
+
+As permitted by Section 7 of the GNU General Public License below
+(specifically 7(b) and 7(c)), the following term is added and applies
+in addition to, not instead of, the License:
+
+  Any copy or modified version of this Program that you convey to
+  others must carry a clear and reasonably visible notice identifying
+  it as based on, or derived from, Vanilla RTX App, and stating where
+  the original source can be found:
+  https://github.com/Cubeir/Vanilla-RTX-App
+
+  This does not require naming any particular author – only disclosing
+  that the project originates from that repository. This notice must
+  not be removed, obscured, or presented in a way that misrepresents
+  the origin of the work.
+
+This term is part of the License for this Program and applies for as
+long as the License does; it does not restrict anything else the
+License already permits.
+
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
