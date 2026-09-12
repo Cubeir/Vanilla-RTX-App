@@ -2212,7 +2212,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var packUpdaterWindow = new Modules.PackUpdater.PackUpdateWindow(this);
+        var packUpdaterWindow = new Modules.PackUpdater.PackUpdaterWindow(this);
         var mainAppWindow = this.AppWindow;
 
         packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
