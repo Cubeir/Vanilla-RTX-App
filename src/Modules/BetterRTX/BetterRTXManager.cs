@@ -1712,17 +1712,4 @@ public static class GameVersionDetector
         }
     }
 
-    public static void ClearStoredVersionHashes()
-    {
-        try
-        {
-            var settings = ApplicationData.Current.LocalSettings;
-            settings.Values.Remove(CONFIG_HASH_KEY);
-            Trace.WriteLine("[BetterRTX] ✓ Cleared stored version hash");
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[BetterRTX] Error clearing version hash: {ex.Message}");
-        }
-    }
 }
