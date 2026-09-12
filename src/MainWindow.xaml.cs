@@ -2637,9 +2637,6 @@ public sealed partial class MainWindow : Window
     #endregion =============== IMPORT ROUTERS ===============
 
 
-
-
-
     #region =============== SLIDER HANDLERS ===============
 
     private static void HandleDoubleSliderValueChanged(Slider slider, TextBox textBox, ref double property, int decimalPlaces)
@@ -3123,9 +3120,6 @@ apparently some third party launchers use them for other things, like userdata, 
 So users can go vote on them, and check if a bug is relaetd to the game or not
 A FULLY COMPILED LIST!
 This is very good, as people get to discover Minecraft RTX bugs instead of being confused about them.
-
-- Begin embedding most visual assets into the .resx, fewer IO operations, good optimization
-very low prio though, not too many assets, things are good
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
