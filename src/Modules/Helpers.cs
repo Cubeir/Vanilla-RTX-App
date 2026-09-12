@@ -409,11 +409,40 @@ public static class Helpers
 
     #endregion NETWORK
 
+    /// <summary>
+    /// 0 or 1 - whether an elevated replace is currently in flight, process-wide.
+    /// See <see cref="ReplaceFilesWithElevation"/> for why this exists.
+    /// </summary>
+    private static int _elevatedReplaceInFlight;
+
+    /// <summary>
+    /// True while an elevated replace is running anywhere in the app. Callers don't need to
+    /// consult this - <see cref="ReplaceFilesWithElevation"/> enforces it on its own - but a
+    /// UI that wants to reflect the state can read it.
+    /// </summary>
+    public static bool IsElevatedReplaceInFlight => Volatile.Read(ref _elevatedReplaceInFlight) != 0;
+
     // TODO: Re-examine the approach, could it be improved? or is it reliable enough?
     // maybe not saving a file and directly launching the command? -- AVs are the most concerning thing about this, possibly?
     /// <summary>
     /// Copies a set of files using a single elevated batch script (one UAC prompt for all files).
     /// Returns true only if the elevated process exits with code 0.
+    ///
+    /// <para><b>One at a time, process-wide.</b> Each call writes its own .bat to the temp
+    /// folder and launches an elevated cmd for it, so N overlapping calls means N scripts and
+    /// N UAC prompts queued up behind each other - which is exactly what an impatient
+    /// double-click on an install button used to produce. A call that arrives while another is
+    /// still running is therefore <b>refused outright</b> (returns false) rather than queued:
+    /// queuing is the symptom, not the fix, and a prompt the user has already stopped expecting
+    /// is worse than no prompt at all.</para>
+    ///
+    /// <para>This is the backstop, not the user-facing story. Every window that starts one of
+    /// these also refuses re-entry itself, so a second click is a clean no-op there and never
+    /// reaches this check. The check exists so that the invariant survives a caller that
+    /// forgets - including any added later.</para>
+    ///
+    /// <para>The flag is held for the whole operation, UAC prompt included, and released in a
+    /// finally - so a declined prompt, a failed copy or a thrown exception all clear it.</para>
     /// </summary>
     /// <param name="filesToReplace">List of (sourcePath, destPath) pairs to copy.</param>
     /// <param name="logPrefix">Tag used in Trace output, e.g. "[BetterRTX]", "[DLSS]", "[LUTManager]".</param>
@@ -421,14 +450,20 @@ public static class Helpers
     public static async Task<bool> ReplaceFilesWithElevation(List<(string sourcePath, string destPath)> filesToReplace,
         string logPrefix = "[Helpers]", string tempFilePrefix = "file_replace")
     {
+        if (filesToReplace == null || filesToReplace.Count == 0)
+        {
+            Trace.WriteLine($"{logPrefix} ReplaceFilesWithElevation called with no files - nothing to do");
+            return false;
+        }
+
+        if (Interlocked.CompareExchange(ref _elevatedReplaceInFlight, 1, 0) != 0)
+        {
+            Trace.WriteLine($"{logPrefix} An elevated replace is already running - refusing this one rather than queueing a second UAC prompt");
+            return false;
+        }
+
         try
         {
-            if (filesToReplace == null || filesToReplace.Count == 0)
-            {
-                Trace.WriteLine($"{logPrefix} ReplaceFilesWithElevation called with no files - nothing to do");
-                return false;
-            }
-
             return await Task.Run(() =>
             {
                 var scriptLines = new List<string> { "@echo off" };
@@ -483,8 +518,14 @@ public static class Helpers
         }
         catch (Exception ex)
         {
+            // Includes the user declining the UAC prompt, which Process.Start surfaces as a
+            // Win32Exception rather than a null process.
             Trace.WriteLine($"{logPrefix} Error in ReplaceFilesWithElevation: {ex.Message}");
             return false;
+        }
+        finally
+        {
+            Volatile.Write(ref _elevatedReplaceInFlight, 0);
         }
     }
 
