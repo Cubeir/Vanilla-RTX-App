@@ -284,7 +284,7 @@
                         Style="{ThemeResource AccentButtonStyle}"
                         IsTextScaleFactorEnabled="False"
                         Translation="0,0,32"
-                        Content="I have read and agreed to the terms and conditions of this feature"
+                        Content="I have read and agreed to the terms and conditions of RTX Reactor"
                         Click="AgreeButton_Click">
                     <Button.Shadow>
                         <ThemeShadow x:Name="AgreeShadow" />
