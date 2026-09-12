@@ -19,7 +19,7 @@ internal sealed class LutPreset
     public string Name { get; }
     public string FolderPath { get; }
 
-    /// <summary>True only for the backup of the game's own files, which lives outside Assets\lut.</summary>
+    /// <summary>True only for the backup of the game's own files, which lives outside the Presets folder.</summary>
     public bool IsDefault { get; }
 
     public string LutPath => Path.Combine(FolderPath, LUTManager.FnLut);
@@ -80,8 +80,14 @@ internal sealed class LUTManager
     /// Used to repair a game install that is missing its ray tracing files entirely. Any
     /// complete preset would do; this one is picked first only so the outcome is the same
     /// every time rather than depending on folder order.
+    ///
+    /// <para>It has to be a folder name that actually exists under <see cref="LutRootFolder"/>
+    /// or the preference is silently dead and the alphabetical fallback below picks instead -
+    /// which is what it had been doing, this having read "Gamescom 2019 Demo" while the folder
+    /// on disk is "Gamescom 2019 Demo V2". Nothing breaks when they disagree, which is exactly
+    /// why it went unnoticed.</para>
     /// </summary>
-    private const string PreferredMendPreset = "Gamescom 2019 Demo";
+    private const string PreferredMendPreset = "Gamescom 2019 Demo V2";
 
     private static readonly string AppDir = AppDomain.CurrentDomain.BaseDirectory;
 

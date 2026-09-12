@@ -196,7 +196,7 @@ public sealed partial class LUTManagerWindow : Window
         // Step 2: Back up game defaults into Lut_Defaults — all-or-none
         await _manager.EnsureDefaultsBackedUpAsync();
 
-        // Step 3: Discover all presets (Default first, then Assets\lut\ subfolders)
+        // Step 3: Discover all presets (Default first, then Modules\LUT\Presets\ subfolders)
         _manager.LoadPresets();
 
         // Step 4: Detect which preset is currently installed

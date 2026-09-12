@@ -789,6 +789,9 @@
     <None Update="Modules\Alchitex\Assets\water-fallback.zip">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Content Include="Modules\LUT\Presets\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Page Update="Core\PsaCard.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
