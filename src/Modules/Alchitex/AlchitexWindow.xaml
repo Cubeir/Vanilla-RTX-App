@@ -623,9 +623,74 @@
                         </Border.Background>
 
                         <Grid>
-                            <StackPanel x:Name="AlchitexAnnouncementsPanel"
-                                        Spacing="12"
-                                        Margin="24,18,24,12" />
+                            <!-- Wraps the PSA panel and the Ko-fi section so the latter
+                                 stacks directly beneath the former. Has to be a separate
+                                 StackPanel rather than putting SupportSection straight into
+                                 AlchitexAnnouncementsPanel - PsaCard.Populate() clears that
+                                 panel's children outright on every refresh. -->
+                            <StackPanel>
+                                <StackPanel x:Name="AlchitexAnnouncementsPanel"
+                                            Spacing="12"
+                                            Margin="24,18,24,12" />
+
+                                <!-- ══ KO-FI SECTION ══════════════════════════════
+                                     Auto-scrolled into view once a generation batch finishes
+                                     (TriggerSupportScrollAsync), at most once per day - see
+                                     AlchitexVariables.Persistent.LastSupportScrollUtc.
+                                     ═════════════════════════════════════════════════════ -->
+                                <Border x:Name="SupportSection"
+                                        Margin="24,0,24,18"
+                                        CornerRadius="6"
+                                        Padding="20,18,20,18"
+                                        Translation="0,0,32"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                                    <Border.Shadow>
+                                        <ThemeShadow />
+                                    </Border.Shadow>
+
+                                    <StackPanel Spacing="14">
+                                        <StackPanel Orientation="Horizontal"
+                                                    Spacing="10">
+                                            <FontIcon Glyph="&#xEB52;"
+                                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                      FontSize="16"
+                                                      Margin="0,2,0,0"
+                                                      VerticalAlignment="Center"
+                                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                      IsTextScaleFactorEnabled="False" />
+                                            <TextBlock Text="Enjoying RTX Reactor?"
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+
+                                        <TextBlock x:Name="SupportPersuasionText"
+                                                   TextWrapping="Wrap"
+                                                   FontSize="14"
+                                                   LineHeight="20"
+                                                   Opacity="0.9"
+                                                   IsTextScaleFactorEnabled="False" />
+
+                                        <Button x:Name="SupportKofiButton"
+                                                HorizontalAlignment="Left"
+                                                Style="{ThemeResource AccentButtonStyle}"
+                                                Click="SupportKofiButton_Click"
+                                                IsTextScaleFactorEnabled="False"
+                                                ToolTipService.ToolTip="Opens ko-fi.com/cubeir in your default browser.">
+                                            <StackPanel Orientation="Horizontal"
+                                                        Spacing="8">
+                                                <FontIcon Glyph="&#xEB52;"
+                                                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                          FontSize="14"
+                                                          IsTextScaleFactorEnabled="False" />
+                                                <TextBlock Text="Support on Ko-Fi"
+                                                           IsTextScaleFactorEnabled="False" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
 
                             <!-- ── Seam: 6px bevel drawn directly on the acrylic's own top
                                  edge, rather than a separate row before it - so the controls
@@ -667,7 +732,7 @@
                                              IsIndeterminate="False"
                                              Minimum="0"
                                              Maximum="1"
-                                             Margin="0"
+                                             Margin="0,-4,0,0"
                                              CornerRadius="0"
                                              HorizontalAlignment="Stretch" />
                             </Grid>

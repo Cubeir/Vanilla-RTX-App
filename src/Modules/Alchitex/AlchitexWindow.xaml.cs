@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -42,6 +43,11 @@ public static class AlchitexVariables
         public static bool AddFogEnabled = true;
         // Off by default, and deliberately so - it deletes the user's own installed pack.
         public static bool DeleteOriginalPackEnabled = false;
+        // UTC "O" stamp of the last time a finished batch auto-scrolled to the Ko-fi
+        // section - empty means never. Written immediately (not just on window close, like
+        // the rest of Persistent) so the once-a-day cap holds even across a crash. Parse
+        // with DateTimeStyles.RoundtripKind, same trap as OnlineTexts' own cooldown.
+        public static string LastSupportScrollUtc = "";
     }
     public static class Defaults
     {
@@ -188,6 +194,7 @@ public sealed partial class Alchitex : Window
 
             AlchitexVariables.LoadSettings();
             PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements);
+            BuildSupportSection();
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -848,6 +855,73 @@ public sealed partial class Alchitex : Window
             0, MainScrollViewer.ActualHeight - AlchitexControlsArea.Height);
     }
 
+    // ── Ko-fi support section ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fills SupportPersuasionText. The static copy here is written to end on a complete
+    /// sentence AND to flow straight into OnlineTextsContent.Credits - appended verbatim
+    /// right after it - so the two read as one continuous message rather than two bolted-
+    /// together blocks. If Credits hasn't loaded (no internet, fetch still pending), the
+    /// persuasion text alone still stands fine on its own.
+    /// </summary>
+    private void BuildSupportSection()
+    {
+        const string Persuasion =
+            "If this finally made a favorite pack look appropriate under ray tracing, or saved you the trouble of doing this by hand, and you'd like to help keep it free and maintained for everyone else too, a donation on Ko-fi goes a long way, and changes nothing about your ability to keep using the app.\n\n" +
+            "RTX Reactor is the culmination of all of the work that has gone on here, and it's handed to you completely free, because I wanted to help as many people as possible enjoy their packs with RTX, and any price would have worked against that goal..." +
+            "";
+        var credits = OnlineTextsContent.Credits?[0].Text?.Trim();
+
+        SupportPersuasionText.Text = string.IsNullOrEmpty(credits)
+            ? Persuasion
+            : $"{Persuasion}\n\nThanks to these individuals, RTX Reactor was released for free after 3 years of development:\n{credits}";
+    }
+
+    private void SupportKofiButton_Click(object sender, RoutedEventArgs e)
+    {
+        _ = MainWindow.OpenUrl("https://ko-fi.com/cubeir");
+    }
+
+    /// <summary>
+    /// Smoothly scrolls down to the Ko-fi section once a batch finishes, so the option is
+    /// visibly there right as the user is about to move on - never more than once a day,
+    /// so it never turns into a nag on every single run.
+    /// </summary>
+    private async Task TriggerSupportScrollAsync()
+    {
+        try
+        {
+            if (!IsSupportScrollDue()) return;
+
+            // Wait a little so queue output animations play out.
+            await Task.Delay(TimeSpan.FromMilliseconds(750));
+            if (_isClosing) return;
+
+            MainScrollViewer.ChangeView(null, MainScrollViewer.ScrollableHeight, null, disableAnimation: false);
+
+            AlchitexVariables.Persistent.LastSupportScrollUtc = DateTime.UtcNow.ToString("O");
+            AlchitexVariables.SaveSettings();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] TriggerSupportScrollAsync failed: {ex.Message}");
+        }
+    }
+
+    private static bool IsSupportScrollDue()
+    {
+        var raw = AlchitexVariables.Persistent.LastSupportScrollUtc;
+        if (string.IsNullOrEmpty(raw)) return true;
+
+        // RoundtripKind matters here exactly as it does for OnlineTexts' own cooldown without it
+        // a UTC "O" stamp parses back as local time and the  24h window is off by the machine's offset.
+        if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last))
+            return true;
+
+        var age = DateTime.UtcNow - last;
+        return age < TimeSpan.Zero || age >= TimeSpan.FromDays(2);
+    }
+
     // ── PBR generation ───────────────────────────────────────────────────────
 
     /// <summary>Labels for SecondaryPbrMode, in enum order - the button's text and its menu
@@ -1137,6 +1211,11 @@ public sealed partial class Alchitex : Window
                 SetStatusThenRevert(failedNames.Count == 0
                     ? $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} processed successfully!"
                     : $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} succeeded. Failed: {string.Join(", ", failedNames)}");
+
+                // Only on a real, un-aborted finish, and only if something actually came out
+                // of it - a batch that failed outright is not the moment to ask for support.
+                if (succeeded > 0)
+                    _ = TriggerSupportScrollAsync();
             }
         }
         catch (Exception ex)
@@ -1592,7 +1671,6 @@ public sealed partial class Alchitex : Window
     }
 
     // ── Debug: PBR test bench ───────────────────────────────────────────────
-    //
     // Runs loose textures (or a folder of them) through the real generation path and writes
     // the results next to the originals - see Tools/PbrTestBench for what it does and,
     // more importantly, what it deliberately doesn't. Everything here is UI: pick or accept
@@ -1806,8 +1884,6 @@ public sealed partial class Alchitex : Window
         }
         catch (Exception ex)
         {
-            // Same rule as the pack-regeneration dialog: a dialog that couldn't be shown
-            // must never silently green-light a destructive pass.
             Trace.WriteLine($"[ALCHITEX] Couldn't show the PBR test bench dialog: {ex.Message}");
             return false;
         }

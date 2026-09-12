@@ -100,12 +100,6 @@ public sealed partial class PsaCard : UserControl
         }
 
         // ── Per-kind background, opacity, dismiss setup ───────────────────────
-        // CardBorder's Background is set in XAML via {ThemeResource CardBackgroundFillColorDefaultBrush}
-        // rather than fetched here via Application.Current.Resources[...] — that indexer doesn't
-        // follow the element's actual theme, so it rendered the same (effectively dark) shade in
-        // both Light and Dark mode. ThemeResource in XAML re-resolves against the real theme and
-        // updates live on theme changes, which a code-behind lookup can't do without replicating
-        // ThemeService's ThemeDictionaries workaround.
         switch (item.Kind)
         {
             case PsaKind.Pinned:
