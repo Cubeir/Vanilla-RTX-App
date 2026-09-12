@@ -356,7 +356,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(SuspendUIAnimationsToggle,
-             "ms-appx:///Assets/previews/suspend.png"
+             "ms-appx:///Assets/previews/suspended.png"
         );
 
         Previewer.Instance.InitializeButton(DonateButton,
