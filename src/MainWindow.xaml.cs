@@ -392,7 +392,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(LaunchAlchitexButton,
-            "ms-appx:///Assets/previews/reactor.promo.tile.png"
+            "ms-appx:///Assets/previews/alchitex.png"
         );
 
         _ = Previewer.Instance.PreloadAllRegisteredImagesAsync();
