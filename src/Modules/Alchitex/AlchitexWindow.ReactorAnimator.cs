@@ -15,9 +15,10 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// rather than a picture of one - the same idea as the main window's lamp
 /// (Core/MainWindow.LampAnimator.cs), tied here to what generation is actually doing:
 ///
-///   1. Background - a 3x3 grid of tiles built here, not an image. Each tile holds one of
-///      the logo's five blues, and the whole point of this class is deciding when and how
-///      those change.
+///   1. Background - a 3x3 grid of tiles built here, not an image. Each tile holds an index
+///      into whichever of two palettes is currently active (see _activePalette) - five
+///      blues normally, a parallel five reds while the alert palette is up - and the whole
+///      point of this class is deciding when, how, and against which palette those change.
 ///   2. Logo - the static mark. Never animated; it's the still point everything else moves
 ///      around.
 ///   3. Bloom - the same mark with its glow, animated by opacity alone.
@@ -29,21 +30,26 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///     tiers with real contrast between them (press near-zero, rest in the middle,
 ///     flower-dance hover near max), and a random rest could land close enough to the hover
 ///     tier that unhovering stopped reading as a drop at all.
-///   - Press-and-hold: a dark droplet ripples out from the centre, again and again for as
-///     long as the button is held, while the bloom collapses to near zero - the reactor
-///     visibly having its charge drawn out from the middle, in waves, under the finger.
+///   - Flower dance / press-and-hold: one mechanic, two readings. Idle and hovering, the
+///     four corners and the four edge-midpoints swap places within their own ring,
+///     independently and on their own schedule, around a centre that keeps changing on its
+///     own, corners dark and edges bright; the bloom rises to near max. Pressed, the same
+///     mechanic runs inverted - corners bright, edges dark - while the bloom collapses to
+///     near zero instead, as though the charge is being drawn out from the middle. Neither
+///     means anything about the pipeline, unlike everything else here - they exist purely so
+///     hovering and pressing have an answer at all while idle.
 ///   - Generating: one behavior per phase (see Pulse). Underneath all of them the bloom
 ///     breathes on a loop, which is what separates "running" from "idle" at a glance.
 ///   - Waiting: the reactor is powered but blocked on something outside itself - a
 ///     confirmation dialog, a pack being uninstalled, a folder sweep. A single bright cell
 ///     orbits the eight perimeter tiles with a fading tail behind it, which is the one
 ///     stance here that reads as "this is not finished, and it is not your turn yet".
-///   - Flower dance: the pointer resting on the reactor with nothing else going on - the one
-///     gesture every other stance in this class ignores. The four corners and the four
-///     edge-midpoints swap places within their own ring, independently and on their own
-///     schedule, around a centre that keeps changing on its own; the bloom rises to near
-///     max, the opposite of press-and-hold. Means nothing about the pipeline, unlike
-///     everything else here - it exists purely so hovering has an answer at all.
+///   - Abort hint / error flash: the two places the alert palette (AlertPalette) takes over
+///     from the blues. Hovering the button mid-run is just the swap, held for as long as the
+///     pointer stays - "click me and this stops" - with nothing painted over it, so whatever
+///     the run is actually doing keeps animating underneath, just red instead of blue. A
+///     pack aborting on error, or being handed back mid-run, gets a timed version instead:
+///     every tile flashes to it at once and eases back on its own.
 ///
 /// How often a phase reports decides what kind of behavior it can have, and getting this
 /// wrong is invisible in code and obvious on screen:
@@ -65,13 +71,20 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// On top of those sit the one-shot flourishes - PlayQueueWash, PlayRipple, PlayImplosion,
 /// PlayCompletionWash. They aren't driven by a pulse or a timer; something happened and the
 /// reactor answers once, across staggered tiles over several hundred milliseconds. Because
-/// of that they take the grid for their duration (ClaimGrid), the same way the abort stance
-/// and the waiting orbit do - otherwise the next pulse repaints all nine tiles and the
-/// flourish never finishes.
+/// of that they take the grid for their duration (ClaimGrid) - otherwise the next pulse
+/// repaints all nine tiles and the flourish never finishes.
+///
+/// BeginAbortHint and PlayErrorFlash are neither pulse-driven nor flourishes, and they touch
+/// no tile directly - they only flip _activePalette, for as long as the pointer hovers or a
+/// fixed interval respectively, and let whatever is already painting the grid (a phase, a
+/// flourish, either one) carry on completely undisturbed underneath. Both used to claim the
+/// grid and paint their own shape over it; that was reverted because it meant the one thing
+/// actually happening at the time - the run's own progress, or the eject animation for the
+/// very pack that just failed - was exactly what got hidden.
 ///
 /// Everything routes through AnimateTile/SetBloom, which honor
 /// EnvironmentVariables.Persistent.SuspendUIAnimations: with it on, every transition is applied
-/// instantly and the two looping behaviors (bloom breathing, press-hold flicker) never
+/// instantly and the looping behaviors (bloom breathing, the flower dance's swapping) never
 /// start. The reactor still tracks state, it just stops moving.
 ///
 /// Cost control matters here, and it has two halves that are easy to confuse:
@@ -102,6 +115,33 @@ public sealed class ReactorAnimator
         ColorHelper.FromArgb(255, 0x00, 0x23, 0x42), // darkest
     };
 
+    /// <summary>
+    /// A parallel five-step ramp in red, index-for-index the same shape as Palette. The
+    /// abort cross used to be three hand-picked reds with no relationship to anything else
+    /// in the class; this is that same ramp generalized into a real second palette, so any
+    /// index-based pattern - the cross, a future stance, whatever StepBusyWork happens to be
+    /// rolling at the moment - can be told to read against red instead of blue without a
+    /// second copy of the logic that paints it. See _activePalette.
+    /// </summary>
+    private static readonly Color[] AlertPalette =
+    {
+        ColorHelper.FromArgb(255, 255, 0, 0), // brightest
+        ColorHelper.FromArgb(255, 192, 0, 0),
+        ColorHelper.FromArgb(255, 128, 0, 0),
+        ColorHelper.FromArgb(255, 96, 0, 0),
+        ColorHelper.FromArgb(255, 64, 0, 0), // darkest
+    };
+
+    /// <summary>
+    /// Which of the two palettes every colour resolution in this class currently reads
+    /// against. Swapping this is the entire "go red" mechanism: whatever is already running
+    /// (StepBusyWork, a gradient sweep, a ripple, any of it) keeps painting the exact same
+    /// indices it always would, and this one field decides whether that comes out blue or
+    /// red. See BeginAbortHint and PlayErrorFlash - neither one paints anything of its own
+    /// any more; they just flip this and let the animation already in flight carry the rest.
+    /// </summary>
+    private Color[] _activePalette = Palette;
+
     // Resting arrangement, as palette indices - a diagonal gradient with the brightest
     // cell top-right and the darkest bottom-left, matching the reference art.
     private static readonly int[,] RestLayout =
@@ -110,29 +150,6 @@ public sealed class ReactorAnimator
         { 3, 2, 1 },
         { 4, 3, 2 },
     };
-
-    // The abort stance. Four corners plus the middle: on a 3x3 grid that reads as an X for example.
-    private static readonly (int Row, int Col)[] AbortCross =
-    {
-        (0, 0), (0, 2), (1, 1), (2, 0), (2, 2),
-    };
-
-    // The cross only ever moves between these three, and they're all unambiguously red -
-    // the X has to hold its shape while it flickers. Anything that dropped toward the blues
-    // (or toward black) would break the shape apart every time it pulsed, which is the
-    // opposite of "this is dangerous, and it is definitely still here".
-    private static readonly Color[] AbortReds =
-    {
-        ColorHelper.FromArgb(255, 255, 0, 0),
-        ColorHelper.FromArgb(255, 192, 0, 0), 
-        ColorHelper.FromArgb(255, 128, 0, 0),
-        ColorHelper.FromArgb(255, 96, 0, 0), 
-        ColorHelper.FromArgb(255, 64, 0, 0),
-    };
-
-    // The backdrop the cross is read against - dark enough to disappear, and the darkest
-    // thing the reactor's own palette contains.
-    private static readonly Color AbortBackdrop = Palette[Palette.Length - 1];
 
     // The eight perimeter tiles in clockwise order, starting top-left. The waiting stance
     // walks a bright head around this ring; the centre tile is deliberately not part of it,
@@ -166,8 +183,7 @@ public sealed class ReactorAnimator
     // slide rather than step, without a step being half-finished when the next one lands.
     private const double WaveStepMs = 75;
 
-    // What a tile costs to settle when nothing is driving it - coming back to rest, or
-    // getting the abort red off the grid.
+    // What a tile costs to settle when nothing is driving it - coming back to rest.
     private const double SettleMs = 190;
 
     // Fixed rather than rolled - the bloom now has three deliberate tiers (press near-zero,
@@ -195,9 +211,7 @@ public sealed class ReactorAnimator
     private readonly Random _random = new();
 
     private Storyboard? _bloomLoop;
-    private DispatcherTimer? _pressHoldTimer;
     private DispatcherTimer? _loopTimer;
-    private DispatcherTimer? _abortHintTimer;
     private DispatcherTimer? _abortHintEndTimer;
     private DispatcherTimer? _flowerTimer;
     private DateTime _lastPulseUtc = DateTime.MinValue;
@@ -258,65 +272,26 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
-        StopPressHold();
         StopOrbit();
         StopBloomLoop();
         StopFlowerDance();
+        StopErrorFlashRevertTimer();
         ReleaseGrid();
         _isGenerating = false;
 
+        // A batch can end while an error flash is still mid-flight (its last pack failing
+        // right at the finish), and rest must never come out red regardless. Falling back to
+        // blue is its own instant cut rather than folded into the settle below, for the same
+        // reason BeginAbortHint's switch is instant - easing across this wide a hue gap reads
+        // as mud, not a transition.
+        var wasAlert = _activePalette != Palette;
+        _activePalette = Palette;
+
         for (var row = 0; row < GridSize; row++)
             for (var col = 0; col < GridSize; col++)
-                AnimateTile(row, col, RestLayout[row, col], SettleMs);
+                AnimateTile(row, col, RestLayout[row, col], wasAlert ? 0 : SettleMs);
 
         SetBloom(RestBloomOpacity, SettleMs);
-    }
-
-    /// <summary>Pointer down on the reactor: a droplet ripples out from the centre - its own
-    /// contrasting field rerolled each time, see PlayRipple - again and again for as long as
-    /// the button is held, while the bloom collapses, as though the charge is being drawn
-    /// out of it in waves.</summary>
-    public void BeginPressHold()
-    {
-        if (!_isInitialized) return;
-
-        // Pressing overrides the flower dance outright - two timers painting the same tiles
-        // would fight each other every tick, and "weaker" has to win over "stronger" the
-        // instant the finger comes down.
-        StopFlowerDance();
-        ReleaseGrid();
-        SetBloom(_random.NextDouble() * 0.10, 110);
-
-        // One ripple either way, so a quick click still registers visually with animations
-        // suspended or a timer that never gets to tick.
-        PlayRipple(brighten: false);
-
-        if (AnimationsSuspended) return;
-
-        // Timed to the ripple's own duration rather than something shorter, so consecutive
-        // droplets land back-to-back - a faster interval would retrigger PlayTileSequence
-        // mid-ripple and cut the wave off before it reached the corners.
-        StopPressHold();
-        _pressHoldTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(RippleDurationMs) };
-        _pressHoldTimer.Tick += (s, e) => PlayRipple(brighten: false);
-        _pressHoldTimer.Start();
-    }
-
-    /// <summary>Pointer released or capture lost. Hands back to whatever the reactor should
-    /// be doing - a run in progress keeps its behavior, otherwise it settles.</summary>
-    public void EndPressHold()
-    {
-        if (!_isInitialized) return;
-
-        StopPressHold();
-
-        if (_isGenerating)
-        {
-            StartBloomLoop();
-            return;
-        }
-
-        EnterRest();
     }
 
     /// <summary>A run has started: the bloom begins breathing and keeps at it until
@@ -356,10 +331,11 @@ public sealed class ReactorAnimator
     /// bright cell orbits the eight perimeter tiles with a fading tail behind it - the one
     /// unmistakably "still going, nothing to show yet" shape a 3x3 grid can make.
     ///
-    /// Like the abort stance it claims the whole grid, so Pulse is ignored while it's up.
-    /// Unlike the abort stance it is not a warning, so it keeps the bloom alive underneath -
-    /// during a run that's the loop already breathing, and outside one it starts it, because
-    /// a wait outside a run is still the machine doing something.
+    /// Unlike the abort stance, this claims the whole grid, so Pulse is ignored while it's
+    /// up - a wait genuinely has nothing to show, where hovering during a run still has a
+    /// real animation underneath worth showing. It keeps the bloom alive regardless: during
+    /// a run that's the loop already breathing, and outside one it starts it, because a wait
+    /// outside a run is still the machine doing something.
     ///
     /// Safe to call twice; the second call is a no-op rather than a restart, so nesting
     /// waits (a dialog inside a batch, say) can't reset the orbit halfway round.
@@ -370,8 +346,7 @@ public sealed class ReactorAnimator
 
         _isWaiting = true;
         _loopPhase = null; // the wait stance takes the loop timer over from any phase using it
-        StopPressHold();
-        StopFlowerDance(); // a dialog can open while the pointer is just resting on the button
+        StopFlowerDance(); // a dialog can open while the pointer is resting on or pressing the button
         ReleaseGrid();
 
         _orbitHead = 0;
@@ -425,10 +400,6 @@ public sealed class ReactorAnimator
     /// </summary>
     private void PaintOrbit(double durationMs)
     {
-        // The abort stance outranks this - the user is hovering a button that stops the run,
-        // and that has to win. The orbit repaints itself on its next tick once the red drops.
-        if (_isAbortHintActive) return;
-
         for (var i = 0; i < OrbitRing.Length; i++)
         {
             var (row, col) = OrbitRing[i];
@@ -487,6 +458,14 @@ public sealed class ReactorAnimator
         StopLoopTimer();
         _loopPhase = phase;
 
+        // Pipeline work is always blue - only abort-hover and an error flash ever go red.
+        // A previous pack's error flash can still be mid-flight when the next one's Staging
+        // or ScanningTextures starts (its own revert timer hasn't ticked yet), and Scanning's
+        // tick is index-based (StepGradientWave), so without this it would briefly read
+        // against the wrong palette. An instant reset rather than trusting the flash's own
+        // timer to land first.
+        _activePalette = Palette;
+
         tick();
 
         if (AnimationsSuspended) return;
@@ -524,12 +503,18 @@ public sealed class ReactorAnimator
 
     /// <summary>
     /// The reactor's "click me and this stops" face, shown while the pointer is over the
-    /// button during a run: the cross lights up in an agitated red while every other tile
-    /// drops to the darkest blue so the X reads cleanly.
+    /// button during a run: the whole grid switches to the alert palette, full stop. No
+    /// shape, no timer, no repaint of its own - the switch is the entire effect. Whatever the
+    /// pipeline is already animating keeps animating exactly as it would (Pulse is no longer
+    /// gated on this - see its own remarks), and every colour in this class already resolves
+    /// through _activePalette, so it simply reads red instead of blue from here on.
     ///
-    /// It deliberately claims the whole grid - Pulse is ignored for as long as this is up,
-    /// which is why the phase animations visibly stop dead underneath it. That interruption
-    /// is the message: the thing you're about to do is abrupt.
+    /// This replaced a fixed red cross that painted over and froze whatever was running
+    /// underneath. The interruption was the point once, but it meant hovering hid the one
+    /// thing that would actually tell you whether the run itself was still healthy - the X
+    /// looked the same whether the pack behind it was breezing through or stuck. A plain
+    /// palette swap says "you can stop this" without hiding "and here's what stopping it
+    /// would cost you".
     ///
     /// The bloom is left completely alone. It belongs to the run, and the run is still
     /// going until the user actually commits.
@@ -543,44 +528,15 @@ public sealed class ReactorAnimator
 
         if (_isAbortHintActive) return;
         _isAbortHintActive = true;
-        StopFlowerDance(); // shouldn't be up mid-run, but the cross has to win regardless
-        ReleaseGrid();
 
-        foreach (var (row, col) in AbortCross)
-            SetTileColor(row, col, AbortReds[0], 55);
-
-        for (var row = 0; row < GridSize; row++)
-            for (var col = 0; col < GridSize; col++)
-                if (!IsOnCross(row, col))
-                    SetTileColor(row, col, AbortBackdrop, 85);
-
-        if (AnimationsSuspended) return;
-
-        // Each cross tile drifts between the three reds on its own schedule - alive and
-        // agitated, but never leaving red, so the X never stops being an X.
-        StopAbortHintTimer();
-        _abortHintTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(110) };
-        _abortHintTimer.Tick += (s, e) =>
-        {
-            foreach (var (row, col) in AbortCross)
-            {
-                if (_random.NextDouble() < 0.5) continue; // stagger, so they don't blink in unison
-
-                // Weighted toward the hot end: mostly bright, occasionally banked down.
-                var roll = _random.NextDouble();
-                var color = roll < 0.5 ? AbortReds[0] : roll < 0.85 ? AbortReds[1] : AbortReds[2];
-
-                SetTileColor(row, col, color, _random.Next(55, 100));
-            }
-        };
-        _abortHintTimer.Start();
+        _activePalette = AlertPalette;
     }
 
     /// <summary>
     /// Pointer left. Deliberately debounced rather than immediate: a tooltip opening over
     /// the button counts as leaving it, and the pointer re-enters a frame later, so acting
-    /// straight away made the grid strobe between the red X and the blue phase colors. A
-    /// re-entry inside the grace period cancels the teardown entirely.
+    /// straight away made the grid flicker red-blue-red for no reason. A re-entry inside the
+    /// grace period cancels the teardown entirely.
     /// </summary>
     public void EndAbortHint()
     {
@@ -599,7 +555,8 @@ public sealed class ReactorAnimator
     }
 
     /// <summary>Drops the abort stance now, no grace period - for the click actually
-    /// landing, the run ending, or the window closing.</summary>
+    /// landing, the run ending, or the window closing. Just the palette back to blue - see
+    /// BeginAbortHint for why there's nothing else to undo.</summary>
     public void EndAbortHintImmediate()
     {
         if (!_isInitialized) return;
@@ -609,32 +566,13 @@ public sealed class ReactorAnimator
 
         if (!wasActive) return;
 
-        // A run in progress repaints itself on its next pulse; this just has to get the
-        // red off the grid in the meantime.
-        if (_isGenerating)
-        {
-            for (var row = 0; row < GridSize; row++)
-                for (var col = 0; col < GridSize; col++)
-                    AnimateTile(row, col, RestLayout[row, col], 110);
-            return;
-        }
-
-        EnterRest();
+        _activePalette = Palette;
     }
 
     private void StopAbortHint()
     {
-        StopAbortHintTimer();
         StopAbortHintEndTimer();
         _isAbortHintActive = false;
-    }
-
-    private void StopAbortHintTimer()
-    {
-        if (_abortHintTimer == null) return;
-
-        _abortHintTimer.Stop();
-        _abortHintTimer = null;
     }
 
     private void StopAbortHintEndTimer()
@@ -645,20 +583,76 @@ public sealed class ReactorAnimator
         _abortHintEndTimer = null;
     }
 
-    private static bool IsOnCross(int row, int col)
-    {
-        foreach (var (r, c) in AbortCross)
-            if (r == row && c == col) return true;
+    // ── Error flash ──────────────────────────────────────────────────────────
 
-        return false;
+    // How long an error keeps the grid on the alert palette - long enough to cover a queue
+    // wash or an eject animation playing at the same moment, comfortably short of feeling
+    // like a stuck state.
+    private const double ErrorFlashDurationMs = 510;
+
+    // Reverts _activePalette once the window above has elapsed. A dedicated timer rather
+    // than hooking a tile storyboard's Completed event: this no longer paints anything of
+    // its own to hook (see PlayErrorFlash), and even if it did, a storyboard interrupted
+    // early never raises Completed - a palette stuck on red because of that would be exactly
+    // the kind of orphaned state this class otherwise works hard to avoid. Restarting the
+    // timer on every call, rather than letting an earlier one fire mid-flash, is what makes
+    // back-to-back errors extend the red window instead of cutting each other off early.
+    private DispatcherTimer? _errorFlashRevertTimer;
+
+    /// <summary>
+    /// A pack aborting on error, or being handed back mid-run: the grid reads red for a
+    /// while, exactly the same mechanism as BeginAbortHint and for the same reason - no
+    /// painting of its own, just _activePalette flipped to AlertPalette. Whatever is actually
+    /// on screen at the moment (most often the queue wash or eject animation already playing
+    /// for the very same pack) keeps animating completely undisturbed and simply reads red
+    /// instead of blue while this is up.
+    ///
+    /// This used to paint its own flat flash across the grid, and that was the wrong idea:
+    /// a tile runs exactly one storyboard, so painting a flash meant *replacing* whatever
+    /// animation was already there rather than recolouring it - the eject wave underneath
+    /// simply never got to run, because this cancelled it. Decoupling colour from animation
+    /// only holds if colour changes never touch the animation, which is the one thing the
+    /// old version did.
+    /// </summary>
+    public void PlayErrorFlash()
+    {
+        if (!_isInitialized || _isAbortHintActive) return;
+
+        _activePalette = AlertPalette;
+
+        StopErrorFlashRevertTimer();
+        _errorFlashRevertTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ErrorFlashDurationMs) };
+        _errorFlashRevertTimer.Tick += (s, e) =>
+        {
+            StopErrorFlashRevertTimer();
+            _activePalette = Palette;
+        };
+        _errorFlashRevertTimer.Start();
     }
 
-    // ── Flower dance stance ──────────────────────────────────────────────────
+    private void StopErrorFlashRevertTimer()
+    {
+        if (_errorFlashRevertTimer == null) return;
+
+        _errorFlashRevertTimer.Stop();
+        _errorFlashRevertTimer = null;
+    }
+
+    // ── Flower dance and press stances ───────────────────────────────────────
     //
     // The four corners and the four edge-midpoints, read as two independent rings around a
-    // held centre - the "petals" the name comes from. Corners carry the two darkest blues,
-    // edges the two brightest, so the shape reads as an entirely different silhouette to the
-    // abort cross or the waiting orbit at a glance - no straight edges, no travelling band.
+    // held centre - the "petals" the name comes from. One ring carries the two darkest
+    // blues, the other the two brightest, so the shape reads as an entirely different
+    // silhouette to the abort cross or the waiting orbit at a glance - no straight edges, no
+    // travelling band.
+    //
+    // Hovering and pressing share this one mechanic rather than each getting its own -
+    // corners dark/edges bright while hovering, corners bright/edges dark while pressed (see
+    // _flowerInverted) - so press reads as unmistakably the same shape doing the opposite
+    // thing, rather than a second silhouette for the eye to learn. Press used to fire a
+    // repeating ripple instead, and that read as a smaller version of Staging's own
+    // continuous ripple rather than something that belonged to the button itself; reusing
+    // the flower here fixed that by construction, since the two no longer share an effect.
 
     private static readonly (int Row, int Col)[] FlowerCorners =
     {
@@ -672,9 +666,10 @@ public sealed class ReactorAnimator
 
     // Palette[3]/[4] are the two darkest blues, Palette[0]/[1] the two brightest - the same
     // contrast the resting diagonal itself spans, just regrouped into two rings instead of
-    // one ramp.
-    private static readonly int[] FlowerCornerShades = { 3, 4 };
-    private static readonly int[] FlowerEdgeShades = { 0, 1 };
+    // one ramp. Which ring draws which is decided per call by _flowerInverted, not baked
+    // into these two arrays any more.
+    private static readonly int[] FlowerDarkShades = { 3, 4 };
+    private static readonly int[] FlowerBrightShades = { 0, 1 };
 
     private const double FlowerStepMs = 130;
     private const double FlowerSwapDurationMs = 110;
@@ -683,29 +678,82 @@ public sealed class ReactorAnimator
     private const double FlowerBloomMin = 0.90;
     private const double FlowerBloomMax = 1.00;
 
-    // Index into FlowerCornerShades/FlowerEdgeShades, one per ring slot. Null whenever the
-    // dance isn't running - StepFlower and PaintFlower both bail on that rather than assume
-    // BeginFlowerDance always ran first.
+    // Index into whichever shade array applies to that ring, one per ring slot. Null
+    // whenever the dance isn't running - StepFlower and PaintFlower both bail on that rather
+    // than assume a Begin method always ran first.
     private int[]? _flowerCornerAssignment;
     private int[]? _flowerEdgeAssignment;
+
+    // True for the pressed variant: corners draw the bright shades and edges the dark ones,
+    // the opposite of hovering. Set once per StartFlowerDance call and read only by
+    // PaintFlower, so nothing else needs to know which variant is running.
+    private bool _flowerInverted;
 
     /// <summary>
     /// Pointer resting on the reactor with nothing running: the two rings start swapping
     /// their tiles' colours amongst themselves, independently and on their own schedule, and
-    /// the bloom rises rather than falls - the opposite of press-and-hold, and the only
-    /// stance in this class that answers "the pointer is here" rather than "here's what the
-    /// pipeline is doing".
-    ///
-    /// The caller is expected to check IsGenerating first - BeginAbortHint owns hover during
-    /// a run - but this bails on its own too, so a race between the two can't leave the
-    /// flower running underneath the cross. Safe to call twice; the second call is a no-op.
+    /// the bloom rises - the only stance in this class that answers "the pointer is here"
+    /// rather than "here's what the pipeline is doing".
     /// </summary>
-    public void BeginFlowerDance()
+    public void BeginFlowerDance() => StartFlowerDance(
+        inverted: false,
+        FlowerBloomMin + _random.NextDouble() * (FlowerBloomMax - FlowerBloomMin));
+
+    /// <summary>Pointer left while just hovering. Settles the grid and the bloom back to
+    /// rest, the same as every other stance that isn't mid-run.</summary>
+    public void EndFlowerDance()
+    {
+        if (!_isInitialized || !_isFlowerDancing || _flowerInverted) return;
+
+        EnterRest();
+    }
+
+    /// <summary>
+    /// Pointer down on the reactor while idle: the same flower mechanic, inverted - corners
+    /// draw bright, edges draw dark - while the bloom collapses instead of rising, as though
+    /// the charge is being drawn out of it. Continuous for as long as the button is held,
+    /// the same as hovering, rather than a flourish repeating on a timer.
+    /// </summary>
+    public void BeginPressHold()
+    {
+        // Pressing overrides the hover dance outright - two continuous dances racing the
+        // same tiles on their own schedules would fight every tick, and "weaker" has to win
+        // over "stronger" the instant the finger comes down.
+        StopFlowerDance();
+        StartFlowerDance(inverted: true, _random.NextDouble() * 0.10);
+    }
+
+    /// <summary>Pointer released or capture lost while pressed. Hands back to whatever the
+    /// reactor should be doing - a run in progress keeps its behavior, otherwise it
+    /// settles.</summary>
+    public void EndPressHold()
+    {
+        if (!_isInitialized || !_isFlowerDancing || !_flowerInverted) return;
+
+        StopFlowerDance();
+
+        if (_isGenerating)
+        {
+            StartBloomLoop();
+            return;
+        }
+
+        EnterRest();
+    }
+
+    /// <summary>
+    /// Shared starter for both variants above. The caller is expected to check IsGenerating
+    /// first - BeginAbortHint owns hover and press alike during a run - but this bails on
+    /// its own too, so a race between the two can't leave the dance running underneath the
+    /// cross. Safe to call while the same variant is already running; the second call is a
+    /// no-op rather than a restart.
+    /// </summary>
+    private void StartFlowerDance(bool inverted, double bloomOpacity)
     {
         if (!_isInitialized || _isGenerating || _isFlowerDancing) return;
 
         _isFlowerDancing = true;
-        StopPressHold();
+        _flowerInverted = inverted;
         ReleaseGrid();
 
         // Checkerboard start - opposite ring slots matching - so the very first frame already
@@ -715,7 +763,7 @@ public sealed class ReactorAnimator
 
         PaintFlower(FlowerSwapDurationMs);
         AnimateTile(1, 1, _random.Next(Palette.Length), FlowerCenterDurationMs);
-        SetBloom(FlowerBloomMin + _random.NextDouble() * (FlowerBloomMax - FlowerBloomMin), FlowerBloomMs);
+        SetBloom(bloomOpacity, FlowerBloomMs);
 
         if (AnimationsSuspended) return;
 
@@ -723,15 +771,6 @@ public sealed class ReactorAnimator
         _flowerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(FlowerStepMs) };
         _flowerTimer.Tick += (s, e) => StepFlower();
         _flowerTimer.Start();
-    }
-
-    /// <summary>Pointer left while just hovering. Settles the grid and the bloom back to
-    /// rest, the same as every other stance that isn't mid-run.</summary>
-    public void EndFlowerDance()
-    {
-        if (!_isInitialized || !_isFlowerDancing) return;
-
-        EnterRest();
     }
 
     private void StepFlower()
@@ -763,25 +802,30 @@ public sealed class ReactorAnimator
     {
         if (_flowerCornerAssignment == null || _flowerEdgeAssignment == null) return;
 
+        var cornerShades = _flowerInverted ? FlowerBrightShades : FlowerDarkShades;
+        var edgeShades = _flowerInverted ? FlowerDarkShades : FlowerBrightShades;
+
         for (var i = 0; i < FlowerCorners.Length; i++)
         {
             var (row, col) = FlowerCorners[i];
-            AnimateTile(row, col, FlowerCornerShades[_flowerCornerAssignment[i]], durationMs);
+            AnimateTile(row, col, cornerShades[_flowerCornerAssignment[i]], durationMs);
         }
 
         for (var i = 0; i < FlowerEdges.Length; i++)
         {
             var (row, col) = FlowerEdges[i];
-            AnimateTile(row, col, FlowerEdgeShades[_flowerEdgeAssignment[i]], durationMs);
+            AnimateTile(row, col, edgeShades[_flowerEdgeAssignment[i]], durationMs);
         }
     }
 
-    /// <summary>Tears down the dance's timer and state without touching the grid or the
-    /// bloom - callers that need those settled go through EnterRest instead.</summary>
+    /// <summary>Tears down whichever variant is running - its timer and its state - without
+    /// touching the grid or the bloom. Callers that need those settled go through EnterRest
+    /// or the appropriate End method instead.</summary>
     private void StopFlowerDance()
     {
         StopFlowerTimer();
         _isFlowerDancing = false;
+        _flowerInverted = false;
         _flowerCornerAssignment = null;
         _flowerEdgeAssignment = null;
     }
@@ -813,10 +857,12 @@ public sealed class ReactorAnimator
         // can never stop a wait's own orbit.
         if (_loopPhase.HasValue && _loopPhase.Value != phase) StopPhaseLoop();
 
-        // The abort stance and the waiting orbit own the whole grid while they're up - see
-        // BeginAbortHint / BeginWaiting. Neither is a flourish; both mean the user is being
-        // told something more important than progress.
-        if (_isAbortHintActive || _isWaiting) return;
+        // The waiting orbit owns the whole grid while it's up - see BeginWaiting. It isn't a
+        // flourish; it means the user is being told something more important than progress.
+        // The abort stance used to own the grid the same way; it no longer does (see
+        // BeginAbortHint) - pulses keep landing normally while hovering, which is what lets
+        // the alert palette show whatever the pipeline is actually doing instead of hiding it.
+        if (_isWaiting) return;
 
         // A pack finishing is the one thing the reactor must never fail to say, and a
         // phase that starts its own background loop (Staging, ScanningTextures) is the same
@@ -941,26 +987,26 @@ public sealed class ReactorAnimator
     /// once.
     ///
     /// Three columns is not much to say "something landed in water" with, so the band is
-    /// built from the palette rather than a single bright frame: each column rises to the
-    /// brightest blue, falls back through the middle of the ramp, and settles at its
+    /// built from the active palette rather than a single bright frame: each column rises to
+    /// its brightest shade, falls back through the middle of the ramp, and settles at its
     /// resting value, one column-delay behind the column before it. What sells it is that
     /// the trailing columns are still falling while the leading one has already settled.
     /// </summary>
     public void PlayQueueWash(bool leftToRight)
     {
-        if (!_isInitialized || _isAbortHintActive) return;
+        if (!_isInitialized) return;
 
         for (var row = 0; row < GridSize; row++)
         {
             for (var col = 0; col < GridSize; col++)
             {
                 var lead = (leftToRight ? col : GridSize - 1 - col) * WashColumnDelayMs;
-                var rest = Palette[RestLayout[row, col]];
+                var rest = _activePalette[RestLayout[row, col]];
 
                 PlayTileSequence(row, col,
                     (_brushes[row, col].Color, Math.Max(lead, 1)),
-                    (Palette[0], lead + WashRiseMs),
-                    (Palette[2], lead + WashRiseMs + WashFallMs * 0.45),
+                    (_activePalette[0], lead + WashRiseMs),
+                    (_activePalette[2], lead + WashRiseMs + WashFallMs * 0.45),
                     (rest, lead + WashRiseMs + WashFallMs));
             }
         }
@@ -973,9 +1019,8 @@ public sealed class ReactorAnimator
     private const double RippleFallMs = 230;
 
     // How long one ripple takes corner to corner, start to settled - shared with
-    // BeginPressHold, which uses it as the repeat interval for the droplet effect so
-    // consecutive ripples land back-to-back rather than cutting each other off mid-sequence,
-    // and with BeginPhaseLoop, which uses it the same way to keep Staging's ripples chained.
+    // BeginPhaseLoop, which uses it as the repeat interval to keep Staging's ripples chained
+    // back-to-back rather than cutting each other off mid-sequence.
     private const double RippleDurationMs = (GridSize - 1) * RippleRingDelayMs + RippleRiseMs + RippleFallMs;
 
     /// <summary>
@@ -1047,7 +1092,7 @@ public sealed class ReactorAnimator
     /// </summary>
     public void PlayRipple(bool brighten)
     {
-        if (!_isInitialized || _isAbortHintActive) return;
+        if (!_isInitialized) return;
 
         var field = _random.NextDouble() < RippleMiddleFieldChance
             ? RippleField.Middle
@@ -1062,11 +1107,11 @@ public sealed class ReactorAnimator
 
                 var peak = field switch
                 {
-                    RippleField.Dark => Palette[0],
-                    RippleField.Light => Palette[Palette.Length - 1],
-                    _ => ring % 2 == 0 ? Palette[0] : Palette[Palette.Length - 1],
+                    RippleField.Dark => _activePalette[0],
+                    RippleField.Light => _activePalette[Palette.Length - 1],
+                    _ => ring % 2 == 0 ? _activePalette[0] : _activePalette[Palette.Length - 1],
                 };
-                var backdrop = Palette[RippleBackdropIndex(field, ring)];
+                var backdrop = _activePalette[RippleBackdropIndex(field, ring)];
 
                 PlayTileSequence(row, col,
                     (_brushes[row, col].Color, Math.Max(lead, 1)),
@@ -1270,9 +1315,9 @@ public sealed class ReactorAnimator
                 // rather than two overlapping animations: the second would now cancel the
                 // first, since a tile only ever runs one storyboard (see PlayTileSequence).
                 PlayTileSequence(row, col,
-                    (Palette[0], flashMs),
-                    (Palette[0], collapseAt),
-                    (Palette[Palette.Length - 1], collapseAt + collapseMs));
+                    (_activePalette[0], flashMs),
+                    (_activePalette[0], collapseAt),
+                    (_activePalette[Palette.Length - 1], collapseAt + collapseMs));
             }
         }
 
@@ -1298,8 +1343,8 @@ public sealed class ReactorAnimator
 
                 PlayTileSequence(row, col,
                     (_brushes[row, col].Color, Math.Max(lead, 1)),
-                    (Palette[0], lead + riseMs),
-                    (Palette[RestLayout[row, col]], lead + riseMs + fallMs));
+                    (_activePalette[0], lead + riseMs),
+                    (_activePalette[RestLayout[row, col]], lead + riseMs + fallMs));
             }
         }
 
@@ -1339,12 +1384,20 @@ public sealed class ReactorAnimator
 
     // ── Primitives ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Resolves a palette index against whichever palette is currently active (see
+    /// _activePalette) rather than always Palette - this indirection is the whole
+    /// "decoupled from colour" idea: every caller still just says "index 0" or "RestLayout
+    /// at this cell", and it is this one method that decides whether that means blue or red.
+    /// </summary>
     private void AnimateTile(int row, int col, int paletteIndex, double durationMs)
-        => SetTileColor(row, col, Palette[Math.Clamp(paletteIndex, 0, Palette.Length - 1)], durationMs);
+        => SetTileColor(row, col, _activePalette[Math.Clamp(paletteIndex, 0, _activePalette.Length - 1)], durationMs);
 
     /// <summary>
-    /// The one place a tile's color ever changes. Takes a Color rather than a palette index
-    /// so the abort stance can paint its reds through the same path as everything else.
+    /// The one place a tile's color ever changes. Takes a Color rather than a palette index -
+    /// AnimateTile is the index-based front door for everything except the handful of
+    /// flourishes (PlayRipple, PlayQueueWash, PlayImplosion, PlayCompletionWash) that need a
+    /// Color they've already resolved themselves.
     /// </summary>
     private void SetTileColor(int row, int col, Color target, double durationMs)
     {
@@ -1524,23 +1577,15 @@ public sealed class ReactorAnimator
         _bloomLoop = null;
     }
 
-    private void StopPressHold()
-    {
-        if (_pressHoldTimer == null) return;
-
-        _pressHoldTimer.Stop();
-        _pressHoldTimer = null;
-    }
-
     /// <summary>Stops every loop this animator owns. Call on window close so a timer or a
     /// forever-storyboard can't outlive the window it was animating.</summary>
     public void Shutdown()
     {
-        StopPressHold();
         StopOrbit();
         StopAbortHint();
         StopFlowerDance();
         StopBloomLoop();
+        StopErrorFlashRevertTimer();
 
         _bloomShot?.Stop();
 

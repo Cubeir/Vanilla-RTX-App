@@ -123,7 +123,11 @@ public sealed partial class Alchitex
 
     /// <summary>
     /// A pack that errored out: thrown clear through the reactor and off the far side,
-    /// rather than coming back down the output row like a finished one.
+    /// rather than coming back down the output row like a finished one. The reactor also
+    /// flashes its alert palette red (ReactorAnimator.PlayErrorFlash) alongside the wash
+    /// below - the tile leaving is the queue's own way of saying "this one failed", and the
+    /// flash is the reactor's, so the background actually answers an error rather than
+    /// treating it as an ordinary hand-off.
     ///
     /// The tile is built fresh here: the original left the input row when the pack was
     /// handed over, so there's nothing left to animate by the time the failure is known.
@@ -154,6 +158,13 @@ public sealed partial class Alchitex
             // Left to right, matching its travel: a failure still leaves the way an intake
             // arrived, which is what makes it read as "thrown through" rather than "handed
             // back". A returned or finished pack washes the other way.
+            //
+            // PlayErrorFlash first, deliberately: it only flips which palette AnimateTile
+            // resolves against, and PlayQueueWash bakes actual Color values into its
+            // keyframes at the moment it's called - flipping the palette afterward wouldn't
+            // reach back into an already-built sequence, so the wash would play blue instead
+            // of red.
+            _reactor?.PlayErrorFlash();
             _reactor?.PlayQueueWash(leftToRight: true);
 
             using (BeginQueueTransition())

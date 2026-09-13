@@ -1302,6 +1302,11 @@ public sealed partial class Alchitex : Window
     /// Puts an aborted pack back in the input queue, coming back out of the reactor the way
     /// a finished one comes out into the output row. Nothing was generated for it, so this
     /// is a return, not a result - which is exactly what the reversed motion says.
+    ///
+    /// Also flashes the reactor's alert palette (ReactorAnimator.PlayErrorFlash), same as
+    /// EjectFailedPackAsync - the pack itself is fine here, but leaving mid-run is still the
+    /// user stopping something abruptly, not a normal hand-off, and the two should read as
+    /// related events rather than one looking like any other pack coming back out.
     /// </summary>
     private async Task ReturnTileToQueueAsync(string location)
     {
@@ -1314,6 +1319,10 @@ public sealed partial class Alchitex : Window
 
         if (tile == null) return;
 
+        // PlayErrorFlash first - it only flips which palette AnimateTile/PlayQueueWash
+        // resolve against, and the wash bakes actual Color values into its keyframes the
+        // moment it's called, so flipping the palette after would miss it entirely.
+        _reactor?.PlayErrorFlash();
         _reactor?.PlayQueueWash(leftToRight: false);
 
         using (BeginQueueTransition())
