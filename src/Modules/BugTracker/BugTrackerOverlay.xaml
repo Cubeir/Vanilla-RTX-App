@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Vanilla_RTX_App.Modules.BugTracker.BugTrackerOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Visibility="Collapsed"
+             Opacity="0"
+             IsHitTestVisible="False"
+             IsTextScaleFactorEnabled="False">
+
+    <!-- Modal blocker - clicking it (but not the panel) closes the overlay -->
+    <Grid x:Name="Blocker"
+          PointerPressed="Blocker_PointerPressed">
+        <Grid.Background>
+            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                          TintOpacity="0.55"
+                          TintLuminosityOpacity="0.75"
+                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+        </Grid.Background>
+
+        <!-- Panel -->
+        <Border x:Name="Panel"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Margin="90,56"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Translation="0,0,64"
+                PointerPressed="Panel_PointerPressed">
+            <Border.Shadow>
+                <ThemeShadow />
+            </Border.Shadow>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <Grid Grid.Row="0"
+                      Padding="20,12,10,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <FontIcon Grid.Column="0"
+                              Glyph="&#xEBE8;"
+                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              FontSize="17"
+                              VerticalAlignment="Center"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+                    <TextBlock Grid.Column="1"
+                               Text="Known Minecraft RTX Bugs &amp; Issues"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Margin="12,0,0,0"
+                               VerticalAlignment="Center"
+                               IsTextScaleFactorEnabled="False" />
+
+                    <Button x:Name="CloseButton"
+                            Grid.Column="2"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Width="32"
+                            Height="32"
+                            Padding="0"
+                            Click="CloseButton_Click"
+                            ToolTipService.ToolTip="Close">
+                        <FontIcon Glyph="&#xE8BB;"
+                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  FontSize="12" />
+                    </Button>
+                </Grid>
+
+                <Border Grid.Row="0"
+                        VerticalAlignment="Bottom"
+                        Height="1"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- Content -->
+                <Grid Grid.Row="1"
+                      CornerRadius="0,0,8,8">
+                    <WebView2 x:Name="MarkdownWebView"
+                              Visibility="Collapsed" />
+
+                    <StackPanel x:Name="LoadingState"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="14">
+                        <ProgressRing IsActive="True"
+                                      Width="36"
+                                      Height="36"
+                                      HorizontalAlignment="Center" />
+                        <TextBlock x:Name="LoadingText"
+                                   Text="Loading the list..."
+                                   Opacity="0.75"
+                                   HorizontalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="ErrorState"
+                                Visibility="Collapsed"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                MaxWidth="400"
+                                Spacing="12">
+                        <FontIcon Glyph="&#xEB5E;"
+                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  FontSize="28"
+                                  Opacity="0.7"
+                                  HorizontalAlignment="Center" />
+                        <TextBlock x:Name="ErrorText"
+                                   Text="An internet connection is required to fetch the list."
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Opacity="0.85"
+                                   IsTextScaleFactorEnabled="False" />
+                        <Button Content="Try Again"
+                                HorizontalAlignment="Center"
+                                Click="RetryButton_Click" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

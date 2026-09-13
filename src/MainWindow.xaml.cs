@@ -3035,7 +3035,7 @@ public sealed partial class MainWindow : Window
 
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
-
+        BugTrackerOverlay.Show();
     }
 
     private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
