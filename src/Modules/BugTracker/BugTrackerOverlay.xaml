@@ -15,8 +15,8 @@
           PointerPressed="Blocker_PointerPressed">
         <Grid.Background>
             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                          TintOpacity="0.55"
-                          TintLuminosityOpacity="0.75"
+                          TintOpacity="0.5"
+                          TintLuminosityOpacity="0.8"
                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
         </Grid.Background>
 
@@ -26,7 +26,7 @@
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Margin="90,56"
+                Margin="32,48,32,32"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 Translation="0,0,64"

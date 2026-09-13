@@ -23,7 +23,7 @@
         <Grid x:Name="SplashOverlay"
               Visibility="Visible"
               Grid.ColumnSpan="2"
-              Canvas.ZIndex="999">
+              Canvas.ZIndex="1000">
             <Grid.Background>
                 <SolidColorBrush Color="{ThemeResource SolidBackgroundFillColorBase}" />
             </Grid.Background>
@@ -88,7 +88,7 @@
              so every child below positions itself exactly as it did as a direct MainGrid child. -->
         <Grid x:Name="TitleBarLayer"
               Grid.ColumnSpan="2"
-              Canvas.ZIndex="1001">
+              Canvas.ZIndex="999">
 
         <!-- Titlebar Background -->
         <Border x:Name="TitleBarBackground"
@@ -1508,11 +1508,11 @@
         </Grid>
 
         <!-- Bug Tracker overlay - modal, sits above every other part of the window but below
-             the titlebar (Canvas.ZIndex="1001"), so the titlebar keeps showing through and
+             the titlebar so the titlebar keeps showing through and
              stays clickable while this is open. -->
         <bugtracker:BugTrackerOverlay x:Name="BugTrackerOverlay"
                                        Grid.ColumnSpan="2"
-                                       Canvas.ZIndex="1000" />
+                                       Canvas.ZIndex="998" />
 
     </Grid>
 </Window>
