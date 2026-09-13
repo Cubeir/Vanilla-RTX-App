@@ -155,14 +155,14 @@ Select the packs you want first from the main menu, then come here and press the
 Packs that are marked as "RTX Reactor Candidate" in the pack selection menu are more likely to be suitable for gaining RTX support through RTX Reactor.
 Marketplace resource packs are not supported.
 
-### Info [glyph:"F167"]
+### Info [glyph:"E946"]
 Difference of Secondary PBR texture options:
 - None: leaves the textures flat. Only roughness, emissive and metalness properties will be added to textures.
 - Automatic: automatically picks between Normal Maps, Heightmaps or Both
 - Normal Map: Suitable for any resolution, can be selected for any texture pack, defines the direction that light bounces off of each individual pixel, faking curvature and depth on surfaces. Also adds Parallax Occlusion Mapping data (for BetterRTX 1.5+)
 - Heightmap: Suitable only for low-resolution texture packs, fakes depth by providing relief around some pixels. Can only be selected for texture packs that are 32x or lower, otherwise it falls back to generating Normal map.
 
-### Info 2 [glyph:"F167"]
+### Info 2 [glyph:"E946"]
 Add per-biome RTX atmospheric configs: if toggled on, adds the same per-biome atmospheric variation as Vanilla RTX into the packs.
 This is needed for fog, light shafts, and unique per-biome water color and atmospher colors to appear, since most packs don't define these features (especially not for RTX) it is recommended that you leave this on.
 If it causes issues for a certain texture pack or takes away from its art direction, turn it off.
