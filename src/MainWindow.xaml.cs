@@ -246,7 +246,7 @@ public sealed partial class MainWindow : Window
             "birthday" => ("vrtx.birthday", 3),
             "pumpkin" => ("vrtx.pumpkin", 3),
             "christmas" => ("vrtx.christmas", 5),
-            _ => ("vrtx.app", 50)
+            _ => ("vrtx.app", 70)
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
@@ -614,7 +614,7 @@ public sealed partial class MainWindow : Window
                 "birthday" => ("vrtx.birthday", 3),
                 "pumpkin" => ("vrtx.pumpkin", 3),
                 "christmas" => ("vrtx.christmas", 5),
-                _ => ("vrtx.app", 50)
+                _ => ("vrtx.app", 70)
             };
             int rng = Random.Shared.Next(1, count + 1);
             Previewer.Instance.SetStartupImages($"ms-appx:///Assets/previews/{prefix}.{rng}.png");
