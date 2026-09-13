@@ -525,6 +525,16 @@ public sealed partial class Alchitex : Window
     private const double PackTileMaxSize = 128;
     private double _packTileSize = 112;
 
+    // Room left around each icon for its drop shadow (BuildPackTile), split evenly between
+    // both queue rows' StackPanels having Spacing="0" - the perceived gap between two icons
+    // now comes entirely from this padding on each of their containers (2x this, since two
+    // neighbours each contribute one side) rather than space the panel put between them.
+    // That's deliberate: a shadow drawn via Translation.Z + ThemeShadow needs room around the
+    // element casting it to actually render into, and a tile sized exactly to its icon left
+    // none anywhere - the panel's old Spacing="12" was room between tiles, never room INSIDE
+    // one. Kept at half that old spacing (6) so the perceived gap between icons is unchanged.
+    private const double TileShadowPadding = 6;
+
     /// <summary>
     /// Packs this window is ignoring for the rest of its lifetime: discarded by the user,
     /// skipped at a confirmation dialog, or already run (successfully or not).
@@ -688,18 +698,26 @@ public sealed partial class Alchitex : Window
     }
 
     /// <summary>
-    /// One pack tile: the icon with the pack browser's rounded corners and drop shadow,
-    /// plus - for the input row - a discard button that fades in on hover, mirroring the
-    /// selection overlay in the pack browser but with the RemoveFrom glyph.
+    /// One pack tile: the icon - sharp corners, matching Alchitex's own visual language
+    /// rather than the pack browser's rounded ones - with a drop shadow, plus, for the input
+    /// row, a discard button that fades in on hover mirroring the selection overlay in the
+    /// pack browser but with the RemoveFrom glyph.
+    ///
+    /// The outer Grid is deliberately larger than the icon it holds (see TileShadowPadding) -
+    /// the icon is centered inside it, and that margin is invisible headroom for the icon's
+    /// own shadow to render into, not part of the tile's visible surface. A tile sized
+    /// exactly to its icon left the shadow nothing to spread into and it got clipped flat
+    /// against the icon's own edge.
     /// </summary>
     private Grid BuildPackTile(string location, string packName, bool allowDiscard)
     {
         var size = _packTileSize;
+        var containerSize = size + TileShadowPadding * 2;
 
         var tile = new Grid
         {
-            Width = size,
-            Height = size,
+            Width = containerSize,
+            Height = containerSize,
             Tag = location, // how the generation loop finds this pack's tile again
             RenderTransform = new CompositeTransform(),
             RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5),
@@ -709,9 +727,11 @@ public sealed partial class Alchitex : Window
         {
             Width = size,
             Height = size,
-            CornerRadius = new CornerRadius(5),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(0),
             Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(96, 96, 96, 96)),
-            Translation = new System.Numerics.Vector3(0, 0, 12),
+            Translation = new System.Numerics.Vector3(0, 0, 24),
             Shadow = new ThemeShadow(),
         };
 
@@ -758,7 +778,9 @@ public sealed partial class Alchitex : Window
             {
                 Width = size,
                 Height = size,
-                CornerRadius = new CornerRadius(5),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                CornerRadius = new CornerRadius(0),
                 Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(150, 0, 0, 0)),
                 Opacity = 0,
                 Child = new FontIcon
@@ -805,8 +827,16 @@ public sealed partial class Alchitex : Window
         // Two rows split the host's height; a tile is a square that fits one of them with
         // a little air. Recomputed rather than fixed so the reactor area's height stays
         // the single thing that decides how big this all is.
+        //
+        // The extra 5 here (15 rather than 10) is deliberate headroom for the auto-hiding
+        // horizontal scrollbar, which overlays the bottom of each row rather than reserving
+        // its own space - measured overlapping the icon by about 8px when a row actually
+        // needed to scroll. Paired with the -5 vertical nudge on both queue panels in XAML
+        // (InputQueuePanel/OutputQueuePanel), that's 10px of clearance at the icon's bottom
+        // edge - about as much smaller as this can get away with before packs stop being
+        // recognizable at a glance.
         var rowHeight = e.NewSize.Height / 2;
-        var size = Math.Clamp(Math.Floor(rowHeight - 10), PackTileMinSize, PackTileMaxSize);
+        var size = Math.Clamp(Math.Floor(rowHeight - 15), PackTileMinSize, PackTileMaxSize);
 
         if (Math.Abs(size - _packTileSize) < 1) return;
 

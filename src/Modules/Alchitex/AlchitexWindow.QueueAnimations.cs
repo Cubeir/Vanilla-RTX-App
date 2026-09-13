@@ -87,7 +87,11 @@ public sealed partial class Alchitex
         {
             if (child.RenderTransform is not CompositeTransform transform) continue;
 
-            transform.TranslateX = _packTileSize + 12; // where it was before the gap closed
+            // Where it was before the gap closed - a full tile-container step, not just the
+            // icon's own width. The panels run Spacing="0" now (BuildPackTile's containers
+            // carry the perceived gap instead - see TileShadowPadding), so the step between
+            // two tiles is the icon plus both their shadow margins.
+            transform.TranslateX = _packTileSize + TileShadowPadding * 2;
             _ = RunStoryboardAsync(
                 BuildTileStoryboard(child, 180, translateX: 0, easing: TravelEase(EasingMode.EaseOut)),
                 180);

@@ -534,6 +534,16 @@
                                               IsHitTestVisible="False"
                                               IsTextScaleFactorEnabled="False" />
 
+                                    <!-- Spacing="0" on both panels below deliberately - the
+                                         perceived gap between icons now comes from padding
+                                         inside each tile's own container (BuildPackTile,
+                                         TileShadowPadding), which doubles as headroom for
+                                         the icon's drop shadow instead of clipping it flat.
+                                         The -5 TranslateY nudges every tile up by that much,
+                                         clearing the auto-hiding horizontal scrollbar that
+                                         overlays the bottom of the row instead of reserving
+                                         its own space - see PackQueueHost_SizeChanged for
+                                         the matching size reduction. -->
                                     <ScrollViewer Grid.Row="0"
                                                   HorizontalScrollBarVisibility="Auto"
                                                   HorizontalScrollMode="Auto"
@@ -541,8 +551,12 @@
                                                   VerticalScrollMode="Disabled">
                                         <StackPanel x:Name="InputQueuePanel"
                                                     Orientation="Horizontal"
-                                                    Spacing="12"
-                                                    VerticalAlignment="Center" />
+                                                    Spacing="0"
+                                                    VerticalAlignment="Center">
+                                            <StackPanel.RenderTransform>
+                                                <TranslateTransform Y="-5" />
+                                            </StackPanel.RenderTransform>
+                                        </StackPanel>
                                     </ScrollViewer>
 
                                     <ScrollViewer Grid.Row="1"
@@ -552,8 +566,12 @@
                                                   VerticalScrollMode="Disabled">
                                         <StackPanel x:Name="OutputQueuePanel"
                                                     Orientation="Horizontal"
-                                                    Spacing="12"
-                                                    VerticalAlignment="Center" />
+                                                    Spacing="0"
+                                                    VerticalAlignment="Center">
+                                            <StackPanel.RenderTransform>
+                                                <TranslateTransform Y="-5" />
+                                            </StackPanel.RenderTransform>
+                                        </StackPanel>
                                     </ScrollViewer>
                                 </Grid>
                             </Grid>
