@@ -84,48 +84,56 @@
                         Height="1"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                <!-- Content -->
+                <!-- Content - MarkdownWebView is never Visibility=Collapsed: a WebView2 with no
+                     layout bounds can fail its native initialization, so Loading/Error are
+                     opaque full-bleed covers stacked on top of it instead of a visibility swap
+                     on the WebView2 itself. -->
                 <Grid Grid.Row="1"
                       CornerRadius="0,0,8,8">
-                    <WebView2 x:Name="MarkdownWebView"
-                              Visibility="Collapsed" />
+                    <WebView2 x:Name="MarkdownWebView" />
 
-                    <StackPanel x:Name="LoadingState"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Spacing="14">
-                        <ProgressRing IsActive="True"
-                                      Width="36"
-                                      Height="36"
+                    <Grid x:Name="LoadingState"
+                          Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                          CornerRadius="0,0,8,8">
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="14">
+                            <ProgressRing IsActive="True"
+                                          Width="36"
+                                          Height="36"
+                                          HorizontalAlignment="Center" />
+                            <TextBlock x:Name="LoadingText"
+                                       Text="Loading the list..."
+                                       Opacity="0.75"
+                                       HorizontalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="ErrorState"
+                          Visibility="Collapsed"
+                          Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                          CornerRadius="0,0,8,8">
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    MaxWidth="400"
+                                    Spacing="12">
+                            <FontIcon Glyph="&#xEB5E;"
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      FontSize="28"
+                                      Opacity="0.7"
                                       HorizontalAlignment="Center" />
-                        <TextBlock x:Name="LoadingText"
-                                   Text="Loading the list..."
-                                   Opacity="0.75"
-                                   HorizontalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False" />
-                    </StackPanel>
-
-                    <StackPanel x:Name="ErrorState"
-                                Visibility="Collapsed"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                MaxWidth="400"
-                                Spacing="12">
-                        <FontIcon Glyph="&#xEB5E;"
-                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  FontSize="28"
-                                  Opacity="0.7"
-                                  HorizontalAlignment="Center" />
-                        <TextBlock x:Name="ErrorText"
-                                   Text="An internet connection is required to fetch the list."
-                                   TextWrapping="Wrap"
-                                   TextAlignment="Center"
-                                   Opacity="0.85"
-                                   IsTextScaleFactorEnabled="False" />
-                        <Button Content="Try Again"
-                                HorizontalAlignment="Center"
-                                Click="RetryButton_Click" />
-                    </StackPanel>
+                            <TextBlock x:Name="ErrorText"
+                                       Text="An internet connection is required to fetch the list."
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       Opacity="0.85"
+                                       IsTextScaleFactorEnabled="False" />
+                            <Button Content="Try Again"
+                                    HorizontalAlignment="Center"
+                                    Click="RetryButton_Click" />
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Grid>
         </Border>
