@@ -50,10 +50,12 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///   - Reports continuously (GeneratingTextures) -> a per-pulse behavior. It is also the
 ///     only phase long enough to show off a one-shot flourish.
 ///   - Reports once, then works for a long time in silence (Staging, copying thousands of
-///     files) -> a timer. BeginPhaseOrbit exists for exactly this: a per-pulse behavior has
-///     a single pulse to work with and leaves the reactor looking switched off.
-///   - Reports once and is immediately followed by more work (ScanningTextures) -> a
-///     one-shot flourish, which gets to finish on screen under whatever comes next.
+///     files; ScanningTextures, the orchestrator's own single pass over the whole pack) ->
+///     a timer. BeginPhaseLoop exists for exactly this: a per-pulse behavior has a single
+///     pulse to work with and leaves the reactor looking switched off for the length of the
+///     phase. Staging repeats the ripple (its own field rerolled each time); Scanning
+///     repeats the travelling gradient GeneratingTextures otherwise only shows off in a
+///     short random burst.
 ///
 /// Running behaviors are built from two ingredients: tiles firing at random, and a
 /// travelling gradient (StepGradientWave) - the resting arrangement's own diagonal ramp
@@ -194,7 +196,7 @@ public sealed class ReactorAnimator
 
     private Storyboard? _bloomLoop;
     private DispatcherTimer? _pressHoldTimer;
-    private DispatcherTimer? _orbitTimer;
+    private DispatcherTimer? _loopTimer;
     private DispatcherTimer? _abortHintTimer;
     private DispatcherTimer? _abortHintEndTimer;
     private DispatcherTimer? _flowerTimer;
@@ -270,9 +272,10 @@ public sealed class ReactorAnimator
         SetBloom(RestBloomOpacity, SettleMs);
     }
 
-    /// <summary>Pointer down on the reactor: a dark droplet ripples out from the centre,
-    /// again and again for as long as the button is held, while the bloom collapses - as
-    /// though the charge is being drawn out of it in waves.</summary>
+    /// <summary>Pointer down on the reactor: a droplet ripples out from the centre - its own
+    /// contrasting field rerolled each time, see PlayRipple - again and again for as long as
+    /// the button is held, while the bloom collapses, as though the charge is being drawn
+    /// out of it in waves.</summary>
     public void BeginPressHold()
     {
         if (!_isInitialized) return;
@@ -366,7 +369,7 @@ public sealed class ReactorAnimator
         if (!_isInitialized || _isWaiting) return;
 
         _isWaiting = true;
-        _orbitPhase = null; // the wait stance takes the orbit over from any phase using it
+        _loopPhase = null; // the wait stance takes the loop timer over from any phase using it
         StopPressHold();
         StopFlowerDance(); // a dialog can open while the pointer is just resting on the button
         ReleaseGrid();
@@ -380,14 +383,14 @@ public sealed class ReactorAnimator
 
         if (AnimationsSuspended) return;
 
-        StopOrbitTimer();
-        _orbitTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(OrbitStepMs) };
-        _orbitTimer.Tick += (s, e) =>
+        StopLoopTimer();
+        _loopTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(OrbitStepMs) };
+        _loopTimer.Tick += (s, e) =>
         {
             _orbitHead = (_orbitHead + 1) % OrbitRing.Length;
             PaintOrbit(OrbitStepMs * 1.25);
         };
-        _orbitTimer.Start();
+        _loopTimer.Start();
     }
 
     /// <summary>Whatever the reactor was waiting on has happened. A run in progress goes
@@ -441,74 +444,80 @@ public sealed class ReactorAnimator
 
     private void StopOrbit()
     {
-        StopOrbitTimer();
+        StopLoopTimer();
         _isWaiting = false;
-        _orbitPhase = null;
+        _loopPhase = null;
     }
 
-    // ── The orbit as a phase's own behaviour ─────────────────────────────────
+    // ── The background loop as a phase's own behaviour ───────────────────────
 
     /// <summary>
-    /// Which phase a phase-driven orbit belongs to, if any. The external wait stance and a
-    /// long phase share one mechanism but not one meaning: a wait owns the whole grid and
-    /// swallows pulses, while this is simply what one phase looks like and has to step
-    /// aside the moment the next phase reports.
+    /// Which phase currently owns the background-loop timer, if any. The external wait
+    /// stance and a long phase share one timer but not one meaning: a wait owns the whole
+    /// grid and swallows pulses, while this is simply what one phase looks like and has to
+    /// step aside the moment the next phase reports.
     /// </summary>
-    private Core.AlchitexPhase? _orbitPhase;
+    private Core.AlchitexPhase? _loopPhase;
 
     /// <summary>
-    /// Runs the orbit for a phase that reports once and then works for a long time without
-    /// saying anything else.
+    /// Runs `tick` on a fixed interval for as long as `phase` is the one reporting - for a
+    /// phase that reports once and then works for a long time without saying anything else.
     ///
-    /// Staging is the case that needs it, and it is worth being explicit about why, because
-    /// it is the mirror image of the ripple problem (§ the class comment on flourishes):
-    /// copying a heavy pack is thousands of files between two progress reports, so there is
-    /// exactly one pulse for the whole of it. A per-pulse behaviour has nothing to work
-    /// with there - the reactor sat on one twitched tile and looked switched off. A phase
-    /// that reports continuously wants a pulse behaviour; a phase that reports once and
-    /// then disappears wants a timer.
+    /// Staging and ScanningTextures are the cases that need it, and it is worth being
+    /// explicit about why, because it is the mirror image of the ripple problem (§ the class
+    /// comment on flourishes): copying a heavy pack is thousands of files between two
+    /// progress reports, and the orchestrator's own pass over the whole pack is one more,
+    /// so there is exactly one pulse for the length of either. A per-pulse behaviour has
+    /// nothing to work with there - the reactor sat on one twitched tile and looked switched
+    /// off. A phase that reports continuously wants a pulse behaviour; a phase that reports
+    /// once and then disappears wants a timer.
     ///
-    /// Unlike BeginWaiting this does NOT claim the grid and does not block pulses.
+    /// Each phase gets a different `tick`: Staging repeats the ripple (PlayRipple, at its own
+    /// duration so consecutive drops chain rather than overlap), ScanningTextures repeats the
+    /// travelling gradient (StepGradientWave with no axis, the same call StepBusyWork makes
+    /// during a short random burst - just running for the whole phase instead). Whether `tick`
+    /// claims the grid is up to it, not this method - PlayRipple does, StepGradientWave
+    /// doesn't, and both are fine to defer to a flourish that's still playing (below).
     /// </summary>
-    private void BeginPhaseOrbit(Core.AlchitexPhase phase)
+    private void BeginPhaseLoop(Core.AlchitexPhase phase, Action tick, double intervalMs)
     {
         if (!_isInitialized || _isWaiting) return;  // the real wait stance outranks this
-        if (_orbitPhase == phase) return;           // already running for this phase
+        if (_loopPhase == phase) return;             // already running for this phase
 
-        StopOrbitTimer();
-        _orbitPhase = phase;
-        _orbitHead = 0;
+        StopLoopTimer();
+        _loopPhase = phase;
+
+        tick();
 
         if (AnimationsSuspended) return;
 
-        _orbitTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(OrbitStepMs) };
-        _orbitTimer.Tick += (s, e) =>
+        _loopTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(intervalMs) };
+        _loopTimer.Tick += (s, e) =>
         {
             // Defer to a flourish that is still playing rather than cutting it short - the
             // intake wash lands right about here, since a pack's run starts the moment its
             // tile has finished flying in.
             if (IsGridClaimed) return;
 
-            _orbitHead = (_orbitHead + 1) % OrbitRing.Length;
-            PaintOrbit(OrbitStepMs * 1.25);
+            tick();
         };
-        _orbitTimer.Start();
+        _loopTimer.Start();
     }
 
-    private void StopPhaseOrbit()
+    private void StopPhaseLoop()
     {
-        if (_orbitPhase == null) return;
+        if (_loopPhase == null) return;
 
-        _orbitPhase = null;
-        StopOrbitTimer();
+        _loopPhase = null;
+        StopLoopTimer();
     }
 
-    private void StopOrbitTimer()
+    private void StopLoopTimer()
     {
-        if (_orbitTimer == null) return;
+        if (_loopTimer == null) return;
 
-        _orbitTimer.Stop();
-        _orbitTimer = null;
+        _loopTimer.Stop();
+        _loopTimer = null;
     }
 
     // ── Abort stance ─────────────────────────────────────────────────────────
@@ -796,24 +805,32 @@ public sealed class ReactorAnimator
     {
         if (!_isInitialized) return;
 
-        // A phase orbit belongs to exactly one phase, so anything else reporting ends it.
-        // Ahead of every gate below deliberately: a pulse that gets swallowed still means
-        // that phase is over, and leaving the orbit spinning under the next one would
-        // outlast the gate that swallowed it. Safe above the wait check because the wait
-        // stance takes _orbitPhase to null when it claims the orbit, so this can never stop
-        // a wait's own timer.
-        if (_orbitPhase.HasValue && _orbitPhase.Value != phase) StopPhaseOrbit();
+        // A phase-driven background loop belongs to exactly one phase, so anything else
+        // reporting ends it. Ahead of every gate below deliberately: a pulse that gets
+        // swallowed still means that phase is over, and leaving the loop running under the
+        // next one would outlast the gate that swallowed it. Safe above the wait check
+        // because the wait stance takes _loopPhase to null when it claims the timer, so this
+        // can never stop a wait's own orbit.
+        if (_loopPhase.HasValue && _loopPhase.Value != phase) StopPhaseLoop();
 
         // The abort stance and the waiting orbit own the whole grid while they're up - see
         // BeginAbortHint / BeginWaiting. Neither is a flourish; both mean the user is being
         // told something more important than progress.
         if (_isAbortHintActive || _isWaiting) return;
 
-        // A pack finishing is the one thing the reactor must never fail to say, so it is
-        // exempt from both gates below. It arrives once per pack, hard on the heels of
-        // Finalizing - which is itself a flourish holding the grid - and it would otherwise
-        // be swallowed by that hold on any machine quick enough to close the gap.
-        if (phase != Core.AlchitexPhase.Done)
+        // A pack finishing is the one thing the reactor must never fail to say, and a
+        // phase that starts its own background loop (Staging, ScanningTextures) is the same
+        // problem in a different shape: each reports exactly once and then falls silent for
+        // as long as the phase itself takes (see BeginPhaseLoop), so dropping that one call
+        // here doesn't just skip a repaint the way it would for GeneratingTextures - it
+        // leaves the reactor showing nothing for the whole phase, because nothing will ever
+        // ask again. All three are exempt from both gates below. Safe to let through
+        // unconditionally: BeginPhaseLoop no-ops if its phase is already running (so this
+        // can't double-start a timer), and interrupting a flourish that's still playing is
+        // exactly what PlayTileSequence is built to do cleanly - see StopTile.
+        if (phase != Core.AlchitexPhase.Done &&
+            phase != Core.AlchitexPhase.Staging &&
+            phase != Core.AlchitexPhase.ScanningTextures)
         {
             // Any one-shot flourish owns the grid for its duration, or the next pulse
             // repaints all nine tiles out from under it - see ClaimGrid.
@@ -842,17 +859,20 @@ public sealed class ReactorAnimator
 
             // Copying the pack. Reports once and then goes quiet for as long as the copy
             // takes, so this is a timer rather than a per-pulse behaviour - see
-            // BeginPhaseOrbit. The orbit is the shape that means "still going, nothing to
-            // show yet", which is exactly what staging is.
+            // BeginPhaseLoop. A repeating ripple, each one rolling its own field for
+            // variety, is the shape that means "still going, something is happening to the
+            // whole pack at once", which is exactly what staging is.
             case Core.AlchitexPhase.Staging:
-                BeginPhaseOrbit(phase);
+                BeginPhaseLoop(phase, () => PlayRipple(brighten: _random.NextDouble() < 0.5), RippleDurationMs);
                 break;
 
-            // The orchestrator taking the measure of the whole pack in one pass: a single
-            // drop out from the centre. Also reports once, but unlike staging it is followed
-            // immediately by texture work, so a half-second flourish finishes on screen.
+            // The orchestrator taking the measure of the whole pack in one pass. Also
+            // reports once and then goes quiet for as long as the pass takes, so this gets
+            // a timer too - the same travelling gradient StepBusyWork only shows off in a
+            // short random burst during generation, just running for the whole phase
+            // instead of a random handful of steps.
             case Core.AlchitexPhase.ScanningTextures:
-                PlayRipple(brighten: true);
+                BeginPhaseLoop(phase, () => StepGradientWave(), WaveStepMs);
                 break;
 
             // Water and glass sweep sideways, the way a pass over a surface does.
@@ -954,8 +974,57 @@ public sealed class ReactorAnimator
 
     // How long one ripple takes corner to corner, start to settled - shared with
     // BeginPressHold, which uses it as the repeat interval for the droplet effect so
-    // consecutive ripples land back-to-back rather than cutting each other off mid-sequence.
+    // consecutive ripples land back-to-back rather than cutting each other off mid-sequence,
+    // and with BeginPhaseLoop, which uses it the same way to keep Staging's ripples chained.
     private const double RippleDurationMs = (GridSize - 1) * RippleRingDelayMs + RippleRiseMs + RippleFallMs;
+
+    /// <summary>
+    /// Which uniform field a ripple plays against, rerolled every call so a run of them (a
+    /// held press, a Staging phase) doesn't look identical throughout. All three guarantee a
+    /// full-range swing on every cell - the old design settled every ring back to the
+    /// diagonal resting layout, so whichever corner already sat close to the peak barely
+    /// moved and the wave only ever "manifested" toward the opposite corner.
+    /// </summary>
+    private enum RippleField
+    {
+        /// <summary>Darkest field; every ring rises to the brightest blue.</summary>
+        Dark,
+        /// <summary>Brightest field; every ring falls to the darkest blue.</summary>
+        Light,
+        /// <summary>Middle field; rings alternate rising and falling, so it reads as a
+        /// pulse rather than a paler version of the other two.</summary>
+        Middle,
+    }
+
+    // True middle of the five-step ramp - the natural field for a ripple that wants room to
+    // swing both brighter and darker from the same base.
+    private const int MiddlePaletteIndex = 2;
+
+    /// <summary>
+    /// A field's settle colour, one shade apart between the centre/corner rings and the edge
+    /// ring rather than a single flat value everywhere. Deliberate: with every ring settling
+    /// to the exact same colour, a repeating ripple (Staging) or a held press spends part of
+    /// every cycle with all nine tiles pinned to one flat card - a real, visible stall, not
+    /// just a momentary blend, once ring 2 finishes catching up to rings 0 and 1 and the
+    /// whole grid sits there until the next ripple's rise begins. A one-shade wobble between
+    /// rings keeps the grid always reading as tiles, at essentially no cost to the contrast
+    /// against the peak the redesign above exists for.
+    /// </summary>
+    private static int RippleBackdropIndex(RippleField field, int ring) => field switch
+    {
+        RippleField.Dark => ring == 1 ? Palette.Length - 2 : Palette.Length - 1,
+        RippleField.Light => ring == 1 ? 1 : 0,
+        // The Middle field already alternates its peak brighter/darker by ring parity: the
+        // settle colour follows the same parity, just pulled back toward the centre, so the
+        // "quiet" moments carry the same pattern as the "active" ones instead of collapsing
+        // to a single shade between them.
+        _ => ring % 2 == 0 ? MiddlePaletteIndex - 1 : MiddlePaletteIndex + 1,
+    };
+
+    // How often a ripple rolls the Middle field regardless of what the caller asked for -
+    // often enough to notice, rare enough that "brighten"/"darken" still mean something most
+    // of the time.
+    private const double RippleMiddleFieldChance = 0.3;
 
     /// <summary>
     /// A drop landing in the middle: the centre moves first, then the four edge tiles, then
@@ -966,15 +1035,23 @@ public sealed class ReactorAnimator
     /// a blink. Manhattan gives three, which is a wave. (PlayImplosion uses Chebyshev on
     /// purpose, because a collapse inward wants to arrive all at once.)
     ///
-    /// Goes up toward the brightest blue or down toward the darkest; both are the same
-    /// motion, and having both means the reactor can answer "something arrived" and
-    /// "something was consumed" with the same gesture.
+    /// Plays against a RippleField rather than the diagonal resting layout, so the wave has
+    /// room to swing its full range on every cell rather than dying quietly into whichever
+    /// corner already sat close to the peak. `brighten` still means "arrived" vs "consumed"
+    /// most of the time (Dark field with a bright peak, or Light field with a dark peak) -
+    /// the Middle field is rolled in regardless of it now and then, alternating brighter and
+    /// darker ring to ring, purely for variety. The field's settle colour also varies one
+    /// shade by ring (RippleBackdropIndex) rather than being perfectly flat - see its own
+    /// remarks for why a flat settle colour is a real visible stall on a repeating ripple,
+    /// not just a blend.
     /// </summary>
     public void PlayRipple(bool brighten)
     {
         if (!_isInitialized || _isAbortHintActive) return;
 
-        var peak = brighten ? Palette[0] : Palette[Palette.Length - 1];
+        var field = _random.NextDouble() < RippleMiddleFieldChance
+            ? RippleField.Middle
+            : brighten ? RippleField.Dark : RippleField.Light;
 
         for (var row = 0; row < GridSize; row++)
         {
@@ -983,10 +1060,18 @@ public sealed class ReactorAnimator
                 var ring = Math.Abs(row - 1) + Math.Abs(col - 1); // 0, 1 or 2
                 var lead = ring * RippleRingDelayMs;
 
+                var peak = field switch
+                {
+                    RippleField.Dark => Palette[0],
+                    RippleField.Light => Palette[Palette.Length - 1],
+                    _ => ring % 2 == 0 ? Palette[0] : Palette[Palette.Length - 1],
+                };
+                var backdrop = Palette[RippleBackdropIndex(field, ring)];
+
                 PlayTileSequence(row, col,
                     (_brushes[row, col].Color, Math.Max(lead, 1)),
                     (peak, lead + RippleRiseMs),
-                    (Palette[RestLayout[row, col]], lead + RippleRiseMs + RippleFallMs));
+                    (backdrop, lead + RippleRiseMs + RippleFallMs));
             }
         }
 
