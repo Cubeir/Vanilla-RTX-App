@@ -135,6 +135,13 @@ public sealed partial class Alchitex : Window
     // the XAML to exist, and shut down with the window so no loop outlives it.
     private ReactorAnimator? _reactor;
 
+    // Whether the pointer is currently over GenerateButton - only PointerEntered/Exited
+    // actually know this, so it's tracked there and read on release: a press always starts
+    // with the pointer over the button, but releasing doesn't imply leaving, and without
+    // this a release-without-exiting left the reactor settled at rest until the pointer
+    // genuinely left and came back, rather than resuming the hover dance it was already in.
+    private bool _isGenerateButtonPointerOver;
+
     // Generates the window's tile field. Unlike the reactor this isn't gated on the license
     // being accepted - the background is behind the license screen too, and was when it was
     // still a bitmap.
@@ -405,6 +412,7 @@ public sealed partial class Alchitex : Window
         GenerateButton.AddHandler(UIElement.PointerEnteredEvent,
             new PointerEventHandler((s, e) =>
             {
+                _isGenerateButtonPointerOver = true;
                 if (IsGenerating) _reactor?.BeginAbortHint();
                 else _reactor?.BeginFlowerDance();
             }), handledEventsToo: true);
@@ -412,6 +420,7 @@ public sealed partial class Alchitex : Window
         GenerateButton.AddHandler(UIElement.PointerExitedEvent,
             new PointerEventHandler((s, e) =>
             {
+                _isGenerateButtonPointerOver = false;
                 _reactor?.EndAbortHint();
                 if (!IsGenerating)
                 {
@@ -428,12 +437,30 @@ public sealed partial class Alchitex : Window
             }), handledEventsToo: true);
 
         // Release leaves the pointer sitting on the button, so the abort stance stays up -
-        // only the idle wind-up ends here.
+        // only the idle wind-up ends here. That "leaves the pointer sitting on the button"
+        // is exactly the case EndPressHold alone doesn't handle: it settles to rest
+        // unconditionally, so releasing without actually leaving used to require a real
+        // exit-then-re-enter before hovering read as hovering again. PointerEntered/Exited
+        // are the only place this window actually knows where the pointer is, so that's
+        // where _isGenerateButtonPointerOver is tracked - resuming the hover dance here on
+        // release is then just acting on it.
         GenerateButton.AddHandler(UIElement.PointerReleasedEvent,
-            new PointerEventHandler((s, e) => { if (!IsGenerating) _reactor?.EndPressHold(); }), handledEventsToo: true);
+            new PointerEventHandler((s, e) =>
+            {
+                if (IsGenerating) return;
+
+                _reactor?.EndPressHold();
+                if (_isGenerateButtonPointerOver) _reactor?.BeginFlowerDance();
+            }), handledEventsToo: true);
 
         GenerateButton.AddHandler(UIElement.PointerCaptureLostEvent,
-            new PointerEventHandler((s, e) => { if (!IsGenerating) _reactor?.EndPressHold(); }), handledEventsToo: true);
+            new PointerEventHandler((s, e) =>
+            {
+                if (IsGenerating) return;
+
+                _reactor?.EndPressHold();
+                if (_isGenerateButtonPointerOver) _reactor?.BeginFlowerDance();
+            }), handledEventsToo: true);
 
         _ = RebuildPackIconsAsync();
 
