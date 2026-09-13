@@ -57,8 +57,6 @@
     <TrimmerRootAssembly Include="WinUIEx" />
   </ItemGroup>
   <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
     <None Update="Assets\vrtx.lamp.on.128x.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
