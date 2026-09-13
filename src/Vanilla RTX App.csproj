@@ -6,6 +6,18 @@
     <RootNamespace>Vanilla_RTX_App</RootNamespace>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- Publish already pins RuntimeIdentifier per win-$(Platform).pubxml, but a plain
+         Debug/Release build (VS F5, or `dotnet build`) never resolves $(Platform) to a single
+         RuntimeIdentifier on its own. Without one, NuGet's selection of runtimes/{rid}/native*
+         assets is ambiguous across the three RuntimeIdentifiers above, and it silently landed on
+         win-x86's copy of Microsoft.Web.WebView2.Core.dll even inside the x64 output folder - a
+         32-bit native WinRT activation factory loaded from the x64 process, which is exactly
+         BadImageFormatException / "not a valid Win32 application" (0x800700C1). Nothing caught
+         this earlier because Magick.NET's native libraries self-select by file name at runtime
+         instead of relying on NuGet's RID filtering. -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)'=='' and '$(Platform)'=='x86'">win-x86</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)'=='' and '$(Platform)'=='x64'">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)'=='' and '$(Platform)'=='ARM64'">win-arm64</RuntimeIdentifier>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
@@ -149,7 +161,16 @@
     <AssemblyName>Vanilla RTX App</AssemblyName>
     <AssemblyOriginatorKeyFile>CubeirSoftware.pfx</AssemblyOriginatorKeyFile>
     <NuGetAuditMode>all</NuGetAuditMode>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <!-- Was a flat <PlatformTarget>AnyCPU</PlatformTarget> for every $(Platform). That's the
+         actual root cause of the WebView2 0x800700C1 crash: Microsoft.Web.WebView2's own
+         Common.targets special-cases PlatformTarget=="AnyCPU" for a managed project to mean
+         "use the x86 native_uap assets" unconditionally, so every configuration - x64 included -
+         was getting handed the 32-bit Microsoft.Web.WebView2.Core.dll, which a 64-bit process
+         cannot activate. PlatformTarget now tracks $(Platform) like it should for a project that
+         already builds separate per-architecture outputs. -->
+    <PlatformTarget Condition="'$(Platform)'=='x64'">x64</PlatformTarget>
+    <PlatformTarget Condition="'$(Platform)'=='x86'">x86</PlatformTarget>
+    <PlatformTarget Condition="'$(Platform)'=='ARM64'">ARM64</PlatformTarget>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
     <ErrorReport>none</ErrorReport>
     <Description>The Official Vanilla RTX App</Description>
