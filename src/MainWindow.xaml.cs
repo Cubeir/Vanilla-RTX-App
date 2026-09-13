@@ -3064,17 +3064,6 @@ the one that'sb een happening with preview button for a while now... fix it
 
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
 
->> If you do the bug-tracking section idea, put it all on a whole new repo, requests go to that for it to receive updates.
-a refresh button can exist there too
-a repo that keeps track of all minecraft rtx bugs would be enormously helpful
-
-In there, say, if a bug not listed here, report it (either to u or mojang depending on who it is related to)
-kinda like the crash window, giving a clear path for users to report issues, would be good.
-divise a schema that can be handled in the .MD file
-the readme file must be both publicly readable, and parasable by the app reliably
-we basically show the md file here.. why complicate things? pull the whole thing, show the whole thing. its a wall of .md text
-no need to divise a schema.
-
 
 - Must ditch the module-in-window structure
 everything must be on main window, like most modern winui apps do
@@ -3108,17 +3097,6 @@ A grand rework idea of sorts..
 // ============================================================================================================
 /* THE GULAG - These ideas are here for a reason, they are either shite, or just need more work put into thems
 
-- Definitely implement that idea in Gulag about a catalog of Bugs being listed somewhere in the app
-a page, filled by Online Texts, reporting on all the bugs
-Rich textboxes as containers with clickable links as pasted in the onlinetexts hopefully?
-make something work with the existing system
-
-A hub for keeping a track of Minecraft RTX bugs...
-
-// Don't actually do it, not a bad idea idea but send it to gulag, because
-you should be maintaining this list PUBLICLY ON mcpedl.com/vanilla-rtx, there's already a section for it
-go update that instead and complete it, append it with bugs with no workarounds or ones pack doesn't cover.
-
 - IDEA:
 Update the documentation, be more through, make ### sections for each button/feature name
 make alt-clicking a feature in the app, take the user to the readme.md in THAT section! aka a quick way to read on features
@@ -3143,18 +3121,11 @@ e.g. the constructor
 
 then you can eliminate the whole messy codepath related to Holding shift to perform elevated actions!
 
-
-
 - Add something to actively resolve junctions/symlinks everywhere
 apparently some third party launchers use them for other things, like userdata, as well..
 ..but wait for at least a single report of failure related to this before touching anything
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
-
-- IDEA: A section in PSAs + a page in the app, dedicated to KEEP A LIST OF THE BUGS!
-So users can go vote on them, and check if a bug is relaetd to the game or not
-A FULLY COMPILED LIST!
-This is very good, as people get to discover Minecraft RTX bugs instead of being confused about them.
 
 - Account for different font scalings, windows accessibility settings, etc...
 gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not

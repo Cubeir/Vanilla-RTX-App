@@ -30,7 +30,7 @@ public sealed partial class BugTrackerOverlay : UserControl
     private Storyboard? _fadeStoryboard;
 
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
-    private const double FADE_MS = 180;
+    private const double FADE_MS = 100;
 
     public BugTrackerOverlay()
     {

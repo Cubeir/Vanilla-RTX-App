@@ -315,7 +315,7 @@
                         Width="40"
                         Height="35"
                         CornerRadius="0"
-                        FontSize="16"
+                        FontSize="15"
                         Click="BugButton_Click"
                         PointerEntered="BugButton_PointerEntered"
                         PointerExited="BugButton_PointerExited"
