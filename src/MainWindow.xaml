@@ -82,43 +82,43 @@
             </Border.Background>
         </Border>
 
-        <!-- Titlebar -->
-        <Grid Grid.ColumnSpan="2"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Height="35">
-            
-            <!-- Titlebar Background -->
-            <Border x:Name="TitleBarBackground"
-                    Height="37"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
-                    BorderThickness="0,0,0,6"
-                    CornerRadius="0"
-                    Translation="0,0,32"
-                    IsHitTestVisible="False">
-                <Border.Shadow>
-                    <ThemeShadow />
-                </Border.Shadow>
-            </Border>
+        <!-- Titlebar layer - one shared parent so the background, logo/title and buttons all
+             carry the same Canvas.ZIndex="1001" and stay above the Bug Tracker overlay (1000)
+             together. Purely a z-order/grouping shim: it adds no size constraints of its own,
+             so every child below positions itself exactly as it did as a direct MainGrid child. -->
+        <Grid x:Name="TitleBarLayer"
+              Grid.ColumnSpan="2"
+              Canvas.ZIndex="1001">
 
-            <!-- Transparent drag area: covers whole titlebar except left 200px so your buttons keep receiving clicks -->
-            <Border x:Name="TitleBarDragArea"
-                    Margin="236,-1,0,0"
-                    Height="32"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Visibility="Visible"
-                    BorderThickness="0"
-                    Background="Transparent"
-                    IsHitTestVisible="False" />
-        </Grid>
+        <!-- Titlebar Background -->
+        <Border x:Name="TitleBarBackground"
+                Height="37"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
+                BorderThickness="0,0,0,6"
+                CornerRadius="0"
+                Translation="0,0,32"
+                IsHitTestVisible="False">
+            <Border.Shadow>
+                <ThemeShadow />
+            </Border.Shadow>
+        </Border>
+
+        <!-- Transparent drag area: covers whole titlebar except left 200px so your buttons keep receiving clicks -->
+        <Border x:Name="TitleBarDragArea"
+                Margin="266,-1,0,0"
+                Height="32"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Visibility="Visible"
+                BorderThickness="0"
+                Background="Transparent"
+                IsHitTestVisible="False" />
 
         <!-- Titlebar Center Content -->
-        <Grid Grid.ColumnSpan="2"
-              HorizontalAlignment="Center"
+        <Grid HorizontalAlignment="Center"
               VerticalAlignment="Top"
               Margin="0, -2, 0, 0">
             <Grid.ColumnDefinitions>
@@ -255,7 +255,7 @@
                 <!-- Separator -->
                 <Border Grid.Column="1"
                         Width="1"
-                        Margin="4,6,4,6"
+                        Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
 
@@ -281,7 +281,7 @@
                 <!-- Separator -->
                 <Border Grid.Column="3"
                         Width="1"
-                        Margin="4,6,4,6"
+                        Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- Info/Help Button -->
@@ -303,7 +303,7 @@
                 <!-- Separator -->
                 <Border Grid.Column="5"
                         Width="1"
-                        Margin="4,6,4,6"
+                        Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- Bug Button -->
@@ -325,7 +325,7 @@
                 <!-- Separator -->
                 <Border Grid.Column="7"
                         Width="1"
-                        Margin="4,6,4,6"
+                        Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
 
@@ -348,7 +348,7 @@
                 <!-- Separator -->
                 <Border Grid.Column="9"
                         Width="1"
-                        Margin="4,6,4,6"
+                        Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- Suspend UI Animations Button -->
@@ -369,6 +369,8 @@
             </Grid>
         </Border>
 
+        </Grid>
+        <!-- /TitleBarLayer -->
 
         <!-- Browse packs || Preview || Checkboxes -->
         <Border Grid.ColumnSpan="2"
@@ -1505,7 +1507,9 @@
             </Grid>
         </Grid>
 
-        <!-- Bug Tracker overlay - modal, sits above everything else in the window -->
+        <!-- Bug Tracker overlay - modal, sits above every other part of the window but below
+             the titlebar (Canvas.ZIndex="1001"), so the titlebar keeps showing through and
+             stays clickable while this is open. -->
         <bugtracker:BugTrackerOverlay x:Name="BugTrackerOverlay"
                                        Grid.ColumnSpan="2"
                                        Canvas.ZIndex="1000" />
