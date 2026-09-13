@@ -229,6 +229,10 @@
                     <ColumnDefinition Width="Auto" />
                     <!-- Button -->
                     <ColumnDefinition Width="Auto" />
+                    <!-- Separator -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Button -->
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Chat Button -->
@@ -253,31 +257,11 @@
                         Margin="4,6,4,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                <!-- Info/Help Button -->
-                <Button x:Name="HelpButton"
-                        Grid.Column="2"
-                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xE946;"
-                        Width="40"
-                        Height="35"
-                        CornerRadius="0"
-                        FontSize="16"
-                        Click="HelpButton_Click"
-                        PointerEntered="HelpButton_PointerEntered"
-                        PointerExited="HelpButton_PointerExited"
-                        ToolTipService.ToolTip="Open documentation"
-                        IsTextScaleFactorEnabled="False" />
 
-                <!-- Separator -->
-                <Border Grid.Column="3"
-                        Width="1"
-                        Margin="4,6,4,6"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- Donate Button -->
                 <Button x:Name="DonateButton"
-                        Grid.Column="4"
+                        Grid.Column="2"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEB51;"
@@ -294,14 +278,59 @@
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
+                <Border Grid.Column="3"
+                        Width="1"
+                        Margin="4,6,4,6"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- Info/Help Button -->
+                <Button x:Name="HelpButton"
+                        Grid.Column="4"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Content="&#xE946;"
+                        Width="40"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="16"
+                        Click="HelpButton_Click"
+                        PointerEntered="HelpButton_PointerEntered"
+                        PointerExited="HelpButton_PointerExited"
+                        ToolTipService.ToolTip="Open documentation"
+                        IsTextScaleFactorEnabled="False" />
+
+                <!-- Separator -->
                 <Border Grid.Column="5"
                         Width="1"
                         Margin="4,6,4,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
+                <!-- Bug Button -->
+                <Button x:Name="BugButton"
+                        Grid.Column="6"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Content="&#xEBE8;"
+                        Width="40"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="16"
+                        Click="BugButton_Click"
+                        PointerEntered="BugButton_PointerEntered"
+                        PointerExited="BugButton_PointerExited"
+                        ToolTipService.ToolTip="View a list of all known and reported Minecraft RTX bugs and issues, and their status."
+                        IsTextScaleFactorEnabled="False" />
+
+                <!-- Separator -->
+                <Border Grid.Column="7"
+                        Width="1"
+                        Margin="4,6,4,6"
+                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+
                 <!-- Theme Button -->
                 <Button x:Name="CycleThemeButton"
-                        Grid.Column="6"
+                        Grid.Column="8"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEC46;"
@@ -316,14 +345,14 @@
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
-                <Border Grid.Column="7"
+                <Border Grid.Column="9"
                         Width="1"
                         Margin="4,6,4,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- Suspend UI Animations Button -->
                 <Button x:Name="SuspendUIAnimationsToggle"
-                        Grid.Column="8"
+                        Grid.Column="10"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEC12;"

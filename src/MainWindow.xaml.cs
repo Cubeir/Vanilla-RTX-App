@@ -3032,6 +3032,21 @@ public sealed partial class MainWindow : Window
         return null;
     }
     #endregion
+
+    private void BugButton_Click(object sender, RoutedEventArgs e)
+    {
+
+    }
+
+    private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+
+    }
+
+    private void BugButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+
+    }
 }
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)
@@ -3045,12 +3060,26 @@ the one that'sb een happening with preview button for a while now... fix it
 >> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX
 >> Add a "Gaming" LUT preset, whole day all day colors rapidly changing, greyscale skies, colorful directional lights
 
-- Adopt the ProgressBar manager to properly update for:D
-Deletion and Exports, its pretty cool it gradually filling up with each export.
-
 - Do the TODOs scattered in the code
 
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
+
+>> If you do the bug-tracking section idea, put it all on a whole new repo, requests go to that for it to receive updates.
+a refresh button can exist there too
+a repo that keeps track of all minecraft rtx bugs would be enormously helpful
+
+In there, say, if a bug not listed here, report it (either to u or mojang depending on who it is related to)
+kinda like the crash window, giving a clear path for users to report issues, would be good.
+divise a schema that can be handled in the .MD file
+the readme file must be both publicly readable, and parasable by the app reliably
+we basically show the md file here.. why complicate things? pull the whole thing, show the whole thing. its a wall of .md text
+no need to divise a schema.
+
+
+- Must ditch the module-in-window structure
+everything must be on main window, like most modern winui apps do
+the design choice was an organic one, simple way to limit the lifecycle of presentation while letting background run
+some thoughts need to be thunk surrounding this shift, some features can't be used in parallel, etc..
 
 - More previewer asset ideas:
 random block renders thrown in there
@@ -3072,6 +3101,8 @@ You MIGHT BE able to first, in isolation, write something to parse the HTML and 
 if that succeeds
 You can move on to implementing it into the app... just parsing and retrieving dlls in isolation first
 if that succeeds, can move on.
+
+A grand rework idea of sorts..
 
 */
 // ============================================================================================================
