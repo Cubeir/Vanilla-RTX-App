@@ -37,6 +37,13 @@ public sealed partial class BugTrackerOverlay : UserControl
         InitializeComponent();
     }
 
+    /// <summary>Opens the overlay if closed, closes it if open - a third way to dismiss it, alongside the X button and clicking outside the panel.</summary>
+    public void Toggle()
+    {
+        if (_isOpen) Close();
+        else Show();
+    }
+
     /// <summary>Opens the overlay and kicks off content loading. Safe to call repeatedly - a re-open while already open is a no-op.</summary>
     public void Show()
     {
@@ -46,6 +53,13 @@ public sealed partial class BugTrackerOverlay : UserControl
         Visibility = Visibility.Visible;
         IsHitTestVisible = true;
         AnimateOpacity(1.0, null);
+
+        // Forces measure/arrange to actually run before WebView2 initialization gets anywhere
+        // near it. Nothing else guarantees a layout pass has happened yet at this point - the
+        // cache-hit path in LoadContentAsync can resolve synchronously with no intervening
+        // yield back to the dispatcher, and a WebView2 with no real bounds can fail to
+        // initialize natively.
+        UpdateLayout();
 
         _ = LoadContentAsync();
     }
@@ -112,12 +126,14 @@ public sealed partial class BugTrackerOverlay : UserControl
         }
     }
 
+    // MarkdownWebView itself is never hidden via Visibility - see the XAML comment on the
+    // content Grid. Loading/Error are opaque covers stacked on top of it instead.
+
     private void ShowLoading(string text)
     {
         LoadingText.Text = text;
         LoadingState.Visibility = Visibility.Visible;
         ErrorState.Visibility = Visibility.Collapsed;
-        MarkdownWebView.Visibility = Visibility.Collapsed;
     }
 
     private void ShowError(string text)
@@ -125,12 +141,10 @@ public sealed partial class BugTrackerOverlay : UserControl
         ErrorText.Text = text;
         ErrorState.Visibility = Visibility.Visible;
         LoadingState.Visibility = Visibility.Collapsed;
-        MarkdownWebView.Visibility = Visibility.Collapsed;
     }
 
     private void ShowContent()
     {
-        MarkdownWebView.Visibility = Visibility.Visible;
         LoadingState.Visibility = Visibility.Collapsed;
         ErrorState.Visibility = Visibility.Collapsed;
     }
@@ -146,7 +160,15 @@ public sealed partial class BugTrackerOverlay : UserControl
         try
         {
             var userDataFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "WebView2");
-            var env = await CoreWebView2Environment.CreateWithOptionsAsync(null, userDataFolder, null);
+            Directory.CreateDirectory(userDataFolder);
+
+            // The WinRT-projected CreateWithOptionsAsync marshals a C# null string to an
+            // empty HSTRING rather than a true null, and an empty browserExecutableFolder
+            // is what was producing "<blank> is not a valid Win32 application" (0x800700C1)
+            // here - the plain .NET wrapper's null-means-null contract doesn't hold for this
+            // projection. string.Empty is what actually means "use the installed runtime".
+            var options = new CoreWebView2EnvironmentOptions();
+            var env = await CoreWebView2Environment.CreateWithOptionsAsync(string.Empty, userDataFolder, options);
             await MarkdownWebView.EnsureCoreWebView2Async(env);
 
             MarkdownWebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
@@ -157,7 +179,8 @@ public sealed partial class BugTrackerOverlay : UserControl
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[BugTrackerOverlay] WebView2 init failed: {ex.Message}");
+            Trace.WriteLine($"[BugTrackerOverlay] WebView2 init failed: {ex.GetType().FullName} (0x{ex.HResult:X8}): {ex.Message}");
+            Trace.WriteLine(ex.ToString());
         }
     }
 
@@ -224,12 +247,23 @@ public sealed partial class BugTrackerOverlay : UserControl
     {
         if (AnimationsSuspended)
         {
+            _fadeStoryboard?.Stop();
             Opacity = to;
             onCompleted?.Invoke();
             return;
         }
 
-        _fadeStoryboard?.Stop();
+        // Storyboard.Stop() reverts its target property to its pre-animation base value,
+        // not to wherever the animation currently sits - without pinning the live value
+        // first, stopping the fade-in storyboard here snapped Opacity straight back to its
+        // XAML base of 0 before the fade-out animation even started, so "fading out" was
+        // really a 0-to-0 animation. Same gotcha ReactorAnimator.StopTile works around.
+        if (_fadeStoryboard is not null)
+        {
+            var current = Opacity;
+            _fadeStoryboard.Stop();
+            Opacity = current;
+        }
 
         var anim = new DoubleAnimation
         {
