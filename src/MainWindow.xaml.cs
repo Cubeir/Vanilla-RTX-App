@@ -2516,6 +2516,7 @@ public sealed partial class MainWindow : Window
         await WaitUntilInitializedAsync();
 
         await McpackImportLock.WaitAsync();
+        _progressManager.ShowProgress();
         try
         {
             WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
@@ -2564,6 +2565,7 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
+            _progressManager.HideProgress();
             McpackImportLock.Release();
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
 
@@ -2600,6 +2602,7 @@ public sealed partial class MainWindow : Window
         await WaitUntilInitializedAsync();
 
         await RtpackImportLock.WaitAsync();
+        _progressManager.ShowProgress();
         try
         {
             WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
@@ -2629,6 +2632,7 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
+            _progressManager.HideProgress();
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
             RtpackImportLock.Release();
         }
