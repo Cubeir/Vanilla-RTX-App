@@ -30,19 +30,6 @@
                 IsHitTestVisible="False"
                 Canvas.ZIndex="-3" />
 
-        <!-- Light theme tint overlay -->
-        <Border x:Name="LightThemeOverlay"
-                Grid.ColumnSpan="2"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                IsHitTestVisible="False"
-                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-1">
-            <Border.Background>
-                <SolidColorBrush Color="#17373737" />
-            </Border.Background>
-        </Border>
-
         <!-- TITLEBAR -->
         <Grid x:Name="TitleBarHost"
               HorizontalAlignment="Stretch"
@@ -51,7 +38,7 @@
 
             <!-- Titlebar Background -->
             <Border x:Name="TitleBarBackground"
-                    Height="37"
+                    Height="36"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
                     BorderThickness="0,0,0,5"
@@ -224,6 +211,7 @@
               Visibility="Collapsed"
               Background="{ThemeResource OverlayBackgroundColor}"
               Padding="16, 0, 16 16"
+              Opacity="1.0"
               Margin="0,36,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -233,30 +221,38 @@
             </Grid.RowDefinitions>
             
             <!-- ── License RichTextBlock ── -->
-            <ScrollViewer Grid.Row="0"
-                          Background="{ThemeResource OverlayBackgroundColor}"
-                          Margin="64,32,64,32"
-                          MaxWidth="720"
-                          BorderBrush="#40FFFFFF"
-                          BorderThickness="2"
-                          CornerRadius="12"
-                          VerticalScrollBarVisibility="Auto">
-                <RichTextBlock x:Name="LicenseTextBlock"
-                               IsTextSelectionEnabled="False"
-                               Padding="24"
-                               TextWrapping="Wrap"
-                               IsTabStop="False"
-                               FontSize="14"
-                               LineHeight="20"
-                               IsTextScaleFactorEnabled="False"
-                               HorizontalAlignment="Center"
-                               Translation="0,0,32">
-                    <RichTextBlock.Shadow>
-                        <ThemeShadow x:Name="LicenseTextShadow" />
-                    </RichTextBlock.Shadow>
-                    <!-- Populated in code-behind -->
-                </RichTextBlock>
-            </ScrollViewer>
+            <Grid Grid.Row="0"
+                  Margin="64,32,64,32"
+                  Translation="0,0,128">
+                <Grid.Shadow>
+                    <ThemeShadow x:Name="LicenseTextShadow" />
+                </Grid.Shadow>
+                <Border x:Name="LicenseAcrylicBackground"
+                        CornerRadius="0">
+                    <Border.Background>
+                        <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                                      TintOpacity="0.5"
+                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                    </Border.Background>
+                </Border>
+                <ScrollViewer BorderBrush="#15FFFFFF"
+                              BorderThickness="0.5"
+                              CornerRadius="0"
+                              Background="Transparent"
+                              VerticalScrollBarVisibility="Auto">
+                    <RichTextBlock x:Name="LicenseTextBlock"
+                                   IsTextSelectionEnabled="False"
+                                   Padding="24"
+                                   TextWrapping="Wrap"
+                                   IsTabStop="False"
+                                   FontSize="14"
+                                   LineHeight="20"
+                                   IsTextScaleFactorEnabled="False"
+                                   HorizontalAlignment="Center">
+                        <!-- Populated in code-behind -->
+                    </RichTextBlock>
+                </ScrollViewer>
+            </Grid>
 
             <!-- ── Action buttons ── -->
             <StackPanel Grid.Row="1"
@@ -266,18 +262,29 @@
                         Background="Transparent"
                         Margin="0,0,0,24">
 
-                <Button x:Name="DisagreeButton"
-                        Padding="16,16,16,16"
-                        IsTextScaleFactorEnabled="False"
-                        Translation="0,0,32"
-                        Click="DisagreeButton_Click"
-                        Content="Disagree and close"
-                        Style="{ThemeResource ButtonRevealStyle}">
-                    <Button.Shadow>
-                        <ThemeShadow x:Name="DisagreeShadow" />
-                    </Button.Shadow>
+                <Grid>
+                    <Border x:Name="DisagreeButtonAcrylicBackground"
+                            CornerRadius="4">
+                        <Border.Background>
+                            <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                                          TintOpacity="0.75"
+                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                        </Border.Background>
+                    </Border>
+                    <Button x:Name="DisagreeButton"
+                            Padding="16,16,16,16"
+                            IsTextScaleFactorEnabled="False"
+                            Translation="0,0,32"
+                            Click="DisagreeButton_Click"
+                            Content="Disagree and close"
+                            Background="Transparent"
+                            Style="{ThemeResource DefaultButtonStyle}">
+                        <Button.Shadow>
+                            <ThemeShadow x:Name="DisagreeShadow" />
+                        </Button.Shadow>
 
-                </Button>
+                    </Button>
+                </Grid>
 
                 <Button x:Name="AgreeButton"
                         Padding="16,16,16,16"
