@@ -43,17 +43,19 @@
 
                 <!-- Header -->
                 <Grid Grid.Row="0"
-                      Padding="20,12,10,12">
+                      Padding="18,10,16,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <FontIcon Grid.Column="0"
                               Glyph="&#xEBE8;"
                               FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                              FontSize="17"
+                              FontSize="18"
+                              Margin="0,2,-2,0"
                               VerticalAlignment="Center"
                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
@@ -65,8 +67,31 @@
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False" />
 
-                    <Button x:Name="CloseButton"
+                    <Button x:Name="RefreshButton"
                             Grid.Column="2"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Width="32"
+                            Height="32"
+                            Padding="0"
+                            Margin="0,0,10,0"
+                            Click="RefreshButton_Click"
+                            ToolTipService.ToolTip="Refresh">
+                        <Grid>
+                            <FontIcon x:Name="RefreshIcon"
+                                      Glyph="&#xE72C;"
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      FontSize="16" />
+                            <TextBlock x:Name="RefreshCountdownText"
+                                       Visibility="Collapsed"
+                                       FontSize="15"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                        </Grid>
+                    </Button>
+
+                    <Button x:Name="CloseButton"
+                            Grid.Column="3"
                             Style="{ThemeResource SubtleButtonStyle}"
                             Width="32"
                             Height="32"
@@ -75,7 +100,7 @@
                             ToolTipService.ToolTip="Close">
                         <FontIcon Glyph="&#xE8BB;"
                                   FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  FontSize="12" />
+                                  FontSize="14" />
                     </Button>
                 </Grid>
 

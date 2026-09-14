@@ -1245,6 +1245,25 @@ public sealed partial class MainWindow : Window
     }
 
 
+
+    private void BugButton_Click(object sender, RoutedEventArgs e)
+    {
+        BugTrackerOverlay.Toggle();
+        _ = BlinkingLamp(true, true, 1.0, 1.0);
+    }
+    private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (RuntimeFlags.Set("Has_Said_BugButtonTtext"))
+            Log("View a complete, up-to-date list of Minecraft RTX bugs.", LogLevel.Informational);
+    }
+    private void BugButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        // TODO: IIRC there was some WinUI thing to fill in/invert glyph coloring without a explicit glyph existing for them, maybe deploy it for this one if you're not tripping
+    }
+
+
+
+
     private void DonateButton_Click(object sender, RoutedEventArgs e)
     {
         DonateButton.Content = "\uEB52";
@@ -3031,22 +3050,7 @@ public sealed partial class MainWindow : Window
         }
         return null;
     }
-    #endregion
-
-    private void BugButton_Click(object sender, RoutedEventArgs e)
-    {
-        BugTrackerOverlay.Toggle();
-    }
-
-    private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-
-    }
-
-    private void BugButton_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-
-    }
+    #endregion UI Logger
 }
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)

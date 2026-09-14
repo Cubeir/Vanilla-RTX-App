@@ -32,6 +32,13 @@ public sealed partial class BugTrackerOverlay : UserControl
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
     private const double FADE_MS = 100;
 
+    // Manual refresh cooldown - independent of BugTracker's own 30-minute auto-refresh
+    // cooldown, and enforced entirely here: BugTracker.ForceRefreshAsync will happily fire
+    // as often as it's called, this is what stops the button from being smashed.
+    private const int MANUAL_REFRESH_COOLDOWN_SECONDS = 60;
+    private DateTime _manualRefreshCooldownUntilUtc = DateTime.MinValue;
+    private DispatcherTimer? _refreshCooldownTimer;
+
     public BugTrackerOverlay()
     {
         InitializeComponent();
@@ -61,6 +68,21 @@ public sealed partial class BugTrackerOverlay : UserControl
         // initialize natively.
         UpdateLayout();
 
+        // The cooldown deadline itself keeps ticking in real time regardless - this only
+        // resumes the timer that drives its on-screen countdown, which was stopped in Close().
+        // If the deadline already passed while closed, restore the normal icon instead - no
+        // tick ever ran to do it while the timer was stopped.
+        if (DateTime.UtcNow < _manualRefreshCooldownUntilUtc)
+        {
+            UpdateRefreshCountdownText();
+            _refreshCooldownTimer?.Start();
+            UpdateRefreshButtonAvailability();
+        }
+        else
+        {
+            EndManualRefreshCooldown();
+        }
+
         _ = LoadContentAsync();
     }
 
@@ -70,6 +92,7 @@ public sealed partial class BugTrackerOverlay : UserControl
         _isOpen = false;
 
         _cts?.Cancel();
+        _refreshCooldownTimer?.Stop();
         IsHitTestVisible = false;
         AnimateOpacity(0.0, () => Visibility = Visibility.Collapsed);
     }
@@ -90,6 +113,7 @@ public sealed partial class BugTrackerOverlay : UserControl
         {
             var result = await BugTracker.GetListAsync(
                 onFetching: text => LoadingText.Text = text,
+                onBackgroundUpdate: markdown => _ = ApplyBackgroundUpdateAsync(markdown, token),
                 token: token);
 
             if (token.IsCancellationRequested) return;
@@ -126,6 +150,34 @@ public sealed partial class BugTrackerOverlay : UserControl
         }
     }
 
+    /// <summary>
+    /// Fired by <see cref="BugTracker.GetListAsync"/> when a quiet cooldown-expired background
+    /// refresh actually landed new content. The cache was already showing by this point - this
+    /// just swaps the rendered page for the fresher one, with no loading/error state involved.
+    /// </summary>
+    private async Task ApplyBackgroundUpdateAsync(string markdown, CancellationToken token)
+    {
+        try
+        {
+            if (token.IsCancellationRequested) return;
+
+            await EnsureWebViewAsync();
+            if (token.IsCancellationRequested || !_webViewReady) return;
+
+            var html = BugTracker.ToHtml(markdown, ActualTheme == ElementTheme.Dark);
+            await NavigateAndWaitAsync(html, token);
+            if (!token.IsCancellationRequested) ShowContent();
+        }
+        catch (OperationCanceledException)
+        {
+            // Overlay was closed before the background refresh landed.
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BugTrackerOverlay] ApplyBackgroundUpdateAsync failed: {ex.Message}");
+        }
+    }
+
     // MarkdownWebView itself is never hidden via Visibility - see the XAML comment on the
     // content Grid. Loading/Error are opaque covers stacked on top of it instead.
 
@@ -134,6 +186,7 @@ public sealed partial class BugTrackerOverlay : UserControl
         LoadingText.Text = text;
         LoadingState.Visibility = Visibility.Visible;
         ErrorState.Visibility = Visibility.Collapsed;
+        UpdateRefreshButtonAvailability();
     }
 
     private void ShowError(string text)
@@ -141,12 +194,14 @@ public sealed partial class BugTrackerOverlay : UserControl
         ErrorText.Text = text;
         ErrorState.Visibility = Visibility.Visible;
         LoadingState.Visibility = Visibility.Collapsed;
+        UpdateRefreshButtonAvailability();
     }
 
     private void ShowContent()
     {
         LoadingState.Visibility = Visibility.Collapsed;
         ErrorState.Visibility = Visibility.Collapsed;
+        UpdateRefreshButtonAvailability();
     }
 
     // =========================================================================
@@ -242,6 +297,108 @@ public sealed partial class BugTrackerOverlay : UserControl
     private void Panel_PointerPressed(object sender, PointerRoutedEventArgs e) => e.Handled = true;
 
     private void RetryButton_Click(object sender, RoutedEventArgs e) => _ = LoadContentAsync();
+
+    // =========================================================================
+    // Manual refresh
+    // =========================================================================
+
+    private void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        // The button is disabled for the entire cooldown, so this is a defensive check rather
+        // than the actual enforcement.
+        if (DateTime.UtcNow < _manualRefreshCooldownUntilUtc) return;
+
+        StartManualRefreshCooldown();
+        _ = ManualRefreshAsync();
+    }
+
+    private async Task ManualRefreshAsync()
+    {
+        var token = _cts?.Token ?? default;
+        try
+        {
+            var result = await BugTracker.ForceRefreshAsync(token);
+            if (token.IsCancellationRequested) return;
+
+            if (result.Status != BugTrackerStatus.Success || result.Markdown is null)
+            {
+                // Nothing to swap to - leave whatever is already on screen (cache content, or
+                // the error state) exactly as it is.
+                return;
+            }
+
+            await EnsureWebViewAsync();
+            if (token.IsCancellationRequested || !_webViewReady) return;
+
+            var html = BugTracker.ToHtml(result.Markdown, ActualTheme == ElementTheme.Dark);
+            await NavigateAndWaitAsync(html, token);
+            if (!token.IsCancellationRequested) ShowContent();
+        }
+        catch (OperationCanceledException)
+        {
+            // Overlay was closed mid-refresh.
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BugTrackerOverlay] ManualRefreshAsync failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Starts (or resumes, on reopen) the 60-second cooldown. Driven off a wall-clock deadline
+    /// rather than a tick count, so it keeps counting down in real time even while the overlay
+    /// is closed - re-showing the panel mid-cooldown resumes it instead of resetting it.
+    /// </summary>
+    private void StartManualRefreshCooldown()
+    {
+        _manualRefreshCooldownUntilUtc = DateTime.UtcNow.AddSeconds(MANUAL_REFRESH_COOLDOWN_SECONDS);
+
+        RefreshIcon.Visibility = Visibility.Collapsed;
+        RefreshCountdownText.Visibility = Visibility.Visible;
+        UpdateRefreshCountdownText();
+        UpdateRefreshButtonAvailability();
+
+        _refreshCooldownTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _refreshCooldownTimer.Tick -= RefreshCooldownTimer_Tick;
+        _refreshCooldownTimer.Tick += RefreshCooldownTimer_Tick;
+        _refreshCooldownTimer.Start();
+    }
+
+    private void RefreshCooldownTimer_Tick(object? sender, object e)
+    {
+        if (DateTime.UtcNow >= _manualRefreshCooldownUntilUtc)
+        {
+            EndManualRefreshCooldown();
+            return;
+        }
+        UpdateRefreshCountdownText();
+    }
+
+    private void EndManualRefreshCooldown()
+    {
+        _refreshCooldownTimer?.Stop();
+        RefreshIcon.Visibility = Visibility.Visible;
+        RefreshCountdownText.Visibility = Visibility.Collapsed;
+        UpdateRefreshButtonAvailability();
+    }
+
+    private void UpdateRefreshCountdownText()
+    {
+        var remaining = (int)Math.Ceiling((_manualRefreshCooldownUntilUtc - DateTime.UtcNow).TotalSeconds);
+        RefreshCountdownText.Text = Math.Max(remaining, 0).ToString();
+    }
+
+    /// <summary>
+    /// Refresh is only ever off-limits while there's nothing yet to refresh from (the initial
+    /// load is still in flight) or while its own cooldown is running - it stays available over
+    /// both the content and error states.
+    /// </summary>
+    private void UpdateRefreshButtonAvailability()
+    {
+        var loading = LoadingState.Visibility == Visibility.Visible;
+        var coolingDown = DateTime.UtcNow < _manualRefreshCooldownUntilUtc;
+        RefreshButton.IsEnabled = !loading && !coolingDown;
+    }
 
     private void AnimateOpacity(double to, Action? onCompleted)
     {

@@ -24,15 +24,28 @@ public readonly record struct BugTrackerResult(BugTrackerStatus Status, string? 
 /// RTX bug list. <see cref="BugTrackerOverlay"/> owns chrome and display; everything that
 /// touches a file, the network or LocalSettings lives here.
 ///
-/// Cache-first, exactly one network decision per call to <see cref="GetListAsync"/>:
+/// Cache-first. Exactly one network decision per call to <see cref="GetListAsync"/>, and the
+/// cache is always what gets shown first - nothing ever makes the caller wait on a network
+/// round-trip when there's something on disk to show immediately:
 ///
-///   - No cache yet          - fetch regardless of cooldown. Nothing to fall back to, so a
-///                             failure here is the only case that is actually reported as an
-///                             error to the caller.
-///   - Cache, cooldown active   - return it immediately. The network is never touched.
-///   - Cache, cooldown expired  - attempt a refresh; a failure falls back to the stale cache
-///                             silently, since a flaky connection should never blank out a
-///                             list that was working a moment ago.
+///   - No cache yet            - fetch regardless of cooldown, and this is the one case the
+///                               caller actually has to wait on, since there is nothing to
+///                               show in the meantime. Nothing to fall back to either, so a
+///                               failure here is the only case reported as an error.
+///   - Cache, cooldown active  - return it immediately. The network is never touched.
+///   - Cache, cooldown expired - return the cache immediately (still no wait), and kick off a
+///                               refresh in the background. <paramref name="onBackgroundUpdate"/>
+///                               fires later, only if that refresh actually lands new content;
+///                               a failure is silent and leaves the cache and its cooldown
+///                               exactly as they were, so the next check simply tries again
+///                               rather than being punished with a fresh cooldown for a fetch
+///                               that never happened.
+///
+/// This is also the whole reason the design is cache-first at all: the backing file is a
+/// single small request against a free GitHub endpoint, so every path above exists to avoid
+/// hitting it more than once per cooldown window per user - opening the modal ten times in a
+/// row should cost at most one real request, whether that request happens inline (no cache) or
+/// quietly in the background (stale cache).
 /// </summary>
 public static class BugTracker
 {
@@ -52,12 +65,22 @@ public static class BugTracker
     // =========================================================================
 
     /// <summary>
-    /// Cache-first retrieval of the raw markdown. Never throws.
-    /// <paramref name="onFetching"/> fires synchronously, on the calling thread, right before
-    /// either of the two network attempts begins - it never fires on a plain cache hit, which
-    /// is what tells the caller when to show a loading state.
+    /// Cache-first retrieval of the raw markdown. Never throws, never blocks on the network
+    /// when there's a cache to show immediately.
+    ///
+    /// <paramref name="onFetching"/> fires synchronously, on the calling thread, only for the
+    /// no-cache path, right before the one network attempt the caller actually has to wait on -
+    /// it's what tells the caller when to show a loading state.
+    ///
+    /// <paramref name="onBackgroundUpdate"/> fires later - on whatever thread the network
+    /// continuation lands on, normally the original caller's - only when a cooldown-expired
+    /// background refresh actually landed new content. It never fires for a cache hit within
+    /// cooldown, nor for a failed background refresh.
     /// </summary>
-    public static async Task<BugTrackerResult> GetListAsync(Action<string>? onFetching = null, CancellationToken token = default)
+    public static async Task<BugTrackerResult> GetListAsync(
+        Action<string>? onFetching = null,
+        Action<string>? onBackgroundUpdate = null,
+        CancellationToken token = default)
     {
         var cached = TryReadCache();
 
@@ -82,17 +105,64 @@ public static class BugTracker
             return new BugTrackerResult(BugTrackerStatus.Success, cached);
         }
 
-        Trace.WriteLine("[BugTracker] Cooldown expired - attempting a refresh");
-        onFetching?.Invoke("Checking for updates...");
-        var updated = await FetchAsync(token);
-        if (updated is not null)
+        Trace.WriteLine("[BugTracker] Cooldown expired - showing cache, refreshing in the background");
+        _ = RefreshInBackgroundAsync(onBackgroundUpdate, token);
+        return new BugTrackerResult(BugTrackerStatus.Success, cached);
+    }
+
+    /// <summary>
+    /// Unconditionally fetches and caches a fresh copy, bypassing the cooldown entirely - the
+    /// one deliberate exception to the cache-first rule, reserved for a user pressing an actual
+    /// refresh button. The caller is expected to rate-limit how often this can be invoked on
+    /// its own (a short, independent cooldown on the button itself); this method enforces none
+    /// of that, only what happens once a call is actually allowed through.
+    /// Falls back to the existing cache on failure, exactly like the background path - a failed
+    /// manual refresh should not blank out a list that was already showing.
+    /// </summary>
+    public static async Task<BugTrackerResult> ForceRefreshAsync(CancellationToken token = default)
+    {
+        Trace.WriteLine("[BugTracker] Manual refresh - fetching regardless of cooldown");
+        var fresh = await FetchAsync(token);
+        if (fresh is not null)
         {
-            CacheContent(updated);
-            return new BugTrackerResult(BugTrackerStatus.Success, updated);
+            CacheContent(fresh);
+            return new BugTrackerResult(BugTrackerStatus.Success, fresh);
         }
 
-        Trace.WriteLine("[BugTracker] Refresh failed - falling back to cache");
-        return new BugTrackerResult(BugTrackerStatus.Success, cached);
+        Trace.WriteLine("[BugTracker] Manual refresh failed - falling back to cache");
+        var cached = TryReadCache();
+        return cached is not null
+            ? new BugTrackerResult(BugTrackerStatus.Success, cached)
+            : new BugTrackerResult(BugTrackerStatus.NoInternet, null);
+    }
+
+    /// <summary>
+    /// Fire-and-forget background refresh for the cooldown-expired-with-cache path. Silent on
+    /// failure by design - the cache and its cooldown timestamp are left untouched, so the next
+    /// check naturally retries instead of the failure being rewarded with a fresh cooldown.
+    /// </summary>
+    private static async Task RefreshInBackgroundAsync(Action<string>? onUpdated, CancellationToken token)
+    {
+        try
+        {
+            var updated = await FetchAsync(token);
+            if (updated is null)
+            {
+                Trace.WriteLine("[BugTracker] Background refresh failed - keeping the existing cache");
+                return;
+            }
+
+            CacheContent(updated);
+            onUpdated?.Invoke(updated);
+        }
+        catch (OperationCanceledException)
+        {
+            // The view that asked for this went away before it landed - nothing to update.
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BugTracker] RefreshInBackgroundAsync failed: {ex.Message}");
+        }
     }
 
     /// <summary>Renders markdown as a self-contained HTML document styled to match the app's current theme.</summary>
