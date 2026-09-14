@@ -78,7 +78,7 @@
                   Grid.Row="0" />
 
             <ScrollViewer Grid.Row="0"
-                          Padding="20,16,24,0"
+                          Padding="20,0,24,0"
                           Margin="0,37,0,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
@@ -116,13 +116,13 @@
             </StackPanel>
 
             <!-- ══════════════════════════════════════════
-                 FIXED: Add customized preset (.rtpack)
+                Add customized preset (.rtpack)
             ═══════════════════════════════════════════ -->
             <Border Grid.Row="1"
                     Margin="0"
                     CornerRadius="0"
                     BorderThickness="0"
-                    Translation="0,2,512"
+                    Translation="0,1,512"
                     Background="Transparent">
                 <Border.Shadow>
                     <ThemeShadow />

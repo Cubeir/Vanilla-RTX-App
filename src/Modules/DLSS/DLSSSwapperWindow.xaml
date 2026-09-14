@@ -90,7 +90,7 @@
                                 Margin="0,0,0,0" />
                     <StackPanel x:Name="DllListContainer"
                                 Spacing="12"
-                                Padding="0,0,0,12"/>
+                                Padding="0,24,0,12"/>
                 </StackPanel>
             </ScrollViewer>
 
@@ -114,13 +114,13 @@
             </StackPanel>
 
             <!-- ══════════════════════════════════════════
-                 FIXED: Add DLSS files
+                Add DLSS files
             ═══════════════════════════════════════════ -->
             <Border Grid.Row="1"
                     Margin="0"
                     CornerRadius="0"
                     BorderThickness="0"
-                    Translation="0,2,512"
+                    Translation="0,1,512"
                     Background="Transparent">
                 <Border.Shadow>
                     <ThemeShadow />
