@@ -42,6 +42,24 @@ public class Previewer
     private bool _isTransitioning = false;
     private bool _forceTransitionForControlChange = false;
 
+    // Which button (if any) currently owns a transient top-vessel click-flash. While set,
+    // SetButtonPreview must not touch the top vessel for THIS button. If PointerEntered ever
+    // re-fires for the same already-hovered button mid-flash, SetButtonPreview's topImagePath=""
+    // would race the flash: either it lands early (top vessel still at opacity 0, nothing
+    // "changed" yet) and collapses the top vessel outright, or it lands mid-flash and starts a
+    // second, independent opacity animation on _topVessel via the shared crossfade system that
+    // fights the flash's own (isolated) one for the same property. Either way the flash gets
+    // cut off before it's seen.
+    private Button? _flashingButton = null;
+
+    // Click-flash's own storyboard/id tracking, deliberately separate from _currentTransition
+    // /_transitionId above. Every hover/toggle/slider crossfade animates the bottom AND top
+    // vessel in one shared Storyboard, and Stop()ing a Storyboard reverts EVERY property it
+    // animates back to its pre-animation base value - so a flash that shared that bookkeeping
+    // and called Stop() on it would silently snap the bottom vessel back to a stale opacity.
+    private Storyboard? _flashTransition = null;
+    private int _flashId = 0;
+
     // Configurable global transition settings
     public const double TransitionDurationPublic = 75;
     public double TransitionDurationMs { get; set; } = 75;
@@ -307,7 +325,13 @@ public class Previewer
     /// Initializes a button with arrays of hover images and optional arrays of click images.
     /// On each hover from a different control, a new image is randomly selected from the array.
     /// Hovering the same button repeatedly keeps the same image.
-    /// If clickedImagePaths is provided, a brief flash to a random clicked image plays on press.
+    /// The bottom vessel always carries the hover image and is never touched by a click.
+    /// If clickedImagePaths is provided, a click transiently fades a clicked image into the
+    /// TOP vessel (overlaying the still-visible hover image below) and fades it back out - a
+    /// deliberate blink, not a swap. When both arrays are the same length, the click image uses
+    /// the same index as the current hover image, so identical arrays always flash the same
+    /// image over itself (useful for art with transparent "lit" regions: stacking the same
+    /// partially-transparent image over itself briefly intensifies the glow).
     /// </summary>
     public void InitializeButton(Button button, string[]? hoverImagePaths = null, string[]? clickedImagePaths = null)
     {
@@ -326,7 +350,7 @@ public class Previewer
             if (!_mouseDown || _activeControl == button)
             {
                 HandleControlChange(button);         // re-rolls index only if coming from another control
-                SetButtonPreview(button, false);
+                SetButtonPreview(button);
             }
         };
 
@@ -335,27 +359,26 @@ public class Previewer
             _mouseDown = true;
             _activeControl = button;
             button.CapturePointer(e.Pointer);
-            SetButtonPreview(button, true);
-
-            // If there are clicked images, flash them then restore hover image after 50ms
-            var data = button.GetValue(FrameworkElement.TagProperty) as ButtonPreviewData;
-            if (data != null && data.ImageOnPaths.Length > 0)
-            {
-                _bottomVessel.DispatcherQueue.TryEnqueue(async () =>
-                {
-                    await System.Threading.Tasks.Task.Delay(50);
-                    if (_activeControl == button && !FreezeUpdates)
-                    {
-                        SetButtonPreview(button, false);
-                    }
-                });
-            }
         };
 
         button.PointerReleased += (s, e) =>
         {
             _mouseDown = false;
             button.ReleasePointerCapture(e.Pointer);
+        };
+
+        // ButtonBase marks PointerPressed/PointerReleased Handled as part of its own click
+        // machinery, so a plain instance PointerPressed subscription (above) never actually
+        // sees a mouse click - only PointerEntered/PointerExited (not part of that machinery)
+        // fire reliably. Click is ButtonBase's own synthesized "activated" event and isn't
+        // subject to that, so the flash has to trigger from here instead.
+        button.Click += (s, e) =>
+        {
+            var data = button.GetValue(FrameworkElement.TagProperty) as ButtonPreviewData;
+            if (data != null && data.ImageOnPaths.Length > 0)
+            {
+                FlashButtonClickOverlay(button, data);
+            }
         };
 
         button.PointerExited += (s, e) => { };
@@ -574,6 +597,10 @@ public class Previewer
         {
             _forceTransitionForControlChange = true;
 
+            // Focus has genuinely moved elsewhere - any flash the old control owned no longer
+            // has a claim on the top vessel.
+            _flashingButton = null;
+
             // Re-roll random index only when genuinely arriving from a different control
             if (newControl.GetValue(FrameworkElement.TagProperty) is ButtonPreviewData data && data.ImageOffPaths.Length > 1)
             {
@@ -679,26 +706,110 @@ public class Previewer
         SetVesselState(targetBottomImage, targetTopImage, targetBottomOpacity, targetTopOpacity, useTransition);
     }
 
-    private void SetButtonPreview(Button button, bool isPressed)
+    private void SetButtonPreview(Button button)
     {
         if (FreezeUpdates) return;
+
+        // A click-flash on this exact button currently owns the top vessel - see _flashingButton.
+        if (_flashingButton == button) return;
 
         var data = button.GetValue(FrameworkElement.TagProperty) as ButtonPreviewData;
         if (data == null) return;
 
-        string[] pool = isPressed && data.ImageOnPaths.Length > 0
-            ? data.ImageOnPaths
-            : data.ImageOffPaths;
-
+        var pool = data.ImageOffPaths;
         if (pool.Length == 0) return;
 
-        // Clicked state picks randomly from clicked pool; hover state uses the stable CurrentRandomIndex
-        string imagePath = isPressed
-            ? pool[Random.Shared.Next(0, pool.Length)]
-            : pool[Math.Clamp(data.CurrentRandomIndex, 0, pool.Length - 1)];
+        string imagePath = pool[Math.Clamp(data.CurrentRandomIndex, 0, pool.Length - 1)];
 
         double bottomOpacity = !string.IsNullOrEmpty(imagePath) ? 1.0 : 0.0;
         SetVesselState(imagePath, "", bottomOpacity, 0.0, true);
+    }
+
+    /// <summary>
+    /// Transiently fades a clicked-pool image into the top vessel over the still-visible
+    /// hover image on the bottom vessel, holds briefly, then fades it back out. Bypasses
+    /// SetVesselState entirely - that method always cross-fades both vessels together in ONE
+    /// storyboard, and this flash must never touch a storyboard that also carries the bottom
+    /// vessel: calling Stop() on a Storyboard reverts EVERY property it animates back to its
+    /// pre-animation base value, not just the one being re-targeted. Sharing _currentTransition
+    /// with the hover/toggle/slider crossfade system was tried and caused exactly that - the
+    /// flash's own Stop() call was silently snapping the bottom (hover) vessel back to its
+    /// mid-transition base opacity (often 0), which is why it looked like the whole preview was
+    /// blinking rather than just the top layer. _flashTransition/_flashId below are this flash's
+    /// own, entirely separate from the shared crossfade bookkeeping.
+    /// </summary>
+    private void FlashButtonClickOverlay(Button button, ButtonPreviewData data)
+    {
+        if (FreezeUpdates) return;
+        if (data.ImageOnPaths.Length == 0) return;
+
+        // Same index as the hover image when the pools are the same size, so identical
+        // arrays always flash the very image already showing on the bottom vessel.
+        int index = data.ImageOnPaths.Length == data.ImageOffPaths.Length
+            ? data.CurrentRandomIndex
+            : Random.Shared.Next(0, data.ImageOnPaths.Length);
+        index = Math.Clamp(index, 0, data.ImageOnPaths.Length - 1);
+        string flashImagePath = data.ImageOnPaths[index];
+
+        _flashingButton = button;
+
+        SetTopVesselImage(flashImagePath);
+        _currentTopImage = flashImagePath;
+        _topVessel.Visibility = Visibility.Visible;
+
+        _flashTransition?.Stop();
+        int flashId = ++_flashId;
+
+        var fadeIn = new DoubleAnimation
+        {
+            From = _topVessel.Opacity,
+            To = 1.0,
+            Duration = TimeSpan.FromMilliseconds(TransitionDurationMs)
+        };
+
+        var sbIn = new Storyboard();
+        Storyboard.SetTarget(fadeIn, _topVessel);
+        Storyboard.SetTargetProperty(fadeIn, "Opacity");
+        sbIn.Children.Add(fadeIn);
+
+        sbIn.Completed += (s, e) =>
+        {
+            // Bail if superseded by a newer flash, or if focus has genuinely moved to another
+            // control - in that case the new control's own crossfade already owns the top
+            // vessel and this stale flash has nothing correct left to do.
+            if (flashId != _flashId || _activeControl != button) return;
+            _ = FadeOutButtonClickOverlayAsync(button, flashId);
+        };
+
+        _flashTransition = sbIn;
+        sbIn.Begin();
+    }
+
+    private async Task FadeOutButtonClickOverlayAsync(Button button, int flashId)
+    {
+        await Task.Delay(50);
+        if (flashId != _flashId || FreezeUpdates || _activeControl != button) return;
+
+        var fadeOut = new DoubleAnimation
+        {
+            From = _topVessel.Opacity,
+            To = 0.0,
+            Duration = TimeSpan.FromMilliseconds(TransitionDurationMs)
+        };
+
+        var sbOut = new Storyboard();
+        Storyboard.SetTarget(fadeOut, _topVessel);
+        Storyboard.SetTargetProperty(fadeOut, "Opacity");
+        sbOut.Children.Add(fadeOut);
+
+        sbOut.Completed += (s, e) =>
+        {
+            if (_flashingButton == button) _flashingButton = null;
+        };
+
+        _flashTransition?.Stop();
+        _flashTransition = sbOut;
+        sbOut.Begin();
     }
 
     private void SetTogglePreview(FrameworkElement element, bool isOn)
@@ -818,6 +929,9 @@ public class Previewer
 
     private void FadeInToTargetOpacities(double targetBottomOpacity, double targetTopOpacity, int transitionId)
     {
+        // No Visibility guard needed here (unlike FadeToTargetOpacities below): this method's
+        // one call site always runs right after ApplyVesselState(..., duringTransition: true),
+        // which already forces both vessels Visible unconditionally.
         var fadeInTop = new DoubleAnimation
         {
             From = 0.0,
@@ -867,6 +981,12 @@ public class Previewer
 
     private void FadeToTargetOpacities(double targetBottomOpacity, double targetTopOpacity, int transitionId)
     {
+        // Unlike FadeInToTargetOpacities, this is reached directly from SetVesselState's
+        // opacity-only branch with no preceding ApplyVesselState call - so it's the only place
+        // that can restore a vessel's Visibility before animating it toward visible opacity.
+        if (targetBottomOpacity > 0.0) _bottomVessel.Visibility = Visibility.Visible;
+        if (targetTopOpacity > 0.0) _topVessel.Visibility = Visibility.Visible;
+
         var fadeTop = new DoubleAnimation
         {
             From = _topVessel.Opacity,
@@ -920,36 +1040,49 @@ public class Previewer
 
     private void ApplyVesselState(string bottomImagePath, string topImagePath, double bottomOpacity, double topOpacity, bool duringTransition)
     {
-        // Apply bottom vessel
+        // Apply bottom vessel image
         if (!string.IsNullOrEmpty(bottomImagePath) && _currentBottomImage != bottomImagePath)
         {
             SetBottomVesselImage(bottomImagePath);
             _currentBottomImage = bottomImagePath;
-            _bottomVessel.Visibility = Visibility.Visible;
         }
         else if (string.IsNullOrEmpty(bottomImagePath))
         {
-            // Only collapse if no image path AND not during a transition
-            if (!duringTransition)
-            {
-                _bottomVessel.Visibility = Visibility.Collapsed;
-            }
+            // Clearing the tracked path too, not just the visuals - otherwise a later
+            // call for this same path looks "unchanged" and skips both the image
+            // assignment and the visibility restore below (the bug this guards against).
+            _currentBottomImage = "";
         }
 
-        // Apply top vessel
+        // Visibility tracks the vessel's target opacity, not whether the path changed -
+        // an opacity-only fade (no path change) still needs the vessel to be visible.
+        if (bottomOpacity > 0.0 || duringTransition)
+        {
+            _bottomVessel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            _bottomVessel.Visibility = Visibility.Collapsed;
+        }
+
+        // Apply top vessel image
         if (!string.IsNullOrEmpty(topImagePath) && _currentTopImage != topImagePath)
         {
             SetTopVesselImage(topImagePath);
             _currentTopImage = topImagePath;
-            _topVessel.Visibility = Visibility.Visible;
         }
         else if (string.IsNullOrEmpty(topImagePath))
         {
-            // Only collapse if no image path AND not during a transition
-            if (!duringTransition)
-            {
-                _topVessel.Visibility = Visibility.Collapsed;
-            }
+            _currentTopImage = "";
+        }
+
+        if (topOpacity > 0.0 || duringTransition)
+        {
+            _topVessel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            _topVessel.Visibility = Visibility.Collapsed;
         }
 
         // Set opacities

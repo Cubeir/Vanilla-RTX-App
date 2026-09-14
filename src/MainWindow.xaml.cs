@@ -251,7 +251,7 @@ public sealed partial class MainWindow : Window
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
-        Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt);
+        Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt, PreviewArt);
 
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,
             "ms-appx:///Assets/previews/fog.default.png",
@@ -3081,6 +3081,8 @@ and restructuring the whole thing, no more module-in-Windows, all in main window
 settings menu could host:
 game data and game install locations
 cache reset button
+export logs button (no more hidden shift+lamp)
+no more hidden shift + any button for that matter, a lot of these messy "creative" code paths must be cleaned up
 a modular way to adjust behavior of launch button
 expose every single hardcoded URL, what goes were
 DLSS PROVIDER, must be a page u can download dlss dlls etc.. from
@@ -3095,6 +3097,9 @@ resetting cache shows internals in there.
 so nothing gets touched internally
 
 all additions
+
+>> A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
+In there, allow LOTS OF things
 
 - Should ditch the module-in-window structure
 everything must be on main window, like most modern winui apps do
@@ -3120,20 +3125,10 @@ And if you do it, getting rid of documentation button might be an idea to consid
 the whole code path related to backing up defaults can be pruned.
 instead, adapt another approach that redirects mat.bin files via materials.index.json in the materials folder.
 
-Also A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
-In there, allow LOTS OF things
-
 - Add something to actively resolve junctions/symlinks everywhere
 apparently some third party launchers use them for other things, like userdata, as well..
 ..but wait for at least a single report of failure related to this before touching anything
 
-- Make holding shift turn the lamp Green to indicate its debugging functionality
-
-- Make a  secondary image fade in and out briefly over lampinteraction when clicked
-same as bottom vessel
-so you can create this feeling of lamp shining brighter while its just the translucent parts being overlayed
-two identical arrays passed in
-both arrays must select the same image/same rng etc..
 - Slowly rework and improve art vessels, introduce 1-2 variants for some static buttons, maybe fire could burn brighter when delete button
 gets clicked, if the above is implemented, things can look really nice
 
