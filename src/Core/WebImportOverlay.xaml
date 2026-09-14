@@ -134,13 +134,21 @@
                            TextWrapping="Wrap"
                            IsTextScaleFactorEnabled="False" />
 
+                <!-- Accent bevel - same left-edge treatment as MainWindow's Preview toggle, driven
+                     by ThemeService.GetBevelColor rather than a static resource so it swaps with
+                     light/dark theme instead of always reading as the dark-theme accent. Set
+                     imperatively in code-behind (ApplyCloseButtonBevel) because GetBevelColor is a
+                     C# color choice, not a ThemeResource binding that re-resolves itself. -->
                 <Rectangle Grid.Column="7"
-                           Fill="{ThemeResource SystemAccentColorLight3}" />
+                           Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                <Border x:Name="CloseButtonBevel"
+                        Grid.Column="7"
+                        BorderThickness="3,0,0,0" />
 
                 <!-- Fills the entire header block, flush against the window's right edge, the
                      titlebar above and the divider below - same "big flush corner button" look as
-                     MainWindow's Preview toggle, achieved the same way: a 3px accent bevel
-                     (the Rectangle above) standing in for that button's own fake-split border. -->
+                     MainWindow's Preview toggle, achieved the same way: the accent bevel above
+                     standing in for that button's own fake-split border. -->
                 <Button x:Name="CloseButton"
                         Grid.Column="8"
                         Style="{ThemeResource AccentButtonStyle}"

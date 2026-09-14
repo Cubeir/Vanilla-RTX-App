@@ -74,6 +74,19 @@ public sealed partial class WebImportOverlay : UserControl
     public WebImportOverlay()
     {
         InitializeComponent();
+
+        // The Done/Return button's accent bevel is an imperative color choice (ThemeService.
+        // GetBevelColor), not a ThemeResource that re-resolves itself, so it has to be recomputed
+        // by hand on every theme change - exactly like MainWindow's Preview toggle bevels.
+        ApplyCloseButtonBevel(ThemeService.ResolveInitialTheme());
+        ThemeService.ThemeChanged += ApplyCloseButtonBevel;
+        Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyCloseButtonBevel;
+    }
+
+    private void ApplyCloseButtonBevel(ElementTheme theme)
+    {
+        CloseButtonBevel.BorderBrush = new SolidColorBrush(
+            ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Left, accented: true));
     }
 
     /// <summary>
