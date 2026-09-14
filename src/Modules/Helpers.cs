@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
@@ -571,6 +572,38 @@ public static class Helpers
                     foreach (var f in Traverse(sub, depth + 1))
                         yield return f;
             }
+        }
+    }
+
+
+    /// <summary>
+    /// The zip-entry equivalent of <see cref="FindFilesAtDepth"/>: finds every entry named
+    /// <paramref name="fileName"/> (case-insensitive) whose depth within the archive falls in
+    /// [minDepth, maxDepth]. Depth is the number of '/' separators in the entry's own
+    /// <c>FullName</c> - 0 for an entry sitting at the archive root, 1 for one inside a single
+    /// top-level folder (e.g. the branch-named folder a GitHub codeload zipball wraps everything
+    /// in), 2 for one folder deeper, and so on. Zip entries always use '/' regardless of OS.
+    /// Exists so callers can locate manifests (or anything else) inside a zip by shape rather
+    /// than by hardcoding folder names that belong to whoever authored the archive, not to us.
+    /// </summary>
+    public static IEnumerable<ZipArchiveEntry> FindZipEntriesAtDepth(
+        ZipArchive archive, string fileName, int minDepth, int maxDepth)
+    {
+        if (minDepth < 0)
+            throw new ArgumentOutOfRangeException(nameof(minDepth));
+        if (maxDepth < minDepth)
+            throw new ArgumentOutOfRangeException(nameof(maxDepth));
+
+        foreach (var entry in archive.Entries)
+        {
+            // A directory-marker entry's FullName ends in '/', which makes its Name empty -
+            // that can never equal a real file name, so no separate directory check is needed.
+            if (!entry.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var depth = entry.FullName.Count(c => c == '/');
+            if (depth >= minDepth && depth <= maxDepth)
+                yield return entry;
         }
     }
 
