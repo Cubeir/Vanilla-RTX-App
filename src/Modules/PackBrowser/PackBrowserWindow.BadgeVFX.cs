@@ -10,7 +10,7 @@ using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.UI;
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Modules.PackBrowser;
 
 /// <summary>
 /// Adds subtle, out-of-phase looping animations on top of a tag badge's existing

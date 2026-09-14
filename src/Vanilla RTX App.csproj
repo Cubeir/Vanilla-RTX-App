@@ -112,7 +112,7 @@
     <Page Update="Modules\DLSS\DLSSSwapperWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\PackBrowserWindow.xaml">
+    <Page Update="Modules\PackBrowser\PackBrowserWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>

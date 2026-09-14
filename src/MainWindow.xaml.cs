@@ -23,6 +23,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
+using Vanilla_RTX_App.Modules.PackBrowser;
 using Vanilla_RTX_App.Modules.PackUpdater;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -1468,7 +1469,7 @@ public sealed partial class MainWindow : Window
 
         WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
 
-        var packBrowserWindow = new Modules.PackBrowserWindow();
+        var packBrowserWindow = new Modules.PackBrowser.PackBrowserWindow();
         var mainAppWindow = this.AppWindow;
 
         packBrowserWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2593,7 +2594,7 @@ public sealed partial class MainWindow : Window
             // If the user already has PackBrowserWindow open, its list was built before this
             // import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var packBrowser in _childWindows.OfType<Modules.PackBrowserWindow>())
+                foreach (var packBrowser in _childWindows.OfType<Modules.PackBrowser.PackBrowserWindow>())
                     await packBrowser.LoadPacksAsync();
         }
         finally

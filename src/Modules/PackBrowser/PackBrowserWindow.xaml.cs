@@ -18,7 +18,7 @@ using WinRT.Interop;
 using WinUIEx;
 using static Vanilla_RTX_App.EnvironmentVariables;
 
-namespace Vanilla_RTX_App.Modules;
+namespace Vanilla_RTX_App.Modules.PackBrowser;
 
 public sealed partial class PackBrowserWindow : Window
 {

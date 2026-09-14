@@ -20,6 +20,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Tools;
+using Vanilla_RTX_App.Modules.PackBrowser;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
