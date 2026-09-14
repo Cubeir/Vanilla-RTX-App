@@ -25,9 +25,6 @@ https://github.com/dlemstra/Magick.NET/blob/main/License.txt
 WinUIEx:
 https://github.com/dotMorten/WinUIEx/blob/main/LICENSE
 
-markdig:
-https://github.com/xoofx/markdig/blob/main/license.txt
-
                             - - -               
 
 Vanilla RTX App - Copyright (c) June 2025 Cubeir
