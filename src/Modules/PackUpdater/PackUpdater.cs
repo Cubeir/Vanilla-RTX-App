@@ -193,22 +193,11 @@ public class PackUpdater
         try
         {
             using var archive = ZipFile.OpenRead(cachedPath);
+            var cachedPacks = await FindPacksInZip(archive);
 
-            async Task<PackManifest?> TryReadManifest(string partialPath)
-            {
-                var entry = archive.Entries.FirstOrDefault(e =>
-                    e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
-                if (entry == null) return null;
-
-                using var stream = entry.Open();
-                using var reader = new StreamReader(stream);
-                var json = await reader.ReadToEndAsync();
-                return PackManifest.Parse(json, sourcePath: entry.FullName);
-            }
-
-            var rtxManifest = await TryReadManifest("Vanilla-RTX/manifest.json");
-            var normalsManifest = await TryReadManifest("Vanilla-RTX-Normals/manifest.json");
-            var opusManifest = await TryReadManifest("Vanilla-RTX-Opus/manifest.json");
+            var rtxManifest = cachedPacks.TryGetValue(PackType.VanillaRTX, out var rtxFound) ? rtxFound.Manifest : null;
+            var normalsManifest = cachedPacks.TryGetValue(PackType.VanillaRTXNormals, out var normalsFound) ? normalsFound.Manifest : null;
+            var opusManifest = cachedPacks.TryGetValue(PackType.VanillaRTXOpus, out var opusFound) ? opusFound.Manifest : null;
 
             bool anyOutdated = false;
 
@@ -521,31 +510,12 @@ public class PackUpdater
         try
         {
             using var archive = ZipFile.OpenRead(cachePath);
+            var cachedPacks = await FindPacksInZip(archive);
 
-            async Task<string?> TryReadVersion(string partialPath)
-            {
-                try
-                {
-                    var entry = archive.Entries.FirstOrDefault(e =>
-                        e.FullName.EndsWith(partialPath, StringComparison.OrdinalIgnoreCase));
-                    if (entry == null) return null;
+            string? VersionOf(PackType packType) =>
+                cachedPacks.TryGetValue(packType, out var found) ? found.Manifest.VersionDisplay : null;
 
-                    using var stream = entry.Open();
-                    using var reader = new StreamReader(stream);
-                    var json = await reader.ReadToEndAsync();
-                    return PackManifest.Parse(json, sourcePath: entry.FullName)?.VersionDisplay;
-                }
-                catch
-                {
-                    return null;
-                }
-            }
-
-            var rtxVersion = await TryReadVersion("Vanilla-RTX/manifest.json");
-            var normalsVersion = await TryReadVersion("Vanilla-RTX-Normals/manifest.json");
-            var opusVersion = await TryReadVersion("Vanilla-RTX-Opus/manifest.json");
-
-            return (rtxVersion, normalsVersion, opusVersion);
+            return (VersionOf(PackType.VanillaRTX), VersionOf(PackType.VanillaRTXNormals), VersionOf(PackType.VanillaRTXOpus));
         }
         catch
         {
@@ -595,6 +565,67 @@ public class PackUpdater
 
         return CompareVersionArrays(remoteVersion, cachedVersion) > 0;
     }
+
+    /// <summary>
+    /// Scans a cached zipball for pack manifests, identifying each by its header + module UUID
+    /// pair - never by folder name. A GitHub codeload zipball wraps the whole repo in a
+    /// branch/commit-named folder, so manifests sit one level inside that (depth 2 from the
+    /// archive root); depth 1 is included too in case a future zipball ever drops the wrapper.
+    /// This is the single place that turns "what's in the zip" into "which of our three packs
+    /// is this", and every other method in this class that needs that answer goes through it.
+    /// </summary>
+    private async Task<Dictionary<PackType, (ZipArchiveEntry Entry, PackManifest Manifest)>> FindPacksInZip(ZipArchive archive)
+    {
+        var found = new Dictionary<PackType, (ZipArchiveEntry, PackManifest)>();
+
+        foreach (var entry in Helpers.FindZipEntriesAtDepth(archive, PackManifest.ModernFileName, minDepth: 1, maxDepth: 2))
+        {
+            var manifest = await ReadManifestFromZipEntry(entry);
+            if (manifest?.HeaderUuid == null || manifest.FirstModuleUuid == null) continue;
+
+            var packType = IdentifyPackType(manifest.HeaderUuid, manifest.FirstModuleUuid);
+            if (packType.HasValue)
+            {
+                found[packType.Value] = (entry, manifest);
+            }
+        }
+
+        return found;
+    }
+
+    private static PackType? IdentifyPackType(string headerUUID, string moduleUUID)
+    {
+        if (headerUUID == VANILLA_RTX_HEADER_UUID && moduleUUID == VANILLA_RTX_MODULE_UUID)
+            return PackType.VanillaRTX;
+        if (headerUUID == VANILLA_RTX_NORMALS_HEADER_UUID && moduleUUID == VANILLA_RTX_NORMALS_MODULE_UUID)
+            return PackType.VanillaRTXNormals;
+        if (headerUUID == VANILLA_RTX_OPUS_HEADER_UUID && moduleUUID == VANILLA_RTX_OPUS_MODULE_UUID)
+            return PackType.VanillaRTXOpus;
+        return null;
+    }
+
+    private static async Task<PackManifest?> ReadManifestFromZipEntry(ZipArchiveEntry entry)
+    {
+        try
+        {
+            using var stream = entry.Open();
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+            return PackManifest.Parse(json, sourcePath: entry.FullName);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string GetPackFolderShortName(PackType packType) => packType switch
+    {
+        PackType.VanillaRTX => "vrtx",
+        PackType.VanillaRTXNormals => "vrtxn",
+        PackType.VanillaRTXOpus => "vrtxo",
+        _ => "pack"
+    };
 
     private async Task<(PackManifest? rtx, PackManifest? normals, PackManifest? opus)?> FetchRemoteManifests()
     {
@@ -683,49 +714,54 @@ public class PackUpdater
             tempExtractionDir = Path.Combine(resourcePackPath, "__rtxapp_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempExtractionDir);
 
-            ZipFile.ExtractToDirectory(packagePath, tempExtractionDir, overwriteFiles: true);
-            Trace.WriteLine("📦 Extracted package to temporary directory");
+            var packsToProcess = new List<(string uuid, string moduleUuid, string finalName, string displayName, PackType packType)>();
 
-            var extractedManifests = Directory.GetFiles(tempExtractionDir, PackManifest.ModernFileName, SearchOption.AllDirectories);
-
-            var packsToProcess = new List<(string uuid, string moduleUuid, string? sourcePath, string finalName, string displayName, PackType packType)>();
-
-            foreach (var manifestPath in extractedManifests)
+            // Targeted extraction: identify pack folders inside the zip by manifest UUID (never
+            // by name, see FindPacksInZip), then pull only the matched folder(s) out to disk -
+            // the other pack(s) and the rest of the repo (README, .github, etc.) are never
+            // extracted at all, rather than extracting the whole zipball just to move one folder.
+            using (var archive = ZipFile.OpenRead(packagePath))
             {
-                var uuids = await ReadManifestUUIDs(manifestPath);
-                if (uuids == null) continue;
+                var foundPacks = await FindPacksInZip(archive);
 
-                var (headerUUID, moduleUUID) = uuids.Value;
-                var packSourcePath = Path.GetDirectoryName(manifestPath);
+                foreach (var (packType, found) in foundPacks)
+                {
+                    if (targetPack.HasValue && packType != targetPack.Value) continue;
+                    packsToProcess.Add((found.Manifest.HeaderUuid!, found.Manifest.FirstModuleUuid!, GetPackFolderShortName(packType), GetPackDisplayName(packType), packType));
+                }
 
-                if (headerUUID == VANILLA_RTX_HEADER_UUID && moduleUUID == VANILLA_RTX_MODULE_UUID)
+                if (packsToProcess.Count == 0)
                 {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtx", "Vanilla RTX", PackType.VanillaRTX));
+                    Trace.WriteLine(targetPack.HasValue
+                        ? $"❌ {GetPackDisplayName(targetPack.Value)} not found in the cached package."
+                        : "❌ No recognized Vanilla RTX packs found in the cached package.");
+                    return false;
                 }
-                else if (headerUUID == VANILLA_RTX_NORMALS_HEADER_UUID && moduleUUID == VANILLA_RTX_NORMALS_MODULE_UUID)
+
+                Trace.WriteLine($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
+
+                foreach (var pack in packsToProcess)
                 {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxn", "Vanilla RTX Normals", PackType.VanillaRTXNormals));
-                }
-                else if (headerUUID == VANILLA_RTX_OPUS_HEADER_UUID && moduleUUID == VANILLA_RTX_OPUS_MODULE_UUID)
-                {
-                    packsToProcess.Add((headerUUID, moduleUUID, packSourcePath, "vrtxo", "Vanilla RTX Opus", PackType.VanillaRTXOpus));
+                    var found = foundPacks[pack.packType];
+                    var zipFolderPrefix = found.Entry.FullName.Substring(0, found.Entry.FullName.Length - found.Entry.Name.Length);
+                    var destFolder = Path.Combine(tempExtractionDir, pack.finalName);
+                    Directory.CreateDirectory(destFolder);
+
+                    foreach (var entry in archive.Entries)
+                    {
+                        if (string.IsNullOrEmpty(entry.Name)) continue; // directory marker entry
+                        if (!entry.FullName.StartsWith(zipFolderPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+                        var relativePath = entry.FullName.Substring(zipFolderPrefix.Length).Replace('/', Path.DirectorySeparatorChar);
+                        var destPath = Path.Combine(destFolder, relativePath);
+
+                        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                        entry.ExtractToFile(destPath, overwrite: true);
+                    }
                 }
             }
 
-            if (targetPack.HasValue)
-            {
-                packsToProcess = packsToProcess.Where(p => p.packType == targetPack.Value).ToList();
-            }
-
-            if (packsToProcess.Count == 0)
-            {
-                Trace.WriteLine(targetPack.HasValue
-                    ? $"❌ {GetPackDisplayName(targetPack.Value)} not found in the downloaded package."
-                    : "❌ No recognized Vanilla RTX packs found in the downloaded package.");
-                return false;
-            }
-
-            Trace.WriteLine($"📦 Found {packsToProcess.Count} pack(s) to install: {string.Join(", ", packsToProcess.Select(p => p.displayName))}");
+            Trace.WriteLine("📦 Extracted targeted pack folder(s) from cached zipball");
 
             foreach (var pack in packsToProcess)
             {
@@ -736,7 +772,8 @@ public class PackUpdater
                     await DeleteExistingPackByUUID(resourcePackPath, pack.uuid, pack.moduleUuid, pack.displayName);
 
                     var finalDestination = GetSafeDirectoryName(resourcePackPath, pack.finalName);
-                    Directory.Move(pack.sourcePath!, finalDestination);
+                    var extractedPackPath = Path.Combine(tempExtractionDir, pack.finalName);
+                    Directory.Move(extractedPackPath, finalDestination);
 
                     if (enableEnhancements)
                     {
@@ -957,21 +994,8 @@ public class PackUpdater
         try
         {
             using var archive = ZipFile.OpenRead(cacheInfo.path!);
-
-            string? manifestPath = packType switch
-            {
-                PackType.VanillaRTX => "Vanilla-RTX/manifest.json",
-                PackType.VanillaRTXNormals => "Vanilla-RTX-Normals/manifest.json",
-                PackType.VanillaRTXOpus => "Vanilla-RTX-Opus/manifest.json",
-                _ => null
-            };
-
-            if (manifestPath == null) return false;
-
-            var entry = archive.Entries.FirstOrDefault(e =>
-                e.FullName.EndsWith(manifestPath, StringComparison.OrdinalIgnoreCase));
-
-            return entry != null;
+            var cachedPacks = await FindPacksInZip(archive);
+            return cachedPacks.ContainsKey(packType);
         }
         catch
         {
