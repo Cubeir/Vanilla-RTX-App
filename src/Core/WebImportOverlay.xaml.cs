@@ -16,19 +16,20 @@ namespace Vanilla_RTX_App.Core;
 
 /// <summary>
 /// A full-window WebView2 overlay that lets the user browse a real, external site (TechPowerUp
-/// for DLSS DLLs, bedrock.graphics/creator for BetterRTX presets) from inside the app, and hands
-/// whatever they downloaded there back to the caller in one batch the moment they close it.
+/// for DLSS DLLs, bedrock.graphics/creator for BetterRTX presets, the bug tracker's GitHub page)
+/// from inside the app, and hands whatever they downloaded there back to the caller in one batch
+/// the moment they close it.
 ///
-/// <para><b>Why this exists.</b> Both DLSS Swapper and BetterRTX Manager used to just launch the
-/// user's real browser via a <c>HyperlinkButton</c> and leave them to find their way back with a
-/// downloaded file in hand. Neither site has an API worth scraping (see the design notes this
+/// <para><b>Why this exists.</b> These modules used to just launch the user's real browser via a
+/// <c>HyperlinkButton</c> and leave them to find their way back with a downloaded file in hand.
+/// Neither TechPowerUp nor bedrock.graphics has an API worth scraping (see the design notes this
 /// replaced), so the reliable middle ground is: let the user do exactly what they'd do in a real
 /// browser, just without leaving the app, and watch the one folder their downloads land in.</para>
 ///
 /// <para><b>Deliberately detachable.</b> This control knows nothing about DLSS or BetterRTX - it
 /// takes a URL, a set of file extensions to watch for, static instruction text, and a callback,
-/// and that's the entire contract. Everything module-specific (what counts as a valid import, how
-/// the result gets merged into a cache, how the list gets redrawn) stays in the caller.</para>
+/// and that's the entire contract. Passing an empty extension set and a no-op callback (as the
+/// bug tracker does) turns it into a plain in-app page viewer with nothing watched at all.</para>
 ///
 /// <para><b>Only watched extensions ever get intercepted.</b> A download whose extension isn't in
 /// the watched set is left completely alone - it downloads to the user's real Downloads folder
@@ -36,10 +37,14 @@ namespace Vanilla_RTX_App.Core;
 /// swallowing an unrelated download into a staging folder that gets deleted on close would mean a
 /// user occasionally loses a file with no idea why; this way nothing is ever hidden from them.</para>
 ///
-/// <para><b>Downloads only ever get imported once, at close.</b> Not as they arrive - the
-/// <see cref="DownloadsShelf"/> is what tells the user, live, what's been downloaded and whether
-/// it finished, so they know when it's safe to click Done. The actual import - and the cleanup of
-/// the staged files afterward - happens in one batch right after.</para>
+/// <para><b>A download only ever gets imported if it actually finished.</b> The downloads shelf
+/// tracks every watched download by its own <see cref="CoreWebView2DownloadOperation"/>, not by
+/// scanning the staging folder for files that merely have the right extension - Chromium's
+/// download manager can leave a same-named file sitting there mid-transfer, and a half-written
+/// zip handed to <c>ImportZipAsync</c> is worse than not importing it at all. Closing the overlay
+/// while something is still in flight cancels it outright (the same thing closing a browser tab
+/// does to its downloads) rather than racing the staging-folder cleanup against a write still in
+/// progress.</para>
 /// </summary>
 public sealed partial class WebImportOverlay : UserControl
 {
@@ -52,8 +57,14 @@ public sealed partial class WebImportOverlay : UserControl
     private IReadOnlyList<string> _watchedExtensions = Array.Empty<string>();
     private Func<IReadOnlyList<string>, Task>? _onFilesReady;
 
+    /// <summary>Every download this session has redirected, so a still-InProgress one can be cancelled on close instead of racing the staging-folder cleanup.</summary>
+    private readonly List<CoreWebView2DownloadOperation> _liveDownloads = new();
+
+    /// <summary>Paths WebView2 itself has confirmed Completed - the only things FinalizeImportsAsync will ever hand to the caller.</summary>
+    private readonly HashSet<string> _completedPaths = new(StringComparer.OrdinalIgnoreCase);
+
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
-    private const double FADE_MS = 150;
+    private const double FADE_MS = 50;
 
     public WebImportOverlay()
     {
@@ -65,11 +76,13 @@ public sealed partial class WebImportOverlay : UserControl
     /// in <paramref name="watchedExtensions"/> is staged in a folder keyed by
     /// <paramref name="stagingTag"/> (so two overlay instances - e.g. the DLSS and BetterRTX
     /// windows both open at once - can never collide) and shown live in the downloads shelf; the
-    /// full set of matches is handed to <paramref name="onFilesReady"/> in one call once the user
-    /// closes the overlay. If nothing matched, <paramref name="onFilesReady"/> is never called at
-    /// all - a session where the user just looked around and downloaded nothing behaves exactly
-    /// as if this feature didn't exist. <paramref name="guideText"/> is a short, static sentence
-    /// telling the user what "done" means for this particular site (e.g. when to click Done).
+    /// full set of completed matches is handed to <paramref name="onFilesReady"/> in one call once
+    /// the user closes the overlay. If nothing completed, <paramref name="onFilesReady"/> is never
+    /// called at all - a session where the user just looked around and downloaded nothing (or the
+    /// bug tracker's read-only case, which watches nothing) behaves exactly as if this feature
+    /// didn't exist. <paramref name="guideText"/> is a short, static sentence telling the user what
+    /// "done" means for this particular site (e.g. when to click Done) - pass an empty string for
+    /// a plain page viewer with nothing to guide.
     /// </summary>
     public void Show(
         string url,
@@ -83,13 +96,16 @@ public sealed partial class WebImportOverlay : UserControl
         if (_isOpen) return;
         _isOpen = true;
 
-        HeaderTitleText.Text = title;
+        ((TextBlock)HeaderTitleLink.Content).Text = title;
         HeaderIcon.Glyph = glyph;
         GuideText.Text = guideText;
+        GuideText.Visibility = string.IsNullOrEmpty(guideText) ? Visibility.Collapsed : Visibility.Visible;
         _watchedExtensions = watchedExtensions;
         _onFilesReady = onFilesReady;
         _lastUrl = url;
 
+        _liveDownloads.Clear();
+        _completedPaths.Clear();
         DownloadsListPanel.Children.Clear();
         DownloadsShelf.Visibility = Visibility.Collapsed;
 
@@ -97,8 +113,9 @@ public sealed partial class WebImportOverlay : UserControl
         IsHitTestVisible = true;
         AnimateOpacity(1.0, null);
 
-        // Forces a layout pass before WebView2 initialization gets anywhere near it - see the
-        // identical comment in BugTrackerOverlay.Show for why this matters.
+        // Forces a layout pass before WebView2 initialization gets anywhere near it - the
+        // cache-hit path can resolve synchronously with no intervening yield back to the
+        // dispatcher, and a WebView2 with no real bounds can fail to initialize natively.
         UpdateLayout();
 
         _ = LoadAsync(url, stagingTag);
@@ -119,12 +136,12 @@ public sealed partial class WebImportOverlay : UserControl
 
     /// <summary>
     /// The host window's own Closed handler should call this. The Done button is the normal
-    /// close path, but nothing stops a user from closing the whole DLSS/BetterRTX window while
-    /// still mid-browse - the system titlebar's close button stays reachable the entire time
-    /// this overlay is open (see the XAML comment on <c>Panel</c>'s margin). Without this, a
-    /// download that landed seconds before that would sit in the staging folder forever, never
-    /// imported and never cleaned up - silently losing exactly the file the user just fetched.
-    /// No fade-out here; the window is already on its way down.
+    /// close path, but nothing stops a user from closing the whole window while still mid-browse -
+    /// the system titlebar's close button stays reachable the entire time this overlay is open
+    /// (see the XAML comment on <c>Panel</c>'s margin). Without this, a download that landed
+    /// seconds before that would sit in the staging folder forever, never imported and never
+    /// cleaned up - silently losing exactly the file the user just fetched. No fade-out here; the
+    /// window is already on its way down.
     /// </summary>
     public void CloseIfOpen()
     {
@@ -205,6 +222,14 @@ public sealed partial class WebImportOverlay : UserControl
 
     private void RetryButton_Click(object sender, RoutedEventArgs e) => _ = NavigateAndWaitFirstAsync(_lastUrl);
 
+    /// <summary>Opens wherever the embedded browser currently is - not necessarily the entry URL - in the user's real browser.</summary>
+    private void HeaderTitleLink_Click(object sender, RoutedEventArgs e)
+    {
+        var url = _webViewReady ? ImportWebView.CoreWebView2.Source : _lastUrl;
+        if (!string.IsNullOrEmpty(url))
+            _ = Launcher.LaunchUriAsync(new Uri(url));
+    }
+
     // =========================================================================
     // WebView2
     // =========================================================================
@@ -216,9 +241,9 @@ public sealed partial class WebImportOverlay : UserControl
         try
         {
             // A dedicated profile folder, separate from BugTrackerOverlay's own WebView2 folder -
-            // this overlay can be open on a DLSS or BetterRTX window at the same time the bug
-            // tracker overlay is open on MainWindow, and two CoreWebView2Environments pointed at
-            // the same user data folder from the same process is not a combination worth risking.
+            // this overlay can be open on a module window at the same time another top-level
+            // window is open elsewhere, and two CoreWebView2Environments pointed at the same user
+            // data folder from the same process is not a combination worth risking.
             var userDataFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "WebView2_WebImport");
             Directory.CreateDirectory(userDataFolder);
 
@@ -288,14 +313,18 @@ public sealed partial class WebImportOverlay : UserControl
 
             Trace.WriteLine($"[WebImportOverlay] Download starting -> {destPath}");
 
-            var row = AddDownloadRow(suggestedName);
             var op = e.DownloadOperation;
+            _liveDownloads.Add(op);
+
+            var row = AddDownloadRow(suggestedName);
 
             void UpdateProgress()
             {
                 if (op.TotalBytesToReceive > 0)
                 {
                     var percent = (int)(op.BytesReceived * 100 / op.TotalBytesToReceive);
+                    row.ProgressBar.IsIndeterminate = false;
+                    row.ProgressBar.Value = percent;
                     row.ProgressText.Text = $"{percent}%";
                 }
                 else
@@ -305,7 +334,7 @@ public sealed partial class WebImportOverlay : UserControl
             }
 
             op.BytesReceivedChanged += (_, _) => DispatcherQueue.TryEnqueue(UpdateProgress);
-            op.StateChanged += (_, _) => DispatcherQueue.TryEnqueue(() => OnDownloadStateChanged(op, row));
+            op.StateChanged += (_, _) => DispatcherQueue.TryEnqueue(() => OnDownloadStateChanged(op, row, destPath));
         }
         catch (Exception ex)
         {
@@ -313,15 +342,20 @@ public sealed partial class WebImportOverlay : UserControl
         }
     }
 
-    private void OnDownloadStateChanged(CoreWebView2DownloadOperation op, DownloadRow row)
+    private void OnDownloadStateChanged(CoreWebView2DownloadOperation op, DownloadRow row, string path)
     {
         switch (op.State)
         {
             case CoreWebView2DownloadState.Completed:
+                _liveDownloads.Remove(op);
+                _completedPaths.Add(path);
+
+                row.ProgressBar.IsIndeterminate = false;
+                row.ProgressBar.Value = 100;
                 row.StatusHost.Content = new FontIcon
                 {
-                    Glyph = "",
-                    FontSize = 14,
+                    Glyph = "",
+                    FontSize = 16,
                     Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 84, 178, 96))
                 };
                 row.ProgressText.Text = "Downloaded";
@@ -329,16 +363,39 @@ public sealed partial class WebImportOverlay : UserControl
                 break;
 
             case CoreWebView2DownloadState.Interrupted:
+                _liveDownloads.Remove(op);
+
+                row.ProgressBar.Visibility = Visibility.Collapsed;
                 row.StatusHost.Content = new FontIcon
                 {
-                    Glyph = "",
-                    FontSize = 14,
+                    Glyph = "",
+                    FontSize = 16,
                     Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 209, 87, 76))
                 };
-                row.ProgressText.Text = "Failed";
-                Trace.WriteLine($"[WebImportOverlay] ✗ Download interrupted: {row.FileName}");
+                row.ProgressText.Text = op.InterruptReason == CoreWebView2DownloadInterruptReason.UserCanceled
+                    ? "Cancelled"
+                    : "Failed";
+                Trace.WriteLine($"[WebImportOverlay] ✗ Download interrupted: {row.FileName} ({op.InterruptReason})");
                 break;
         }
+    }
+
+    /// <summary>Cancels anything still transferring rather than letting it race the staging-folder cleanup that follows - the same thing closing a browser tab does to its own downloads.</summary>
+    private void CancelLiveDownloads()
+    {
+        foreach (var op in _liveDownloads)
+        {
+            try
+            {
+                if (op.State == CoreWebView2DownloadState.InProgress)
+                    op.Cancel();
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[WebImportOverlay] Error cancelling in-flight download: {ex.Message}");
+            }
+        }
+        _liveDownloads.Clear();
     }
 
     // =========================================================================
@@ -349,6 +406,7 @@ public sealed partial class WebImportOverlay : UserControl
     {
         public required string FileName { get; init; }
         public required ContentControl StatusHost { get; init; }
+        public required ProgressBar ProgressBar { get; init; }
         public required TextBlock ProgressText { get; init; }
     }
 
@@ -356,30 +414,39 @@ public sealed partial class WebImportOverlay : UserControl
     {
         DownloadsShelf.Visibility = Visibility.Visible;
 
-        var row = new Grid { ColumnSpacing = 10 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         var statusHost = new ContentControl
         {
-            Width = 18,
-            Height = 18,
+            Width = 22,
+            Height = 22,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Content = new ProgressRing { IsActive = true, Width = 14, Height = 14 }
+            Content = new ProgressRing { IsActive = true, Width = 16, Height = 16 }
         };
         Grid.SetColumn(statusHost, 0);
         row.Children.Add(statusHost);
 
-        var textPanel = new StackPanel();
+        var textPanel = new StackPanel { Spacing = 4 };
         textPanel.Children.Add(new TextBlock
         {
             Text = fileName,
-            FontSize = 12,
+            FontSize = 13,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.NoWrap,
             IsTextScaleFactorEnabled = false
         });
+
+        var progressBar = new ProgressBar
+        {
+            IsIndeterminate = true,
+            Minimum = 0,
+            Maximum = 100,
+            Height = 4
+        };
+        textPanel.Children.Add(progressBar);
 
         var progressText = new TextBlock
         {
@@ -395,7 +462,7 @@ public sealed partial class WebImportOverlay : UserControl
 
         DownloadsListPanel.Children.Add(row);
 
-        return new DownloadRow { FileName = fileName, StatusHost = statusHost, ProgressText = progressText };
+        return new DownloadRow { FileName = fileName, StatusHost = statusHost, ProgressBar = progressBar, ProgressText = progressText };
     }
 
     // =========================================================================
@@ -455,30 +522,28 @@ public sealed partial class WebImportOverlay : UserControl
     }
 
     /// <summary>
-    /// Runs once the fade-out finishes. Hands every staged file matching the watched extensions
-    /// to the caller in one batch, then always cleans the staging folder regardless of whether
-    /// the callback succeeded, threw, or there was nothing to hand it at all - every file that
-    /// went through the downloads shelf is gone from disk by the time this returns, imported or
-    /// not, so nothing lingers in LocalState across sessions.
+    /// Runs once the fade-out finishes (or immediately, from <see cref="CloseIfOpen"/>). Cancels
+    /// anything still downloading, hands every genuinely-completed staged file to the caller in
+    /// one batch, then always cleans the staging folder regardless of whether the callback
+    /// succeeded, threw, or there was nothing to hand it at all - every file that went through the
+    /// downloads shelf is gone from disk by the time this returns, imported or not, so nothing
+    /// lingers in LocalState across sessions.
     /// </summary>
     private async Task FinalizeImportsAsync()
     {
+        CancelLiveDownloads();
+
         var callback = _onFilesReady;
         var stagingFolder = _stagingFolder;
+        var matches = _completedPaths.Where(File.Exists).ToList();
         _onFilesReady = null;
+        _completedPaths.Clear();
 
         try
         {
-            if (callback == null || string.IsNullOrEmpty(stagingFolder) || !Directory.Exists(stagingFolder))
-                return;
-
-            var matches = Directory.GetFiles(stagingFolder)
-                .Where(f => _watchedExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
-                .ToList();
-
-            if (matches.Count == 0)
+            if (callback == null || matches.Count == 0)
             {
-                Trace.WriteLine("[WebImportOverlay] Closed with nothing matching to import");
+                Trace.WriteLine("[WebImportOverlay] Closed with nothing completed to import");
                 return;
             }
 
@@ -493,7 +558,7 @@ public sealed partial class WebImportOverlay : UserControl
         {
             try
             {
-                if (Directory.Exists(stagingFolder))
+                if (!string.IsNullOrEmpty(stagingFolder) && Directory.Exists(stagingFolder))
                 {
                     Directory.Delete(stagingFolder, true);
                     Trace.WriteLine("[WebImportOverlay] Staging folder cleared");
@@ -507,7 +572,7 @@ public sealed partial class WebImportOverlay : UserControl
     }
 
     // =========================================================================
-    // Fade animation - identical mechanics to BugTrackerOverlay.AnimateOpacity
+    // Fade animation
     // =========================================================================
 
     private void AnimateOpacity(double to, Action? onCompleted)

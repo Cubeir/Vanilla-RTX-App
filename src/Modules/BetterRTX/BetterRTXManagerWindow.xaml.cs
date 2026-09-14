@@ -125,7 +125,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             if (_isClosing) return;
 
-            SetTitleBar(TitleBarArea);
+            SetTitleBar(TitleBarDragArea);
 
             if (Persistent.IsTargetingPreview)
             {

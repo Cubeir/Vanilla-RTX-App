@@ -3,7 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Vanilla_RTX_App"
-        xmlns:bugtracker="using:Vanilla_RTX_App.Modules.BugTracker"
+        xmlns:core="using:Vanilla_RTX_App.Core"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         Title="Vanilla RTX App"
@@ -1509,10 +1509,12 @@
 
         <!-- Bug Tracker overlay - modal, sits above every other part of the window but below
              the titlebar so the titlebar keeps showing through and
-             stays clickable while this is open. -->
-        <bugtracker:BugTrackerOverlay x:Name="BugTrackerOverlay"
-                                       Grid.ColumnSpan="2"
-                                       Canvas.ZIndex="998" />
+             stays clickable while this is open. Reuses the same in-app-browser overlay the
+             DLSS/BetterRTX windows use, pointed at the bug tracker's GitHub page with nothing
+             watched for download - see BugButton_Click. -->
+        <core:WebImportOverlay x:Name="BugTrackerOverlay"
+                                Grid.ColumnSpan="2"
+                                Canvas.ZIndex="998" />
 
     </Grid>
 </Window>

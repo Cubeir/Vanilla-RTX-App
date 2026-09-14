@@ -89,7 +89,7 @@ public sealed partial class LUTManagerWindow : Window
 
             if (_isClosing) return;
 
-            SetTitleBar(TitleBarArea);
+            SetTitleBar(TitleBarDragArea);
 
             var target = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
             WindowTitle.Text = $"RTX LUT manager - {target}";

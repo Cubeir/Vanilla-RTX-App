@@ -111,7 +111,7 @@ public sealed partial class PackBrowserWindow : Window
 
             if (_isClosing) return;
 
-            SetTitleBar(TitleBarArea);
+            SetTitleBar(TitleBarDragArea);
 
             WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
             AddPackDescriptionText.Text =

@@ -23,6 +23,7 @@
         <!-- Loading Screen -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
+              Margin="0,37,0,0"
               Background="Transparent">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -60,216 +61,45 @@
             </StackPanel>
         </Grid>
 
-        <!-- Preset Selection UI -->
+        <!-- Preset Selection UI - one flat [scrollable, fixed-bar] split; the titlebar is a
+             floating overlay (TitleBarHost below) rather than a row this panel excludes, so the
+             list can scroll all the way up underneath it. -->
         <Grid x:Name="PresetSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
-                <RowDefinition Height="32" />
+                <!-- Preset list (scrollable) -->
                 <RowDefinition Height="*" />
+                <!-- Add customized preset (fixed) -->
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Title Bar Area -->
-            <Grid Grid.Row="0"
-                  x:Name="TitleBarArea"
-                  Background="Transparent">
-                <!-- Centered Title -->
-                <Grid HorizontalAlignment="Center"
-                      VerticalAlignment="Center">
-                    <TextBlock Text=""
-                               Margin="0,2,0,0"
-                               VerticalAlignment="Center"
-                               IsTextScaleFactorEnabled="False"
-                               IsHitTestVisible="False"
-                               x:Name="WindowTitle" />
-                </Grid>
-            </Grid>
+            <!-- Shadow receiver sits behind the scroll content -->
+            <Grid x:Name="ShadowReceiverGrid"
+                  Grid.Row="0" />
 
-            <!-- Preset List + fixed Add Preset bar -->
-            <Grid Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <!-- Preset list (scrollable) -->
-                    <RowDefinition Height="*" />
-                    <!-- Add customized preset (fixed) -->
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Shadow receiver sits behind the scroll content -->
-                <Grid x:Name="ShadowReceiverGrid"
-                      Grid.Row="0" />
-
-                <ScrollViewer Grid.Row="0"
-                              Padding="20,16,24,0"
-                              Margin="0,-4,0,0"
-                              IsTextScaleFactorEnabled="False"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <!-- Wrapped both panels in a single parent StackPanel -->
-                    <StackPanel>
-                        <!-- PSA cards (Horizontal margins removed to avoid duplicating ScrollViewer padding) -->
-                        <StackPanel x:Name="BetterRTXAnnouncementsPanel"
-                                    Spacing="10"
-                                    Margin="0,12,0,14" />
-                        <!-- Preset list -->
-                        <StackPanel x:Name="PresetListContainer"
-                                    Spacing="12"
-                                    Padding="0,0,0,12"/>
-                    </StackPanel>
-                </ScrollViewer>
-
-                <!-- ══════════════════════════════════════════
-                     FIXED: Add customized preset (.rtpack)
-                ═══════════════════════════════════════════ -->
-                <Border Grid.Row="1"
-                        Margin="0"
-                        CornerRadius="0"
-                        BorderThickness="0"
-                        Translation="0,2,512"
-                        Background="Transparent">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-
-                    <Grid MinHeight="96"
-                          HorizontalAlignment="Stretch"
-                          VerticalAlignment="Bottom">
-                        <Grid.ColumnDefinitions>
-                            <!-- Add customized preset -->
-                            <ColumnDefinition Width="2.5*" />
-                            <!-- Gap 6 px -->
-                            <ColumnDefinition Width="6" />
-                            <!-- Create your own preset -->
-                            <ColumnDefinition Width="1*" />
-                        </Grid.ColumnDefinitions>
-
-                        <!-- ── ADD CUSTOMIZED PRESET ──────────────── -->
-                        <Button x:Name="AddPresetButton"
-                                Grid.Column="0"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Padding="20,0,20,0"
-                                CornerRadius="0"
-                                BorderThickness="0"
-                                IsTextScaleFactorEnabled="False"
-                                AllowDrop="True"
-                                Click="AddPresetButton_Click"
-                                DragOver="AddPresetButton_DragOver"
-                                DragEnter="AddPresetButton_DragEnter"
-                                DragLeave="AddPresetButton_DragLeave"
-                                Drop="AddPresetButton_Drop"
-                                ToolTipService.ToolTip="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="96" />
-                                    <ColumnDefinition Width="24" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0"
-                                        Width="96"
-                                        Height="96"
-                                        CornerRadius="5,0,0,5"
-                                        Background="Transparent">
-                                    <FontIcon Glyph="&#xE710;"
-                                              FontSize="44"
-                                              FontWeight="ExtraLight"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              IsTextScaleFactorEnabled="False" />
-                                </Border>
-
-                                <StackPanel Grid.Column="2"
-                                            VerticalAlignment="Center">
-                                    <TextBlock Text="Add customized preset (.rtpack)"
-                                               FontWeight="SemiBold"
-                                               TextWrapping="NoWrap"
-                                               TextTrimming="CharacterEllipsis"
-                                               IsTextScaleFactorEnabled="False" />
-                                    <TextBlock Text="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website"
-                                               FontSize="12"
-                                               Opacity="0.75"
-                                               Margin="0,2,0,0"
-                                               TextWrapping="Wrap"
-                                               TextTrimming="CharacterEllipsis"
-                                               IsTextScaleFactorEnabled="False" />
-                                </StackPanel>
-                            </Grid>
-                        </Button>
-
-                        <!-- ── CREATE YOUR OWN PRESET ─────────────── -->
-                        <!-- Solid backdrop behind the hyperlink button: HyperlinkButton's own
-                             background is too translucent against the window now that it's
-                             not sitting on top of the Add button anymore. This mimics a
-                             regular button's background while leaving hover/pressed states
-                             to the hyperlink itself. -->
-                        <Rectangle Grid.Column="2"
-                                   Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                   IsHitTestVisible="False" />
-
-                        <HyperlinkButton Grid.Column="2"
-                                         HorizontalAlignment="Stretch"
-                                         VerticalAlignment="Stretch"
-                                         HorizontalContentAlignment="Center"
-                                         Padding="0"
-                                         CornerRadius="0"
-                                         BorderThickness="0"
-                                         IsTextScaleFactorEnabled="False"
-                                         Click="CreatePresetButton_Click"
-                                         ToolTipService.ToolTip="Browse bedrock.graphics/creator right here - build a preset and it will be imported automatically when you close it.">
-                            <StackPanel HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Spacing="4">
-                                <StackPanel Orientation="Horizontal"
-                                            HorizontalAlignment="Center"
-                                            Spacing="8">
-                                    <FontIcon Glyph="&#xE71B;"
-                                              FontSize="20"
-                                              Margin="0,3,0,0"
-                                              VerticalAlignment="Center"
-                                              IsTextScaleFactorEnabled="False" />
-                                    <TextBlock Text="Create your own preset"
-                                               FontWeight="SemiBold"
-                                               FontSize="14"
-                                               VerticalAlignment="Center"
-                                               IsTextScaleFactorEnabled="False" />
-                                </StackPanel>
-                                <TextBlock Text="Browse bedrock.graphics/creator"
-                                           FontSize="11"
-                                           Opacity="0.67"
-                                           FontWeight="Medium"
-                                           TextWrapping="Wrap"
-                                           TextAlignment="Center"
-                                           IsTextScaleFactorEnabled="False" />
-                            </StackPanel>
-                        </HyperlinkButton>
-
-                        <!-- ── BEVELLED SPLIT SEAM ──────────────────── -->
-                        <Grid Grid.Column="0"
-                              HorizontalAlignment="Right"
-                              Width="3"
-                              Margin="0,0,-3,0"
-                              IsHitTestVisible="False">
-                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
-                                    BorderThickness="3,0,0,0" />
-                        </Grid>
-
-                        <Grid Grid.Column="2"
-                              HorizontalAlignment="Left"
-                              Width="3"
-                              Margin="-3,0,0,0"
-                              IsHitTestVisible="False">
-                            <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
-                                    BorderThickness="3,0,0,0" />
-                        </Grid>
-                    </Grid>
-                </Border>
-            </Grid>
+            <ScrollViewer Grid.Row="0"
+                          Padding="20,53,24,0"
+                          Margin="0,-4,0,0"
+                          IsTextScaleFactorEnabled="False"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <!-- Wrapped both panels in a single parent StackPanel -->
+                <StackPanel>
+                    <!-- PSA cards (Horizontal margins removed to avoid duplicating ScrollViewer padding) -->
+                    <StackPanel x:Name="BetterRTXAnnouncementsPanel"
+                                Spacing="10"
+                                Margin="0,12,0,14" />
+                    <!-- Preset list -->
+                    <StackPanel x:Name="PresetListContainer"
+                                Spacing="12"
+                                Padding="0,0,0,12"/>
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- Empty State -->
             <StackPanel x:Name="EmptyStatePanel"
-                        Grid.Row="1"
+                        Grid.Row="0"
+                        Margin="0,37,0,0"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         Visibility="Collapsed"
@@ -284,44 +114,245 @@
                            IsTextScaleFactorEnabled="False"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
+
+            <!-- ══════════════════════════════════════════
+                 FIXED: Add customized preset (.rtpack)
+            ═══════════════════════════════════════════ -->
+            <Border Grid.Row="1"
+                    Margin="0"
+                    CornerRadius="0"
+                    BorderThickness="0"
+                    Translation="0,2,512"
+                    Background="Transparent">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+
+                <Grid MinHeight="96"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Bottom">
+                    <Grid.ColumnDefinitions>
+                        <!-- Add customized preset -->
+                        <ColumnDefinition Width="2.5*" />
+                        <!-- Gap 6 px -->
+                        <ColumnDefinition Width="6" />
+                        <!-- Create your own preset -->
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ── ADD CUSTOMIZED PRESET ──────────────── -->
+                    <Button x:Name="AddPresetButton"
+                            Grid.Column="0"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            Padding="20,0,20,0"
+                            CornerRadius="0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            AllowDrop="True"
+                            Click="AddPresetButton_Click"
+                            DragOver="AddPresetButton_DragOver"
+                            DragEnter="AddPresetButton_DragEnter"
+                            DragLeave="AddPresetButton_DragLeave"
+                            Drop="AddPresetButton_Drop"
+                            ToolTipService.ToolTip="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="96" />
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Width="96"
+                                    Height="96"
+                                    CornerRadius="5,0,0,5"
+                                    Background="Transparent">
+                                <FontIcon Glyph="&#xE710;"
+                                          FontSize="44"
+                                          FontWeight="ExtraLight"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          IsTextScaleFactorEnabled="False" />
+                            </Border>
+
+                            <StackPanel Grid.Column="2"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Add customized preset (.rtpack)"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           IsTextScaleFactorEnabled="False" />
+                                <TextBlock Text="Drag and drop or browse for the .rtpack preset files exported from the BetterRTX website"
+                                           FontSize="12"
+                                           Opacity="0.75"
+                                           Margin="0,2,0,0"
+                                           TextWrapping="Wrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <!-- ── CREATE YOUR OWN PRESET ─────────────── -->
+                    <!-- Solid backdrop behind the hyperlink button: HyperlinkButton's own
+                         background is too translucent against the window now that it's
+                         not sitting on top of the Add button anymore. This mimics a
+                         regular button's background while leaving hover/pressed states
+                         to the hyperlink itself. -->
+                    <Rectangle Grid.Column="2"
+                               Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                               IsHitTestVisible="False" />
+
+                    <HyperlinkButton Grid.Column="2"
+                                     HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Stretch"
+                                     HorizontalContentAlignment="Center"
+                                     Padding="0"
+                                     CornerRadius="0"
+                                     BorderThickness="0"
+                                     IsTextScaleFactorEnabled="False"
+                                     Click="CreatePresetButton_Click"
+                                     ToolTipService.ToolTip="Browse bedrock.graphics/creator right here - build a preset and it will be imported automatically when you close it.">
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Spacing="4">
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Spacing="8">
+                                <FontIcon Glyph="&#xE71B;"
+                                          FontSize="20"
+                                          Margin="0,3,0,0"
+                                          VerticalAlignment="Center"
+                                          IsTextScaleFactorEnabled="False" />
+                                <TextBlock Text="Create your own preset"
+                                           FontWeight="SemiBold"
+                                           FontSize="14"
+                                           VerticalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                            <TextBlock Text="Browse bedrock.graphics/creator"
+                                       FontSize="11"
+                                       Opacity="0.67"
+                                       FontWeight="Medium"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                        </StackPanel>
+                    </HyperlinkButton>
+
+                    <!-- ── BEVELLED SPLIT SEAM ──────────────────── -->
+                    <Grid Grid.Column="0"
+                          HorizontalAlignment="Right"
+                          Width="3"
+                          Margin="0,0,-3,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonDarkBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+
+                    <Grid Grid.Column="2"
+                          HorizontalAlignment="Left"
+                          Width="3"
+                          Margin="-3,0,0,0"
+                          IsHitTestVisible="False">
+                        <Rectangle Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                        <Border BorderBrush="{ThemeResource FakeSplitButtonBrightBorderColor}"
+                                BorderThickness="3,0,0,0" />
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
 
-        <!-- Refresh Button -->
-        <Button x:Name="RefreshButton"
-                Width="52"
-                Height="36"
-                Margin="32,1,0,0"
-                Padding="0"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Top"
-                CornerRadius="0, 0, 6, 6"
-                Click="RefreshButton_Click"
-                Translation="0,0,16"
-                IsTextScaleFactorEnabled="False"
-                ToolTipService.ToolTip="Resets cache, clearing all imported presets and downloaded files from BetterRTX API, forcing a refetch.
-                &#x0a;&#x0a;Note: This happens automatically whenever Minecraft is updated (always) or periodically whenever changes in the API are detected (possibly, but not guranteed), hence this button exists for you to trigger a manual refresh in case BetterRTX delievers its updates with a delay or the API pretends to remain the same after rolling out updates.
-                &#x0a;&#x0a;Note 2: This button won't clear your Default RTX preset, which is backed up upon your first attempt at installing a preset. Only game updates can trigger a reset of Default preset, so ultimately the app can pick up the new defaults fresh from the new update of your game.">
-            <Button.Shadow>
-                <ThemeShadow />
-            </Button.Shadow>
-            <Grid>
-                <FontIcon x:Name="RefreshIcon"
-                          Glyph="&#xE72C;"
-                          FontSize="16"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center"
-                          Margin="0, -3, 0, 0"
-                          IsTextScaleFactorEnabled="False" />
-                <TextBlock x:Name="RefreshCountdownText"
-                           FontSize="14"
-                           FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
+        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
+             always sits on top of whatever the list has scrolled beneath it ══════════════ -->
+        <Grid x:Name="TitleBarHost"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              Canvas.ZIndex="100">
+
+            <Border x:Name="TitleBarBackground"
+                    Height="37"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
+                    BorderThickness="0,0,0,6"
+                    CornerRadius="0"
+                    Translation="0,0,32"
+                    IsHitTestVisible="False">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+            </Border>
+
+            <!-- Drag area skips the left ~48px where the refresh button below lives, same
+                 exclusion MainWindow's own drag area makes for its titlebar button cluster. -->
+            <Border x:Name="TitleBarDragArea"
+                    Height="32"
+                    Margin="48,-1,0,0"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    IsHitTestVisible="False" />
+
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Top"
+                  Margin="0,-2,0,0">
+                <TextBlock x:Name="WindowTitle"
+                           Text=""
+                           Margin="0,7,0,5"
                            VerticalAlignment="Center"
-                           Margin="0, -3, 0, 0"
-                           Visibility="Collapsed"
-                           IsTextScaleFactorEnabled="False" />
+                           IsTextScaleFactorEnabled="False"
+                           IsHitTestVisible="False" />
             </Grid>
-        </Button>
+
+            <!-- ══ Titlebar Actions - restyled to match MainWindow/Alchitex's titlebar button
+                 convention (SubtleButtonStyle, 40x35, CornerRadius 0). Just the one button here,
+                 so no separator. ══════════════════════════════════════════ -->
+            <Border x:Name="TitleBarActions"
+                    Margin="-2,-2,0,0"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Left"
+                    Height="34"
+                    Width="Auto">
+                <Grid Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="1">
+                    <Button x:Name="RefreshButton"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Width="40"
+                            Height="35"
+                            CornerRadius="0"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            Click="RefreshButton_Click"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Resets cache, clearing all imported presets and downloaded files from BetterRTX API, forcing a refetch.
+                            &#x0a;&#x0a;Note: This happens automatically whenever Minecraft is updated (always) or periodically whenever changes in the API are detected (possibly, but not guranteed), hence this button exists for you to trigger a manual refresh in case BetterRTX delievers its updates with a delay or the API pretends to remain the same after rolling out updates.
+                            &#x0a;&#x0a;Note 2: This button won't clear your Default RTX preset, which is backed up upon your first attempt at installing a preset. Only game updates can trigger a reset of Default preset, so ultimately the app can pick up the new defaults fresh from the new update of your game.">
+                        <Grid>
+                            <FontIcon x:Name="RefreshIcon"
+                                      Glyph="&#xE72C;"
+                                      FontSize="16"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      IsTextScaleFactorEnabled="False" />
+                            <TextBlock x:Name="RefreshCountdownText"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed"
+                                       IsTextScaleFactorEnabled="False" />
+                        </Grid>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
 
         <core:WebImportOverlay x:Name="WebImportOverlay" />
     </Grid>

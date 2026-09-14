@@ -23,6 +23,7 @@
         <!-- Loading Screen -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
+              Margin="0,37,0,0"
               Background="Transparent">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -60,31 +61,13 @@
             </StackPanel>
         </Grid>
 
-        <!-- Main UI -->
+        <!-- Main UI - one flat content area; the titlebar is a floating overlay (TitleBarHost
+             below) rather than a row this excludes. Nothing here scrolls, so a plain top margin
+             is enough to clear it. -->
         <Grid x:Name="MainPanel"
               Visibility="Collapsed">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="32" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <!-- Title Bar -->
-            <Grid Grid.Row="0"
-                  x:Name="TitleBarArea"
-                  Background="Transparent">
-                <Grid HorizontalAlignment="Center"
-                      VerticalAlignment="Center">
-                    <TextBlock x:Name="WindowTitle"
-                               Text="RTX Look-Up Table manager"
-                               Margin="0,2,0,0"
-                               VerticalAlignment="Center"
-                               IsTextScaleFactorEnabled="False"
-                               IsHitTestVisible="False" />
-                </Grid>
-            </Grid>
-
             <!-- Content -->
-            <Grid Grid.Row="1">
+            <Grid Margin="0,37,0,0">
                 <Grid.RowDefinitions>
                     <!-- Row 0: Button pair -->
                     <RowDefinition Height="Auto" />
@@ -219,7 +202,48 @@
                     </Image>
                 </Grid>
 
-                
+
+            </Grid>
+        </Grid>
+
+        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
+             always sits on top ══════════════════════════════════════════ -->
+        <Grid x:Name="TitleBarHost"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              Canvas.ZIndex="100">
+
+            <Border x:Name="TitleBarBackground"
+                    Height="37"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
+                    BorderThickness="0,0,0,6"
+                    CornerRadius="0"
+                    Translation="0,0,32"
+                    IsHitTestVisible="False">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+            </Border>
+
+            <Border x:Name="TitleBarDragArea"
+                    Height="32"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    IsHitTestVisible="False" />
+
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Top"
+                  Margin="0,-2,0,0">
+                <TextBlock x:Name="WindowTitle"
+                           Text="RTX Look-Up Table manager"
+                           Margin="0,7,0,5"
+                           VerticalAlignment="Center"
+                           IsTextScaleFactorEnabled="False"
+                           IsHitTestVisible="False" />
             </Grid>
         </Grid>
     </Grid>

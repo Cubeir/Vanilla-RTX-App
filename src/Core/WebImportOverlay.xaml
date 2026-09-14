@@ -10,9 +10,10 @@
              IsHitTestVisible="False"
              IsTextScaleFactorEnabled="False">
 
-    <!-- Edge-to-edge over the window, save for the 32px titlebar strip above it so the system
-         titlebar (drag region + caption buttons) stays reachable while this is open. No separate
-         click-outside blocker - the panel already covers everything worth clicking outside of.
+    <!-- Edge-to-edge over the window, save for the 37px titlebar strip above it (matches every
+         module window's own TitleBarBackground height) so the system titlebar stays reachable
+         while this is open, and the overlay reads as sitting directly beneath it - same bevel,
+         same shadow, no gap.
 
          Background is deliberately SolidBackgroundFillColorBase (a Color resource, wrapped as a
          plain opaque brush) rather than the usual CardBackgroundFillColorDefaultBrush every other
@@ -22,7 +23,7 @@
          content bleed straight through and rendered as garbled overlapping text. -->
     <Border x:Name="Panel"
             Background="{ThemeResource SolidBackgroundFillColorBase}"
-            Margin="0,32,0,0"
+            Margin="0,37,0,0"
             Translation="0,0,64">
         <Border.Shadow>
             <ThemeShadow />
@@ -31,13 +32,17 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Header -->
+            <!-- Header - one single Auto-height row so the Done button (which fills it top to
+                 bottom) grows along with the guide text wrapping to a second line, rather than
+                 the two living in separate fixed-height rows. No Grid.Padding here on purpose -
+                 the Done button has to reach the true top/right/bottom edges of this block with
+                 nothing sitting between it and them, so every other child carries its own margin
+                 instead of relying on a shared inset. -->
             <Grid Grid.Row="0"
-                  Padding="14,8,10,8">
+                  MinHeight="52">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -46,6 +51,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="3" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -53,18 +59,25 @@
                           Grid.Column="0"
                           Glyph="&#xE71B;"
                           FontSize="16"
-                          Margin="0,1,10,0"
+                          Margin="16,0,10,0"
                           VerticalAlignment="Center"
                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
-                <TextBlock x:Name="HeaderTitleText"
-                           Grid.Column="1"
-                           Text=""
-                           FontSize="15"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"
-                           TextWrapping="NoWrap"
-                           IsTextScaleFactorEnabled="False" />
+                <!-- A real hyperlink to wherever the embedded browser currently is - see
+                     HeaderTitleLink_Click. Accent-colored by the control's own default style,
+                     matching the icon beside it, so the whole block reads as "this is a link". -->
+                <HyperlinkButton x:Name="HeaderTitleLink"
+                                 Grid.Column="1"
+                                 Padding="0"
+                                 VerticalAlignment="Center"
+                                 Click="HeaderTitleLink_Click"
+                                 ToolTipService.ToolTip="Open this page in your default browser">
+                    <TextBlock Text=""
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               TextWrapping="NoWrap"
+                               IsTextScaleFactorEnabled="False" />
+                </HyperlinkButton>
 
                 <Button x:Name="BackButton"
                         Grid.Column="3"
@@ -73,6 +86,7 @@
                         Height="32"
                         Padding="0"
                         Margin="0,0,2,0"
+                        VerticalAlignment="Center"
                         IsEnabled="False"
                         Click="BackButton_Click"
                         ToolTipService.ToolTip="Back">
@@ -86,6 +100,7 @@
                         Height="32"
                         Padding="0"
                         Margin="0,0,2,0"
+                        VerticalAlignment="Center"
                         IsEnabled="False"
                         Click="ForwardButton_Click"
                         ToolTipService.ToolTip="Forward">
@@ -98,38 +113,53 @@
                         Width="32"
                         Height="32"
                         Padding="0"
+                        VerticalAlignment="Center"
                         Click="ReloadButton_Click"
                         ToolTipService.ToolTip="Reload">
                     <FontIcon Glyph="&#xE72C;" FontSize="14" />
                 </Button>
 
+                <!-- Static, caller-supplied instruction ("what does Done mean here") - sandwiched
+                     between the nav buttons and the Done button instead of its own row, so it
+                     spends the width that used to sit empty rather than its own vertical space.
+                     Free to wrap; MinHeight above keeps the row from collapsing to nothing while
+                     it does. -->
+                <TextBlock x:Name="GuideText"
+                           Grid.Column="6"
+                           Text=""
+                           FontSize="12"
+                           Opacity="0.7"
+                           Margin="16,10,16,10"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           IsTextScaleFactorEnabled="False" />
+
+                <Rectangle Grid.Column="7"
+                           Fill="{ThemeResource SystemAccentColorLight3}" />
+
+                <!-- Fills the entire header block, flush against the window's right edge, the
+                     titlebar above and the divider below - same "big flush corner button" look as
+                     MainWindow's Preview toggle, achieved the same way: a 3px accent bevel
+                     (the Rectangle above) standing in for that button's own fake-split border. -->
                 <Button x:Name="CloseButton"
-                        Grid.Column="7"
+                        Grid.Column="8"
                         Style="{ThemeResource AccentButtonStyle}"
-                        Padding="18,6,18,6"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        MinWidth="120"
+                        Padding="28,0,28,0"
+                        Margin="0"
+                        CornerRadius="0"
                         Click="CloseButton_Click"
                         ToolTipService.ToolTip="Close - anything you downloaded here will be imported automatically">
                     <TextBlock Text="Done"
-                               FontSize="13"
+                               FontSize="15"
                                FontWeight="SemiBold"
                                IsTextScaleFactorEnabled="False" />
                 </Button>
             </Grid>
 
-            <!-- Guide text - a plain, static instruction the caller supplies (what "done" means
-                 for this particular site), not a live status readout. Live download status is
-                 the DownloadsShelf floating over the page itself, where progress is actually
-                 happening. -->
-            <TextBlock x:Name="GuideText"
-                       Grid.Row="1"
-                       Text=""
-                       FontSize="12"
-                       Opacity="0.7"
-                       Margin="14,0,14,10"
-                       TextWrapping="Wrap"
-                       IsTextScaleFactorEnabled="False" />
-
-            <Border Grid.Row="1"
+            <Border Grid.Row="0"
                     VerticalAlignment="Bottom"
                     Height="1"
                     Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
@@ -137,7 +167,7 @@
             <!-- Content - ImportWebView is never Visibility=Collapsed: a WebView2 with no layout
                  bounds can fail its native initialization, so Loading/Error are opaque full-bleed
                  covers stacked on top of it instead of a visibility swap on the WebView2 itself. -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="1">
                 <WebView2 x:Name="ImportWebView" />
 
                 <Grid x:Name="LoadingState"
@@ -195,8 +225,8 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
                         Margin="0,0,16,16"
-                        Width="320"
-                        MaxHeight="220"
+                        Width="360"
+                        MaxHeight="280"
                         Translation="0,0,48">
                     <Border.Shadow>
                         <ThemeShadow />
@@ -209,18 +239,18 @@
 
                         <TextBlock Grid.Row="0"
                                    Text="Downloads"
-                                   FontSize="12"
+                                   FontSize="13"
                                    FontWeight="SemiBold"
                                    Opacity="0.7"
-                                   Margin="14,10,14,6"
+                                   Margin="16,12,16,8"
                                    IsTextScaleFactorEnabled="False" />
 
                         <ScrollViewer Grid.Row="1"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
-                                      Padding="14,0,14,12">
+                                      Padding="16,0,16,14">
                             <StackPanel x:Name="DownloadsListPanel"
-                                        Spacing="10" />
+                                        Spacing="14" />
                         </ScrollViewer>
                     </Grid>
                 </Border>

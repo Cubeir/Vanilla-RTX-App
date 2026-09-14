@@ -109,7 +109,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
 
             if (_isClosing) return;
 
-            SetTitleBar(TitleBarArea);
+            SetTitleBar(TitleBarDragArea);
 
             var text = EnvironmentVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
             WindowTitle.Text = $"Vanilla RTX resource packs for {text}";

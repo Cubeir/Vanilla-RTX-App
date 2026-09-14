@@ -1248,7 +1248,14 @@ public sealed partial class MainWindow : Window
 
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
-        BugTrackerOverlay.Toggle();
+        BugTrackerOverlay.Show(
+            url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking#-unresolved",
+            title: "Known Minecraft RTX Bugs & Issues",
+            glyph: "",
+            guideText: "",
+            stagingTag: "BugTracker",
+            watchedExtensions: Array.Empty<string>(),
+            onFilesReady: _ => Task.CompletedTask);
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }
     private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)

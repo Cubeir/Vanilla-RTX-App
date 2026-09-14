@@ -21,31 +21,13 @@
             </Border.Background>
         </Border>
 
-        <!-- Main Layout -->
+        <!-- Main Layout - one flat scrollable area; the titlebar is a floating overlay
+             (TitleBarHost below) rather than a row this excludes, so content can scroll all
+             the way up underneath it. -->
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="32" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <!-- Title Bar Area -->
-            <Grid Grid.Row="0"
-                  x:Name="TitleBarArea"
-                  Background="Transparent">
-                <Grid HorizontalAlignment="Center"
-                      VerticalAlignment="Center">
-                    <TextBlock Text="Install or update Vanilla RTX resource packs"
-                               Margin="0,0,0,0"
-                               VerticalAlignment="Center"
-                               IsTextScaleFactorEnabled="False"
-                               IsHitTestVisible="False"
-                               x:Name="WindowTitle" />
-                </Grid>
-            </Grid>
-
             <!-- Scrollable Content Area -->
-            <ScrollViewer Grid.Row="1"
-                          x:Name="ContentScrollViewer"
+            <ScrollViewer x:Name="ContentScrollViewer"
+                          Padding="0,37,0,0"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="12"
@@ -792,6 +774,47 @@
                 </StackPanel>
             </ScrollViewer>
 
+        </Grid>
+
+        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
+             always sits on top of whatever content has scrolled beneath it ══════════════ -->
+        <Grid x:Name="TitleBarHost"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top"
+              Canvas.ZIndex="100">
+
+            <Border x:Name="TitleBarBackground"
+                    Height="37"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
+                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
+                    BorderThickness="0,0,0,6"
+                    CornerRadius="0"
+                    Translation="0,0,32"
+                    IsHitTestVisible="False">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+            </Border>
+
+            <Border x:Name="TitleBarDragArea"
+                    Height="32"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="Transparent"
+                    IsHitTestVisible="False" />
+
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Top"
+                  Margin="0,-2,0,0">
+                <TextBlock x:Name="WindowTitle"
+                           Text="Install or update Vanilla RTX resource packs"
+                           Margin="0,7,0,5"
+                           VerticalAlignment="Center"
+                           IsTextScaleFactorEnabled="False"
+                           IsHitTestVisible="False" />
+            </Grid>
         </Grid>
 
     </Grid>

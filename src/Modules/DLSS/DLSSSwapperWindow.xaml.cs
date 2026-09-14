@@ -83,7 +83,7 @@ public sealed partial class DLSSSwapperWindow : Window
 
             if (_isClosing) return;
 
-            SetTitleBar(TitleBarArea);
+            SetTitleBar(TitleBarDragArea);
 
             var text = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
             WindowTitle.Text = $"Swap DLSS version for {text}";
