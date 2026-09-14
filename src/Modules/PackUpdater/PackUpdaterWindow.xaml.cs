@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -60,10 +59,6 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
     private DispatcherTimer? _installingAnimationTimer;
     private int _animationDots = 0;
 
-    /// <summary>The window's own title, restored after a transient status message - see <see cref="ShowTransientTitleMessage"/>.</summary>
-    private string _defaultWindowTitle = "";
-    private CancellationTokenSource? _titleMessageCts;
-
     public PackUpdaterWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
@@ -117,8 +112,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
             SetTitleBar(TitleBarDragArea);
 
             var text = EnvironmentVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            _defaultWindowTitle = $"Vanilla RTX resource packs for {text}";
-            WindowTitle.Text = _defaultWindowTitle;
+            WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
             await InitializePackInformation();
             if (_isClosing) return;
@@ -142,7 +136,6 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
             root.Loaded -= PackUpdaterWindow_Loaded;
 
         StopInstallingAnimation();
-        _titleMessageCts?.Cancel();
 
         ThemeService.ThemeChanged -= ApplyTheme;
         this.Closed -= PackUpdaterWindow_Closed;
@@ -558,18 +551,15 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
             if (success)
             {
                 Trace.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
-                ShowTransientTitleMessage($"Installed {GetPackDisplayName(packType)}");
             }
             else
             {
                 Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
-                ShowTransientTitleMessage($"Failed to install {GetPackDisplayName(packType)}");
             }
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
-            ShowTransientTitleMessage($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
         }
         finally
         {
@@ -580,37 +570,6 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
             await RefreshInstalledVersions();
             await FetchAndDisplayRemoteVersions();
         }
-    }
-
-    /// <summary>
-    /// Briefly replaces the titlebar text with a result message, then restores it - the same
-    /// "communicate what just happened, then settle back" pattern PackBrowserWindow and
-    /// Alchitex already use their title for. A second call cancels the first's revert rather
-    /// than letting two timers race to write the title back.
-    /// </summary>
-    private void ShowTransientTitleMessage(string message, int seconds = 4)
-    {
-        _titleMessageCts?.Cancel();
-        var cts = new CancellationTokenSource();
-        _titleMessageCts = cts;
-
-        WindowTitle.Text = message;
-        _ = RevertTitleAfterDelay(cts.Token, seconds);
-    }
-
-    private async Task RevertTitleAfterDelay(CancellationToken token, int seconds)
-    {
-        try
-        {
-            await Task.Delay(TimeSpan.FromSeconds(seconds), token);
-        }
-        catch (TaskCanceledException)
-        {
-            return;
-        }
-
-        if (!token.IsCancellationRequested)
-            WindowTitle.Text = _defaultWindowTitle;
     }
 
     private async Task RefreshInstalledVersions()
