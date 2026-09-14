@@ -665,7 +665,7 @@
                                      ═════════════════════════════════════════════════════ -->
                                 <Border x:Name="SupportSection"
                                         Margin="24,0,24,18"
-                                        CornerRadius="6"
+                                        CornerRadius="0"
                                         Padding="20,18,20,18"
                                         Translation="0,0,32"
                                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
