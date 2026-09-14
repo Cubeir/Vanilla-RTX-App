@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
@@ -485,23 +486,10 @@ public sealed partial class DLSSSwapperWindow : Window
             if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
             {
                 var items = await e.DataView.GetStorageItemsAsync();
+                var paths = items.OfType<Windows.Storage.StorageFile>().Select(f => f.Path).ToList();
 
-                foreach (var item in items)
-                {
-                    if (item is Windows.Storage.StorageFile file)
-                    {
-                        var extension = file.FileType.ToLower();
-
-                        if (extension == ".dll")
-                            await _swapper.ImportDllAsync(file.Path);
-                        else if (extension == ".zip")
-                            await _swapper.ImportZipAsync(file.Path);
-                        else
-                            Trace.WriteLine($"[DLSS] Skipped unsupported file type: {extension}");
-                    }
-                }
-
-                await LoadDllsAsync(true);
+                if (paths.Count > 0)
+                    await ImportDllFilesAsync(paths);
             }
         }
         catch (Exception ex)
@@ -528,16 +516,7 @@ public sealed partial class DLSSSwapperWindow : Window
             var files = await picker.PickMultipleFilesAsync();
 
             if (files != null && files.Count > 0)
-            {
-                foreach (var file in files)
-                {
-                    if (file.FileType.Equals(".zip", StringComparison.OrdinalIgnoreCase))
-                        await _swapper.ImportZipAsync(file.Path);
-                    else if (file.FileType.Equals(".dll", StringComparison.OrdinalIgnoreCase))
-                        await _swapper.ImportDllAsync(file.Path);
-                }
-                await LoadDllsAsync(true);
-            }
+                await ImportDllFilesAsync(files.Select(f => f.Path));
         }
         catch (Exception ex)
         {
@@ -560,27 +539,43 @@ public sealed partial class DLSSSwapperWindow : Window
             url: "https://www.techpowerup.com/download/nvidia-dlss-dll/",
             title: "Download DLSS files",
             glyph: "",
-            guideText: "Once you've downloaded your desired DLSS dll files, click Done.",
+            guideText: "Once your your desired DLSS dll files have finished downloading, click Done.",
             stagingTag: "DLSS",
             watchedExtensions: new[] { ".dll", ".zip" },
-            onFilesReady: ImportDownloadedFilesAsync);
+            onFilesReady: ImportDllFilesAsync);
     }
 
-    private async Task ImportDownloadedFilesAsync(IReadOnlyList<string> filePaths)
+    /// <summary>
+    /// The one place any DLSS file - manually browsed for, dragged in, or downloaded through
+    /// <see cref="WebImportOverlay"/> - actually gets imported. Filtering, the import loop, the
+    /// list refresh and the transient titlebar result message all live here exactly once, so
+    /// every entry point reports the same way rather than only the newest one remembering to.
+    /// </summary>
+    private async Task ImportDllFilesAsync(IEnumerable<string> filePaths)
     {
-        foreach (var path in filePaths)
+        var candidates = filePaths
+            .Where(p => p.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            Trace.WriteLine("[DLSS] No supported DLSS files (.dll/.zip) in selection");
+            return;
+        }
+
+        foreach (var path in candidates)
         {
             if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 await _swapper.ImportZipAsync(path);
-            else if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            else
                 await _swapper.ImportDllAsync(path);
         }
 
         await LoadDllsAsync(true);
 
-        ShowTransientTitleMessage(filePaths.Count == 1
-            ? "Imported 1 downloaded DLSS file"
-            : $"Imported {filePaths.Count} downloaded DLSS files");
+        ShowTransientTitleMessage(candidates.Count == 1
+            ? "Imported 1 DLSS file"
+            : $"Imported {candidates.Count} DLSS files");
     }
 
     /// <summary>

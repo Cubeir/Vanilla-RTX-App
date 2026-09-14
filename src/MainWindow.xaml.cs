@@ -1255,7 +1255,7 @@ public sealed partial class MainWindow : Window
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
         InAppBrowserOverlay.Show(
-            url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking#-unresolved",
+            url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md#-unresolved",
             title: "Known Minecraft RTX Bugs & Issues",
             glyph: "",
             guideText: "",

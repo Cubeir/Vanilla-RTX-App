@@ -932,7 +932,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             url: "https://bedrock.graphics/creator",
             title: "Create your own preset",
             glyph: "",
-            guideText: "Once you've customized your preset, click Export, and export as .rtpack. Once downloaded, click Done.",
+            guideText: "Once you've customized your preset, click Export, and export as .rtpack. Once downloaded, click Done; It'll auto-import & you can install it from the window.",
             stagingTag: "BetterRTX",
             watchedExtensions: BetterRTXManager.SupportedCustomPresetExtensions,
             onFilesReady: ImportCustomPresetsAsync);

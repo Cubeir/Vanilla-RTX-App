@@ -156,10 +156,11 @@
                                 Spacing="8">
                         <FontIcon x:Name="CloseButtonIcon"
                                   Glyph="&#xE930;"
-                                  FontSize="15" />
+                                  Margin="0,4,0,0"
+                                  FontSize="18" />
                         <TextBlock x:Name="CloseButtonText"
                                    Text="Done"
-                                   FontSize="15"
+                                   FontSize="16"
                                    FontWeight="SemiBold"
                                    IsTextScaleFactorEnabled="False" />
                     </StackPanel>
