@@ -69,14 +69,14 @@ public sealed partial class PsaCard : UserControl
 
         foreach (var item in items)
         {
-            var card = new PsaCard(item);
+            var card = new PsaCard(item, sharpenCorners: sharpCorners);
             if (cardFontSize is { } size) card.CardFontSize = size;
 
             host.Children.Add(card);
         }
     }
 
-    public PsaCard(PsaItem item, bool sharpCorners = false)
+    public PsaCard(PsaItem item, bool sharpenCorners = false)
     {
         InitializeComponent();
         _text = item.Text;
@@ -119,7 +119,7 @@ public sealed partial class PsaCard : UserControl
                 ContentText.Opacity = 0.85;
                 break;
         }
-        if (sharpCorners)
+        if (sharpenCorners)
         {
             CardBorder.CornerRadius = new CornerRadius(0);
             DismissButton.CornerRadius = new CornerRadius(0);
