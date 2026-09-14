@@ -1,7 +1,7 @@
 # Credits
-Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Spaceowl, Joseph, Willström, Bastha, PotatoHour, Kittygamer123, Lanaismymommy, James Kelly, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, OmarVillegas, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, Commander Grub, The_Asa_Games, Koiboi, jamesyoung, Nick Da Fox, Richard Anderson (Rich), Jacob, DomoTurbulence, Rory, Luxalios, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, 67, Ryan S Beers, TyTGM, AgusRomero0501, IcyFer, Smiletrap, Justin Klaassen, Dogtag, Kudo Cyylentaar — and to everyone who has supported this project in any way along the way.
+Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Joseph, Dabadking, Spaceowl, Willström, Bastha, PotatoHour, Kittygamer123, Lanaismymommy, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, Commander Grub, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, The_Asa_Games, Koiboi, jamesyoung, Richard Anderson (Rich), Jacob, Luxalios, DomoTurbulence, Rory, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, Ryan S Beers, TyTGM, AgusRomero0501, IcyFer, Justin Klaassen, Dogtag, Kudo Cyylentaar, OmarVillegas, Horizon, Arkan, Nick Da Fox, Harambebe, 정재원, 정재원 – and to everyone who has supported this project in any way along the way.
 
-Consider supporting development of Vanilla RTX — maybe you'll find your name here next time!
+Maybe you'll find your name here next time!?
 
 # PSA
 
@@ -152,8 +152,8 @@ Diligently working on it! Expect its initial arrival later next month. I'm tryin
 # AlchitexAnnouncements [glyph:"F1D6"]
 RTX Reactor can add full RTX support to any texture pack. Results may vary and not all texture packs or all textures will be perfect.
 Select the packs you want first from the main menu, then come here and press the giant RTX Reactor button.
-Packs that are marked as "RTX Reactor Candidate" in the pack selection menu are more likely to be suitable for gaining RTX support through RTX Reactor.
-Marketplace resource packs are not supported.
+Packs that are marked as 'RTX Reactor Candidate' in the pack selection menu are more likely to be suitable for gaining RTX support through RTX Reactor.
+Texture packs from Minecraft Marketplace are not supported.
 
 ### Info [glyph:"E946"]
 Difference of Secondary PBR texture options:
