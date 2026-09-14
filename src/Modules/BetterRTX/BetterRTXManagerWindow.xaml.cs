@@ -162,6 +162,8 @@ public sealed partial class BetterRTXManagerWindow : Window
         _downloadQueue.Clear();
         lock (_downloadStatusLock) { _downloadStatuses.Clear(); }
 
+        WebImportOverlay.CloseIfOpen();
+
         _closingCts.Cancel();
 
         _cooldownTimer?.Stop();
@@ -908,6 +910,28 @@ public sealed partial class BetterRTXManagerWindow : Window
 
 
     #region custom preset handlers
+
+    /// <summary>
+    /// bedrock.graphics/creator has no API worth scraping - it's a build-your-own-preset tool,
+    /// not a static file list. Rather than send the user out to their real browser and leave
+    /// them to find their way back with a .rtpack in hand, they build it right here; whatever
+    /// they download gets imported automatically once they close the overlay. See
+    /// <see cref="WebImportOverlay"/> for the mechanism, which knows nothing about BetterRTX
+    /// specifically - it just hands back whatever matched and lets this reuse the exact same
+    /// <see cref="ImportCustomPresetsAsync"/> a manual drag-and-drop already goes through.
+    /// </summary>
+    private void CreatePresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        WebImportOverlay.Show(
+            url: "https://bedrock.graphics/creator",
+            title: "Create your own preset",
+            glyph: "",
+            guideText: "Once you've customized your preset, click Export, and export as .rtpack. Once downloaded, click Done.",
+            stagingTag: "BetterRTX",
+            watchedExtensions: BetterRTXManager.SupportedCustomPresetExtensions,
+            onFilesReady: ImportCustomPresetsAsync);
+    }
+
     private async void AddPresetButton_Click(object sender, RoutedEventArgs e)
     {
         try

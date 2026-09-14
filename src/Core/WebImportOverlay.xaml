@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Vanilla_RTX_App.Core.WebImportOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Visibility="Collapsed"
+             Opacity="0"
+             IsHitTestVisible="False"
+             IsTextScaleFactorEnabled="False">
+
+    <!-- Edge-to-edge over the window, save for the 32px titlebar strip above it so the system
+         titlebar (drag region + caption buttons) stays reachable while this is open. No separate
+         click-outside blocker - the panel already covers everything worth clicking outside of.
+
+         Background is deliberately SolidBackgroundFillColorBase (a Color resource, wrapped as a
+         plain opaque brush) rather than the usual CardBackgroundFillColorDefaultBrush every other
+         card in this app uses - that one carries real alpha, designed to look right sitting on
+         top of the window's own acrylic backdrop. There is nothing behind this panel but the live
+         window content it's supposed to be replacing, so anything less than fully opaque let that
+         content bleed straight through and rendered as garbled overlapping text. -->
+    <Border x:Name="Panel"
+            Background="{ThemeResource SolidBackgroundFillColorBase}"
+            Margin="0,32,0,0"
+            Translation="0,0,64">
+        <Border.Shadow>
+            <ThemeShadow />
+        </Border.Shadow>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0"
+                  Padding="14,8,10,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <FontIcon x:Name="HeaderIcon"
+                          Grid.Column="0"
+                          Glyph="&#xE71B;"
+                          FontSize="16"
+                          Margin="0,1,10,0"
+                          VerticalAlignment="Center"
+                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+                <TextBlock x:Name="HeaderTitleText"
+                           Grid.Column="1"
+                           Text=""
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           TextWrapping="NoWrap"
+                           IsTextScaleFactorEnabled="False" />
+
+                <Button x:Name="BackButton"
+                        Grid.Column="3"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Margin="0,0,2,0"
+                        IsEnabled="False"
+                        Click="BackButton_Click"
+                        ToolTipService.ToolTip="Back">
+                    <FontIcon Glyph="&#xE72B;" FontSize="14" />
+                </Button>
+
+                <Button x:Name="ForwardButton"
+                        Grid.Column="4"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Margin="0,0,2,0"
+                        IsEnabled="False"
+                        Click="ForwardButton_Click"
+                        ToolTipService.ToolTip="Forward">
+                    <FontIcon Glyph="&#xE72A;" FontSize="14" />
+                </Button>
+
+                <Button x:Name="ReloadButton"
+                        Grid.Column="5"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Click="ReloadButton_Click"
+                        ToolTipService.ToolTip="Reload">
+                    <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                </Button>
+
+                <Button x:Name="CloseButton"
+                        Grid.Column="7"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Padding="18,6,18,6"
+                        Click="CloseButton_Click"
+                        ToolTipService.ToolTip="Close - anything you downloaded here will be imported automatically">
+                    <TextBlock Text="Done"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               IsTextScaleFactorEnabled="False" />
+                </Button>
+            </Grid>
+
+            <!-- Guide text - a plain, static instruction the caller supplies (what "done" means
+                 for this particular site), not a live status readout. Live download status is
+                 the DownloadsShelf floating over the page itself, where progress is actually
+                 happening. -->
+            <TextBlock x:Name="GuideText"
+                       Grid.Row="1"
+                       Text=""
+                       FontSize="12"
+                       Opacity="0.7"
+                       Margin="14,0,14,10"
+                       TextWrapping="Wrap"
+                       IsTextScaleFactorEnabled="False" />
+
+            <Border Grid.Row="1"
+                    VerticalAlignment="Bottom"
+                    Height="1"
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <!-- Content - ImportWebView is never Visibility=Collapsed: a WebView2 with no layout
+                 bounds can fail its native initialization, so Loading/Error are opaque full-bleed
+                 covers stacked on top of it instead of a visibility swap on the WebView2 itself. -->
+            <Grid Grid.Row="2">
+                <WebView2 x:Name="ImportWebView" />
+
+                <Grid x:Name="LoadingState"
+                      Background="{ThemeResource SolidBackgroundFillColorBase}">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="14">
+                        <ProgressRing IsActive="True"
+                                      Width="36"
+                                      Height="36"
+                                      HorizontalAlignment="Center" />
+                        <TextBlock x:Name="LoadingText"
+                                   Text="Loading..."
+                                   Opacity="0.75"
+                                   HorizontalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid x:Name="ErrorState"
+                      Visibility="Collapsed"
+                      Background="{ThemeResource SolidBackgroundFillColorBase}">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                MaxWidth="400"
+                                Spacing="12">
+                        <FontIcon Glyph="&#xEB5E;"
+                                  FontSize="28"
+                                  Opacity="0.7"
+                                  HorizontalAlignment="Center" />
+                        <TextBlock x:Name="ErrorText"
+                                   Text="An internet connection is required to load this page."
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Opacity="0.85"
+                                   IsTextScaleFactorEnabled="False" />
+                        <Button Content="Try Again"
+                                HorizontalAlignment="Center"
+                                Click="RetryButton_Click" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Downloads shelf - a small floating, opaque card (not the translucent card
+                     brush - same reasoning as Panel above) anchored over the page, bottom-right.
+                     Collapsed until the first watched-extension download starts, then stays up
+                     for the rest of the session so the user can see exactly what came down and
+                     whether it finished - this is the entire answer to "how do I know when it's
+                     safe to click Done". -->
+                <Border x:Name="DownloadsShelf"
+                        Visibility="Collapsed"
+                        Background="{ThemeResource SolidBackgroundFillColorBase}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,16,16"
+                        Width="320"
+                        MaxHeight="220"
+                        Translation="0,0,48">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Downloads"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.7"
+                                   Margin="14,10,14,6"
+                                   IsTextScaleFactorEnabled="False" />
+
+                        <ScrollViewer Grid.Row="1"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="14,0,14,12">
+                            <StackPanel x:Name="DownloadsListPanel"
+                                        Spacing="10" />
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

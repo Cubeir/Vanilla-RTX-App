@@ -3055,47 +3055,18 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)
 
-- Inviestigate and fix the egdecase where previewer stops displaying toggle images,
-the one that'sb een happening with preview button for a while now... fix it 
-
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
-
->> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX
->> Add a "Gaming" LUT preset, whole day all day colors rapidly changing, greyscale skies, colorful directional lights
 
 - Do the TODOs scattered in the code
 
 - Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
 
 
-- Must ditch the module-in-window structure
+- Should ditch the module-in-window structure
 everything must be on main window, like most modern winui apps do
 the design choice was an organic one, simple way to limit the lifecycle of presentation while letting background run
 some thoughts need to be thunk surrounding this shift, some features can't be used in parallel, etc..
-
-- More previewer asset ideas:
-random block renders thrown in there
-iconns/logos of features of app thrown in there too, one for each would be enough
-Idea, of a render of a Tuner block, but each side features one of the feature-unique icons you've made!
-Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
-Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
-
-- Do the DLSS swapper expansion, have it load from SOMEWHERE, as an option perhaps...
-Options: Parse TechPowerUP HTMLs and resolve to destination (flaky) but maybe there are
-publicly maintained apis to do this too.
-WHATEVER YOU DO: make it secondary to the primary manner of its workings, y'know? be clever with the design
-
->>> Think up a way to make CUSTOM BRTX preset and DLSS flows more seamless
-> How? Open the page directly in webview, take the files back directly into the app -- make the flow SIMPLER! than the ideas above or in classes themselves
-
-For DLSS Swapper
-You MIGHT BE able to first, in isolation, write something to parse the HTML and pick DLSS versions
-if that succeeds
-You can move on to implementing it into the app... just parsing and retrieving dlls in isolation first
-if that succeeds, can move on.
-
-A grand rework idea of sorts..
 
 */
 // ============================================================================================================
@@ -3141,7 +3112,6 @@ two arrays passed in
 both arrays must select the same image/same rng etc..
 - Slowly rework and improve art vessels, introduce 1-2 variants for some static buttons, maybe fire could burn brighter when delete button
 gets clicked, if the above is implemented, things can look really nice
-
 > This whole thing would've worked a lot easier if you weren't trying to be a smartass and minimize the number of vessels used for lampanimator/previewer
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links

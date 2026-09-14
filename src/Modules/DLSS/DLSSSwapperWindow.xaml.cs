@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -16,9 +17,6 @@ using WinUIEx;
 using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.DLSS;
-
-// TODO: Upgrade DLSS Swapper to pull dlls from a third party API like BetterRTX Manager.
-// Keep the current manual import pipeline, just add a new potential Source, list dlls, etc...
 
 /// <summary>
 /// The DLSS swapper's window: chrome, the version list it draws, drag/drop and the file
@@ -110,6 +108,8 @@ public sealed partial class DLSSSwapperWindow : Window
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
+
+        WebImportOverlay.CloseIfOpen();
 
         ThemeService.ThemeChanged -= ApplyTheme;
         this.Closed -= DLSSSwapperWindow_Closed;
@@ -537,6 +537,40 @@ public sealed partial class DLSSSwapperWindow : Window
         {
             Trace.WriteLine($"[DLSS] Error adding file: {ex.Message}");
         }
+    }
+
+    // ======================= Browse for DLSS files (WebImportOverlay) =======================
+
+    /// <summary>
+    /// TechPowerUp has no API worth scraping and no source is as consistently up to date -
+    /// so instead of leaving the user to a real browser and a manual re-import, they browse it
+    /// right here. Whatever they download that looks like a DLSS runtime gets imported
+    /// automatically once they close the overlay - see <see cref="WebImportOverlay"/> for the
+    /// mechanism, which knows nothing about DLSS specifically.
+    /// </summary>
+    private void DownloadDllsButton_Click(object sender, RoutedEventArgs e)
+    {
+        WebImportOverlay.Show(
+            url: "https://www.techpowerup.com/download/nvidia-dlss-dll/",
+            title: "Download DLSS files",
+            glyph: "",
+            guideText: "Once you've downloaded your desired DLSS dll files, click Done.",
+            stagingTag: "DLSS",
+            watchedExtensions: new[] { ".dll", ".zip" },
+            onFilesReady: ImportDownloadedFilesAsync);
+    }
+
+    private async Task ImportDownloadedFilesAsync(IReadOnlyList<string> filePaths)
+    {
+        foreach (var path in filePaths)
+        {
+            if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                await _swapper.ImportZipAsync(path);
+            else if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                await _swapper.ImportDllAsync(path);
+        }
+
+        await LoadDllsAsync(true);
     }
 
     private async void DllButton_Click(object sender, RoutedEventArgs e)
