@@ -1236,6 +1236,7 @@ public sealed partial class MainWindow : Window
             stagingTag: "Help",
             watchedExtensions: Array.Empty<string>(),
             onFilesReady: _ => Task.CompletedTask);
+        _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
     private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
