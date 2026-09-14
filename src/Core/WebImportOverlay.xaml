@@ -59,7 +59,7 @@
                           Grid.Column="0"
                           Glyph="&#xE71B;"
                           FontSize="16"
-                          Margin="16,0,10,0"
+                          Margin="16,2,10,0"
                           VerticalAlignment="Center"
                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
