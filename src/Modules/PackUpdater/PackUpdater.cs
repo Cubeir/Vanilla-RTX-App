@@ -747,16 +747,19 @@ public class PackUpdater
                     var destFolder = Path.Combine(tempExtractionDir, pack.finalName);
                     Directory.CreateDirectory(destFolder);
 
-                    foreach (var entry in archive.Entries)
+                    // Same entry-to-path resolution ExpImpDel's import uses (Helpers.EnumerateZipFolderExtraction) -
+                    // only the write strategy differs, since this method already runs off the UI
+                    // thread via its caller's own Task.Run and doesn't need ExpImpDel's per-file one.
+                    foreach (var (entry, targetPath, isDirectory) in Helpers.EnumerateZipFolderExtraction(archive, zipFolderPrefix, destFolder))
                     {
-                        if (string.IsNullOrEmpty(entry.Name)) continue; // directory marker entry
-                        if (!entry.FullName.StartsWith(zipFolderPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+                        if (isDirectory)
+                        {
+                            Directory.CreateDirectory(targetPath);
+                            continue;
+                        }
 
-                        var relativePath = entry.FullName.Substring(zipFolderPrefix.Length).Replace('/', Path.DirectorySeparatorChar);
-                        var destPath = Path.Combine(destFolder, relativePath);
-
-                        Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-                        entry.ExtractToFile(destPath, overwrite: true);
+                        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+                        entry.ExtractToFile(targetPath, overwrite: true);
                     }
                 }
             }

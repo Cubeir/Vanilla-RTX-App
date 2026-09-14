@@ -376,20 +376,9 @@ public static class ExpImpDel
 
         Directory.CreateDirectory(finalDestination);
 
-        foreach (var entry in zip.Entries)
+        foreach (var (entry, targetPath, isDirectory) in Helpers.EnumerateZipFolderExtraction(zip, packRootInZip, finalDestination))
         {
-            if (!entry.FullName.StartsWith(packRootInZip, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var relativePath = entry.FullName
-                .Substring(packRootInZip.Length)
-                .Replace('/', Path.DirectorySeparatorChar);
-
-            if (string.IsNullOrEmpty(relativePath)) continue;
-
-            var targetPath = Path.Combine(finalDestination, relativePath);
-
-            if (entry.FullName.EndsWith('/'))
+            if (isDirectory)
             {
                 Directory.CreateDirectory(targetPath);
                 continue;

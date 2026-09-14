@@ -609,6 +609,35 @@ public static class Helpers
 
 
     /// <summary>
+    /// Resolves every zip entry that lives under <paramref name="folderPrefixInZip"/> (a folder's
+    /// own <c>FullName</c>, trailing '/' included) to where it belongs under
+    /// <paramref name="destinationDirectory"/>, with the prefix stripped and '/' converted to the
+    /// platform separator. Pure path computation only - it does not touch disk or open any entry,
+    /// so it carries none of a caller's I/O or threading strategy. That is deliberate: PackUpdater
+    /// (already running off the UI thread via its caller) writes files inline, while ExpImpDel's
+    /// import runs directly off a UI-thread button handler and wraps each file in its own
+    /// <c>Task.Run</c> to keep the window responsive during a large pack - sharing this enumerator
+    /// lets both use the same "which entries, what target path" logic without forcing either one
+    /// onto the other's threading model.
+    /// </summary>
+    public static IEnumerable<(ZipArchiveEntry Entry, string TargetPath, bool IsDirectory)> EnumerateZipFolderExtraction(
+        ZipArchive archive, string folderPrefixInZip, string destinationDirectory)
+    {
+        foreach (var entry in archive.Entries)
+        {
+            if (!entry.FullName.StartsWith(folderPrefixInZip, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var relativePath = entry.FullName.Substring(folderPrefixInZip.Length).Replace('/', Path.DirectorySeparatorChar);
+            if (string.IsNullOrEmpty(relativePath)) continue;
+
+            var targetPath = Path.Combine(destinationDirectory, relativePath);
+            yield return (entry, targetPath, entry.FullName.EndsWith('/'));
+        }
+    }
+
+
+    /// <summary>
     /// Removes Minecraft's section-sign formatting codes (§a, §l, §r...) from a pack name or
     /// description, leaving the text the player actually reads.
     ///
