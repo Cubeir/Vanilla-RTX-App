@@ -3074,22 +3074,46 @@ public sealed partial class MainWindow : Window
 
 - Do the TODOs scattered in the code
 
-- Mayhaps, switch to JSdelivr or a similar cdn to lift some weight off of github
+- Dedicated settings menu in a similar fashion as most other WinUI apps
+and restructuring the whole thing, no more module-in-Windows, all in main window, changes the whole page.
 
+settings menu could host:
+game data and game install locations
+cache reset button
+a modular way to adjust behavior of launch button
+expose every single hardcoded URL, what goes were
+DLSS PROVIDER, must be a page u can download dlss dlls etc.. from
+betterrtx preset creator provider -- must return or allow download of an .rtpack, these are just ui guide texts, but gives a good
+clue of what we'll be gunning for.
+
+so. many. other urls can be exposed for what goes where.
+all for user to edit
+all stored locally.
+internals are the defaults
+resetting cache shows internals in there.
+so nothing gets touched internally
+
+all additions
 
 - Should ditch the module-in-window structure
 everything must be on main window, like most modern winui apps do
 the design choice was an organic one, simple way to limit the lifecycle of presentation while letting background run
 some thoughts need to be thunk surrounding this shift, some features can't be used in parallel, etc..
 
-*/
-// ============================================================================================================
-/* THE GULAG - These ideas are here for a reason, they are either shite, or just need more work put into thems
+Make the app a a NAVIGABLE PLACE rather than a module launcher.
+everything keeps running in the background and so long as it does, continues to disable other features similar to current design.
+thins is the current design enforces this pretty nicely
+leaving a window kills a lot of its temp info/tasks
+so other things become available
+it sort of.. Holds the user in the windiw by their choice and if they leave its their fault, you don't have to babysit.
+but
+figure a better design honestly... something cleaner to work with.
 
 - IDEA:
 Update the documentation, be more through, make ### sections for each button/feature name
 make alt-clicking a feature in the app, take the user to the readme.md in THAT section! aka a quick way to read on features
 with detailed tooltips in the app, this is so unneeded, but y'know? ideas are ideas
+And if you do it, getting rid of documentation button might be an idea to consider.
 
 - If BetterRTX Manager is ever to be reworked to separate Servicing from Presentation
 the whole code path related to backing up defaults can be pruned.
@@ -3097,18 +3121,6 @@ instead, adapt another approach that redirects mat.bin files via materials.index
 
 Also A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
 In there, allow LOTS OF things
-- functionality of existing titlebar buttons
-allowing register/de-registering of of the app as a .mcpack opener (which directs packs through packbrowser's import)
-Allow selection of a custom paths for game's install paths, etc.. what gdk/userdata locators already find are the defaults there
-but still, allow the user to select any other path they want
-
-A class winui 3.0 app settings menu is what you should go for.
-Even the shift+clicking lamp to copy logs can be offloaded there...
-
-you could even let user construct what the Launch button does/changes! let them disable/enable vsync, rtx, and in-game graphics mode switching changes
-e.g. the constructor
-
-then you can eliminate the whole messy codepath related to Holding shift to perform elevated actions!
 
 - Add something to actively resolve junctions/symlinks everywhere
 apparently some third party launchers use them for other things, like userdata, as well..
@@ -3116,17 +3128,13 @@ apparently some third party launchers use them for other things, like userdata, 
 
 - Make holding shift turn the lamp Green to indicate its debugging functionality
 
-- Account for different font scalings, windows accessibility settings, etc...
-gonna need lots of painstakingly redoing xamls but if one day you have an abundance of time sure why not
-
 - Make a  secondary image fade in and out briefly over lampinteraction when clicked
 same as bottom vessel
 so you can create this feeling of lamp shining brighter while its just the translucent parts being overlayed
-two arrays passed in
+two identical arrays passed in
 both arrays must select the same image/same rng etc..
 - Slowly rework and improve art vessels, introduce 1-2 variants for some static buttons, maybe fire could burn brighter when delete button
 gets clicked, if the above is implemented, things can look really nice
-> This whole thing would've worked a lot easier if you weren't trying to be a smartass and minimize the number of vessels used for lampanimator/previewer
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line, customize its visuals, etc... to make it look like before with layering tricks
