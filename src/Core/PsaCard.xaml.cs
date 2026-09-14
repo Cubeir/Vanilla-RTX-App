@@ -31,8 +31,8 @@ public sealed partial class PsaCard : UserControl
     /// its own the next time the fetch works.
     /// </summary>
     private static readonly PsaItem RetrievalFailedNotice = new(
-        "An error occurred when trying to retrieve the texts for this module, please try again " +
-        "later and make sure the app has internet access. Some features may not work without internet.",
+        "An error occurred when trying to retrieve the texts for this module, please try again later " +
+        "and make sure the app has internet access. Some features may be limited without internet.",
         PsaKind.Pinned,
         Glyph: "EB5E");
 
@@ -55,7 +55,7 @@ public sealed partial class PsaCard : UserControl
     /// Deliberately lives here rather than on OnlineTexts: this is a card, and the log-facing
     /// PSA feed reads OnlineTexts directly, so it can't pick this up by accident.
     /// </summary>
-    public static void Populate(Panel host, PsaItem[]? source, double? cardFontSize = null)
+    public static void Populate(Panel host, PsaItem[]? source, double? cardFontSize = null, bool sharpCorners = false)
     {
         if (host is null) return;
 
@@ -76,7 +76,7 @@ public sealed partial class PsaCard : UserControl
         }
     }
 
-    public PsaCard(PsaItem item)
+    public PsaCard(PsaItem item, bool sharpCorners = false)
     {
         InitializeComponent();
         _text = item.Text;
@@ -118,6 +118,11 @@ public sealed partial class PsaCard : UserControl
                 CardBorder.Shadow = null;
                 ContentText.Opacity = 0.85;
                 break;
+        }
+        if (sharpCorners)
+        {
+            CardBorder.CornerRadius = new CornerRadius(0);
+            DismissButton.CornerRadius = new CornerRadius(0);
         }
     }
     private static string FormatCooldownTooltip(int? cooldownMinutes)

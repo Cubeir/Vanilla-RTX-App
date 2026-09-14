@@ -203,7 +203,7 @@ public sealed partial class Alchitex : Window
             _backdrop.Start();
 
             AlchitexVariables.LoadSettings();
-            PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements);
+            PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements, sharpCorners: true);
             BuildSupportSection();
             SeedSupportScrollCooldownIfNeeded();
 
