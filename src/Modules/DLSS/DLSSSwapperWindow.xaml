@@ -79,8 +79,8 @@
                   Grid.Row="0" />
 
             <ScrollViewer Grid.Row="0"
-                          Padding="20,37,20,0"
-                          Margin="0,0,0,0"
+                          Padding="20,0,20,0"
+                          Margin="0,37,0,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">

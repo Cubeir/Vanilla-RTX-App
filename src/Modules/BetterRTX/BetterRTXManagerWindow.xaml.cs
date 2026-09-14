@@ -80,6 +80,10 @@ public sealed partial class BetterRTXManagerWindow : Window
     public bool OperationSuccessful { get; private set; } = false;
     public string StatusMessage { get; private set; } = "";
 
+    /// <summary>The window's own title, restored after a transient status message - see <see cref="ShowTransientTitleMessage"/>.</summary>
+    private string _defaultWindowTitle = "";
+    private CancellationTokenSource? _titleMessageCts;
+
     public BetterRTXManagerWindow()
     {
         this.InitializeComponent();
@@ -107,7 +111,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         // The centered title dims with the window, same as the system's caption buttons
         // beside it - this window has no titlebar controls of its own to include.
-        TitleBarFocus.Attach(this, WindowTitle);
+        TitleBarFocus.Attach(this, WindowTitle, TitleBarActions);
 
         this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.brtx.ico"));
 
@@ -134,7 +138,8 @@ public sealed partial class BetterRTXManagerWindow : Window
                 return;
             }
 
-            WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
+            _defaultWindowTitle = "BetterRTX Preset Manager - Minecraft Release";
+            WindowTitle.Text = _defaultWindowTitle;
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -158,6 +163,7 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
+        _titleMessageCts?.Cancel();
 
         _downloadQueue.Clear();
         lock (_downloadStatusLock) { _downloadStatuses.Clear(); }
@@ -1272,7 +1278,43 @@ public sealed partial class BetterRTXManagerWindow : Window
 
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
+
+        ShowTransientTitleMessage(successCount == candidates.Count
+            ? (successCount == 1 ? "Imported 1 preset" : $"Imported {successCount} presets")
+            : $"Imported {successCount}/{candidates.Count} presets - {candidates.Count - successCount} failed");
     }
+
+    /// <summary>
+    /// Briefly replaces the titlebar text with a result message, then restores it - the same
+    /// "communicate what just happened, then settle back" pattern PackBrowserWindow and
+    /// Alchitex already use their title for. A second call cancels the first's revert rather
+    /// than letting two timers race to write the title back.
+    /// </summary>
+    private void ShowTransientTitleMessage(string message, int seconds = 4)
+    {
+        _titleMessageCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _titleMessageCts = cts;
+
+        WindowTitle.Text = message;
+        _ = RevertTitleAfterDelay(cts.Token, seconds);
+    }
+
+    private async Task RevertTitleAfterDelay(CancellationToken token, int seconds)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(seconds), token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (!token.IsCancellationRequested)
+            WindowTitle.Text = _defaultWindowTitle;
+    }
+
     private async void PresetButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.Tag != null)

@@ -152,10 +152,17 @@
                         CornerRadius="0"
                         Click="CloseButton_Click"
                         ToolTipService.ToolTip="Close - anything you downloaded here will be imported automatically">
-                    <TextBlock Text="Done"
-                               FontSize="15"
-                               FontWeight="SemiBold"
-                               IsTextScaleFactorEnabled="False" />
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8">
+                        <FontIcon x:Name="CloseButtonIcon"
+                                  Glyph="&#xE930;"
+                                  FontSize="15" />
+                        <TextBlock x:Name="CloseButtonText"
+                                   Text="Done"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   IsTextScaleFactorEnabled="False" />
+                    </StackPanel>
                 </Button>
             </Grid>
 
@@ -204,9 +211,17 @@
                                    TextAlignment="Center"
                                    Opacity="0.85"
                                    IsTextScaleFactorEnabled="False" />
-                        <Button Content="Try Again"
-                                HorizontalAlignment="Center"
-                                Click="RetryButton_Click" />
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="8">
+                            <Button x:Name="GetRuntimeButton"
+                                    Content="Get WebView2 Runtime"
+                                    Visibility="Collapsed"
+                                    Style="{ThemeResource AccentButtonStyle}"
+                                    Click="GetRuntimeButton_Click" />
+                            <Button Content="Try Again"
+                                    Click="RetryButton_Click" />
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
 

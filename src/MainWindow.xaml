@@ -1507,12 +1507,12 @@
             </Grid>
         </Grid>
 
-        <!-- Bug Tracker overlay - modal, sits above every other part of the window but below
-             the titlebar so the titlebar keeps showing through and
-             stays clickable while this is open. Reuses the same in-app-browser overlay the
-             DLSS/BetterRTX windows use, pointed at the bug tracker's GitHub page with nothing
-             watched for download - see BugButton_Click. -->
-        <core:WebImportOverlay x:Name="BugTrackerOverlay"
+        <!-- In-app browser overlay - modal, sits above every other part of the window but below
+             the titlebar so the titlebar keeps showing through and stays clickable while this
+             is open. The same control the DLSS/BetterRTX windows use to browse TechPowerUp and
+             bedrock.graphics; here it's shared by the Bug and Help buttons, both plain viewers
+             with nothing watched for download - see BugButton_Click / HelpButton_Click. -->
+        <core:WebImportOverlay x:Name="InAppBrowserOverlay"
                                 Grid.ColumnSpan="2"
                                 Canvas.ZIndex="998" />
 

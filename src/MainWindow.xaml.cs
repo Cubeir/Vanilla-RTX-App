@@ -1228,8 +1228,14 @@ public sealed partial class MainWindow : Window
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
-        Log("Find helpful resources in the README file, launching in your default browser shortly.", LogLevel.Informational);
-        _ = OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation");
+        InAppBrowserOverlay.Show(
+            url: "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation",
+            title: "Vanilla RTX App Documentation",
+            glyph: "",
+            guideText: "",
+            stagingTag: "Help",
+            watchedExtensions: Array.Empty<string>(),
+            onFilesReady: _ => Task.CompletedTask);
     }
     private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
@@ -1248,7 +1254,7 @@ public sealed partial class MainWindow : Window
 
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
-        BugTrackerOverlay.Show(
+        InAppBrowserOverlay.Show(
             url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking#-unresolved",
             title: "Known Minecraft RTX Bugs & Issues",
             glyph: "",

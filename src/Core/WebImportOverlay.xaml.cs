@@ -50,10 +50,15 @@ public sealed partial class WebImportOverlay : UserControl
 {
     private bool _isOpen;
     private bool _webViewReady;
+
+    /// <summary>Set when <see cref="EnsureWebViewAsync"/> fails specifically because the shared Evergreen WebView2 Runtime isn't installed on this machine, rather than some other init failure - see <see cref="GetRuntimeButton_Click"/>.</summary>
+    private bool _runtimeMissing;
+
     private Storyboard? _fadeStoryboard;
 
     private string _stagingFolder = string.Empty;
     private string _lastUrl = string.Empty;
+    private string _lastStagingTag = string.Empty;
     private IReadOnlyList<string> _watchedExtensions = Array.Empty<string>();
     private Func<IReadOnlyList<string>, Task>? _onFilesReady;
 
@@ -103,6 +108,17 @@ public sealed partial class WebImportOverlay : UserControl
         _watchedExtensions = watchedExtensions;
         _onFilesReady = onFilesReady;
         _lastUrl = url;
+        _lastStagingTag = stagingTag;
+
+        // Nothing watched means there's nothing this page could hand back - a plain viewer
+        // (the bug tracker, a README) rather than an import flow, so the button reads
+        // "Return" instead of "Done".
+        var isPlainViewer = watchedExtensions.Count == 0;
+        CloseButtonIcon.Glyph = isPlainViewer ? "" : "";
+        CloseButtonText.Text = isPlainViewer ? "Return" : "Done";
+        ToolTipService.SetToolTip(CloseButton, isPlainViewer
+            ? "Close this page"
+            : "Close - anything you downloaded here will be imported automatically");
 
         _liveDownloads.Clear();
         _completedPaths.Clear();
@@ -164,7 +180,10 @@ public sealed partial class WebImportOverlay : UserControl
 
         if (!_webViewReady)
         {
-            ShowError("Could not initialize the embedded browser needed to show this page.");
+            ShowError(_runtimeMissing
+                ? "This feature needs the Microsoft Edge WebView2 Runtime, which doesn't seem to be installed. Get it, then try again."
+                : "Could not initialize the embedded browser needed to show this page.");
+            GetRuntimeButton.Visibility = _runtimeMissing ? Visibility.Visible : Visibility.Collapsed;
             return;
         }
 
@@ -220,7 +239,15 @@ public sealed partial class WebImportOverlay : UserControl
         ErrorState.Visibility = Visibility.Collapsed;
     }
 
-    private void RetryButton_Click(object sender, RoutedEventArgs e) => _ = NavigateAndWaitFirstAsync(_lastUrl);
+    /// <summary>
+    /// Re-runs the whole load sequence, not just navigation - if the very first attempt failed
+    /// because <see cref="EnsureWebViewAsync"/> itself never succeeded (no WebView2 to navigate
+    /// with at all), retrying only the navigation would just throw on a null CoreWebView2.
+    /// </summary>
+    private void RetryButton_Click(object sender, RoutedEventArgs e) => _ = LoadAsync(_lastUrl, _lastStagingTag);
+
+    private void GetRuntimeButton_Click(object sender, RoutedEventArgs e) =>
+        _ = Launcher.LaunchUriAsync(new Uri("https://go.microsoft.com/fwlink/p/?LinkId=2124703"));
 
     /// <summary>Opens wherever the embedded browser currently is - not necessarily the entry URL - in the user's real browser.</summary>
     private void HeaderTitleLink_Click(object sender, RoutedEventArgs e)
@@ -260,6 +287,12 @@ public sealed partial class WebImportOverlay : UserControl
         }
         catch (Exception ex)
         {
+            // 0x80070002 (ERROR_FILE_NOT_FOUND) is what CreateCoreWebView2EnvironmentWithOptions
+            // returns when the shared Evergreen WebView2 Runtime isn't installed at all - checked
+            // by HRESULT rather than catching WebView2RuntimeNotFoundException by type, since that
+            // keeps working regardless of which WebView2 SDK version ends up referenced.
+            _runtimeMissing = ex.HResult == unchecked((int)0x80070002);
+
             Trace.WriteLine($"[WebImportOverlay] WebView2 init failed: {ex.GetType().FullName} (0x{ex.HResult:X8}): {ex.Message}");
             Trace.WriteLine(ex.ToString());
         }

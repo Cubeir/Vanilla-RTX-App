@@ -78,8 +78,8 @@
                   Grid.Row="0" />
 
             <ScrollViewer Grid.Row="0"
-                          Padding="20,53,24,0"
-                          Margin="0,-4,0,0"
+                          Padding="20,16,24,0"
+                          Margin="0,37,0,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
@@ -337,7 +337,7 @@
                         <Grid>
                             <FontIcon x:Name="RefreshIcon"
                                       Glyph="&#xE72C;"
-                                      FontSize="16"
+                                      FontSize="14"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"
                                       IsTextScaleFactorEnabled="False" />
