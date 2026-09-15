@@ -67,7 +67,7 @@
         <Grid x:Name="PresetSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
-                <!-- Fixed notices (Preview warning / no-backup warning) -->
+                <!-- No-backup notice (fixed) -->
                 <RowDefinition Height="Auto" />
                 <!-- Preset list (scrollable) -->
                 <RowDefinition Height="*" />
@@ -75,104 +75,49 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- ══════════════════════════════════════════
-                Fixed notices
+            <!-- Kept out of the scroller: it means nothing in the list below can be
+                 installed, so it should not be possible to scroll away from it. Being the
+                 only thing above the scroller it also carries the 37px the floating
+                 titlebar needs - ApplyNotices() moves that offset between the two. -->
+            <Border x:Name="DefaultMissingCard"
+                    Grid.Row="0"
+                    Margin="20,49,24,0"
+                    Visibility="Collapsed"
+                    CornerRadius="6"
+                    Padding="6"
+                    Translation="0,0,32"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
 
-                Both are static Pinned-PsaCard lookalikes: same corner radius, padding,
-                translation, shadow and accent glyph as Core\PsaCard.xaml, minus the dismiss
-                button, because there is nothing here for the user to dismiss. Unlike the
-                announcements below they live outside the ScrollViewer so they can't be
-                scrolled away from - which is also why this panel, not the scroller, carries
-                the 37px the floating titlebar needs whenever it is shown.
+                <Grid HorizontalAlignment="Stretch"
+                      VerticalAlignment="Top"
+                      Margin="16,8,16,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-                The panel is collapsed when both cards are, or its margin alone would push
-                the list down. ApplyFixedNotices() owns all three visibilities and the offset.
-            ═══════════════════════════════════════════ -->
-            <StackPanel x:Name="FixedNoticesPanel"
-                        Grid.Row="0"
-                        Visibility="Collapsed"
-                        Spacing="10"
-                        Margin="20,49,24,0">
+                    <FontIcon Grid.Column="0"
+                              Glyph="&#xE7BA;"
+                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              FontSize="20"
+                              VerticalAlignment="Top"
+                              Margin="0,5,0,0"
+                              IsHitTestVisible="False"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
-                <!-- Minecraft Preview: supported, but not what BetterRTX is built against. -->
-                <Border x:Name="PreviewWarningCard"
-                        Visibility="Collapsed"
-                        CornerRadius="6"
-                        Padding="6"
-                        Translation="0,0,32"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-
-                    <Grid HorizontalAlignment="Stretch"
-                          VerticalAlignment="Top"
-                          Margin="16,8,16,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <FontIcon Grid.Column="0"
-                                  Glyph="&#xE7BA;"
-                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  FontSize="20"
-                                  VerticalAlignment="Top"
-                                  Margin="0,5,0,0"
-                                  IsHitTestVisible="False"
-                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-
-                        <TextBlock Grid.Column="1"
-                                   TextWrapping="Wrap"
-                                   FontSize="14"
-                                   Margin="12,0,0,0"
-                                   Opacity="0.95"
-                                   VerticalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False"
-                                   Text="BetterRTX presets are built for and tested against stable Minecraft Release. For the best results, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into MC Preview regardless - but Preview moves ahead of Release, so the game may refuse to start or crash. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot; preset, they're your backed up defaults." />
-                    </Grid>
-                </Border>
-
-                <!-- No usable Default backup: nothing may be installed, so say why. -->
-                <Border x:Name="DefaultMissingCard"
-                        Visibility="Collapsed"
-                        CornerRadius="6"
-                        Padding="6"
-                        Translation="0,0,32"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-
-                    <Grid HorizontalAlignment="Stretch"
-                          VerticalAlignment="Top"
-                          Margin="16,8,16,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <FontIcon Grid.Column="0"
-                                  Glyph="&#xE7BA;"
-                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                  FontSize="20"
-                                  VerticalAlignment="Top"
-                                  Margin="0,5,0,0"
-                                  IsHitTestVisible="False"
-                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-
-                        <TextBlock x:Name="DefaultMissingText"
-                                   Grid.Column="1"
-                                   TextWrapping="Wrap"
-                                   FontSize="14"
-                                   Margin="12,0,0,0"
-                                   Opacity="0.95"
-                                   VerticalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False" />
-                    </Grid>
-                </Border>
-
-            </StackPanel>
+                    <TextBlock x:Name="DefaultMissingText"
+                               Grid.Column="1"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               Margin="12,0,0,0"
+                               Opacity="0.95"
+                               VerticalAlignment="Center"
+                               IsTextScaleFactorEnabled="False" />
+                </Grid>
+            </Border>
 
             <!-- Shadow receiver sits behind the scroll content -->
             <Grid x:Name="ShadowReceiverGrid"
@@ -187,6 +132,48 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <!-- Wrapped both panels in a single parent StackPanel -->
                 <StackPanel>
+                    <!-- Pinned by hand rather than fetched: it always applies, and it must not
+                         depend on the announcements fetch having worked. Otherwise it is one of
+                         them, and scrolls with them. -->
+                    <Border x:Name="PreviewWarningCard"
+                            Margin="0,12,0,0"
+                            Visibility="Collapsed"
+                            CornerRadius="6"
+                            Padding="6"
+                            Translation="0,0,32"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+
+                        <Grid HorizontalAlignment="Stretch"
+                              VerticalAlignment="Top"
+                              Margin="16,8,16,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <FontIcon Grid.Column="0"
+                                      Glyph="&#xE7BA;"
+                                      FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                      FontSize="20"
+                                      VerticalAlignment="Top"
+                                      Margin="0,5,0,0"
+                                      IsHitTestVisible="False"
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+                            <TextBlock Grid.Column="1"
+                                       TextWrapping="Wrap"
+                                       FontSize="14"
+                                       Margin="12,0,0,0"
+                                       Opacity="0.95"
+                                       VerticalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False"
+                                       Text="BetterRTX presets are built for and tested against stable Minecraft Release. For the best results, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into MC Preview regardless - but Preview moves ahead of Release, so the game may refuse to start or crash. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot; preset, they're your backed up defaults." />
+                        </Grid>
+                    </Border>
+
                     <!-- PSA cards (Horizontal margins removed to avoid duplicating ScrollViewer padding) -->
                     <StackPanel x:Name="BetterRTXAnnouncementsPanel"
                                 Spacing="10"

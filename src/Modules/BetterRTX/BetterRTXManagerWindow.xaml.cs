@@ -150,7 +150,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             // notice at the top of the list is the whole of what makes this supported rather
             // than refused: the user is told what they're risking and what to do if it bites.
             // Everything below it works identically either way.
-            ApplyFixedNotices();
+            ApplyNotices();
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -197,29 +197,36 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
 
     /// <summary>
-    /// Settles the two fixed notice cards and hands the titlebar's 37px to whichever element
-    /// ends up directly beneath it.
+    /// Settles the two notice cards. Both are hand-written Pinned <see cref="PsaCard"/>
+    /// lookalikes rather than fetched ones, because neither can fail to apply and neither may
+    /// depend on the announcements fetch having succeeded - but only one of them is pinned to
+    /// the window:
     ///
-    /// <para>They are static cards styled after a Pinned <see cref="PsaCard"/> rather than
-    /// actual ones: neither is news, neither can be dismissed, and both have to stay on
-    /// screen for as long as they apply - so they sit outside the scrolling list, above it.
-    /// Called twice: once from Loaded, when only the Preview half is known, and again once
-    /// the backup has been checked.</para>
+    /// <list type="bullet">
+    /// <item>The Preview warning scrolls with the announcements it sits above. It is advice,
+    /// it is long, and a fixed card that tall costs the list most of its height for something
+    /// the user has read once.</item>
+    /// <item>The no-backup card stays put, because it is not advice: nothing in the list
+    /// below it can be installed while it is up, so being able to scroll away from it would
+    /// leave a greyed-out list with no explanation on screen. It is then the thing directly
+    /// under the floating titlebar, so it takes over the 37px the scroller normally
+    /// reserves.</item>
+    /// </list>
+    ///
+    /// <para>Called twice: once from Loaded, when only the Preview half is known, and again
+    /// once the backup has been checked.</para>
     /// </summary>
-    private void ApplyFixedNotices()
+    private void ApplyNotices()
     {
         PreviewWarningCard.Visibility = _isPreview ? Visibility.Visible : Visibility.Collapsed;
 
         bool showDefaultMissing = DefaultMissingText.Text.Length > 0;
         DefaultMissingCard.Visibility = showDefaultMissing ? Visibility.Visible : Visibility.Collapsed;
 
-        bool anyNotice = _isPreview || showDefaultMissing;
-        FixedNoticesPanel.Visibility = anyNotice ? Visibility.Visible : Visibility.Collapsed;
-
         // The scroller and the empty state share row 1 and each reserves that 37px for
         // itself, so both hand it over together - otherwise the empty state would sit 37px
-        // lower than centred in whatever space the notices left it.
-        var topOffset = anyNotice ? new Thickness(0, 12, 0, 0) : new Thickness(0, 37, 0, 0);
+        // lower than centred in whatever space the card left it.
+        var topOffset = showDefaultMissing ? new Thickness(0, 12, 0, 0) : new Thickness(0, 37, 0, 0);
         PresetScrollViewer.Margin = topOffset;
         EmptyStatePanel.Margin = topOffset;
     }
@@ -573,7 +580,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         // Before anything is listed: is there a way back? This decides whether the preset
         // rows below are clickable at all, so it has to happen ahead of them being built.
         EvaluateDefaultBackup();
-        ApplyFixedNotices();
+        ApplyNotices();
 
         // Load or fetch API data
         await _manager.LoadApiDataAsync();
