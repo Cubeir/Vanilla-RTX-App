@@ -10,9 +10,17 @@ using Windows.Storage;
 namespace Vanilla_RTX_App.Modules.LUT;
 
 /// <summary>
-/// One LUT preset: a folder holding the three files the game's ray tracing folder wants.
-/// A preset is only ever offered if it has all three (<see cref="IsComplete"/>) - installing
-/// a partial set would leave the game mixing one preset's colour grading with another's sky.
+/// One LUT preset: a folder holding some of the five files the game's ray tracing folder
+/// reads. Only <see cref="LUTManager.RequiredFiles"/> and a preview image make a preset
+/// offerable (<see cref="IsComplete"/>); the other three are installed when a preset ships
+/// them and left alone when it doesn't.
+///
+/// <para><b>Why only two are required.</b> look_up_tables.png and sky.png are what a LUT
+/// preset <i>is</i> - the colour grading and the sky. caustics.png, water_n.tga and
+/// wibbly.png are separate effects a preset may or may not have an opinion about, and
+/// forcing an author to ship all five means shipping copies of the game's own files just to
+/// fill the gaps. Not shipping one now means "leave whatever is installed alone", which is
+/// both the honest reading and the one that lets presets be partial on purpose.</para>
 /// </summary>
 internal sealed class LutPreset
 {
@@ -22,21 +30,7 @@ internal sealed class LutPreset
     /// <summary>True only for the backup of the game's own files, which lives outside the Presets folder.</summary>
     public bool IsDefault { get; }
 
-    public string LutPath => Path.Combine(FolderPath, LUTManager.FnLut);
-    public string SkyPath => Path.Combine(FolderPath, LUTManager.FnSky);
-    public string WaterPath => Path.Combine(FolderPath, LUTManager.FnWater);
-
     private readonly string? _imagePathOverride;
-
-    /// <summary>
-    /// The preview image. Bundled presets keep theirs beside their files; the Default
-    /// preset's folder is a backup of game files and has no art of its own, so it is handed
-    /// one from the app's assets instead.
-    /// </summary>
-    public string ImagePath => _imagePathOverride ?? Path.Combine(FolderPath, "image.png");
-
-    public bool IsComplete =>
-        File.Exists(LutPath) && File.Exists(SkyPath) && File.Exists(WaterPath);
 
     public LutPreset(string name, string folderPath,
                      string? imagePathOverride = null, bool isDefault = false)
@@ -46,40 +40,153 @@ internal sealed class LutPreset
         IsDefault = isDefault;
         _imagePathOverride = imagePathOverride;
     }
+
+    /// <summary>That file's path if this preset ships it, null if it doesn't.</summary>
+    public string? ResolveFile(string fileName)
+    {
+        var path = Path.Combine(FolderPath, fileName);
+        return File.Exists(path) ? path : null;
+    }
+
+    /// <summary>
+    /// Every game file this preset actually carries, in <see cref="LUTManager.AllFiles"/>
+    /// order. This is exactly what an install writes and what detection compares - a preset
+    /// is "installed" when the files it has are the ones in the game, and it has nothing to
+    /// say about the ones it doesn't.
+    /// </summary>
+    public List<string> PresentFiles =>
+        LUTManager.AllFiles.Select(ResolveFile).Where(p => p != null).Select(p => p!).ToList();
+
+    public bool HasRequiredFiles => LUTManager.RequiredFiles.All(f => ResolveFile(f) != null);
+
+    /// <summary>
+    /// The preview image. Bundled presets keep theirs beside their files under any of
+    /// <see cref="LUTManager.ImageExtensions"/>; the Default preset's folder is a backup of
+    /// game files and has no art of its own, so it is handed one from the app's assets.
+    /// Null when there isn't one.
+    /// </summary>
+    public string? ImagePath => _imagePathOverride ?? LUTManager.FindImage(FolderPath, "image");
+
+    /// <summary>
+    /// Offerable: it has the two files that define a preset, and something to show for it.
+    ///
+    /// <para><b>Default is exempt from the image half</b> - its picture is one of our own
+    /// bundled assets with a placeholder behind it, and refusing to let somebody roll back to
+    /// their own game files because a thumbnail is missing from our install would be
+    /// absurd.</para>
+    /// </summary>
+    public bool IsComplete => HasRequiredFiles && (IsDefault || ImagePath != null);
 }
 
 /// <summary>
 /// Everything the RTX LUT manager does to files: where presets come from, where the backup
-/// of the game's own three files lives, which preset is currently installed, and the
-/// elevated write that installs one.
+/// of the game's own files lives, which preset is currently installed, and the elevated
+/// write that installs one.
 ///
 /// <para><b>Why it's separate from the window.</b> None of this is UI - it is folder
 /// scanning, SHA-256 comparison and one elevated copy. The window renders the list and
 /// decides when these run. Split the same way Alchitex keeps its pipeline out of
 /// AlchitexWindow, so that reading either half doesn't mean reading both.</para>
 ///
-/// <para>Bound to one Minecraft install by <see cref="TryAttach"/>; nothing below works
+/// <para>Bound to one edition's install by <see cref="TryAttach"/>; nothing below works
 /// until that has succeeded.</para>
 /// </summary>
 internal sealed class LUTManager
 {
-    // The game reads exactly these three, by these names, from data\ray_tracing. They are
-    // public because DefaultsGuard needs the same three names to check the same folder
-    // before a hard wipe - one spelling of them, not two that can drift.
+    // The game reads exactly these, by these names, from data\ray_tracing. They are public
+    // because DefaultsGuard needs the same names for the same folder before a hard wipe -
+    // one spelling of them, not two that can drift.
     public const string FnLut = "look_up_tables.png";
     public const string FnSky = "sky.png";
     public const string FnWater = "water_n.tga";
+    public const string FnCaustics = "caustics.png";
+    public const string FnWibbly = "wibbly.png";
 
-    private const string FnPlaceholder = "placeholder.png";
-    private const string FnDefaultImg = "default.png";
+    /// <summary>What a preset must ship to be installable at all - see <see cref="LutPreset"/>.</summary>
+    public static readonly string[] RequiredFiles = [FnLut, FnSky];
 
-    /// <summary>Where the backup of the game's original three files lives, under LocalState.</summary>
+    /// <summary>Installed when a preset ships them, left alone when it doesn't.</summary>
+    public static readonly string[] OptionalFiles = [FnCaustics, FnWater, FnWibbly];
+
+    /// <summary>
+    /// Every file the game reads out of data\ray_tracing. <b>All of these are backed up and
+    /// all of them are restored</b>, regardless of how few a preset needs: the backup's job
+    /// is to undo whatever any preset did, and a preset that ships caustics.png can only be
+    /// undone by a backup that has one.
+    /// </summary>
+    public static readonly string[] AllFiles = [.. RequiredFiles, .. OptionalFiles];
+
+    /// <summary>
+    /// Preview-image formats, in priority order. PNG first because that is what everything
+    /// bundled today is and lossless is the right default for flat colour art; JPEG accepted
+    /// because a screenshot-derived preview is usually one already and re-encoding it to PNG
+    /// costs size for nothing.
+    /// </summary>
+    public static readonly string[] ImageExtensions = [".png", ".jpg", ".jpeg"];
+
+    private const string FnPlaceholderBase = "placeholder";
+    private const string FnDefaultImgBase = "default";
+
+    /// <summary>Where Release's backup of the game's original files lives, under LocalState.</summary>
     public const string DefaultsFolderName = "Lut_Defaults";
 
     /// <summary>
+    /// Preview's own backup folder.
+    ///
+    /// <para>These used to be one folder for both editions, on the reasoning that the LUT
+    /// files themselves haven't changed in years - which is true, and is also why nobody
+    /// noticed. It still meant whichever edition installed a preset first defined "default"
+    /// for the other, and a rollback restored one install's files into the other's. Keeping
+    /// them apart costs a few megabytes and removes the whole class of question.</para>
+    /// </summary>
+    public const string PreviewDefaultsFolderName = "Lut_Defaults_Preview";
+
+    public static string GetDefaultsFolderName(bool isPreview) =>
+        isPreview ? PreviewDefaultsFolderName : DefaultsFolderName;
+
+    /// <summary>
+    /// Where an edition's backup sits, resolved without attaching to anything - DefaultsGuard
+    /// runs before a hard wipe with no manager instance in hand.
+    /// </summary>
+    public static string? GetDefaultsFolderPath(bool isPreview)
+    {
+        try
+        {
+            return Path.Combine(ApplicationData.Current.LocalFolder.Path, GetDefaultsFolderName(isPreview));
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[LUTManager] Could not resolve defaults folder path: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>data\ray_tracing inside a game install - where these files live.</summary>
+    public static string GameFilePath(string minecraftRoot, string fileName) =>
+        Path.Combine(minecraftRoot, "data", "ray_tracing", fileName);
+
+    /// <summary>
+    /// The first of <see cref="ImageExtensions"/> that exists for this base name, or null.
+    /// Used for a preset's own image.*, and for the bundled placeholder.* and default.*.
+    /// </summary>
+    public static string? FindImage(string folder, string baseName)
+    {
+        if (string.IsNullOrEmpty(folder)) return null;
+
+        foreach (var extension in ImageExtensions)
+        {
+            var candidate = Path.Combine(folder, baseName + extension);
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Used to repair a game install that is missing its ray tracing files entirely. Any
-    /// complete preset would do; this one is picked first only so the outcome is the same
-    /// every time rather than depending on folder order.
+    /// preset with the required files would do; this one is picked first only so the outcome
+    /// is the same every time rather than depending on folder order.
     ///
     /// <para>It has to be a folder name that actually exists under <see cref="LutRootFolder"/>
     /// or the preference is silently dead and the alphabetical fallback below picks instead -
@@ -93,42 +200,69 @@ internal sealed class LUTManager
 
     private readonly List<LutPreset> _presets = new();
 
+    public bool IsPreview { get; private set; }
     public string MinecraftRoot { get; private set; } = string.Empty;
     public string DefaultsFolder { get; private set; } = string.Empty;
     public string LutRootFolder { get; private set; } = string.Empty;
-    public string PlaceholderImagePath { get; private set; } = string.Empty;
-    public string DefaultImagePath { get; private set; } = string.Empty;
+    public string? PlaceholderImagePath { get; private set; }
+    public string? DefaultImagePath { get; private set; }
 
     public IReadOnlyList<LutPreset> Presets => _presets;
 
-    public string DstLut => Path.Combine(MinecraftRoot, "data", "ray_tracing", FnLut);
-    public string DstSky => Path.Combine(MinecraftRoot, "data", "ray_tracing", FnSky);
-    public string DstWater => Path.Combine(MinecraftRoot, "data", "ray_tracing", FnWater);
-
-    public string DefaultLut => Path.Combine(DefaultsFolder, FnLut);
-    public string DefaultSky => Path.Combine(DefaultsFolder, FnSky);
-    public string DefaultWater => Path.Combine(DefaultsFolder, FnWater);
+    public string DstPath(string fileName) => GameFilePath(MinecraftRoot, fileName);
+    public string DefaultPath(string fileName) => Path.Combine(DefaultsFolder, fileName);
 
     /// <summary>
-    /// Points this instance at a Minecraft install and makes sure the defaults folder
-    /// exists. False means that folder couldn't be created, which is fatal - without it
+    /// Whether the backup holds what a rollback needs. False is the window's cue to disable
+    /// installing outright: writing shader files into somebody's game with no way back is the
+    /// one thing this feature must never do.
+    /// </summary>
+    public bool DefaultsComplete => RequiredFiles.All(f => File.Exists(DefaultPath(f)));
+
+    /// <summary>Why <see cref="DefaultsComplete"/> is what it is, for the window's notice.</summary>
+    public enum DefaultsState
+    {
+        /// <summary>The backup holds what a rollback needs.</summary>
+        Ready,
+
+        /// <summary>The game is missing required files and couldn't be mended.</summary>
+        GameFilesMissing,
+
+        /// <summary>
+        /// There is no backup to fall back on and the game is demonstrably not running its
+        /// own files, so taking one now would record somebody else's preset as the user's
+        /// originals - see <see cref="MatchBundledPreset"/>.
+        /// </summary>
+        GameRunningAPreset,
+
+        /// <summary>The copy itself failed - disk, permissions, a locked file.</summary>
+        BackupFailed
+    }
+
+    /// <summary>The result of the last <see cref="EnsureDefaultsBackedUpAsync"/> call.</summary>
+    public DefaultsState Defaults { get; private set; } = DefaultsState.GameFilesMissing;
+
+    /// <summary>
+    /// Points this instance at one edition's install and makes sure that edition's defaults
+    /// folder exists. False means the folder couldn't be created, which is fatal - without it
     /// there is nowhere to keep the user's route back to the game's original files.
     /// </summary>
-    public bool TryAttach(string minecraftPath)
+    public bool TryAttach(string minecraftPath, bool isPreview)
     {
+        IsPreview = isPreview;
         MinecraftRoot = minecraftPath;
         LutRootFolder = Path.Combine(AppDir, "Modules", "LUT", "Presets");
-        PlaceholderImagePath = Path.Combine(LutRootFolder, FnPlaceholder);
-        DefaultImagePath = Path.Combine(LutRootFolder, FnDefaultImg);
+        PlaceholderImagePath = FindImage(LutRootFolder, FnPlaceholderBase);
+        DefaultImagePath = FindImage(LutRootFolder, FnDefaultImgBase);
 
+        Trace.WriteLine($"[LUTManager] Edition  : {(isPreview ? "Preview" : "Release")}");
         Trace.WriteLine($"[LUTManager] Root     : {MinecraftRoot}");
         Trace.WriteLine($"[LUTManager] AppDir   : {AppDir}");
         Trace.WriteLine($"[LUTManager] LutRoot  : {LutRootFolder}");
-        Trace.WriteLine($"[LUTManager] DstLut   : {DstLut}   exists={File.Exists(DstLut)}");
-        Trace.WriteLine($"[LUTManager] DstSky   : {DstSky}   exists={File.Exists(DstSky)}");
-        Trace.WriteLine($"[LUTManager] DstWater : {DstWater}  exists={File.Exists(DstWater)}");
+        foreach (var fileName in AllFiles)
+            Trace.WriteLine($"[LUTManager] Game     : {fileName}  exists={File.Exists(DstPath(fileName))}");
 
-        var defaultsFolder = EstablishDefaultsFolder();
+        var defaultsFolder = EstablishDefaultsFolder(isPreview);
         if (defaultsFolder == null)
             return false;
 
@@ -136,11 +270,13 @@ internal sealed class LUTManager
         return true;
     }
 
-    private static string? EstablishDefaultsFolder()
+    private static string? EstablishDefaultsFolder(bool isPreview)
     {
         try
         {
-            var location = Path.Combine(ApplicationData.Current.LocalFolder.Path, DefaultsFolderName);
+            var location = GetDefaultsFolderPath(isPreview);
+            if (location == null) return null;
+
             Directory.CreateDirectory(location);
             Trace.WriteLine($"[LUTManager] Defaults folder: {location}");
             return location;
@@ -153,103 +289,244 @@ internal sealed class LUTManager
     }
 
     // -------------------------------------------------------------------------
-    // Backing up (and mending) the game's own three files
+    // Backing up (and mending) the game's own files
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Makes sure Lut_Defaults holds a complete copy of the game's original three files -
-    /// the only way back to stock once a preset has been installed.
+    /// Makes sure this edition's defaults folder holds a copy of every ray tracing file the
+    /// game has - the only way back to stock once a preset has been installed.
     ///
-    /// <para>All-or-none in both directions: a partial backup is overwritten wholesale
-    /// rather than topped up, because three files from two different game versions is not a
-    /// state anything could restore from. If the *game* is the one missing files, there is
-    /// nothing worth backing up, so this mends the install from a bundled preset instead -
-    /// a known-good set of three beats leaving the renderer with an incomplete one.</para>
+    /// <para>Three cases, and the middle one is the one worth reading:</para>
+    /// <list type="bullet">
+    /// <item>The <i>game</i> is missing a required file - there is nothing worth backing up,
+    /// so this mends the install from a bundled preset instead and then backs that up. A
+    /// known-good set beats leaving the renderer with an incomplete one.</item>
+    /// <item>The backup is missing a required file - it is replaced wholesale rather than
+    /// topped up, because files from two different game versions is not a state anything
+    /// could restore from.</item>
+    /// <item>The backup has the required files but not every optional one - which is exactly
+    /// what every existing install looks like, since only three of the five were ever backed
+    /// up before. Those are filled in from the game, <b>but only if what we already hold
+    /// still matches it</b>. Matching means the game is running its own defaults, so what it
+    /// has now is genuinely default; not matching means it is running a preset, and copying
+    /// caustics.png out of it would record that preset's file as the user's original
+    /// forever.</item>
+    /// </list>
     /// </summary>
-    public async Task EnsureDefaultsBackedUpAsync()
+    public async Task<DefaultsState> EnsureDefaultsBackedUpAsync()
     {
-        bool allBackupsPresent =
-            File.Exists(DefaultLut) && File.Exists(DefaultSky) && File.Exists(DefaultWater);
+        bool justMended = false;
 
-        if (allBackupsPresent)
+        if (RequiredFiles.Any(f => !File.Exists(DstPath(f))))
+        {
+            Trace.WriteLine("[LUTManager] Game is missing required ray tracing files - mending from a bundled preset");
+            justMended = await MendGameFilesAsync();
+        }
+
+        var gameFiles = AllFiles.Where(f => File.Exists(DstPath(f))).ToList();
+
+        if (RequiredFiles.Any(f => !gameFiles.Contains(f)))
+        {
+            Trace.WriteLine("[LUTManager] Game still missing required ray tracing files after mending - nothing worth backing up");
+            return Defaults = DefaultsState.GameFilesMissing;
+        }
+
+        var backedUp = AllFiles.Where(f => File.Exists(DefaultPath(f))).ToList();
+        bool backupUsable = RequiredFiles.All(backedUp.Contains);
+
+        if (!backupUsable)
+            return Defaults = await TakeFreshBackupAsync(gameFiles, justMended);
+
+        var missingFromBackup = gameFiles.Where(f => !backedUp.Contains(f)).ToList();
+        if (missingFromBackup.Count == 0)
         {
             Trace.WriteLine("[LUTManager] Default backup already complete - skipping");
-            return;
+            return Defaults = DefaultsState.Ready;
         }
 
-        Trace.WriteLine("[LUTManager] Default backup incomplete - attempting from game files");
-
-        bool allGameFilesPresent =
-            File.Exists(DstLut) && File.Exists(DstSky) && File.Exists(DstWater);
-
-        if (allGameFilesPresent)
+        // Only the game's own files may be added to a backup of the game's own files.
+        return Defaults = await Task.Run(() =>
         {
-            await Task.Run(() =>
+            try
             {
-                try
+                foreach (var fileName in backedUp)
                 {
-                    File.Copy(DstLut, DefaultLut, overwrite: true);
-                    File.Copy(DstSky, DefaultSky, overwrite: true);
-                    File.Copy(DstWater, DefaultWater, overwrite: true);
-                    Trace.WriteLine("[LUTManager] Default backup created from game files");
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"[LUTManager] Backup error: {ex.Message}");
-                }
-            });
-        }
-        else
-        {
-            Trace.WriteLine("[LUTManager] Game files missing - mending from bundled preset");
-
-            string? mendLut = null, mendSky = null, mendWater = null;
-
-            if (Directory.Exists(LutRootFolder))
-            {
-                var preferred = Path.Combine(LutRootFolder, PreferredMendPreset);
-                var prefLut = Path.Combine(preferred, FnLut);
-                var prefSky = Path.Combine(preferred, FnSky);
-                var prefWater = Path.Combine(preferred, FnWater);
-
-                if (File.Exists(prefLut) && File.Exists(prefSky) && File.Exists(prefWater))
-                {
-                    mendLut = prefLut;
-                    mendSky = prefSky;
-                    mendWater = prefWater;
-                    Trace.WriteLine("[LUTManager] Mending with preferred preset [" + PreferredMendPreset + "]");
-                }
-
-                if (mendLut == null)
-                {
-                    foreach (var dir in Directory.GetDirectories(LutRootFolder)
-                                                 .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+                    if (!HashesMatch(DstPath(fileName), DefaultPath(fileName)))
                     {
-                        var lut = Path.Combine(dir, FnLut);
-                        var sky = Path.Combine(dir, FnSky);
-                        var water = Path.Combine(dir, FnWater);
-                        if (File.Exists(lut) && File.Exists(sky) && File.Exists(water))
-                        {
-                            mendLut = lut;
-                            mendSky = sky;
-                            mendWater = water;
-                            Trace.WriteLine("[LUTManager] Mending with fallback preset [" + Path.GetFileName(dir) + "]");
-                            break;
-                        }
+                        Trace.WriteLine($"[LUTManager] Backup is missing {string.Join(", ", missingFromBackup)}, but the game no longer matches it on {fileName} " +
+                                        "- a preset is installed, so those files would not be defaults. Leaving the backup as it is.");
+                        return DefaultsState.Ready; // the rollback itself is intact, which is what Ready means
                     }
                 }
-            }
 
-            if (mendLut != null && mendSky != null && mendWater != null)
-            {
-                bool mended = await ReplaceRtxFilesWithElevation(mendLut, mendSky, mendWater);
-                Trace.WriteLine(mended ? "LUTM: Game mended" : "LUTM: Mend failed or cancelled");
+                foreach (var fileName in missingFromBackup)
+                    File.Copy(DstPath(fileName), DefaultPath(fileName), overwrite: true);
+
+                Trace.WriteLine($"[LUTManager] Default backup topped up with {string.Join(", ", missingFromBackup)}");
+                return DefaultsState.Ready;
             }
-            else
+            catch (Exception ex)
             {
-                Trace.WriteLine("[LUTManager] No complete presets found for mending - user must install manually");
+                Trace.WriteLine($"[LUTManager] Backup top-up error: {ex.Message}");
+                return DefaultsState.Ready; // required files are still backed up - a rollback still works
+            }
+        });
+    }
+
+    /// <summary>
+    /// Takes the backup from scratch, all-or-none: whatever partial set is there is cleared
+    /// first, so the folder can't end up holding one file from before and four from now.
+    ///
+    /// <para><b>Unless the game isn't running its own files.</b> With no backup to compare
+    /// against, the assumption that whatever the game holds is its default is normally the
+    /// only one available - but a bundled preset is a known set of bytes, so when the game
+    /// matches one we know for a fact it doesn't. That case is real rather than theoretical:
+    /// these two folders were one shared folder until recently, so a Preview install that had
+    /// a preset applied through it arrives here with no backup of its own and a game full of
+    /// somebody else's colour grading. Copying that in would make the preset permanent.</para>
+    ///
+    /// <para>The other edition's backup is the way out, and taking it is continuity rather
+    /// than a shortcut: it is the file set this install's rollback was using yesterday, when
+    /// the folder was shared. Failing that, nothing is written and the window blocks
+    /// installing - being unable to offer a rollback is a far smaller harm than offering a
+    /// broken one.</para>
+    ///
+    /// <para><paramref name="justMended"/> skips the check entirely, and has to: mending
+    /// puts a bundled preset into the game on purpose, so of course the game matches one
+    /// afterwards, and that set is the best "original" that install is ever going to have.</para>
+    /// </summary>
+    private async Task<DefaultsState> TakeFreshBackupAsync(List<string> gameFiles, bool justMended)
+    {
+        List<string> sourceFiles = gameFiles;
+        string sourceFolder = Path.Combine(MinecraftRoot, "data", "ray_tracing");
+        string origin = "the game";
+
+        if (!justMended)
+        {
+            var impostor = MatchBundledPreset();
+            if (impostor != null)
+            {
+                var donorFolder = GetDefaultsFolderPath(!IsPreview);
+                bool donorUsable = donorFolder != null
+                    && RequiredFiles.All(f => File.Exists(Path.Combine(donorFolder, f)));
+
+                if (!donorUsable)
+                {
+                    Trace.WriteLine($"[LUTManager] ✗ No backup, and the game is running bundled preset [{impostor.Name}] - " +
+                                    "backing that up would make it permanent. Nothing written.");
+                    return DefaultsState.GameRunningAPreset;
+                }
+
+                Trace.WriteLine($"[LUTManager] Game is running bundled preset [{impostor.Name}] and this edition has no backup - " +
+                                $"seeding from {GetDefaultsFolderName(!IsPreview)}, which is what the rollback used while the two folders were shared.");
+
+                sourceFolder = donorFolder!;
+                sourceFiles = AllFiles.Where(f => File.Exists(Path.Combine(donorFolder!, f))).ToList();
+                origin = GetDefaultsFolderName(!IsPreview);
             }
         }
+
+        return await Task.Run(() =>
+        {
+            try
+            {
+                foreach (var fileName in AllFiles)
+                {
+                    var stale = DefaultPath(fileName);
+                    if (File.Exists(stale)) File.Delete(stale);
+                }
+
+                foreach (var fileName in sourceFiles)
+                    File.Copy(Path.Combine(sourceFolder, fileName), DefaultPath(fileName), overwrite: true);
+
+                Trace.WriteLine($"[LUTManager] Default backup created from {sourceFiles.Count} file(s) out of {origin}");
+                return DefaultsState.Ready;
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[LUTManager] Backup error: {ex.Message}");
+                return DefaultsState.BackupFailed;
+            }
+        });
+    }
+
+    /// <summary>
+    /// The bundled preset the game's files currently match, or null. A match is proof the
+    /// game is <i>not</i> running its own originals - the one thing that can be established
+    /// about an install with no backup to compare against, since a bundled preset is a known
+    /// set of bytes and none of them is anything Mojang ever shipped.
+    ///
+    /// <para>Reads the presets folder directly rather than <see cref="Presets"/>: this runs
+    /// before <see cref="LoadPresets"/>, and dragging that earlier would tie the backup - the
+    /// safety-critical half - to list-building order.</para>
+    /// </summary>
+    private LutPreset? MatchBundledPreset()
+    {
+        if (!Directory.Exists(LutRootFolder))
+            return null;
+
+        try
+        {
+            foreach (var dir in Directory.GetDirectories(LutRootFolder))
+            {
+                var preset = new LutPreset(Path.GetFileName(dir), dir);
+                if (!preset.HasRequiredFiles) continue;
+
+                bool allMatch = true;
+                foreach (var presetFile in preset.PresentFiles)
+                {
+                    var gameFile = DstPath(Path.GetFileName(presetFile));
+                    if (!File.Exists(gameFile) || !HashesMatch(gameFile, presetFile))
+                    {
+                        allMatch = false;
+                        break;
+                    }
+                }
+
+                if (allMatch) return preset;
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[LUTManager] Could not compare the game against bundled presets: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Puts a known-good set of ray tracing files into a game that is missing them, from
+    /// whichever bundled preset has the required ones. One elevated write.
+    /// </summary>
+    private async Task<bool> MendGameFilesAsync()
+    {
+        if (!Directory.Exists(LutRootFolder))
+        {
+            Trace.WriteLine($"[LUTManager] LUT folder not found, cannot mend: {LutRootFolder}");
+            return false;
+        }
+
+        var candidates = new List<string>();
+
+        var preferred = Path.Combine(LutRootFolder, PreferredMendPreset);
+        if (Directory.Exists(preferred)) candidates.Add(preferred);
+
+        candidates.AddRange(Directory.GetDirectories(LutRootFolder)
+                                     .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase));
+
+        foreach (var dir in candidates)
+        {
+            var preset = new LutPreset(Path.GetFileName(dir), dir);
+            if (!preset.HasRequiredFiles) continue;
+
+            Trace.WriteLine($"[LUTManager] Mending with preset [{preset.Name}]");
+            bool mended = await InstallAsync(preset);
+            Trace.WriteLine(mended ? "[LUTManager] Game mended" : "[LUTManager] Mend failed or cancelled");
+            return mended;
+        }
+
+        Trace.WriteLine("[LUTManager] No bundled preset has the required files - user must install manually");
+        return false;
     }
 
     // -------------------------------------------------------------------------
@@ -258,8 +535,8 @@ internal sealed class LUTManager
 
     /// <summary>
     /// Rebuilds <see cref="Presets"/>: the Default backup first, then every subfolder of
-    /// Modules\LUT\Presets in name order. Incomplete ones are kept in the list deliberately - the
-    /// window shows them greyed out, which says more than silently omitting them would.
+    /// Modules\LUT\Presets in name order. Incomplete ones are kept in the list deliberately -
+    /// the window shows them greyed out, which says more than silently omitting them would.
     /// </summary>
     public void LoadPresets()
     {
@@ -267,7 +544,7 @@ internal sealed class LUTManager
 
         var defaultPreset = new LutPreset("Default", DefaultsFolder, DefaultImagePath, isDefault: true);
         _presets.Add(defaultPreset);
-        Trace.WriteLine($"[LUTManager] Default preset — complete={defaultPreset.IsComplete}  folder={DefaultsFolder}");
+        Trace.WriteLine($"[LUTManager] Default preset — complete={defaultPreset.IsComplete}  files={defaultPreset.PresentFiles.Count}  folder={DefaultsFolder}");
 
         if (Directory.Exists(LutRootFolder))
         {
@@ -277,7 +554,7 @@ internal sealed class LUTManager
                 var name = Path.GetFileName(dir);
                 var preset = new LutPreset(name, dir);
                 _presets.Add(preset);
-                Trace.WriteLine($"[LUTManager] Preset [{name}] complete={preset.IsComplete} folder={dir}");
+                Trace.WriteLine($"[LUTManager] Preset [{name}] complete={preset.IsComplete} files={preset.PresentFiles.Count} folder={dir}");
             }
         }
         else
@@ -289,15 +566,21 @@ internal sealed class LUTManager
     }
 
     /// <summary>
-    /// Which preset the game is currently running, by hashing its three files against each
-    /// complete preset's. Null means none of them matched - a hand-modified install, or a
-    /// preset that isn't ours.
+    /// Which preset the game is currently running, by hashing the game's files against each
+    /// complete preset's.
+    ///
+    /// <para>A preset matches when every file <i>it ships</i> is the one in the game - it has
+    /// no opinion about the files it doesn't ship, so those aren't compared. List order
+    /// settles the one ambiguity that creates: Default is checked first, so an install that
+    /// is wholly stock reads as Default rather than as some preset whose two files happen to
+    /// be the stock ones (which no bundled preset's are). Null means nothing matched - a
+    /// hand-modified install, or a preset that isn't ours.</para>
     /// </summary>
     public async Task<LutPreset?> DetectCurrentPresetAsync()
     {
-        if (!File.Exists(DstLut) || !File.Exists(DstSky) || !File.Exists(DstWater))
+        if (RequiredFiles.Any(f => !File.Exists(DstPath(f))))
         {
-            Trace.WriteLine("[LUTManager] One or more game files missing - cannot detect preset");
+            Trace.WriteLine("[LUTManager] Required game files missing - cannot detect preset");
             return null;
         }
 
@@ -305,66 +588,66 @@ internal sealed class LUTManager
         {
             foreach (var preset in _presets.Where(p => p.IsComplete))
             {
-                if (HashesMatch(DstLut, preset.LutPath) &&
-                    HashesMatch(DstSky, preset.SkyPath) &&
-                    HashesMatch(DstWater, preset.WaterPath))
+                bool allMatch = true;
+
+                foreach (var presetFile in preset.PresentFiles)
                 {
-                    return preset;
+                    var gameFile = DstPath(Path.GetFileName(presetFile));
+                    if (!File.Exists(gameFile) || !HashesMatch(gameFile, presetFile))
+                    {
+                        allMatch = false;
+                        break;
+                    }
                 }
+
+                if (allMatch)
+                    return preset;
             }
+
             return null;
         });
     }
 
     /// <summary>
-    /// Which image the window should show for a preset, falling back to the placeholder
-    /// whenever a preset doesn't ship one. Lives here rather than in the window because it
-    /// is a question about the preset folder layout, not about how the image is displayed.
+    /// Which image the window should show for a preset, falling back to the bundled
+    /// placeholder whenever a preset doesn't ship one. Lives here rather than in the window
+    /// because it is a question about the preset folder layout, not about how the image is
+    /// displayed. Null when even the placeholder is missing.
     /// </summary>
-    public string ResolveImagePath(LutPreset? preset)
-    {
-        if (preset == null)
-            return PlaceholderImagePath;
-
-        var imagePath = preset.IsDefault ? DefaultImagePath : preset.ImagePath;
-
-        return string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath)
-            ? PlaceholderImagePath
-            : imagePath;
-    }
+    public string? ResolveImagePath(LutPreset? preset) => preset?.ImagePath ?? PlaceholderImagePath;
 
     // -------------------------------------------------------------------------
     // Installing
     // -------------------------------------------------------------------------
 
-    public Task<bool> InstallAsync(LutPreset preset) =>
-        ReplaceRtxFilesWithElevation(preset.LutPath, preset.SkyPath, preset.WaterPath);
-
     /// <summary>
-    /// All three files in one elevated batch, so the user sees a single UAC prompt and the
-    /// game can never end up with a half-applied preset because the second write was the
-    /// one that was declined.
+    /// Writes every file the preset ships. For Default that is the whole backup, which is
+    /// what makes a rollback a rollback: the optional files a preset overwrote are put back
+    /// alongside the two it was defined by.
     /// </summary>
-    private Task<bool> ReplaceRtxFilesWithElevation(string srcLut, string srcSky, string srcWater)
+    public Task<bool> InstallAsync(LutPreset preset)
     {
-        Trace.WriteLine("[LUTManager] ReplaceRtxFilesWithElevation");
-        Trace.WriteLine("  srcLut  =" + srcLut + "  exists=" + File.Exists(srcLut));
-        Trace.WriteLine("  srcSky  =" + srcSky + "  exists=" + File.Exists(srcSky));
-        Trace.WriteLine("  srcWater=" + srcWater + "  exists=" + File.Exists(srcWater));
-        Trace.WriteLine("  dstLut  =" + DstLut);
-        Trace.WriteLine("  dstSky  =" + DstSky);
-        Trace.WriteLine("  dstWater=" + DstWater);
+        var sources = preset.PresentFiles;
 
-        if (!File.Exists(srcLut)) { Trace.WriteLine("[LUTManager] Aborting - srcLut missing"); return Task.FromResult(false); }
-        if (!File.Exists(srcSky)) { Trace.WriteLine("[LUTManager] Aborting - srcSky missing"); return Task.FromResult(false); }
-        if (!File.Exists(srcWater)) { Trace.WriteLine("[LUTManager] Aborting - srcWater missing"); return Task.FromResult(false); }
+        Trace.WriteLine($"[LUTManager] Installing [{preset.Name}] - {sources.Count} file(s)");
 
-        var files = new List<(string, string)>
+        if (!preset.HasRequiredFiles)
         {
-            (srcLut,   DstLut),
-            (srcSky,   DstSky),
-            (srcWater, DstWater)
-        };
+            Trace.WriteLine($"[LUTManager] Aborting - [{preset.Name}] is missing {string.Join(" / ", RequiredFiles.Where(f => preset.ResolveFile(f) == null))}");
+            return Task.FromResult(false);
+        }
+
+        var files = new List<(string, string)>();
+        foreach (var source in sources)
+        {
+            var fileName = Path.GetFileName(source);
+            Trace.WriteLine($"[LUTManager]   {fileName} -> {DstPath(fileName)}");
+            files.Add((source, DstPath(fileName)));
+        }
+
+        // All of them in one elevated batch, so the user sees a single UAC prompt and the
+        // game can never end up with a half-applied preset because the second write was the
+        // one that was declined.
         return Helpers.ReplaceFilesWithElevation(files, "[LUTManager]", "rtx_defaults");
     }
 
@@ -374,18 +657,28 @@ internal sealed class LUTManager
 
     /// <summary>
     /// Byte-identical? Also used by DefaultsGuard to decide whether a hard wipe is about to
-    /// strand the user on a non-default preset.
+    /// strand the user on a non-default preset. False rather than throwing for a file that
+    /// can't be read - every caller is asking "are these the same?", and "couldn't tell" has
+    /// to answer no there.
     /// </summary>
     public static bool HashesMatch(string pathA, string pathB)
     {
-        using var sha = SHA256.Create();
-        using var streamA = File.OpenRead(pathA);
-        var hashA = sha.ComputeHash(streamA);
-        sha.Initialize();
-        using var streamB = File.OpenRead(pathB);
-        var hashB = sha.ComputeHash(streamB);
-        return System.MemoryExtensions.SequenceEqual(
-            (System.ReadOnlySpan<byte>)hashA,
-            (System.ReadOnlySpan<byte>)hashB);
+        try
+        {
+            using var sha = SHA256.Create();
+            using var streamA = File.OpenRead(pathA);
+            var hashA = sha.ComputeHash(streamA);
+            sha.Initialize();
+            using var streamB = File.OpenRead(pathB);
+            var hashB = sha.ComputeHash(streamB);
+            return System.MemoryExtensions.SequenceEqual(
+                (System.ReadOnlySpan<byte>)hashA,
+                (System.ReadOnlySpan<byte>)hashB);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[LUTManager] Hash comparison failed ({Path.GetFileName(pathA)}): {ex.Message}");
+            return false;
+        }
     }
 }

@@ -140,72 +140,68 @@ public static class DefaultsGuard
         }
     }
 
-    // Names, folder and hash check all come from LUTManager rather than being spelled again
-    // here - this guard exists to protect that feature's backup, so it has to be looking at
-    // the same three files in the same place, permanently.
-    private const string LutFile_LookUpTables = LUTManager.FnLut;
-    private const string LutFile_Sky = LUTManager.FnSky;
-    private const string LutFile_Water = LUTManager.FnWater;
+    // File names, folder layout and the hash check all come from LUTManager rather than being
+    // spelled again here - this guard exists to protect that feature's backup, so it has to be
+    // looking at the same files in the same place, permanently. That now includes *which*
+    // folder: each edition keeps its own, and a guard that only knew about Release's would
+    // have gone on quietly checking the wrong one for Preview.
     public static async Task<RTXDefaultsGuard> RestoreLutDefaultIfNeededAsync(bool targetPreview, Action<string>? log = null)
     {
+        var tag = $"[LUT Guard{(targetPreview ? " Preview" : "")}]";
+
         try
         {
-            var defaultsFolder = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, LUTManager.DefaultsFolderName);
-            var defaultLut = Path.Combine(defaultsFolder, LutFile_LookUpTables);
-            var defaultSky = Path.Combine(defaultsFolder, LutFile_Sky);
-            var defaultWater = Path.Combine(defaultsFolder, LutFile_Water);
+            var defaultsFolder = LUTManager.GetDefaultsFolderPath(targetPreview);
 
-            if (!File.Exists(defaultLut) || !File.Exists(defaultSky) || !File.Exists(defaultWater))
+            if (defaultsFolder == null || LUTManager.RequiredFiles.Any(f => !File.Exists(Path.Combine(defaultsFolder, f))))
             {
-                log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] No complete Default backup exists - nothing to protect.");
+                log?.Invoke($"{tag} No usable Default backup exists - nothing to protect.");
                 return RTXDefaultsGuard.NoActionNeeded;
             }
 
             var cachedPath = targetPreview ? Persistent.MinecraftPreviewInstallPath : Persistent.MinecraftInstallPath;
             if (!MinecraftGDKLocator.RevalidateCachedPath(cachedPath, targetPreview))
             {
-                log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Default backup exists but no valid Minecraft path is known - can't verify or restore.");
+                log?.Invoke($"{tag} Default backup exists but no valid Minecraft path is known - can't verify or restore.");
                 return RTXDefaultsGuard.Skipped;
             }
 
-            var dstLut = Path.Combine(cachedPath!, "data", "ray_tracing", LutFile_LookUpTables);
-            var dstSky = Path.Combine(cachedPath!, "data", "ray_tracing", LutFile_Sky);
-            var dstWater = Path.Combine(cachedPath!, "data", "ray_tracing", LutFile_Water);
-
-            if (!File.Exists(dstLut) || !File.Exists(dstSky) || !File.Exists(dstWater))
+            // Only the files the backup actually holds, which is however many the game had
+            // when it was taken - the same set LUTManager.InstallAsync would write for the
+            // Default preset, and for the same reason: a file we never backed up is one we
+            // have nothing to say about.
+            var pairs = new List<(string, string)>();
+            foreach (var fileName in LUTManager.AllFiles)
             {
-                log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Game's ray_tracing files are missing/incomplete - can't verify current preset state.");
+                var backup = Path.Combine(defaultsFolder, fileName);
+                if (File.Exists(backup))
+                    pairs.Add((backup, LUTManager.GameFilePath(cachedPath!, fileName)));
+            }
+
+            if (LUTManager.RequiredFiles.Any(f => !File.Exists(LUTManager.GameFilePath(cachedPath!, f))))
+            {
+                log?.Invoke($"{tag} Game's ray_tracing files are missing/incomplete - can't verify current preset state.");
                 return RTXDefaultsGuard.Skipped;
             }
 
-            bool alreadyDefault =
-                LUTManager.HashesMatch(dstLut, defaultLut) &&
-                LUTManager.HashesMatch(dstSky, defaultSky) &&
-                LUTManager.HashesMatch(dstWater, defaultWater);
+            bool alreadyDefault = pairs.All(pair => File.Exists(pair.Item2) && LUTManager.HashesMatch(pair.Item2, pair.Item1));
 
             if (alreadyDefault)
             {
-                log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Game already matches Default - nothing to do.");
+                log?.Invoke($"{tag} Game already matches Default - nothing to do.");
                 return RTXDefaultsGuard.NoActionNeeded;
             }
 
-            log?.Invoke($"[LUT Guard{(targetPreview ? " Preview" : "")}] Non-default preset detected - restoring Default before wipe...");
+            log?.Invoke($"{tag} Non-default preset detected - restoring Default before wipe...");
 
-            var files = new List<(string, string)>
-            {
-                (defaultLut, dstLut),
-                (defaultSky, dstSky),
-                (defaultWater, dstWater)
-            };
+            var success = await Helpers.ReplaceFilesWithElevation(pairs, tag, "rtx_defaults_predelete_restore");
 
-            var success = await Helpers.ReplaceFilesWithElevation(files, "[LUT Guard]", "rtx_defaults_predelete_restore");
-
-            log?.Invoke(success ? "[LUT Guard] Default restored successfully." : "[LUT Guard] Failed to restore Default.");
+            log?.Invoke(success ? $"{tag} Default restored successfully." : $"{tag} Failed to restore Default.");
             return success ? RTXDefaultsGuard.Restored : RTXDefaultsGuard.RestoreFailed;
         }
         catch (Exception ex)
         {
-            log?.Invoke($"[LUT Guard] Exception: {ex.Message}");
+            log?.Invoke($"{tag} Exception: {ex.Message}");
             return RTXDefaultsGuard.Skipped;
         }
     }

@@ -29,6 +29,25 @@ public sealed partial class LUTManagerWindow : Window
 
     private readonly LUTManager _manager = new();
 
+    /// <summary>
+    /// Which edition this window is for, taken once at construction rather than read live.
+    /// The defaults folder, the game path and the elevated write all belong to the edition
+    /// the window opened under, and MainWindow disables the Preview toggle for as long as
+    /// this window is up - so the two can't diverge, and the snapshot is what keeps that from
+    /// being load-bearing.
+    /// </summary>
+    private readonly bool _isPreview = Persistent.IsTargetingPreview;
+
+    /// <summary>
+    /// Whether this edition's Default backup holds what a rollback needs. False disables the
+    /// dropdown and the install button outright: writing colour grading into somebody's game
+    /// with no way back is the one thing this must never do.
+    /// </summary>
+    private bool _defaultsReady;
+
+    /// <summary>Why, when it isn't ready - drives the wording on the notice card.</summary>
+    private LUTManager.DefaultsState _defaultsState = LUTManager.DefaultsState.Ready;
+
     private LutPreset? _selectedPreset;
     private LutPreset? _installedPreset;
 
@@ -91,7 +110,7 @@ public sealed partial class LUTManagerWindow : Window
 
             SetTitleBar(TitleBarDragArea);
 
-            var target = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
+            var target = _isPreview ? "Minecraft Preview" : "Minecraft Release";
             WindowTitle.Text = $"RTX LUT manager - {target}";
 
             await InitializeAsync();
@@ -135,14 +154,14 @@ public sealed partial class LUTManagerWindow : Window
     {
         try
         {
-            var isPreview = Persistent.IsTargetingPreview;
+            var isPreview = _isPreview;
             var cachedPath = isPreview
                 ? Persistent.MinecraftPreviewInstallPath
                 : Persistent.MinecraftInstallPath;
 
             string? minecraftPath = null;
 
-            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, Persistent.IsTargetingPreview))
+            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, isPreview))
             {
                 Trace.WriteLine($"[LUTManager] Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;
@@ -185,16 +204,22 @@ public sealed partial class LUTManagerWindow : Window
 
     private async Task ContinueInitializationWithPath(string minecraftPath)
     {
-        // Step 1: Bind to this install and establish the LocalAppData defaults folder
-        if (!_manager.TryAttach(minecraftPath))
+        // Step 1: Bind to this edition's install and establish its LocalAppData defaults folder
+        if (!_manager.TryAttach(minecraftPath, _isPreview))
         {
             StatusMessage = "Could not establish defaults folder";
             this.Close();
             return;
         }
 
-        // Step 2: Back up game defaults into Lut_Defaults — all-or-none
-        await _manager.EnsureDefaultsBackedUpAsync();
+        // Step 2: Back up the game's own ray tracing files, mending the install first if it
+        // is the one that's incomplete. Whether that succeeded decides whether anything can
+        // be installed at all, so it is settled before a single preset is offered rather than
+        // discovered when someone clicks Install on a list that implied it would work.
+        _defaultsState = await _manager.EnsureDefaultsBackedUpAsync();
+        _defaultsReady = _defaultsState == LUTManager.DefaultsState.Ready && _manager.DefaultsComplete;
+        if (!_defaultsReady)
+            Trace.WriteLine($"[LUTManager] ✗ No usable Default backup ({_defaultsState}) - installing is disabled");
 
         // Step 3: Discover all presets (Default first, then Modules\LUT\Presets\ subfolders)
         _manager.LoadPresets();
@@ -211,16 +236,54 @@ public sealed partial class LUTManagerWindow : Window
         {
             LoadingPanel.Visibility = Visibility.Collapsed;
             MainPanel.Visibility = Visibility.Visible;
+            ApplyDefaultsNotice();
             PsaCard.Populate(LutAnnouncementsPanel, OnlineTextsContent.LutManagerAnnouncements);
         });
+    }
+
+    /// <summary>
+    /// Shows the blocked-state card when there is no usable backup, and takes the dropdown
+    /// down with it - the card explains, the disabled controls enforce. A static
+    /// Pinned-PsaCard lookalike in the XAML, same as BetterRTX's two: this isn't news and
+    /// there is nothing to dismiss.
+    /// </summary>
+    private void ApplyDefaultsNotice()
+    {
+        if (_defaultsReady)
+        {
+            DefaultsMissingCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        DefaultsMissingText.Text = _defaultsState switch
+        {
+            LUTManager.DefaultsState.GameRunningAPreset =>
+                "Your game is already running one of this app's LUT presets, and there's no backup of your original ray tracing files to go with it - " +
+                "so the app can't tell what your originals were, and backing up what's there now would make that preset permanent. Installing is disabled rather than risk that.\n\n" +
+                "Repairing or reinstalling Minecraft from the Xbox app puts its own files back; reopen this window afterwards and the backup will be taken properly.",
+
+            LUTManager.DefaultsState.GameFilesMissing =>
+                "Your Minecraft installation is missing the ray tracing files this feature works with, and the app couldn't mend them - so there's nothing to back up, " +
+                "and without a backup there would be no way back from a preset. Installing is disabled.\n\n" +
+                "Repairing or reinstalling Minecraft from the Xbox app should sort it; reopen this window afterwards.",
+
+            _ =>
+                "The app couldn't write a backup of your game's original ray tracing files, so installing presets is disabled - " +
+                "without a backup there would be no way back to how the game looked before.\n\n" +
+                "This is usually free disk space or a permissions problem on the app's own data folder."
+        };
+
+        DefaultsMissingCard.Visibility = Visibility.Visible;
+        SelectPresetMenu.IsEnabled = false;
+        SelectPresetMenu.Content = "Unavailable";
+        InstallButton.IsEnabled = false;
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
         var hWnd = WindowNative.GetWindowHandle(this);
-        var isPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
-        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
+        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd);
 
         if (path != null)
             await ContinueInitializationWithPath(path);
@@ -266,6 +329,11 @@ public sealed partial class LUTManagerWindow : Window
                 InstallButton.IsEnabled = false;
                 UpdatePresetImage(null);
             }
+
+            // ApplySelection above re-enables the button from the preset's own completeness,
+            // which knows nothing about the backup. Re-assert the gate after it, not before.
+            if (!_defaultsReady)
+                ApplyDefaultsNotice();
         });
     }
 
@@ -296,8 +364,9 @@ public sealed partial class LUTManagerWindow : Window
 
         // An install in flight keeps the button down even if the user picks a different preset
         // from the dropdown while it runs - without this, selecting one would hand the button
-        // straight back and a second click would start a second elevated copy.
-        InstallButton.IsEnabled = preset.IsComplete && !_installInProgress;
+        // straight back and a second click would start a second elevated copy. The backup gate
+        // is in here for the same reason: this runs on every dropdown change.
+        InstallButton.IsEnabled = preset.IsComplete && !_installInProgress && _defaultsReady;
 
         if (isInstalled)
         {
@@ -421,6 +490,12 @@ public sealed partial class LUTManagerWindow : Window
             return;
         }
 
+        if (!_defaultsReady)
+        {
+            Trace.WriteLine("[LUTManager] InstallButton_Click with no usable Default backup - ignoring");
+            return;
+        }
+
         // Installing is an elevated file copy: it writes a batch script, raises a UAC prompt
         // and waits, with the UI thread free for most of it. The disabled button below is the
         // visible half of stopping a second one from starting; this flag is the half that
@@ -488,7 +563,7 @@ public sealed partial class LUTManagerWindow : Window
                 // still-stale _isPresetInstalled), then ApplyInstallButtonBevel runs
                 // explicitly with the fresh isInstalled value and wins — final bevel
                 // state is always correct regardless of what the auto-handler drew first.
-                InstallButton.IsEnabled = _selectedPreset?.IsComplete == true;
+                InstallButton.IsEnabled = _selectedPreset?.IsComplete == true && _defaultsReady;
                 ApplyInstallButtonBevel(isInstalled);
             });
         }

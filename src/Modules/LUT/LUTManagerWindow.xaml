@@ -71,11 +71,13 @@
                 <Grid.RowDefinitions>
                     <!-- Row 0: Button pair -->
                     <RowDefinition Height="Auto" />
-                    <!-- Row 1: Description text -->
+                    <!-- Row 1: No-usable-backup notice -->
                     <RowDefinition Height="Auto" />
-                    <!-- Row 2: Preset preview image -->
+                    <!-- Row 2: Description text -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Row 3: Preset preview image -->
                     <RowDefinition Height="*" />
-                    <!-- Row 3: More desc pains -->
+                    <!-- Row 4: More desc pains -->
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -152,19 +154,68 @@
                 </Grid>
 
                 <!-- ═══════════════════════════════════════════════
-                 ROW 1 — Online announcements
+                 ROW 1 — No usable Default backup
+
+                 A static Pinned-PsaCard lookalike, same as BetterRTX's: same corner radius,
+                 padding, translation, shadow and accent glyph as Core\PsaCard.xaml, minus the
+                 dismiss button, because there is nothing here for the user to dismiss. Filled
+                 and shown by ApplyDefaultsNotice(), which also takes the dropdown and the
+                 install button down - the card explains, the disabled controls enforce.
+                   ═══════════════════════════════════════════════ -->
+                <Border x:Name="DefaultsMissingCard"
+                        Grid.Row="1"
+                        Visibility="Collapsed"
+                        Margin="20,12,20,0"
+                        CornerRadius="6"
+                        Padding="6"
+                        Translation="0,0,32"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+
+                    <Grid HorizontalAlignment="Stretch"
+                          VerticalAlignment="Top"
+                          Margin="16,8,16,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <FontIcon Grid.Column="0"
+                                  Glyph="&#xE7BA;"
+                                  FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                  FontSize="20"
+                                  VerticalAlignment="Top"
+                                  Margin="0,5,0,0"
+                                  IsHitTestVisible="False"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+                        <TextBlock x:Name="DefaultsMissingText"
+                                   Grid.Column="1"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   Margin="12,0,0,0"
+                                   Opacity="0.95"
+                                   VerticalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                    </Grid>
+                </Border>
+
+                <!-- ═══════════════════════════════════════════════
+                 ROW 2 — Online announcements
                    ═══════════════════════════════════════════════ -->
                 <StackPanel x:Name="LutAnnouncementsPanel"
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Spacing="12"
                             Margin="20,12,20,8" />
 
                 <!-- ═══════════════════════════════════════════════
-                     ROW 2 — Preset preview image (crossfade vessels)
+                     ROW 3 — Preset preview image (crossfade vessels)
                      Bottom vessel: current/settled image
                      Top vessel:    incoming image, fades in over bottom
                      ═══════════════════════════════════════════════ -->
-                <Grid Grid.Row="2"
+                <Grid Grid.Row="3"
                       Padding="0,12,0,0">
 
                     <Rectangle Fill="{StaticResource FakeSplitButtonBrightBorderColor}"
