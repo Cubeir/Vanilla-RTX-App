@@ -380,6 +380,7 @@ public sealed partial class PackBrowserWindow : Window
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(12, 12, 12, 12),
+            BorderThickness = new Thickness(0),
             Margin = new Thickness(0, 5, 0, 5),
             CornerRadius = new CornerRadius(5),
             Tag = pack,

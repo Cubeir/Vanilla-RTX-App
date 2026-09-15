@@ -296,20 +296,27 @@ public sealed partial class DLSSSwapperWindow : Window
         }
     }
 
-    private Button CreateDllButton(DllData dll)
+    private FrameworkElement CreateDllButton(DllData dll)
     {
         bool isCurrentVersion = dll.Version == _swapper.InstalledVersion;
         bool isTooOld = !DLSSSwapper.IsSupportedVersion(dll.Version);
+
+        // Decided up front so the button's own corner radius, margin and shadow can be set
+        // correctly the first time - see the split-button wrapping at the bottom of this method.
+        bool showDeleteButton = !isCurrentVersion;
 
         var button = new Button
         {
             IsEnabled = !isTooOld,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            BorderThickness = new Thickness(0),
             Padding = new Thickness(0, 0, 40, 0),
-            Margin = new Thickness(0, 0, 0, 4),
+            Margin = showDeleteButton ? new Thickness(0) : new Thickness(0, 0, 0, 4),
             MinHeight = 96,
-            CornerRadius = new CornerRadius(5),
+            // Squared off on the right where the delete button will sit flush against it -
+            // squared off below where the delete button sits flush against it.
+            CornerRadius = showDeleteButton ? new CornerRadius(5, 0, 0, 5) : new CornerRadius(5),
             Tag = dll,
             IsTextScaleFactorEnabled = false,
             Translation = new System.Numerics.Vector3(0, 0, 32)
@@ -320,13 +327,19 @@ public sealed partial class DLSSSwapperWindow : Window
             button.Style = Application.Current.Resources["AccentButtonStyle"] as Style;
         }
 
-        var buttonShadow = new ThemeShadow();
-        button.Shadow = buttonShadow;
-        button.Loaded += (s, e) =>
+        // A delete-button row gets one shared shadow cast from a backing element behind the
+        // whole composite (see the bottom of this method) rather than two overlapping drop
+        // shadows for what reads as a single row.
+        if (!showDeleteButton)
         {
-            if (ShadowReceiverGrid != null)
-                buttonShadow.Receivers.Add(ShadowReceiverGrid);
-        };
+            var buttonShadow = new ThemeShadow();
+            button.Shadow = buttonShadow;
+            button.Loaded += (s, e) =>
+            {
+                if (ShadowReceiverGrid != null)
+                    buttonShadow.Receivers.Add(ShadowReceiverGrid);
+            };
+        }
 
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
@@ -392,47 +405,112 @@ public sealed partial class DLSSSwapperWindow : Window
         Grid.SetColumn(infoPanel, 2);
         grid.Children.Add(infoPanel);
 
-        if (!isCurrentVersion)
-        {
-            var deleteButton = new Button
-            {
-                Width = 40,
-                Height = 40,
-                VerticalAlignment = VerticalAlignment.Center,
-                Padding = new Thickness(0),
-                Margin = new Thickness(16, 0, 0, 0),
-                Translation = new System.Numerics.Vector3(0,0,8),
-                CornerRadius = new CornerRadius(6),
-                IsTextScaleFactorEnabled = false,
-                Tag = dll,
-            };
-
-            var deleteButtonShadow = new ThemeShadow();
-            deleteButton.Shadow = deleteButtonShadow;
-            deleteButton.Loaded += (s, e) =>
-            {
-                if (ShadowReceiverGrid != null)
-                    deleteButtonShadow.Receivers.Add(ShadowReceiverGrid);
-            };
-
-            var deleteIcon = new FontIcon
-            {
-                Glyph = "\uE74D",
-                FontSize = 18,
-                IsTextScaleFactorEnabled = false,
-            };
-
-            deleteButton.Content = deleteIcon;
-            deleteButton.Click += DeleteDllButton_Click;
-
-            Grid.SetColumn(deleteButton, 4);
-            grid.Children.Add(deleteButton);
-        }
-
         button.Content = grid;
         button.Click += DllButton_Click;
 
-        return button;
+        // Delete button: every version except the one currently installed. Built as a sibling
+        // "fake split button" next to the main button rather than floating on top of it - see
+        // CreateSplitSeamPiece below.
+        if (!showDeleteButton)
+            return button;
+
+        var deleteButton = new Button
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            BorderThickness = new Thickness(0), 
+            Padding = new Thickness(0),
+            CornerRadius = new CornerRadius(0, 5, 5, 0),
+            IsTextScaleFactorEnabled = false,
+            Tag = dll,
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            Content = new FontIcon { Glyph = "\uE74D", FontSize = 20, Margin = new Thickness(-5, 0, 0, 0), IsTextScaleFactorEnabled = false }
+        };
+        deleteButton.Click += DeleteDllButton_Click;
+
+        // Split-button wrapper: main button (Star) + 6px seam column + delete button,
+        // touching corners squared off above. See CreateSplitSeamPiece for the two 3px bevel
+        // strips that fill the seam.
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(6) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+
+        // One shared shadow for the whole composite row, cast from an invisible backdrop behind
+        // both pieces - see the comment where buttonShadow is conditionally skipped above.
+        var rowShadowBackdrop = new Border
+        {
+            CornerRadius = new CornerRadius(5),
+            Translation = new System.Numerics.Vector3(0, 0, 32),
+            IsHitTestVisible = false
+        };
+        var rowShadow = new ThemeShadow();
+        rowShadowBackdrop.Shadow = rowShadow;
+        rowShadowBackdrop.Loaded += (s, e) =>
+        {
+            if (ShadowReceiverGrid != null)
+                rowShadow.Receivers.Add(ShadowReceiverGrid);
+        };
+        Grid.SetColumnSpan(rowShadowBackdrop, 3);
+        row.Children.Add(rowShadowBackdrop);
+
+        Grid.SetColumn(button, 0);
+        row.Children.Add(button);
+
+        Grid.SetColumn(deleteButton, 2);
+        row.Children.Add(deleteButton);
+
+        var darkSeam = CreateSplitSeamPiece(dark: true);
+        Grid.SetColumn(darkSeam, 0);
+        row.Children.Add(darkSeam);
+
+        var brightSeam = CreateSplitSeamPiece(dark: false);
+        Grid.SetColumn(brightSeam, 2);
+        row.Children.Add(brightSeam);
+
+        return row;
+    }
+
+    /// <summary>
+    /// One 3px half of the "fake split button" seam between the version button and its delete
+    /// button - the same hand-written pattern this window's own "Create your own preset"-style
+    /// button pairs use directly in XAML via <c>{ThemeResource FakeSplitButtonDarkBorderColor}</c>.
+    /// That binding auto-updates on theme change for free; built from code (these rows are
+    /// assembled at runtime, one per DLL) it needs the same live-theme handling
+    /// <c>ApplyCloseButtonBevel</c>-style code elsewhere in this app already does: resolve once,
+    /// then follow <see cref="ThemeService.ThemeChanged"/> and drop the subscription on Unloaded.
+    /// <para>
+    /// Pass <c>dark: true</c> for the piece added to the LEFT (version) button's own Grid.Column -
+    /// it right-aligns itself and bleeds 3px into the gap via a negative margin. Pass
+    /// <c>dark: false</c> for the piece added to the RIGHT (delete) button's column - it
+    /// left-aligns and bleeds the other way. Together the two 3px strips exactly fill the 6px
+    /// gap column, dark meeting bright at the seam.
+    /// </para>
+    /// </summary>
+    private FrameworkElement CreateSplitSeamPiece(bool dark)
+    {
+        var strip = new Grid
+        {
+            HorizontalAlignment = dark ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+            Width = 3,
+            Margin = dark ? new Thickness(0, 0, -3, 0) : new Thickness(-3, 0, 0, 0),
+            IsHitTestVisible = false
+        };
+        strip.Children.Add(new Microsoft.UI.Xaml.Shapes.Rectangle { Fill = (Brush)Application.Current.Resources["ButtonBackgroundThemeBrush"] });
+
+        var border = new Border { BorderThickness = new Thickness(3, 0, 0, 0) };
+        strip.Children.Add(border);
+
+        void Apply(ElementTheme theme) =>
+            border.BorderBrush = new SolidColorBrush(ThemeService.GetBevelColor(
+                theme, dark ? ThemeService.BevelEdge.Right : ThemeService.BevelEdge.Left, accented: false));
+
+        Apply(ThemeService.ResolveInitialTheme());
+        ThemeService.ThemeChanged += Apply;
+        strip.Unloaded += (_, _) => ThemeService.ThemeChanged -= Apply;
+
+        return strip;
     }
 
     private async void DeleteDllButton_Click(object sender, RoutedEventArgs e)
