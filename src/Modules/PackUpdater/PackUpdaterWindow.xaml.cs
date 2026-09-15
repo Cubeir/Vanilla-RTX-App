@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
-using Windows.Storage;
 using WinUIEx;
 using static Vanilla_RTX_App.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
 
@@ -23,36 +22,19 @@ public sealed partial class PackUpdaterWindow : Window
     private TimeSpan _fadeInDuration => TimeSpan.FromMilliseconds(150 * animationSpeedMultiplier);
     private TimeSpan _fadeOutDuration => TimeSpan.FromMilliseconds(125 * animationSpeedMultiplier);
 
-    // How frequently differences of Installed version versus Cached version (versus offline or online) can invalidate the cache
-    // Only once every few mins, so user can't get a way to spam github by changing pack versions constantly. while also allowing INSTALLED versions to invalidate
-    private const string CACHE_INVALIDATION_COOLDOWN_KEY = "PackUpdater_CacheInvalidation_LastTimestamp";
-    private const int CACHE_INVALIDATION_COOLDOWN_MINUTES = 1;
-    // Source could either be the online zipball's manifests, or the version of files inside the offline/cached zipball
-    // UI-displayed versions are from the INSTALLED version of the pack, this determines how frequently it gets to invalidate based solely on that.
-    // The service code (PackUpdater.cs) only concerns itself with REMOTE VS CACHE and grapples to keep it updated there.
-    // what we have here is just one extra check that closes all the gaps. In case that's on cooldown, this ends up
-    // being another layer than can invalidate user's cache and lets them receive the latest version of the pack.
-
-    /*
-the cooldown should be ZERO, and the INVALIDATION PATH FROM THE UI MUST BE UPDATED!
-Imagine this scenario:
-user's cache is outdated
-User's installed version is outdated
-user just imported an out of date Vanilla RTX mcpack from another source
-cache and user's installed version/ui are both on cooldown on their use of authority to invalidate cache
-
-user presses update
-it will deploy from THE FUCKING STALE CACHE! without updating, even though, we just imported a new version
-
-basically, this one minute cooldown, is unnecessary GARBAGE, that should be ZERO
-AN INSTALLED PACK, being OUTDATED, compared to what user has on the remote, IS ALLLWAYYYYYYYYYS A VALID CASE to trigger an update
-
-YET, we should NOT be allowing github to be spammed if someone is CONSTANTLY importing an outdated pack.
-So a cooldown of 1 minute to minimize that gap is PERFECTLY FINE, It's on the user if they keep importing outdated packs and expecting app to constantly trigger updates.
-
-but it is YOUR DESIGN FLAW! 
-here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACHE IS ACTUALLY OUTDATED OR NOT, before invalidating it! 
-    */
+    // This window's second line of defence against deploying a stale cache now lives in
+    // PackUpdater.InvalidateCacheIfStaleAsync, called from UpdateAllButtonStates.
+    //
+    // It used to live here, and it was wrong in both directions. It triggered on INSTALLED being
+    // behind the remote and then invalidated unconditionally, so it would throw away a perfectly
+    // current zipball just because the user was running an older pack - an ~11MB re-download and
+    // a GitHub hit to replace a file that was already correct. And because the only thing holding
+    // that back was a 1-minute cooldown, the genuinely stale case could still slip through it and
+    // through PackUpdater's own 55-minute cooldown at the same time, and deploy stale anyway.
+    //
+    // Asking the right question - is the CACHE behind the remote? - fixes both, and costs nothing:
+    // the remote numbers are already in hand from GetRemoteVersionsAsync, and the cache's own
+    // numbers are read off the zipball on disk. No request, so no cooldown to reason about.
 
     private string? _currentInstallActionType;
 
@@ -307,42 +289,10 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
         string? normalsInstalled,
         string? opusInstalled)
     {
-        bool anyNeedsUpdate = false;
-
-        if (!string.IsNullOrEmpty(rtxRemote) && _updater.IsRemoteVersionNewerThanInstalled(rtxInstalled, rtxRemote))
-            anyNeedsUpdate = true;
-
-        if (!string.IsNullOrEmpty(normalsRemote) && _updater.IsRemoteVersionNewerThanInstalled(normalsInstalled, normalsRemote))
-            anyNeedsUpdate = true;
-
-        if (!string.IsNullOrEmpty(opusRemote) && _updater.IsRemoteVersionNewerThanInstalled(opusInstalled, opusRemote))
-            anyNeedsUpdate = true;
-
-        if (anyNeedsUpdate)
-        {
-            var settings = ApplicationData.Current.LocalSettings;
-            bool canInvalidate = true;
-
-            if (settings.Values.TryGetValue(CACHE_INVALIDATION_COOLDOWN_KEY, out var storedValue) && storedValue is long ticks)
-            {
-                var lastInvalidation = new DateTime(ticks, DateTimeKind.Utc);
-                var elapsed = DateTime.UtcNow - lastInvalidation;
-                var remainingMinutes = CACHE_INVALIDATION_COOLDOWN_MINUTES - (int)elapsed.TotalMinutes;
-
-                if (remainingMinutes > 0)
-                {
-                    canInvalidate = false;
-                    Trace.WriteLine($"Cache invalidation on cooldown - {remainingMinutes} minute(s) remaining");
-                }
-            }
-
-            if (canInvalidate)
-            {
-                _updater.InvalidateCache();
-                settings.Values[CACHE_INVALIDATION_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
-                Trace.WriteLine("Cache invalidated: installed version(s) outdated vs remote");
-            }
-        }
+        // Drop the cached zipball if, and only if, it is actually behind the remote. Runs on every
+        // refresh with no cooldown because it makes no requests at all - the remote numbers are
+        // the ones just fetched above, and the cache's are read off the zipball on disk.
+        await _updater.InvalidateCacheIfStaleAsync(rtxRemote, normalsRemote, opusRemote);
 
         await UpdateSingleButtonState(VanillaRTX_InstallButton, VanillaRTX_EnhancementsToggle,
             PackType.VanillaRTX, rtxInstalled, rtxRemote);
@@ -545,7 +495,7 @@ here's why, the cache invalidation triggered by the UI, should CHECK IF THE CACH
 
         try
         {
-            var (success, logs) = await Task.Run(() =>
+            var success = await Task.Run(() =>
                 _updater.UpdateSinglePackAsync(packType, enableEnhancements));
 
             if (success)

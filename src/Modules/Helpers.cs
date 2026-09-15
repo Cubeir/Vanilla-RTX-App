@@ -992,7 +992,7 @@ public static class MinecraftGDKLocator
     private const string GameConfigFileName = "MicrosoftGame.Config";
     private const int MaxSearchDepth = 9;
 
-    // Package family names - stable post-GDK (1.21.120+)
+    // Package family names
     private const string MinecraftStablePackageFamilyName = "Microsoft.MinecraftUWP_8wekyb3d8bbwe";
     private const string MinecraftPreviewPackageFamilyName = "Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe";
 

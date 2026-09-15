@@ -36,6 +36,26 @@ public enum VersionSource
     ZipballFallback   // Read from cached zipball when remote unavailable
 }
 
+/// <summary>
+/// The verdict of <see cref="PackUpdater.GetUpdateNoticeAsync"/> - what, if anything, is worth
+/// telling the user about Vanilla RTX from outside the updater window.
+///
+/// Deliberately a verdict and not a sentence: this class decides the facts, the caller owns the
+/// wording, because the wording names a button that lives in the caller's own XAML.
+/// </summary>
+public enum PackUpdateNotice
+{
+    /// <summary>Everything installed is current, or nothing could be verified against the remote.
+    /// Both mean the same thing to a caller: say nothing.</summary>
+    None,
+
+    /// <summary>The remote answered, and the user has none of the three packs installed.</summary>
+    NothingInstalled,
+
+    /// <summary>At least one installed pack is behind the remote. See the accompanying count.</summary>
+    UpdatesAvailable
+}
+
 public class PackUpdater
 {
     private const string VANILLA_RTX_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX/manifest.json";
@@ -44,19 +64,20 @@ public class PackUpdater
     private const string VANILLA_RTX_REPO_ZIPBALL_URL = "https://github.com/Cubeir/Vanilla-RTX/archive/refs/heads/master.zip";
 
     // Remote version cache // how frequently to check the remote again for manifest's versions
-    private const string RemoteVersionsCacheKey_Release = "RemoteVersionsCache_Release";
-    private const string RemoteVersionsCacheKey_Preview = "RemoteVersionsCache_Preview";
-    private const string RemoteVersionsCacheTimeKey_Release = "RemoteVersionsCacheTime_Release";
-    private const string RemoteVersionsCacheTimeKey_Preview = "RemoteVersionsCacheTime_Preview";
+    //
+    // Not split by edition, and that is the point: everything this class fetches - the three
+    // manifests above, the zipball - is the same file on the same branch whichever edition the
+    // app is targeting. Only where a pack gets INSTALLED differs, and PackLocator handles that
+    // separately. These keys used to be per-edition, which bought nothing and meant a user who
+    // toggles Preview re-asked GitHub for bytes it had already cached, doubling the request rate
+    // for identical data.
+    private const string RemoteVersionsCacheKey = "RemoteVersionsCache";
+    private const string RemoteVersionsCacheTimeKey = "RemoteVersionsCacheTime";
     private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(10);
 
     // Cache validation check cooldown (Zip re-check versus remote before trying to install from it)
-    private const string LastCacheCheckKey_Release = "LastCacheValidationCheck_Release";
-    private const string LastCacheCheckKey_Preview = "LastCacheValidationCheck_Preview";
+    private const string LastCacheCheckKey = "LastCacheValidationCheck";
     private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(55);
-
-    public event Action<string>? ProgressUpdate;
-    private readonly List<string> _logMessages = new();
 
     private bool _installationInProgress = false;
     private PackType? _currentInstallingPack = null;
@@ -64,15 +85,6 @@ public class PackUpdater
     public string EnhancementFolderName { get; set; } = "__enhancements";
     public bool InstallToDevelopmentFolder { get; set; } = false;
     public bool CleanUpTheOtherFolder { get; set; } = true;
-
-    private string GetRemoteVersionsCacheKey() => EnvironmentVariables.Persistent.IsTargetingPreview
-        ? RemoteVersionsCacheKey_Preview : RemoteVersionsCacheKey_Release;
-
-    private string GetRemoteVersionsCacheTimeKey() => EnvironmentVariables.Persistent.IsTargetingPreview
-        ? RemoteVersionsCacheTimeKey_Preview : RemoteVersionsCacheTimeKey_Release;
-
-    private string GetLastCacheCheckKey() => EnvironmentVariables.Persistent.IsTargetingPreview
-        ? LastCacheCheckKey_Preview : LastCacheCheckKey_Release;
 
     // ======================= Installation State Management =======================
 
@@ -119,6 +131,60 @@ public class PackUpdater
 
         localSettings.Values["CachedZipballPath"] = null;
         Trace.WriteLine("❌ Cache invalidated - will download fresh on next install");
+
+        RefreshDeployableCacheState();
+    }
+
+    // ======================= Deployable Cache State (broadcast) =======================
+
+    /// <summary>
+    /// Raised when the answer to "is there a deployable cache?" changes, so anything drawing that
+    /// state (MainWindow's Get-latest-packs glyph) can follow along instead of re-asking at every
+    /// place that might have changed it - which is how it was done before, and meant every new
+    /// cache-touching code path silently owed a refresh call it was easy to forget.
+    ///
+    /// Static because the cache is one process-wide thing - a single LocalSettings key plus one
+    /// file on disk - not a per-instance one. That matters in practice: PackUpdaterWindow falls
+    /// back to `new PackUpdater()` when it can't borrow MainWindow's, and an invalidation from
+    /// that second instance still has to reach whoever is drawing the glyph.
+    ///
+    /// Raised on whatever thread made the change - installs run under the caller's Task.Run - so
+    /// a subscriber touching UI has to marshal. Nothing here does that for you on purpose: this
+    /// class has no business knowing what a DispatcherQueue is.
+    /// </summary>
+    public static event Action<bool>? DeployableCacheChanged;
+
+    private static bool? _lastBroadcastCacheState;
+
+    /// <summary>
+    /// Re-probes the cache and raises <see cref="DeployableCacheChanged"/> only when the answer
+    /// actually moved since the last broadcast - so this is safe to call as often as a caller
+    /// likes, and a subscriber never sees a redundant event.
+    ///
+    /// Callers only need this for changes made behind the class's back (a Wipe, a temp-folder
+    /// sweep, a file deleted by hand); every change this class makes itself already broadcasts.
+    /// Returns the freshly probed state for callers that want it inline.
+    /// </summary>
+    public bool RefreshDeployableCacheState()
+    {
+        var state = HasDeployableCache();
+
+        if (_lastBroadcastCacheState == state)
+            return state;
+
+        _lastBroadcastCacheState = state;
+
+        try
+        {
+            DeployableCacheChanged?.Invoke(state);
+        }
+        catch (Exception ex)
+        {
+            // A subscriber blowing up is a UI problem, never a reason to fail a cache operation.
+            Trace.WriteLine($"[PackUpdater] DeployableCacheChanged subscriber threw: {ex.Message}");
+        }
+
+        return state;
     }
 
     // ======================= Cache Validation Check =======================
@@ -141,7 +207,7 @@ public class PackUpdater
 
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
-        var checkKey = GetLastCacheCheckKey();
+        var checkKey = LastCacheCheckKey;
 
         if (localSettings.Values[checkKey] is string lastCheckStr &&
             DateTimeOffset.TryParse(lastCheckStr, out var lastCheck))
@@ -280,15 +346,13 @@ public class PackUpdater
 
     // ======================= Individual Pack Installation =======================
 
-    public async Task<(bool Success, List<string> Logs)> UpdateSinglePackAsync(PackType packType, bool enableEnhancements)
+    public async Task<bool> UpdateSinglePackAsync(PackType packType, bool enableEnhancements)
     {
-        _logMessages.Clear();
-
         // Check if another installation is already running
         if (IsInstallationInProgress())
         {
             Trace.WriteLine("⚠️ Another installation is already in progress");
-            return (false, new List<string>(_logMessages));
+            return false;
         }
 
         try
@@ -310,7 +374,7 @@ public class PackUpdater
                 if (!downloadSuccess || string.IsNullOrEmpty(downloadPath))
                 {
                     Trace.WriteLine("❌ Download failed");
-                    return (false, new List<string>(_logMessages));
+                    return false;
                 }
 
                 SaveCachedZipballPath(downloadPath);
@@ -318,13 +382,12 @@ public class PackUpdater
             }
 
             Trace.WriteLine("✅ Using cached zipball for deployment");
-            var deploySuccess = await DeployPackage(cacheInfo.path!, packType, enableEnhancements);
-            return (deploySuccess, new List<string>(_logMessages));
+            return await DeployPackage(cacheInfo.path!, packType, enableEnhancements);
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"❌ Unexpected error: {ex.Message}");
-            return (false, new List<string>(_logMessages));
+            return false;
         }
         finally
         {
@@ -343,8 +406,8 @@ public class PackUpdater
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
-        var cacheKey = GetRemoteVersionsCacheKey();
-        var timeKey = GetRemoteVersionsCacheTimeKey();
+        var cacheKey = RemoteVersionsCacheKey;
+        var timeKey = RemoteVersionsCacheTimeKey;
 
         if (localSettings.Values[timeKey] is string cacheTimeStr &&
             DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
@@ -363,11 +426,11 @@ public class PackUpdater
 
                     return (
                         (MinecraftJson.GetString(rtxCached?["version"]),
-                         ParseVersionSource(MinecraftJson.GetString(rtxCached?["source"]))),
+                         AsCached(ParseVersionSource(MinecraftJson.GetString(rtxCached?["source"])))),
                         (MinecraftJson.GetString(normalsCached?["version"]),
-                         ParseVersionSource(MinecraftJson.GetString(normalsCached?["source"]))),
+                         AsCached(ParseVersionSource(MinecraftJson.GetString(normalsCached?["source"])))),
                         (MinecraftJson.GetString(opusCached?["version"]),
-                         ParseVersionSource(MinecraftJson.GetString(opusCached?["source"])))
+                         AsCached(ParseVersionSource(MinecraftJson.GetString(opusCached?["source"]))))
                     );
                 }
                 catch { /* Fall through */ }
@@ -505,6 +568,146 @@ public class PackUpdater
             : VersionSource.Remote;
     }
 
+    /// <summary>
+    /// Restates a stored reading's provenance for the fact that it is now being served from the
+    /// few-minute LocalSettings cache rather than freshly fetched.
+    ///
+    /// Without this the cache branch echoed back whatever it stored - always <c>Remote</c> - so
+    /// <see cref="VersionSource.CachedRemote"/> was never produced anywhere in the app and the
+    /// "(You seem up-to-date)" wording that hangs off it in PackUpdaterWindow was unreachable.
+    ///
+    /// <see cref="VersionSource.ZipballFallback"/> deliberately keeps its own provenance: that a
+    /// reading came off the offline zipball is the more useful thing to tell the user, and it
+    /// stays true no matter how many times it is re-served from cache.
+    /// </summary>
+    private static VersionSource AsCached(VersionSource stored) =>
+        stored == VersionSource.Remote ? VersionSource.CachedRemote : stored;
+
+    /// <summary>
+    /// Drops the cached zipball, but only when it is genuinely behind the remote versions handed
+    /// in. Returns whether it dropped anything.
+    ///
+    /// This closes a gap that <see cref="ValidateCacheAgainstRemote"/> alone cannot: that one is
+    /// behind a 55-minute cooldown, so a cache that goes stale inside that window would deploy
+    /// stale. This runs whenever the updater window refreshes, with no cooldown of its own,
+    /// because it costs nothing to run - the remote numbers are the caller's already-fetched
+    /// ones (so no request), and the cache's own numbers are read off the zipball already on
+    /// disk. Nothing here touches the network.
+    ///
+    /// The thing to keep straight - and what the previous version of this got wrong - is that
+    /// the question is cache-versus-remote and nothing else. The caller used to trigger on
+    /// installed-versus-remote and then invalidate unconditionally, which threw away a perfectly
+    /// current zipball whenever the user merely happened to be running an older pack, costing an
+    /// ~11MB re-download and a GitHub hit to replace a file that was already correct.
+    /// </summary>
+    public async Task<bool> InvalidateCacheIfStaleAsync(string? remoteVanillaRTX, string? remoteNormals, string? remoteOpus)
+    {
+        try
+        {
+            var cacheInfo = GetCacheInfo();
+            if (!cacheInfo.exists || string.IsNullOrEmpty(cacheInfo.path))
+                return false; // Nothing cached, nothing to drop.
+
+            var cached = await GetVersionsFromCachedZipball(cacheInfo.path!);
+
+            if (cached == null)
+            {
+                // A cache we can't read versions out of can't be trusted to install from either.
+                Trace.WriteLine("📦 Cached zipball unreadable - invalidating");
+                InvalidateCache();
+                return true;
+            }
+
+            var packs = new[]
+            {
+                (cached: cached.Value.rtx,     remote: remoteVanillaRTX),
+                (cached: cached.Value.normals, remote: remoteNormals),
+                (cached: cached.Value.opus,    remote: remoteOpus)
+            };
+
+            // A pack the remote has and the cache doesn't counts as stale, same as one the cache
+            // has an older copy of. A remote we couldn't read says nothing either way, so skip it.
+            var stale = packs.Any(p =>
+                !string.IsNullOrEmpty(p.remote) &&
+                (string.IsNullOrEmpty(p.cached) || IsRemoteVersionNewerThanInstalled(p.cached, p.remote)));
+
+            if (!stale)
+                return false;
+
+            Trace.WriteLine("📦 Cached zipball is behind the remote - invalidating");
+            InvalidateCache();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Failing to verify is not a reason to throw away a cache that may well be fine.
+            Trace.WriteLine($"[PackUpdater] Staleness check failed, keeping cache: {ex.Message}");
+            return false;
+        }
+    }
+
+    // ======================= Update Availability (for callers outside the updater window) =======================
+
+    /// <summary>
+    /// Compares what is installed against the remote versions and returns whether that is worth
+    /// telling the user about. Built for MainWindow, which has no updater UI of its own to show
+    /// this in and just wants to know whether to mention it once.
+    ///
+    /// Reads remote versions through <see cref="GetRemoteVersionsAsync"/>, so it shares the same
+    /// few-minute cache the updater window already fills - calling this on every pack re-locate
+    /// costs a GitHub request at most once per cache window, not once per call.
+    ///
+    /// Silence is the default: a remote that can't be reached, a version that can't be read, or
+    /// an install that is simply current all return <see cref="PackUpdateNotice.None"/>. Nothing
+    /// about failing to check is worth interrupting someone over.
+    ///
+    /// Installed versions are passed in rather than located here - the caller has just done that
+    /// work, and repeating a filesystem sweep to re-learn what it already knows would be waste.
+    /// </summary>
+    /// <returns>
+    /// The verdict, plus how many of the three packs are behind - which the caller needs in order
+    /// to get "update" versus "updates" right.
+    /// </returns>
+    public async Task<(PackUpdateNotice Notice, int OutdatedCount)> GetUpdateNoticeAsync(
+        string? installedVanillaRTX,
+        string? installedNormals,
+        string? installedOpus)
+    {
+        try
+        {
+            var remote = await GetRemoteVersionsAsync();
+
+            var packs = new[]
+            {
+                (installed: installedVanillaRTX, available: remote.rtx.version),
+                (installed: installedNormals,    available: remote.normals.version),
+                (installed: installedOpus,       available: remote.opus.version)
+            };
+
+            // Nothing readable came back for any of the three - offline, rate-limited, malformed
+            // manifest, doesn't matter. We know nothing, so we say nothing.
+            if (packs.All(p => string.IsNullOrEmpty(p.available)))
+                return (PackUpdateNotice.None, 0);
+
+            if (packs.All(p => string.IsNullOrEmpty(p.installed)))
+                return (PackUpdateNotice.NothingInstalled, 0);
+
+            var outdated = packs.Count(p =>
+                !string.IsNullOrEmpty(p.installed) &&
+                !string.IsNullOrEmpty(p.available) &&
+                IsRemoteVersionNewerThanInstalled(p.installed, p.available));
+
+            return outdated > 0
+                ? (PackUpdateNotice.UpdatesAvailable, outdated)
+                : (PackUpdateNotice.None, 0);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[PackUpdater] Update-notice check failed: {ex.Message}");
+            return (PackUpdateNotice.None, 0);
+        }
+    }
+
     private async Task<(string? rtx, string? normals, string? opus)?> GetVersionsFromCachedZipball(string cachePath)
     {
         try
@@ -528,14 +731,14 @@ public class PackUpdater
     public void ResetCacheCheckCooldown()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
-        localSettings.Values[GetLastCacheCheckKey()] = null;
+        localSettings.Values[LastCacheCheckKey] = null;
     }
 
     public void ResetRemoteVersionCache()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
-        localSettings.Values[GetRemoteVersionsCacheKey()] = null;
-        localSettings.Values[GetRemoteVersionsCacheTimeKey()] = null;
+        localSettings.Values[RemoteVersionsCacheKey] = null;
+        localSettings.Values[RemoteVersionsCacheTimeKey] = null;
     }
 
     // ======================= Helper Methods =======================
@@ -1213,6 +1416,8 @@ public class PackUpdater
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values["CachedZipballPath"] = path;
+
+        RefreshDeployableCacheState();
     }
 
     public bool HasDeployableCache()
