@@ -131,10 +131,9 @@
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <!-- Wrapped both panels in a single parent StackPanel -->
+                
                 <StackPanel>
-                    <!-- Pinned by hand rather than fetched: it always applies, and it must not
-                         depend on the announcements fetch having worked. Otherwise it is one of
-                         them, and scrolls with them. -->
+                    <!-- Pinned by hand rather than fetched like other PSAs, its just visually similar -->
                     <Border x:Name="PreviewWarningCard"
                             Margin="0,12,0,0"
                             Visibility="Collapsed"
@@ -170,17 +169,21 @@
                                        Opacity="0.95"
                                        VerticalAlignment="Center"
                                        IsTextScaleFactorEnabled="False"
-                                       Text="BetterRTX presets are built for and tested against stable Minecraft Release. For the best results, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into MC Preview regardless - but Preview moves ahead of Release, so the game may refuse to start or crash. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot; preset, they're your backed up defaults." />
+                                       Text="BetterRTX presets are built for and tested against stable Minecraft Release. Unless you know what you're doing, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into MC Preview regardless - but Preview moves ahead of Release, so the game may refuse to start or crash. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot; preset, they're your backed up defaults." />
                         </Grid>
                     </Border>
 
-                    <!-- PSA cards (Horizontal margins removed to avoid duplicating ScrollViewer padding) -->
+                    <!-- PSA cards. Horizontal margins are the ScrollViewer's; collapsed until
+                         something lands in it, or its own margins would show up as a gap
+                         between the notice above and the list below. -->
                     <StackPanel x:Name="BetterRTXAnnouncementsPanel"
                                 Spacing="10"
-                                Margin="0,12,0,14" />
+                                Margin="0,12,0,0"
+                                Visibility="Collapsed" />
                     <!-- Preset list -->
                     <StackPanel x:Name="PresetListContainer"
                                 Spacing="12"
+                                Margin="0,12,0,0"
                                 Padding="0,0,0,12"/>
                 </StackPanel>
             </ScrollViewer>
