@@ -46,9 +46,9 @@
                       VerticalAlignment="Center"
                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
 
-            <!-- A real hyperlink to wherever this overlay currently shows - see the host's own
+            <!-- A hyperlink to wherever this overlay currently shows - see the host's own
                  TitleClick handler. Accent-colored by the control's own default style, matching
-                 the icon beside it, so the whole block reads as "this is a link". -->
+                 the icon beside it, so the whole block reads as "this is a link" -->
             <HyperlinkButton x:Name="HeaderTitleLink"
                              Grid.Column="1"
                              Padding="0"

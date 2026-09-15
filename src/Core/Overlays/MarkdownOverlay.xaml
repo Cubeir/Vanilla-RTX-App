@@ -15,24 +15,18 @@
          OverlayHeaderBar chrome, but for GitHub markdown instead of a live page: fetches the
          raw .md text (never HTML, never a WebView2), renders it into plain WinUI elements via
          MarkdownRenderer, and never hands anything back to the caller - there is nothing to
-         import from a document. Background is a real AcrylicBrush rather than WebImportOverlay's
+         import from a document. Background is a AcrylicBrush rather than WebImportOverlay's
          opaque one: that control has to hide a live WebView2 sitting behind Loading/Error, this
          one only ever has static content behind it, so translucency costs nothing and matches
-         every other in-app overlay (AlchitexWindow, PackUpdaterWindow).
-
-         TintOpacity is deliberately high (0.95, not the 1.0/0.9 pair used elsewhere in the app) -
-         this panel covers the *entire* window behind a large block of reading text, where the
-         usual lighter recipe reads as a faint, barely-blurred ghost of whatever was open
-         underneath rather than a proper frosted surface. No Brush.Opacity at all is the other
-         half of that: Brush.Opacity blends the *whole already-blurred result* toward transparent,
-         which re-admits a slice of the sharp, unblurred backdrop straight through - exactly the
-         "not fully blurred" look. TintOpacity alone controls the frosting here. -->
+         every other in-app overlay (AlchitexWindow, PackUpdaterWindow) -->
     <Border x:Name="Panel"
             Margin="0,37,0,0"
+            HorizontalAlignment="Stretch"
             Translation="0,0,64">
         <Border.Background>
             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                          TintOpacity="0.95"
+                          TintOpacity="0.9"
+                          TintLuminosityOpacity="0.9"
                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
         </Border.Background>
         <Border.Shadow>
@@ -55,7 +49,8 @@
             <Grid Grid.Row="1">
                 <ScrollViewer x:Name="ContentScrollViewer"
                               Visibility="Collapsed"
-                              Padding="28,20,28,32"
+                              Padding="28,0,28,32"
+                              HorizontalAlignment="Center"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <ContentControl x:Name="MarkdownHost"
@@ -106,19 +101,19 @@
                 <!-- Search - floating, top-right, only ever visible over rendered content (see
                      ShowContent/ShowLoading/ShowError). The toggle button and the bar itself
                      swap places rather than one disabling the other, so there's never a dead
-                     36x36 button sitting there while the bar is open. -->
+                     button sitting there while the bar is open. -->
                 <Button x:Name="SearchToggleButton"
                         Visibility="Collapsed"
                         Style="{ThemeResource SubtleButtonStyle}"
-                        Width="36"
-                        Height="36"
-                        CornerRadius="18"
+                        Width="40"
+                        Height="40"
+                        CornerRadius="8"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Top"
-                        Margin="0,16,16,0"
+                        Margin="0,12,22,0"
                         Click="SearchToggleButton_Click"
                         ToolTipService.ToolTip="Search this page (Ctrl+F)">
-                    <FontIcon Glyph="&#xE721;" FontSize="15" />
+                    <FontIcon Glyph="&#xE721;" FontSize="16" />
                 </Button>
 
                 <Border x:Name="SearchBar"
