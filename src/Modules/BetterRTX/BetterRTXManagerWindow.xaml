@@ -67,17 +67,73 @@
         <Grid x:Name="PresetSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
+                <!-- Minecraft Preview notice (fixed, Preview only) -->
+                <RowDefinition Height="Auto" />
                 <!-- Preset list (scrollable) -->
                 <RowDefinition Height="*" />
                 <!-- Add customized preset (fixed) -->
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <!-- ══════════════════════════════════════════
+                Minecraft Preview notice
+
+                Deliberately a hand-built copy of a Pinned PsaCard rather than an actual one:
+                PSA cards are fetched announcements that come and go, and this is a fixed
+                property of the window being open on Preview. Pinned is the right *look*
+                (no dismiss button, full-opacity text) because there is likewise nothing here
+                for the user to dismiss.
+
+                Lives outside the ScrollViewer so it can't be scrolled away from - which is
+                also why it, rather than the scroller, carries the 37px the floating titlebar
+                needs whenever it is shown. ApplyPreviewNotice() owns both halves of that.
+            ═══════════════════════════════════════════ -->
+            <Border x:Name="PreviewWarningCard"
+                    Grid.Row="0"
+                    Visibility="Collapsed"
+                    Margin="20,49,24,0"
+                    CornerRadius="6"
+                    Padding="6"
+                    Translation="0,0,32"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+
+                <Grid HorizontalAlignment="Stretch"
+                      VerticalAlignment="Top"
+                      Margin="16,8,16,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <FontIcon Grid.Column="0"
+                              Glyph="&#xE7BA;"
+                              FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                              FontSize="20"
+                              VerticalAlignment="Top"
+                              Margin="0,5,0,0"
+                              IsHitTestVisible="False"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+                    <TextBlock Grid.Column="1"
+                               TextWrapping="Wrap"
+                               FontSize="14"
+                               Margin="12,0,0,0"
+                               Opacity="0.95"
+                               VerticalAlignment="Center"
+                               IsTextScaleFactorEnabled="False"
+                               Text="BetterRTX presets are built and tested against stable Minecraft Release. For the best results, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into Preview regardless - but Preview moves ahead of Release, so the game may render incorrectly or refuse to start. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot;: your Preview install's own untouched files, kept entirely separately from Release's." />
+                </Grid>
+            </Border>
+
             <!-- Shadow receiver sits behind the scroll content -->
             <Grid x:Name="ShadowReceiverGrid"
-                  Grid.Row="0" />
+                  Grid.Row="1" />
 
-            <ScrollViewer Grid.Row="0"
+            <ScrollViewer x:Name="PresetScrollViewer"
+                          Grid.Row="1"
                           Padding="20,0,24,0"
                           Margin="0,37,0,0"
                           IsTextScaleFactorEnabled="False"
@@ -98,7 +154,7 @@
 
             <!-- Empty State -->
             <StackPanel x:Name="EmptyStatePanel"
-                        Grid.Row="0"
+                        Grid.Row="1"
                         Margin="0,37,0,0"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -118,7 +174,7 @@
             <!-- ══════════════════════════════════════════
                 Add customized preset (.rtpack)
             ═══════════════════════════════════════════ -->
-            <Border Grid.Row="1"
+            <Border Grid.Row="2"
                     Margin="0"
                     CornerRadius="0"
                     BorderThickness="0"

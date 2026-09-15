@@ -33,42 +33,77 @@ public enum RTXDefaultsGuard
 /// lives in local storage, which the reset button wipes. If the game currently has a
 /// non-default preset installed when that happens, the user loses their only path back
 /// to vanilla files. This guard checks each feature's state right before the wipe and,
-/// if needed, silently reverts to Default first (one UAC prompt per feature that's dirty).
+/// if needed, silently reverts to Default first (one UAC prompt per dirty backup - each
+/// feature keeps one per Minecraft edition).
 /// </summary>
 public static class DefaultsGuard
 {
+    /// <summary>
+    /// Runs the BetterRTX check for <b>both</b> editions, since each keeps its own Default
+    /// backup and the wipe is about to take both with it. The LUT guard is called once per
+    /// edition from the call site instead; this one answers for the feature as a whole
+    /// because its two backups live in one cache folder and are cleared by one wipe.
+    ///
+    /// <para>Combining the two results keeps the worst news: a failure anywhere reports
+    /// RestoreFailed, then Restored, then Skipped, and only "neither edition needed
+    /// anything" reports NoActionNeeded. Each edition still logs under its own label, so the
+    /// combined verdict never hides which one it came from. Each dirty edition costs one UAC
+    /// prompt, exactly as one dirty feature did before.</para>
+    /// </summary>
     public static async Task<RTXDefaultsGuard> RestoreBetterRTXDefaultIfNeededAsync(Action<string>? log = null)
     {
+        var release = await RestoreBetterRTXDefaultForEditionAsync(targetPreview: false, log);
+        var preview = await RestoreBetterRTXDefaultForEditionAsync(targetPreview: true, log);
+
+        if (release == RTXDefaultsGuard.RestoreFailed || preview == RTXDefaultsGuard.RestoreFailed)
+            return RTXDefaultsGuard.RestoreFailed;
+
+        if (release == RTXDefaultsGuard.Restored || preview == RTXDefaultsGuard.Restored)
+            return RTXDefaultsGuard.Restored;
+
+        if (release == RTXDefaultsGuard.Skipped || preview == RTXDefaultsGuard.Skipped)
+            return RTXDefaultsGuard.Skipped;
+
+        return RTXDefaultsGuard.NoActionNeeded;
+    }
+
+    // Folder layout comes from BetterRTXManager rather than being spelled again here - this
+    // guard exists to protect that feature's backup, so it has to be looking at the same
+    // folder permanently. Re-spelling "RTX_Cache" and "__DEFAULT" here is exactly how this
+    // would have quietly kept guarding Release only once Preview got a backup of its own.
+    private static async Task<RTXDefaultsGuard> RestoreBetterRTXDefaultForEditionAsync(bool targetPreview, Action<string>? log)
+    {
+        var tag = $"[BetterRTX Guard{(targetPreview ? " Preview" : "")}]";
+
         try
         {
-            var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-            var cacheFolder = Path.Combine(localFolder, "RTX_Cache");
-            var defaultFolder = Path.Combine(cacheFolder, "__DEFAULT");
+            var defaultFolder = BetterRTXManager.GetDefaultFolderPath(targetPreview);
+            var folderName = BetterRTXManager.GetDefaultFolderName(targetPreview);
 
-            if (!Directory.Exists(defaultFolder))
+            if (defaultFolder == null || !Directory.Exists(defaultFolder))
             {
-                log?.Invoke("[BetterRTX Guard] No __DEFAULT backup exists - nothing to protect.");
+                log?.Invoke($"{tag} No {folderName} backup exists - nothing to protect.");
                 return RTXDefaultsGuard.NoActionNeeded;
             }
 
             var defaultBinFiles = Directory.GetFiles(defaultFolder, "*.bin", SearchOption.TopDirectoryOnly).ToList();
             if (defaultBinFiles.Count == 0)
             {
-                log?.Invoke("[BetterRTX Guard] __DEFAULT folder exists but has no .bin files, nothing to restore.");
+                log?.Invoke($"{tag} {folderName} folder exists but has no .bin files, nothing to restore.");
                 return RTXDefaultsGuard.NoActionNeeded;
             }
 
-            var cachedPath = Persistent.MinecraftInstallPath;
-            if (!MinecraftGDKLocator.RevalidateCachedPath(cachedPath, false))
+            var cachedPath = targetPreview ? Persistent.MinecraftPreviewInstallPath : Persistent.MinecraftInstallPath;
+            if (!MinecraftGDKLocator.RevalidateCachedPath(cachedPath, targetPreview))
             {
-                log?.Invoke("[BetterRTX Guard] Default backup exists but no valid Minecraft path is known - can't verify or restore.");
+                log?.Invoke($"{tag} Default backup exists but no valid Minecraft path is known - can't verify or restore.");
                 return RTXDefaultsGuard.Skipped;
             }
 
             var gameMaterialsPath = Path.Combine(cachedPath!, "data", "renderer", "materials");
             if (!Directory.Exists(gameMaterialsPath))
             {
-                log?.Invoke("[BetterRTX Guard] Materials folder not found in game install - can't verify current preset state.");
+                log?.Invoke($"{tag} Materials folder not found in game install - can't verify current preset state.");
                 return RTXDefaultsGuard.Skipped;
             }
 
@@ -77,30 +112,30 @@ public static class DefaultsGuard
 
             if (currentHashes.Count == 0)
             {
-                log?.Invoke("[BetterRTX Guard] Could not read any Core RTX files from the game - skipping to avoid acting on incomplete info.");
+                log?.Invoke($"{tag} Could not read any Core RTX files from the game - skipping to avoid acting on incomplete info.");
                 return RTXDefaultsGuard.Skipped;
             }
 
             if (BetterRTXManager.AreHashesMatching(currentHashes, defaultHashes))
             {
-                log?.Invoke("[BetterRTX Guard] Game already matches Default - nothing to do.");
+                log?.Invoke($"{tag} Game already matches Default - nothing to do.");
                 return RTXDefaultsGuard.NoActionNeeded;
             }
 
-            log?.Invoke("[BetterRTX Guard] Non-default preset detected - restoring Default before wipe...");
+            log?.Invoke($"{tag} Non-default preset detected - restoring Default before wipe...");
 
             var filesToApply = defaultBinFiles
                 .Select(src => (src, Path.Combine(gameMaterialsPath, Path.GetFileName(src))))
                 .ToList();
 
-            var success = await Helpers.ReplaceFilesWithElevation(filesToApply, "[BetterRTX Guard]", "betterrtx_predelete_restore");
+            var success = await Helpers.ReplaceFilesWithElevation(filesToApply, tag, "betterrtx_predelete_restore");
 
-            log?.Invoke(success ? "[BetterRTX Guard] Default restored successfully." : "[BetterRTX Guard] Failed to restore Default.");
+            log?.Invoke(success ? $"{tag} Default restored successfully." : $"{tag} Failed to restore Default.");
             return success ? RTXDefaultsGuard.Restored : RTXDefaultsGuard.RestoreFailed;
         }
         catch (Exception ex)
         {
-            log?.Invoke($"[BetterRTX Guard] Exception: {ex.Message}");
+            log?.Invoke($"{tag} Exception: {ex.Message}");
             return RTXDefaultsGuard.Skipped;
         }
     }

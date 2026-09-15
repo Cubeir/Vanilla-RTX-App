@@ -1708,7 +1708,6 @@ public sealed partial class MainWindow : Window
         IsTargetingPreview = true;
 
         ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
-        LaunchBetterRTXManagerButton.IsEnabled = false;
 
         // _Checked runs up until here IF the persistent IsTargetingPreview is True, UpdateUI makes sure this happens...
 
@@ -1727,8 +1726,7 @@ public sealed partial class MainWindow : Window
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
 
-        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
-        LaunchBetterRTXManagerButton.IsEnabled = true;
+        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme); 
 
         if (_isInitializing) return; // same as Checked
 

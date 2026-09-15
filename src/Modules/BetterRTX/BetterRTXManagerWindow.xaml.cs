@@ -55,6 +55,15 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     private readonly BetterRTXManager _manager = new();
 
+    /// <summary>
+    /// Which edition this window is for, taken once at construction rather than read live.
+    /// A cache folder, a Default backup and an elevated write all belong to the edition the
+    /// window opened under, and MainWindow disables the Preview toggle for as long as this
+    /// window is up - so the two can't diverge, and the snapshot is what keeps that from
+    /// being load-bearing. Same reasoning as AlchitexWindow's IsTargetingPreview.
+    /// </summary>
+    private readonly bool _isPreview = Persistent.IsTargetingPreview;
+
     private CancellationTokenSource? _scanCancellationTokenSource;
 
     // The download queue is the window's, not the manager's: every step of it exists to
@@ -128,14 +137,13 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             SetTitleBar(TitleBarDragArea);
 
-            if (Persistent.IsTargetingPreview)
-            {
-                StatusMessage = "BetterRTX Preset Manager does not support Minecraft Preview, the API only provides files intended for stable Minecraft releases that may not work on the latest Preview.";
-                this.Close();
-                return;
-            }
+            WindowTitle.Text = $"BetterRTX Preset Manager - Minecraft {(_isPreview ? "Preview" : "Release")}";
 
-            WindowTitle.Text = "BetterRTX Preset Manager - Minecraft Release";
+            // bedrock.graphics builds its presets against stable Minecraft, so on Preview the
+            // notice at the top of the list is the whole of what makes this supported rather
+            // than refused: the user is told what they're risking and what to do if it bites.
+            // Everything below it works identically either way.
+            ApplyPreviewNotice();
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -179,6 +187,29 @@ public sealed partial class BetterRTXManagerWindow : Window
         if (this.Content is FrameworkElement root)
             root.RequestedTheme = theme;
         ThemeService.ApplyTitleBarColors(_appWindow, theme);
+    }
+
+    /// <summary>
+    /// Shows or hides the fixed Preview notice, and hands the space it takes to whichever of
+    /// the two needs it.
+    ///
+    /// <para>The notice is a static card styled after a Pinned <see cref="PsaCard"/> rather
+    /// than an actual one: it isn't news, it can't be dismissed, and it must be on screen for
+    /// the entire time the window is open - so it sits outside the scrolling list, above it.
+    /// The 37px the scroller normally reserves for the floating titlebar moves onto the
+    /// notice when it is visible, since the notice is then what sits directly beneath the
+    /// titlebar.</para>
+    /// </summary>
+    private void ApplyPreviewNotice()
+    {
+        PreviewWarningCard.Visibility = _isPreview ? Visibility.Visible : Visibility.Collapsed;
+
+        // Both of these share row 1 and both reserve that 37px for themselves, so both hand
+        // it over together - otherwise the empty state would sit 37px lower than centred in
+        // whatever space the notice left it.
+        var topOffset = _isPreview ? new Thickness(0, 12, 0, 0) : new Thickness(0, 37, 0, 0);
+        PresetScrollViewer.Margin = topOffset;
+        EmptyStatePanel.Margin = topOffset;
     }
 
     private async Task<bool> ShowDisclaimerDialogAsync()
@@ -282,11 +313,19 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            var cachedPath = EnvironmentVariables.Persistent.MinecraftInstallPath;
+            // Each edition caches its own install path, and the one we validate has to be the
+            // one we're about to write .bin files into. This read the Release path
+            // unconditionally while asking RevalidateCachedPath to check it against the
+            // *targeted* edition - which never bit only because the window used to refuse to
+            // open on Preview at all.
+            var cachedPath = _isPreview
+                ? Persistent.MinecraftPreviewInstallPath
+                : Persistent.MinecraftInstallPath;
+
             string? minecraftPath = null;
 
             // Validate cached path
-            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, Persistent.IsTargetingPreview))
+            if (MinecraftGDKLocator.RevalidateCachedPath(cachedPath, _isPreview))
             {
                 Trace.WriteLine($"[BetterRTX] ✓ Using cached path: {cachedPath}");
                 minecraftPath = cachedPath;
@@ -297,7 +336,10 @@ public sealed partial class BetterRTXManagerWindow : Window
                 if (!string.IsNullOrEmpty(cachedPath))
                 {
                     Trace.WriteLine($"[BetterRTX] ⚠ Cache became invalid, clearing");
-                    EnvironmentVariables.Persistent.MinecraftInstallPath = null;
+                    if (_isPreview)
+                        Persistent.MinecraftPreviewInstallPath = null;
+                    else
+                        Persistent.MinecraftInstallPath = null;
                 }
 
                 // Show manual selection button
@@ -311,7 +353,7 @@ public sealed partial class BetterRTXManagerWindow : Window
                 _scanCancellationTokenSource = new CancellationTokenSource();
 
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
-                    false,
+                    _isPreview,
                     _scanCancellationTokenSource.Token
                 );
 
@@ -397,6 +439,19 @@ public sealed partial class BetterRTXManagerWindow : Window
             return;
         }
 
+        // Same collision from the other end: a download in flight is extracting into a folder
+        // directly under the cache, and the wipe walks that cache deleting folders. Clearing
+        // the queue (DownloadTrackingReset) only stops what hasn't started - the extraction
+        // already running would carry on writing into a folder being deleted underneath it,
+        // and every per-entry failure there is caught and logged, so what's left is a preset
+        // with a readable manifest and some of its .bin files missing. Refusing is the same
+        // answer an install gets, for the same reason.
+        if (_isProcessingQueue)
+        {
+            Trace.WriteLine("[BetterRTX] A preset download is in progress - ignoring refresh");
+            return;
+        }
+
         try
         {
             Trace.WriteLine("[BetterRTX] === REFRESH BUTTON CLICKED ===");
@@ -419,7 +474,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
 
-            Trace.WriteLine($"[BetterRTX] ✓ Refresh complete — {BetterRTXManager.DEFAULT_PRESET_FOLDER_NAME} preserved");
+            Trace.WriteLine($"[BetterRTX] ✓ Refresh complete — {_manager.DefaultFolderName} preserved");
         }
         catch (Exception ex)
         {
@@ -436,7 +491,7 @@ public sealed partial class BetterRTXManagerWindow : Window
         _scanCancellationTokenSource?.Cancel();
 
         var hWnd = WindowNative.GetWindowHandle(this);
-        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(false, hWnd);
+        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd);
 
         if (path != null)
         {
@@ -455,7 +510,7 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         // Locate the materials folder, establish the cache, and deal with a game update
         // having happened since last time - all of which is the manager's business.
-        switch (await _manager.TryAttachAsync(minecraftPath))
+        switch (await _manager.TryAttachAsync(minecraftPath, _isPreview))
         {
             case BetterRTXManager.AttachFailure.MaterialsFolderMissing:
                 StatusMessage = "Materials folder not found in Minecraft installation";

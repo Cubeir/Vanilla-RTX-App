@@ -80,7 +80,23 @@ internal sealed class BetterRTXManager
     ];
     public static readonly string[] SupportedCustomPresetExtensions = [".rtpack"];
 
+    /// <summary>
+    /// The Release backup folder. Its Preview counterpart is
+    /// <see cref="DEFAULT_PREVIEW_PRESET_FOLDER_NAME"/>.
+    ///
+    /// <para><b>The two are never shared, and that is the one part of Preview support that
+    /// isn't cosmetic.</b> Everything else in the cache - the API JSON, downloaded presets,
+    /// imported .rtpacks - is the same third party's files whichever edition installs them.
+    /// A Default backup is the opposite: it is a copy of <i>this</i> install's own shipped
+    /// .bin files, taken before we overwrote them, and Preview is routinely a different
+    /// build from Release. One folder for both would mean whichever edition reached
+    /// <see cref="ApplyPresetAsync"/> first defines "default" for the other, and a rollback
+    /// would quietly install the wrong game's shaders.</para>
+    /// </summary>
     public const string DEFAULT_PRESET_FOLDER_NAME = "__DEFAULT";
+
+    /// <summary>Preview's own backup folder - see <see cref="DEFAULT_PRESET_FOLDER_NAME"/>.</summary>
+    public const string DEFAULT_PREVIEW_PRESET_FOLDER_NAME = "__DEFAULT_PREVIEW";
 
     private const string CacheFolderName = "RTX_Cache";
     private const string ApiCacheFileName = "betterrtx_api_cache.json";
@@ -89,6 +105,13 @@ internal sealed class BetterRTXManager
 
     private const string API_LAST_FETCH_KEY = "BetterRTXManager_ApiLastFetchTimestamp";
     private const int API_REFETCH_INTERVAL_HOURS = 1;
+
+    /// <summary>
+    /// Which edition this instance is attached to, as decided by <see cref="TryAttachAsync"/>.
+    /// The headless import path never attaches and never needs this - dropping a preset into
+    /// the shared cache is the same operation either way.
+    /// </summary>
+    public bool IsPreview { get; private set; }
 
     /// <summary>data\renderer\materials inside the game install - where the .bin files go.</summary>
     public string GameMaterialsPath { get; private set; } = string.Empty;
@@ -99,8 +122,49 @@ internal sealed class BetterRTXManager
     /// </summary>
     public string CacheFolder { get; private set; } = string.Empty;
 
-    /// <summary>The __DEFAULT folder: a copy of the game's own .bin files, made before the first install.</summary>
+    /// <summary>
+    /// This edition's Default folder: a copy of the game's own .bin files, made before the
+    /// first install. Release and Preview each get their own - see
+    /// <see cref="DEFAULT_PRESET_FOLDER_NAME"/> for why.
+    /// </summary>
     public string DefaultFolder { get; private set; } = string.Empty;
+
+    /// <summary>The folder name this edition's Default backup lives under, inside the cache.</summary>
+    public string DefaultFolderName => GetDefaultFolderName(IsPreview);
+
+    public static string GetDefaultFolderName(bool isPreview) =>
+        isPreview ? DEFAULT_PREVIEW_PRESET_FOLDER_NAME : DEFAULT_PRESET_FOLDER_NAME;
+
+    /// <summary>
+    /// True for <i>either</i> edition's Default folder. Every sweep over the cache asks this
+    /// rather than comparing against one name: a Release soft wipe that only spared
+    /// "__DEFAULT" would delete Preview's backup, which is the only way back to that
+    /// install's own shaders.
+    /// </summary>
+    public static bool IsDefaultFolderName(string folderName) =>
+        folderName.Equals(DEFAULT_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase) ||
+        folderName.Equals(DEFAULT_PREVIEW_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Where an edition's Default backup sits, resolved without attaching to anything.
+    /// DefaultsGuard runs before a hard wipe with no manager instance in hand, and this is
+    /// what stops it re-spelling the cache layout on its own.
+    /// </summary>
+    public static string? GetDefaultFolderPath(bool isPreview)
+    {
+        try
+        {
+            return Path.Combine(
+                ApplicationData.Current.LocalFolder.Path,
+                CacheFolderName,
+                GetDefaultFolderName(isPreview));
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] Could not resolve default folder path: {ex.Message}");
+            return null;
+        }
+    }
 
     public string ApiCachePath { get; private set; } = string.Empty;
 
@@ -119,12 +183,18 @@ internal sealed class BetterRTXManager
     public enum AttachFailure { None, MaterialsFolderMissing, CacheFolderUnavailable }
 
     /// <summary>
-    /// Points this instance at a Minecraft install: locates the materials folder, creates
-    /// the cache, and wipes the whole cache if the game has been updated since last time -
+    /// Points this instance at one edition's Minecraft install: locates the materials
+    /// folder, creates the cache, and clears what that edition updating has invalidated -
     /// stale .bin files from a previous game version are worse than none.
+    ///
+    /// <para><paramref name="isPreview"/> decides which Default folder this instance owns
+    /// and which stored config hash it compares against. Both are tracked per edition, so
+    /// Preview updating - which it does weekly - says nothing about Release and cannot
+    /// invalidate anything of Release's.</para>
     /// </summary>
-    public async Task<AttachFailure> TryAttachAsync(string minecraftPath)
+    public async Task<AttachFailure> TryAttachAsync(string minecraftPath, bool isPreview)
     {
+        IsPreview = isPreview;
         GameMaterialsPath = Path.Combine(minecraftPath, "data", "renderer", "materials");
 
         if (!Directory.Exists(GameMaterialsPath))
@@ -136,25 +206,31 @@ internal sealed class BetterRTXManager
 
         CacheFolder = cacheFolder;
 
-        DefaultFolder = Path.Combine(CacheFolder, DEFAULT_PRESET_FOLDER_NAME);
+        DefaultFolder = Path.Combine(CacheFolder, DefaultFolderName);
         ApiCachePath = Path.Combine(CacheFolder, ApiCacheFileName);
 
-        bool versionChanged = await GameVersionDetector.HasGameVersionChanged(minecraftPath);
+        bool versionChanged = await GameVersionDetector.HasGameVersionChanged(minecraftPath, isPreview);
 
         if (versionChanged)
         {
-            Trace.WriteLine("[BetterRTX] ⚠🔥 GAME VERSION CHANGED - WIPING CACHE 🔥⚠");
-            WipeEntireCache();
-            // Recreate cache folder structure
-            Directory.CreateDirectory(CacheFolder);
-            Directory.CreateDirectory(DefaultFolder);
+            // Everything this edition's update invalidated, and nothing else. This used to be
+            // a Directory.Delete of the whole cache, which was the same thing back when only
+            // one edition was ever in it - it isn't any more: the other edition's Default
+            // backup is a copy of *its* game files, which this update didn't touch, and
+            // deleting it would strand that install on whatever preset it is running with no
+            // way home.
+            Trace.WriteLine($"[BetterRTX] ⚠🔥 GAME VERSION CHANGED ({(isPreview ? "Preview" : "Release")}) - WIPING CACHE 🔥⚠");
+            WipeDefaultPresetCache();
+            await WipeNonDefaultPresetsCacheAsync();
         }
         else
         {
-            Directory.CreateDirectory(DefaultFolder);
-            // Only check API staleness when the game itself hasn't changed, cuz it has already nuked everything including the API cache.
+            // Only check API staleness when the game itself hasn't changed, cuz that has
+            // already cleared the API cache along with everything else it invalidated.
             await CheckApiStalenessOnStartupAsync();
         }
+
+        Directory.CreateDirectory(DefaultFolder);
 
         return AttachFailure.None;
     }
@@ -195,27 +271,32 @@ internal sealed class BetterRTXManager
     #region Cache wiping
 
     /// <summary>
-    /// Hard wipe, like soft wipe, but deletes Default preset too, the nuclear option
+    /// Drops <b>this edition's</b> Default backup, so the next install re-takes it from the
+    /// game's current files. Only a version change for this edition warrants that - the
+    /// backup is the user's only route back to their own install's shaders, and the other
+    /// edition's copy is none of this one's business.
     /// </summary>
-    public void WipeEntireCache()
+    public void WipeDefaultPresetCache()
     {
         try
         {
-            if (Directory.Exists(CacheFolder))
+            if (Directory.Exists(DefaultFolder))
             {
-                Trace.WriteLine($"[BetterRTX] Deleting entirety of cache folder: {CacheFolder}");
-                Directory.Delete(CacheFolder, true);
-                Trace.WriteLine("[BetterRTX] ✓ Cache wiped successfully");
+                Trace.WriteLine($"[BetterRTX] Deleting {DefaultFolderName} backup: {DefaultFolder}");
+                Directory.Delete(DefaultFolder, true);
+                Trace.WriteLine("[BetterRTX] ✓ Default backup cleared - it will be re-taken from the updated game files");
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[BetterRTX] Error wiping cache: {ex.Message}");
+            Trace.WriteLine($"[BetterRTX] Error clearing default backup: {ex.Message}");
         }
     }
     /// <summary>
     /// Soft wipe: deletes all downloaded and custom imported preset folders and the API cache JSON.
-    /// __DEFAULT is intentionally preserved — only a game version change warrants clearing that.
+    /// <b>Both</b> editions' Default folders are intentionally preserved - only a game version
+    /// change warrants clearing one, and only for the edition that changed (see
+    /// <see cref="IsDefaultFolderName"/>).
     /// </summary>
     public async Task WipeNonDefaultPresetsCacheAsync()
     {
@@ -226,7 +307,7 @@ internal sealed class BetterRTXManager
         if (Directory.Exists(CacheFolder))
         {
             var allFolders = Directory.GetDirectories(CacheFolder)
-                .Where(d => !Path.GetFileName(d).Equals(DEFAULT_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase))
+                .Where(d => !IsDefaultFolderName(Path.GetFileName(d)))
                 .ToList();
 
             foreach (var folder in allFolders)
@@ -258,7 +339,7 @@ internal sealed class BetterRTXManager
         _cachedApiHash = null;
         DownloadTrackingReset?.Invoke();
 
-        Trace.WriteLine($"[BetterRTX] [SoftWipe] ✓ Done — {DEFAULT_PRESET_FOLDER_NAME} preserved");
+        Trace.WriteLine($"[BetterRTX] [SoftWipe] ✓ Done — {DEFAULT_PRESET_FOLDER_NAME} and {DEFAULT_PREVIEW_PRESET_FOLDER_NAME} preserved");
     }
 
     #endregion
@@ -552,9 +633,12 @@ internal sealed class BetterRTXManager
                 return;
             }
 
-            // Get all folders except __DEFAULT
+            // Every folder except the two Default backups. Neither carries a manifest, so
+            // ParseLocalPresetAsync would reject them anyway - but excluding them by name is
+            // what guarantees the *other* edition's default can never surface in this one's
+            // list, however its contents end up looking.
             var presetFolders = Directory.GetDirectories(CacheFolder)
-                .Where(d => !Path.GetFileName(d).Equals(DEFAULT_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase))
+                .Where(d => !IsDefaultFolderName(Path.GetFileName(d)))
                 .ToList();
 
             foreach (var folder in presetFolders)
@@ -690,8 +774,10 @@ internal sealed class BetterRTXManager
 
         return new LocalPresetData
         {
-            Uuid = DEFAULT_PRESET_FOLDER_NAME,
-            Name = "Default RTX",
+            // The folder name doubles as the UUID, which keeps Release's and Preview's
+            // entries distinct in every dictionary keyed by it.
+            Uuid = DefaultFolderName,
+            Name = IsPreview ? "Default RTX (Preview)" : "Default RTX",
             PresetPath = DefaultFolder,
             Icon = null,
             BinFiles = binFiles,
@@ -1522,12 +1608,18 @@ public static class SmartPresetSorter
 /// field: the class never reads an actual version number out of the file, it just assumes the manifest's bytes
 /// change whenever the game updates, and treats "the hash differs" as a proxy for "the game version changed."
 ///
-/// Elsewhere, a detected change drives a full cache wipe (see <see cref="BetterRTXManager.WipeEntireCache"/>,
-/// as opposed to the soft/non-default wipe used elsewhere, <see cref="BetterRTXManager.WipeNonDefaultPresetsCacheAsync"/>),
-/// which both forces __DEFAULT to be freshly reconstructed from the post-update game files
-/// next time a preset is applied, and forces every BetterRTX preset to be treated as not-downloaded so stale,
-/// possibly update-incompatible files get re-fetched rather than reused. It also clears the stored BetterRTX
-/// disclaimer acknowledgement, so the user is re-prompted after an update.
+/// Elsewhere, a detected change drives that edition's Default backup being dropped (see
+/// <see cref="BetterRTXManager.WipeDefaultPresetCache"/>) alongside the shared soft wipe
+/// (<see cref="BetterRTXManager.WipeNonDefaultPresetsCacheAsync"/>), which both forces that edition's Default
+/// to be freshly reconstructed from the post-update game files next time a preset is applied, and forces every
+/// BetterRTX preset to be treated as not-downloaded so stale, possibly update-incompatible files get re-fetched
+/// rather than reused. It also clears the stored BetterRTX disclaimer acknowledgement, so the user is
+/// re-prompted after an update.
+///
+/// <para><b>Release and Preview are tracked separately</b>, under their own stored hash keys. They are two
+/// installs on two update cadences - Preview ships roughly weekly - so a shared key would report a change
+/// every single time the user switched editions, and every one of those false positives would clear a
+/// Default backup that was perfectly current.</para>
 ///
 /// Uncertainty generally resolves in favor of invalidating the cache: an invalid/missing install path, a config
 /// file that's gone missing after previously being found, a failed hash computation, or any unexpected exception
@@ -1537,18 +1629,27 @@ public static class SmartPresetSorter
 /// </summary>
 public static class GameVersionDetector
 {
-    // Stable release only
     private const string CONFIG_HASH_KEY = "MinecraftConfigHash";
+    private const string PREVIEW_CONFIG_HASH_KEY = "MinecraftPreviewConfigHash";
+
+    /// <summary>
+    /// The settings key this edition's last-seen config hash is stored under. Release keeps
+    /// the original key so an existing install's baseline survives this becoming per-edition;
+    /// Preview starts with none, which is the first-run case and is treated as "unchanged".
+    /// </summary>
+    private static string ConfigHashKey(bool isPreview) => isPreview ? PREVIEW_CONFIG_HASH_KEY : CONFIG_HASH_KEY;
 
     /// <summary>
     /// Detects if game version has changed by comparing MicrosoftGame.Config hash.
     /// Returns true if version changed OR unable to determine (safe default).
     /// </summary>
-    public static async Task<bool> HasGameVersionChanged(string minecraftInstallPath)
+    public static async Task<bool> HasGameVersionChanged(string minecraftInstallPath, bool isPreview)
     {
+        var configHashKey = ConfigHashKey(isPreview);
+
         try
         {
-            Trace.WriteLine("[BetterRTX] === GAME VERSION DETECTION START ===");
+            Trace.WriteLine($"[BetterRTX] === GAME VERSION DETECTION START ({(isPreview ? "Preview" : "Release")}) ===");
 
             if (string.IsNullOrEmpty(minecraftInstallPath) || !Directory.Exists(minecraftInstallPath))
             {
@@ -1562,7 +1663,7 @@ public static class GameVersionDetector
 
             // Get stored hash
             var settings = ApplicationData.Current.LocalSettings;
-            var storedConfigHash = settings.Values[CONFIG_HASH_KEY] as string;
+            var storedConfigHash = settings.Values[configHashKey] as string;
 
             Trace.WriteLine($"[BetterRTX] 💾 Stored Config hash: {storedConfigHash ?? "NULL (first run or cleared)"}");
 
@@ -1575,7 +1676,7 @@ public static class GameVersionDetector
                 {
                     // Had hash before, file now missing - INVALIDATE
                     Trace.WriteLine("[BetterRTX] 🔥 CONFIG FILE DISAPPEARED - CACHE INVALIDATION!");
-                    settings.Values.Remove(CONFIG_HASH_KEY);
+                    settings.Values.Remove(configHashKey);
                     Trace.WriteLine("[BetterRTX] 💾 Cleared stored config hash");
                     Trace.WriteLine("[BetterRTX] === GAME VERSION DETECTION END (file disappeared) ===");
                     return true;
@@ -1618,7 +1719,10 @@ public static class GameVersionDetector
                 Trace.WriteLine($"[BetterRTX]    New: {currentConfigHash.Substring(0, 16)}...");
                 versionChanged = true;
 
-                // Clear disclaimer so user is re-notified after game update
+                // Clear disclaimer so user is re-notified after game update. Deliberately the
+                // one shared key rather than one per edition: what it warns about is the
+                // third-party API and the risk of a game update breaking its files, and either
+                // edition updating is a fresh occasion to say so.
                 settings.Values.Remove(BetterRTXManager.BETTERRTX_DISCLAIMER_KEY);
                 Trace.WriteLine("[BetterRTX] 💾 Cleared BetterRTX disclaimer key — will re-prompt on next open");
             }
@@ -1630,7 +1734,7 @@ public static class GameVersionDetector
             }
 
             // Always update stored hash with current value
-            settings.Values[CONFIG_HASH_KEY] = currentConfigHash;
+            settings.Values[configHashKey] = currentConfigHash;
             Trace.WriteLine("[BetterRTX] 💾 Saved current config hash");
 
             Trace.WriteLine($"[BetterRTX] === GAME VERSION DETECTION END (changed: {versionChanged}) ===");
