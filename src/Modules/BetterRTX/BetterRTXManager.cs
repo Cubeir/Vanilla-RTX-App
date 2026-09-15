@@ -13,6 +13,12 @@ using Windows.Storage;
 
 namespace Vanilla_RTX_App.Modules.BetterRTX;
 
+// the whole code path related to backing up defaults can be pruned.
+// instead, adapt another approach that redirects mat.bin files via materials.index.json in the materials folder?
+// How will that work for reliability? the game might update that json file with updates, current design has a lot of control over things
+// think it through later. for now, things are tesetd and good, no reason to change the approach, it is robust, it works, it backs up the files literally!
+
+
 internal class ApiPresetData
 {
     public ApiPresetData() { }

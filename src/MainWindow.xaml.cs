@@ -335,6 +335,7 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/chest.export.png"
         );
         Previewer.Instance.InitializeButton(DeleteButton,
+            "ms-appx:///Assets/previews/chest.delete.png",
             "ms-appx:///Assets/previews/chest.delete.png"
         );
 
@@ -349,6 +350,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(LaunchMinecraftButton,
+            "ms-appx:///Assets/previews/minecart.launch.png",
             "ms-appx:///Assets/previews/minecart.launch.png"
         );
 
@@ -3041,16 +3043,9 @@ make alt-clicking a feature in the app, take the user to the readme.md in THAT s
 with detailed tooltips in the app, this is so unneeded, but y'know? ideas are ideas
 And if you do it, getting rid of documentation button might be an idea to consider.
 
-- If BetterRTX Manager is ever to be reworked to separate Servicing from Presentation
-the whole code path related to backing up defaults can be pruned.
-instead, adapt another approach that redirects mat.bin files via materials.index.json in the materials folder.
-
-- Add something to actively resolve junctions/symlinks everywhere
+- Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
 apparently some third party launchers use them for other things, like userdata, as well..
 ..but wait for at least a single report of failure related to this before touching anything
-
-- Slowly rework and improve art vessels, introduce 1-2 variants for some static buttons, maybe fire could burn brighter when delete button
-gets clicked, if the above is implemented, things can look really nice
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line, customize its visuals, etc... to make it look like before with layering tricks
