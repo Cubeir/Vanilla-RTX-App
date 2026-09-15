@@ -565,11 +565,15 @@ public sealed partial class MainWindow : Window
             // Apply Suspend Previewr, but won't toggle it (only button invokes can)
             SuspendUIAnimationsToggle_Click(null, null);
 
-            // TODO: Append with a text saying its debug when it is, sometimes you forget, good for your QoL
-            // App Version: [Version] (DEBUG BUILD)
-            Log($"App Version: {appVersion}" + new string('\n', 2) +
-                $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.");
-            ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion}");
+            // Startup log
+            string startupAppendLog = string.Empty;
+#if DEBUG
+            startupAppendLog = " [DEBUG BUILD]";
+#endif
+            string startupLog = $"App Version: {appVersion}" + startupAppendLog + new string('\n', 2) +
+                                $"Not affiliated with Mojang or NVIDIA;\nby continuing, you consent to modifications to your Minecraft installations & data.";
+            Log(startupLog);
+            ToolTipService.SetToolTip(TitleBarText, $"Version: {appVersion + startupAppendLog}");
 
             // Warning if MC is running
             if (Helpers.IsMinecraftRunning() && RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -1265,7 +1269,6 @@ public sealed partial class MainWindow : Window
     }
     private void BugButton_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        // TODO: IIRC there was some WinUI thing to fill in/invert glyph coloring without a explicit glyph existing for them, maybe deploy it for this one if you're not tripping
     }
 
 
