@@ -78,7 +78,7 @@
                 Visibility="{ThemeResource LightThemeBackgroundVisibility}"
                 Canvas.ZIndex="-999">
             <Border.Background>
-                <SolidColorBrush Color="#20373737" />
+                <SolidColorBrush Color="#24000000" />
             </Border.Background>
         </Border>
 
