@@ -12,13 +12,12 @@ using Microsoft.Web.WebView2.Core;
 using Windows.Storage;
 using Windows.System;
 
-namespace Vanilla_RTX_App.Core;
+namespace Vanilla_RTX_App.Core.Overlays;
 
 /// <summary>
 /// A full-window WebView2 overlay that lets the user browse a real, external site (TechPowerUp
-/// for DLSS DLLs, bedrock.graphics/creator for BetterRTX presets, the bug tracker's GitHub page)
-/// from inside the app, and hands whatever they downloaded there back to the caller in one batch
-/// the moment they close it.
+/// for DLSS DLLs, bedrock.graphics/creator for BetterRTX presets) from inside the app, and hands
+/// whatever they downloaded there back to the caller in one batch the moment they close it.
 ///
 /// <para><b>Why this exists.</b> These modules used to just launch the user's real browser via a
 /// <c>HyperlinkButton</c> and leave them to find their way back with a downloaded file in hand.
@@ -28,8 +27,11 @@ namespace Vanilla_RTX_App.Core;
 ///
 /// <para><b>Deliberately detachable.</b> This control knows nothing about DLSS or BetterRTX - it
 /// takes a URL, a set of file extensions to watch for, static instruction text, and a callback,
-/// and that's the entire contract. Passing an empty extension set and a no-op callback (as the
-/// bug tracker does) turns it into a plain in-app page viewer with nothing watched at all.</para>
+/// and that's the entire contract. Passing an empty extension set and a no-op callback turns it
+/// into a plain in-app page viewer with nothing watched at all - though for a page that never
+/// hands anything back at all, <see cref="MarkdownOverlay"/> is almost always the better fit; it
+/// shares this control's <see cref="OverlayHeaderBar"/> chrome but renders GitHub markdown
+/// directly instead of paying for a full WebView2 to show what's usually just a README.</para>
 ///
 /// <para><b>Only watched extensions ever get intercepted.</b> A download whose extension isn't in
 /// the watched set is left completely alone - it downloads to the user's real Downloads folder
@@ -75,18 +77,12 @@ public sealed partial class WebImportOverlay : UserControl
     {
         InitializeComponent();
 
-        // The Done/Return button's accent bevel is an imperative color choice (ThemeService.
-        // GetBevelColor), not a ThemeResource that re-resolves itself, so it has to be recomputed
-        // by hand on every theme change - exactly like MainWindow's Preview toggle bevels.
-        ApplyCloseButtonBevel(ThemeService.ResolveInitialTheme());
-        ThemeService.ThemeChanged += ApplyCloseButtonBevel;
-        Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyCloseButtonBevel;
-    }
-
-    private void ApplyCloseButtonBevel(ElementTheme theme)
-    {
-        CloseButtonBevel.BorderBrush = new SolidColorBrush(
-            ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Left, accented: true));
+        Header.TitleClick += HeaderTitleLink_Click;
+        Header.BackClick += BackButton_Click;
+        Header.ForwardClick += ForwardButton_Click;
+        Header.ReloadClick += ReloadButton_Click;
+        Header.CloseClick += CloseButton_Click;
+        Header.SetNavButtonsVisible(true);
     }
 
     /// <summary>
@@ -96,9 +92,9 @@ public sealed partial class WebImportOverlay : UserControl
     /// windows both open at once - can never collide) and shown live in the downloads shelf; the
     /// full set of completed matches is handed to <paramref name="onFilesReady"/> in one call once
     /// the user closes the overlay. If nothing completed, <paramref name="onFilesReady"/> is never
-    /// called at all - a session where the user just looked around and downloaded nothing (or the
-    /// bug tracker's read-only case, which watches nothing) behaves exactly as if this feature
-    /// didn't exist. <paramref name="guideText"/> is a short, static sentence telling the user what
+    /// called at all - a session where the user just looked around and downloaded nothing (or a
+    /// plain-viewer call that watches nothing at all) behaves exactly as if this feature didn't
+    /// exist. <paramref name="guideText"/> is a short, static sentence telling the user what
     /// "done" means for this particular site (e.g. when to click Done) - pass an empty string for
     /// a plain page viewer with nothing to guide.
     /// </summary>
@@ -114,10 +110,9 @@ public sealed partial class WebImportOverlay : UserControl
         if (_isOpen) return;
         _isOpen = true;
 
-        ((TextBlock)HeaderTitleLink.Content).Text = title;
-        HeaderIcon.Glyph = glyph;
-        GuideText.Text = guideText;
-        GuideText.Visibility = string.IsNullOrEmpty(guideText) ? Visibility.Collapsed : Visibility.Visible;
+        Header.SetTitleText(title);
+        Header.SetIcon(glyph);
+        Header.SetGuideText(guideText);
         _watchedExtensions = watchedExtensions;
         _onFilesReady = onFilesReady;
         _lastUrl = url;
@@ -127,11 +122,12 @@ public sealed partial class WebImportOverlay : UserControl
         // (the bug tracker, a README) rather than an import flow, so the button reads
         // "Return" instead of "Done".
         var isPlainViewer = watchedExtensions.Count == 0;
-        CloseButtonIcon.Glyph = isPlainViewer ? "" : "";
-        CloseButtonText.Text = isPlainViewer ? "Return" : "Done";
-        ToolTipService.SetToolTip(CloseButton, isPlainViewer
-            ? "Close this page"
-            : "Close - anything you downloaded here will be imported automatically");
+        Header.SetCloseButton(
+            isPlainViewer ? "" : "",
+            isPlainViewer ? "Return" : "Done",
+            isPlainViewer
+                ? "Close this page"
+                : "Close - anything you downloaded here will be imported automatically");
 
         _liveDownloads.Clear();
         _completedPaths.Clear();
@@ -280,10 +276,10 @@ public sealed partial class WebImportOverlay : UserControl
 
         try
         {
-            // A dedicated profile folder, separate from BugTrackerOverlay's own WebView2 folder -
-            // this overlay can be open on a module window at the same time another top-level
-            // window is open elsewhere, and two CoreWebView2Environments pointed at the same user
-            // data folder from the same process is not a combination worth risking.
+            // A dedicated profile folder under LocalState - this overlay can be open on a
+            // module window at the same time another top-level window is open elsewhere, and
+            // two CoreWebView2Environments pointed at the same user data folder from the same
+            // process is not a combination worth risking.
             var userDataFolder = Path.Combine(ApplicationData.Current.LocalFolder.Path, "WebView2_WebImport");
             Directory.CreateDirectory(userDataFolder);
 
@@ -536,8 +532,7 @@ public sealed partial class WebImportOverlay : UserControl
     private void UpdateNavButtons()
     {
         if (!_webViewReady) return;
-        BackButton.IsEnabled = ImportWebView.CoreWebView2.CanGoBack;
-        ForwardButton.IsEnabled = ImportWebView.CoreWebView2.CanGoForward;
+        Header.SetNavButtonsEnabled(ImportWebView.CoreWebView2.CanGoBack, ImportWebView.CoreWebView2.CanGoForward);
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();

@@ -3,7 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:Vanilla_RTX_App"
-        xmlns:core="using:Vanilla_RTX_App.Core"
+        xmlns:core="using:Vanilla_RTX_App.Core.Overlays"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         Title="Vanilla RTX App"
@@ -1507,14 +1507,13 @@
             </Grid>
         </Grid>
 
-        <!-- In-app browser overlay - modal, sits above every other part of the window but below
-             the titlebar so the titlebar keeps showing through and stays clickable while this
-             is open. The same control the DLSS/BetterRTX windows use to browse TechPowerUp and
-             bedrock.graphics; here it's shared by the Bug and Help buttons, both plain viewers
-             with nothing watched for download - see BugButton_Click / HelpButton_Click. -->
-        <core:WebImportOverlay x:Name="InAppBrowserOverlay"
-                                Grid.ColumnSpan="2"
-                                Canvas.ZIndex="998" />
+        <!-- In-app markdown viewer overlay - modal, sits above every other part of the window but
+             below the titlebar so the titlebar keeps showing through and stays clickable while
+             this is open. Shared by the Bug and Help buttons to show their respective GitHub
+             README sections without leaving the app - see BugButton_Click / HelpButton_Click. -->
+        <core:MarkdownOverlay x:Name="DocsOverlay"
+                               Grid.ColumnSpan="2"
+                               Canvas.ZIndex="998" />
 
     </Grid>
 </Window>

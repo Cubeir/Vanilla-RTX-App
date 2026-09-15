@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Vanilla_RTX_App.Core.Overlays.OverlayHeaderBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             IsTextScaleFactorEnabled="False">
+
+    <!-- Shared chrome for every full-window in-app overlay (WebImportOverlay, MarkdownOverlay):
+         icon + title hyperlink, optional back/forward, reload, a caller-supplied guide sentence,
+         and the big accent Done/Return/Close button on the right. Purely presentational - the
+         host owns what the title link points at, what each button does, and what "closing"
+         means; this control only raises the click as an event and exposes setters for the text/
+         glyphs/visibility a given overlay wants. Lifted verbatim out of WebImportOverlay, which
+         was the only user of this markup until MarkdownOverlay needed the same chrome minus
+         Back/Forward. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- No Grid.Padding here on purpose - the Close button has to reach the true top/right/
+             bottom edges of this block with nothing sitting between it and them, so every other
+             child carries its own margin instead of relying on a shared inset. -->
+        <Grid Grid.Row="0"
+              MinHeight="52">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="3" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <FontIcon x:Name="HeaderIcon"
+                      Grid.Column="0"
+                      Glyph="&#xE71B;"
+                      FontSize="16"
+                      Margin="16,2,10,0"
+                      VerticalAlignment="Center"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+
+            <!-- A real hyperlink to wherever this overlay currently shows - see the host's own
+                 TitleClick handler. Accent-colored by the control's own default style, matching
+                 the icon beside it, so the whole block reads as "this is a link". -->
+            <HyperlinkButton x:Name="HeaderTitleLink"
+                             Grid.Column="1"
+                             Padding="0"
+                             VerticalAlignment="Center"
+                             Click="HeaderTitleLink_Click"
+                             ToolTipService.ToolTip="Open this page in your default browser">
+                <TextBlock x:Name="HeaderTitleText"
+                           Text=""
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           TextWrapping="NoWrap"
+                           IsTextScaleFactorEnabled="False" />
+            </HyperlinkButton>
+
+            <Button x:Name="BackButton"
+                    Grid.Column="3"
+                    Style="{ThemeResource SubtleButtonStyle}"
+                    Width="32"
+                    Height="32"
+                    Padding="0"
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    IsEnabled="False"
+                    Click="BackButton_Click"
+                    ToolTipService.ToolTip="Back">
+                <FontIcon Glyph="&#xE72B;" FontSize="14" />
+            </Button>
+
+            <Button x:Name="ForwardButton"
+                    Grid.Column="4"
+                    Style="{ThemeResource SubtleButtonStyle}"
+                    Width="32"
+                    Height="32"
+                    Padding="0"
+                    Margin="0,0,2,0"
+                    VerticalAlignment="Center"
+                    IsEnabled="False"
+                    Click="ForwardButton_Click"
+                    ToolTipService.ToolTip="Forward">
+                <FontIcon Glyph="&#xE72A;" FontSize="14" />
+            </Button>
+
+            <Button x:Name="ReloadButton"
+                    Grid.Column="5"
+                    Style="{ThemeResource SubtleButtonStyle}"
+                    Width="32"
+                    Height="32"
+                    Padding="0"
+                    VerticalAlignment="Center"
+                    Click="ReloadButton_Click"
+                    ToolTipService.ToolTip="Reload">
+                <!-- SetReloadCooldown swaps the icon for a countdown number rather than just
+                     disabling the button - a plain greyed-out icon gives no sense of *when* it
+                     comes back, and this is the one button in the whole overlay a caller might
+                     want rate-limited (a real request to a git server, not a WebView2 click). -->
+                <Grid>
+                    <FontIcon x:Name="ReloadIcon" Glyph="&#xE72C;" FontSize="14" />
+                    <TextBlock x:Name="ReloadCountdownText"
+                               Visibility="Collapsed"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               IsTextScaleFactorEnabled="False" />
+                </Grid>
+            </Button>
+
+            <!-- Static, caller-supplied instruction ("what does Done mean here") - sandwiched
+                 between the nav buttons and the Close button instead of its own row, so it
+                 spends the width that would otherwise sit empty rather than its own vertical
+                 space. Free to wrap; MinHeight above keeps the row from collapsing while it does. -->
+            <TextBlock x:Name="GuideText"
+                       Grid.Column="6"
+                       Text=""
+                       FontSize="12"
+                       Opacity="0.7"
+                       Margin="16,10,16,10"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       IsTextScaleFactorEnabled="False" />
+
+            <!-- Accent bevel - same left-edge treatment as MainWindow's Preview toggle, driven
+                 by ThemeService.GetBevelColor rather than a static resource so it swaps with
+                 light/dark theme instead of always reading as the dark-theme accent. Set
+                 imperatively in code-behind (ApplyCloseButtonBevel) because GetBevelColor is a
+                 C# color choice, not a ThemeResource binding that re-resolves itself. -->
+            <Rectangle Grid.Column="7"
+                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+            <Border x:Name="CloseButtonBevel"
+                    Grid.Column="7"
+                    BorderThickness="3,0,0,0" />
+
+            <!-- Fills the entire header block, flush against the window's right edge, the
+                 titlebar above and the divider below - same "big flush corner button" look as
+                 MainWindow's Preview toggle, achieved the same way: the accent bevel above
+                 standing in for that button's own fake-split border. -->
+            <Button x:Name="CloseButton"
+                    Grid.Column="8"
+                    Style="{ThemeResource AccentButtonStyle}"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    MinWidth="120"
+                    Padding="28,0,28,0"
+                    Margin="0"
+                    CornerRadius="0"
+                    Click="CloseButton_Click">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8">
+                    <FontIcon x:Name="CloseButtonIcon"
+                              Glyph="&#xE930;"
+                              Margin="0,4,0,0"
+                              FontSize="18" />
+                    <TextBlock x:Name="CloseButtonText"
+                               Text="Done"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               IsTextScaleFactorEnabled="False" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <Border Grid.Row="1"
+                Height="1"
+                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+    </Grid>
+</UserControl>

@@ -1229,14 +1229,10 @@ public sealed partial class MainWindow : Window
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
-        InAppBrowserOverlay.Show(
+        DocsOverlay.Show(
             url: "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation",
             title: "Vanilla RTX App Documentation",
-            glyph: "",
-            guideText: "",
-            stagingTag: "Help",
-            watchedExtensions: Array.Empty<string>(),
-            onFilesReady: _ => Task.CompletedTask);
+            glyph: "");
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
     private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -1256,14 +1252,10 @@ public sealed partial class MainWindow : Window
 
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
-        InAppBrowserOverlay.Show(
+        DocsOverlay.Show(
             url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md#-unresolved",
             title: "Known Minecraft RTX Bugs & Issues",
-            glyph: "",
-            guideText: "",
-            stagingTag: "BugTracker",
-            watchedExtensions: Array.Empty<string>(),
-            onFilesReady: _ => Task.CompletedTask);
+            glyph: "");
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }
     private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
