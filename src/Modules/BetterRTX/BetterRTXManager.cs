@@ -183,6 +183,36 @@ internal sealed class BetterRTXManager
     public enum AttachFailure { None, MaterialsFolderMissing, CacheFolderUnavailable }
 
     /// <summary>
+    /// What <see cref="EnsureDefaultBackedUp"/> found. Anything but <see cref="Ready"/> means
+    /// there is no verified way back to this install's own shaders, which is the one condition
+    /// under which nothing may be installed.
+    /// </summary>
+    public enum DefaultBackupState
+    {
+        /// <summary>Every core file is in this edition's backup folder.</summary>
+        Ready,
+
+        /// <summary>
+        /// The game itself is missing core .bin files, so no complete backup can be taken from
+        /// it. Reached before anything is copied - a partial backup is not a rollback.
+        /// </summary>
+        GameFilesIncomplete,
+
+        /// <summary>
+        /// Some core files are backed up and some aren't, and what we hold no longer matches
+        /// the game - so the game is running something other than its own defaults and topping
+        /// the backup up from it would record someone else's preset as this install's.
+        /// </summary>
+        BackupUnverifiable,
+
+        /// <summary>The copy itself failed - disk, permissions, a file locked by the game.</summary>
+        BackupFailed
+    }
+
+    /// <summary>The result of the last <see cref="EnsureDefaultBackedUp"/> call.</summary>
+    public DefaultBackupState DefaultBackup { get; private set; } = DefaultBackupState.GameFilesIncomplete;
+
+    /// <summary>
     /// Points this instance at one edition's Minecraft install: locates the materials
     /// folder, creates the cache, and clears what that edition updating has invalidated -
     /// stale .bin files from a previous game version are worse than none.
@@ -759,6 +789,88 @@ internal sealed class BetterRTXManager
 
         return null;
     }
+    /// <summary>
+    /// Makes sure this edition's Default folder holds a copy of the game's own core .bin
+    /// files - the only route back to stock once a preset has been installed.
+    ///
+    /// <para><b>Run at window open, not at first install.</b> It used to happen inside
+    /// <see cref="ApplyPresetAsync"/>, which meant the first anyone heard of a broken install
+    /// was the moment they tried to change it, and "Default RTX" simply wasn't in the list
+    /// until they had installed something else first - the one entry a new user most needs to
+    /// see, missing precisely because they hadn't taken the risk yet. Failing to take this
+    /// backup means something is wrong with the game folder, and that is worth knowing before
+    /// a single preset is offered rather than after one has been written.</para>
+    ///
+    /// <para><b>The assumption, stated plainly:</b> when the backup folder is empty, whatever
+    /// the game currently holds *is* this install's defaults. Nothing in a .bin file says
+    /// otherwise, so there is no way to verify it - this is the same assumption the old lazy
+    /// path made, just made earlier. What is new is that a <i>partial</i> backup is no longer
+    /// quietly completed: if what we already hold doesn't match the game, the game is running
+    /// something else and finishing the set from it would bake that into the backup forever.
+    /// That reports <see cref="DefaultBackupState.BackupUnverifiable"/> and touches
+    /// nothing.</para>
+    ///
+    /// <para>Idempotent and cheap once complete - the common case is four File.Exists calls.</para>
+    /// </summary>
+    public DefaultBackupState EnsureDefaultBackedUp()
+    {
+        try
+        {
+            Directory.CreateDirectory(DefaultFolder);
+
+            var alreadyBackedUp = CoreRTXFiles
+                .Where(f => File.Exists(Path.Combine(DefaultFolder, f)))
+                .ToList();
+
+            if (alreadyBackedUp.Count == CoreRTXFiles.Length)
+            {
+                Trace.WriteLine($"[BetterRTX] [Default] ✓ {DefaultFolderName} already holds all {CoreRTXFiles.Length} core files");
+                return DefaultBackup = DefaultBackupState.Ready;
+            }
+
+            var missingFromGame = CoreRTXFiles
+                .Where(f => !File.Exists(Path.Combine(GameMaterialsPath, f)))
+                .ToList();
+
+            if (missingFromGame.Count > 0)
+            {
+                Trace.WriteLine($"[BetterRTX] [Default] ✗ Game is missing {missingFromGame.Count} core file(s): {string.Join(", ", missingFromGame)}");
+                return DefaultBackup = DefaultBackupState.GameFilesIncomplete;
+            }
+
+            // Partial backup: only safe to finish if the files we already hold are still the
+            // ones in the game, which is what tells us the game is on its own defaults.
+            foreach (var fileName in alreadyBackedUp)
+            {
+                var backedUpHash = ComputeFileHash(Path.Combine(DefaultFolder, fileName));
+                var gameHash = ComputeFileHash(Path.Combine(GameMaterialsPath, fileName));
+
+                if (backedUpHash == null || gameHash == null || backedUpHash != gameHash)
+                {
+                    Trace.WriteLine($"[BetterRTX] [Default] ✗ Partial backup disagrees with the game on {fileName} - refusing to complete it from files that aren't default");
+                    return DefaultBackup = DefaultBackupState.BackupUnverifiable;
+                }
+            }
+
+            foreach (var fileName in CoreRTXFiles)
+            {
+                var destination = Path.Combine(DefaultFolder, fileName);
+                if (File.Exists(destination)) continue;
+
+                File.Copy(Path.Combine(GameMaterialsPath, fileName), destination, false);
+                Trace.WriteLine($"[BetterRTX] [Default]   ✓ Backed up: {fileName}");
+            }
+
+            Trace.WriteLine($"[BetterRTX] [Default] ✓ {DefaultFolderName} complete");
+            return DefaultBackup = DefaultBackupState.Ready;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [Default] ✗ Could not back up default files: {ex.Message}");
+            return DefaultBackup = DefaultBackupState.BackupFailed;
+        }
+    }
+
     public LocalPresetData? CreateDefaultPreset()
     {
         if (!Directory.Exists(DefaultFolder))
@@ -1113,54 +1225,31 @@ internal sealed class BetterRTXManager
         {
             Trace.WriteLine($"[BetterRTX] === APPLYING PRESET: {preset.Name} ===");
 
-            var filesToApply = new List<(string sourcePath, string destPath)>();
-            var filesToCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var existingDefaultFiles = Directory.GetFiles(DefaultFolder, "*.bin", SearchOption.TopDirectoryOnly);
-            bool isDefaultEmpty = existingDefaultFiles.Length == 0;
-
-            if (isDefaultEmpty)
+            // Backing the defaults up is EnsureDefaultBackedUp's job and has already happened
+            // at window open; this re-runs it only so the invariant is enforced where it
+            // actually matters rather than only where the button is drawn. Nothing gets
+            // written to the game without a verified way back out of it.
+            var backup = EnsureDefaultBackedUp();
+            if (backup != DefaultBackupState.Ready)
             {
-                foreach (var coreFileName in CoreRTXFiles)
-                {
-                    var coreFilePath = Path.Combine(GameMaterialsPath, coreFileName);
-                    if (File.Exists(coreFilePath))
-                    {
-                        filesToCache.Add(coreFilePath);
-                    }
-                }
+                Trace.WriteLine($"[BetterRTX] ✗ Refusing to install - default backup is not usable ({backup})");
+                return false;
             }
+
+            // Only the four core files are backed up, so only they can be rolled back, so a
+            // preset's own .bin files are all that gets written. That set is what CoreRTXFiles
+            // means and what every hash comparison and DefaultsGuard already work from; a file
+            // outside it was never restorable in a way anything here could verify, and taking
+            // one from a game that may already be running somebody else's preset would be a
+            // backup of the wrong bytes rather than a safety net.
+            var filesToApply = new List<(string sourcePath, string destPath)>();
 
             if (preset.BinFiles != null)
             {
                 foreach (var binFilePath in preset.BinFiles)
                 {
                     var binFileName = Path.GetFileName(binFilePath);
-                    var destBinPath = Path.Combine(GameMaterialsPath, binFileName);
-
-                    if (File.Exists(destBinPath) && isDefaultEmpty)
-                    {
-                        filesToCache.Add(destBinPath);
-                    }
-
-                    filesToApply.Add((binFilePath, destBinPath));
-                }
-            }
-
-            if (isDefaultEmpty && filesToCache.Count > 0)
-            {
-                foreach (var filePath in filesToCache)
-                {
-                    var fileName = Path.GetFileName(filePath);
-                    var defaultPath = Path.Combine(DefaultFolder, fileName);
-                    try
-                    {
-                        File.Copy(filePath, defaultPath, false);
-                        Trace.WriteLine($"[BetterRTX]   ✓ Cached: {fileName}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.WriteLine($"[BetterRTX]   ✗ Error caching {fileName}: {ex.Message}");
-                    }
+                    filesToApply.Add((binFilePath, Path.Combine(GameMaterialsPath, binFileName)));
                 }
             }
 

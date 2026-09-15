@@ -64,6 +64,13 @@ public sealed partial class BetterRTXManagerWindow : Window
     /// </summary>
     private readonly bool _isPreview = Persistent.IsTargetingPreview;
 
+    /// <summary>
+    /// Whether this edition's Default backup is present and usable. False disables every
+    /// preset row in the list: without a rollback there is no safe way to write shader files
+    /// into somebody's game. Importing and deleting stay live - neither touches the game.
+    /// </summary>
+    private bool _defaultReady;
+
     private CancellationTokenSource? _scanCancellationTokenSource;
 
     // The download queue is the window's, not the manager's: every step of it exists to
@@ -143,7 +150,7 @@ public sealed partial class BetterRTXManagerWindow : Window
             // notice at the top of the list is the whole of what makes this supported rather
             // than refused: the user is told what they're risking and what to do if it bites.
             // Everything below it works identically either way.
-            ApplyPreviewNotice();
+            ApplyFixedNotices();
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -190,26 +197,66 @@ public sealed partial class BetterRTXManagerWindow : Window
     }
 
     /// <summary>
-    /// Shows or hides the fixed Preview notice, and hands the space it takes to whichever of
-    /// the two needs it.
+    /// Settles the two fixed notice cards and hands the titlebar's 37px to whichever element
+    /// ends up directly beneath it.
     ///
-    /// <para>The notice is a static card styled after a Pinned <see cref="PsaCard"/> rather
-    /// than an actual one: it isn't news, it can't be dismissed, and it must be on screen for
-    /// the entire time the window is open - so it sits outside the scrolling list, above it.
-    /// The 37px the scroller normally reserves for the floating titlebar moves onto the
-    /// notice when it is visible, since the notice is then what sits directly beneath the
-    /// titlebar.</para>
+    /// <para>They are static cards styled after a Pinned <see cref="PsaCard"/> rather than
+    /// actual ones: neither is news, neither can be dismissed, and both have to stay on
+    /// screen for as long as they apply - so they sit outside the scrolling list, above it.
+    /// Called twice: once from Loaded, when only the Preview half is known, and again once
+    /// the backup has been checked.</para>
     /// </summary>
-    private void ApplyPreviewNotice()
+    private void ApplyFixedNotices()
     {
         PreviewWarningCard.Visibility = _isPreview ? Visibility.Visible : Visibility.Collapsed;
 
-        // Both of these share row 1 and both reserve that 37px for themselves, so both hand
-        // it over together - otherwise the empty state would sit 37px lower than centred in
-        // whatever space the notice left it.
-        var topOffset = _isPreview ? new Thickness(0, 12, 0, 0) : new Thickness(0, 37, 0, 0);
+        bool showDefaultMissing = DefaultMissingText.Text.Length > 0;
+        DefaultMissingCard.Visibility = showDefaultMissing ? Visibility.Visible : Visibility.Collapsed;
+
+        bool anyNotice = _isPreview || showDefaultMissing;
+        FixedNoticesPanel.Visibility = anyNotice ? Visibility.Visible : Visibility.Collapsed;
+
+        // The scroller and the empty state share row 1 and each reserves that 37px for
+        // itself, so both hand it over together - otherwise the empty state would sit 37px
+        // lower than centred in whatever space the notices left it.
+        var topOffset = anyNotice ? new Thickness(0, 12, 0, 0) : new Thickness(0, 37, 0, 0);
         PresetScrollViewer.Margin = topOffset;
         EmptyStatePanel.Margin = topOffset;
+    }
+
+    /// <summary>
+    /// Takes (or confirms) this edition's Default backup and turns the outcome into the two
+    /// things the window does with it: whether anything may be installed, and what the notice
+    /// card says.
+    ///
+    /// <para>Deliberately run before the list is drawn rather than at first install. Every
+    /// one of these states means something is wrong with the game folder itself, and a user
+    /// finding that out when they click Install - having already been shown a list that
+    /// implied it would work - is the worst possible moment for it.</para>
+    /// </summary>
+    private void EvaluateDefaultBackup()
+    {
+        var state = _manager.EnsureDefaultBackedUp();
+        _defaultReady = state == BetterRTXManager.DefaultBackupState.Ready;
+
+        DefaultMissingText.Text = state switch
+        {
+            BetterRTXManager.DefaultBackupState.Ready => "",
+
+            BetterRTXManager.DefaultBackupState.GameFilesIncomplete =>
+                "Your Minecraft installation is missing some of the RTX shader files BetterRTX replaces, so the app can't take a backup of your originals - " +
+                "and without one there would be no way back if a preset didn't work out. Installing presets is disabled until that's sorted.\n\n" +
+                "Repairing or reinstalling Minecraft from the Xbox app usually fixes this. You can still import presets in the meantime; they'll be waiting once the game is whole again.",
+
+            BetterRTXManager.DefaultBackupState.BackupUnverifiable =>
+                "The app has a partial backup of your original RTX shader files, and it no longer matches what's in your game - which means the game is running shaders that aren't its own. " +
+                "Finishing the backup from those files would record somebody else's preset as your defaults permanently, so the app won't, and installing presets is disabled.\n\n" +
+                "Repair or reinstall Minecraft from the Xbox app to put its original files back, then reopen this window. Importing presets still works.",
+
+            _ =>
+                "The app couldn't write a backup of your original RTX shader files, so installing presets is disabled - without a backup there would be no way back from one. " +
+                "This is usually free disk space or a permissions problem on the app's own data folder.\n\nImporting presets still works."
+        };
     }
 
     private async Task<bool> ShowDisclaimerDialogAsync()
@@ -522,6 +569,11 @@ public sealed partial class BetterRTXManagerWindow : Window
                 this.Close();
                 return;
         }
+
+        // Before anything is listed: is there a way back? This decides whether the preset
+        // rows below are clickable at all, so it has to happen ahead of them being built.
+        EvaluateDefaultBackup();
+        ApplyFixedNotices();
 
         // Load or fetch API data
         await _manager.LoadApiDataAsync();
@@ -937,6 +989,14 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             button.Click += PresetButton_Click;
         }
+
+        // No usable Default backup means no installing and no downloading - the rows still
+        // draw, because a greyed-out list next to the notice card says "this is blocked" far
+        // better than an empty one does, but none of them leads anywhere. The delete button
+        // built below is deliberately left alive: it only ever removes a folder from our own
+        // cache, and the bottom bar's import buttons are untouched for the same reason.
+        if (!_defaultReady)
+            button.IsEnabled = false;
 
         // Delete button: only for custom-imported presets that aren't __DEFAULT and aren't the
         // one currently installed. Built as a sibling "fake split button" next to the main
