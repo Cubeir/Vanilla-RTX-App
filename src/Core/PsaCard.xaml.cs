@@ -15,9 +15,16 @@ public sealed partial class PsaCard : UserControl
     private readonly PsaKind _kind;
     private readonly int? _cooldownMinutes;
 
-    private double AnimationSpeedMultiplier => EnvironmentVariables.Persistent.SuspendUIAnimations ? 0.01 : 1.0;
-    private double FADE_IN_MS => 50 * AnimationSpeedMultiplier;
-    private double FADE_OUT_MS => 50 * AnimationSpeedMultiplier;
+    // Suspending animations means not running them, not running them at 1/100th speed: the
+    // storyboard below still has to be built, begun and awaited by the compositor for a
+    // duration rounded to a frame it can't subdivide. Each animated property is assigned
+    // outright instead - see AnimateOpacity and AnimateCollapse. Same shape the overlays in
+    // Core\Overlays use.
+    private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
+
+    private const double FADE_IN_MS = 50;
+    private const double FADE_OUT_MS = 50;
+    private const double COLLAPSE_MS = 160;
 
     public double CardFontSize
     {
@@ -175,13 +182,20 @@ public sealed partial class PsaCard : UserControl
 
     private void AnimateCollapse()
     {
+        if (AnimationsSuspended)
+        {
+            Opacity = 0;
+            Visibility = Visibility.Collapsed;
+            return;
+        }
+
         var sb = new Storyboard();
 
         var fade = new DoubleAnimation
         {
             From = 1,
             To = 0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(160 * AnimationSpeedMultiplier)),
+            Duration = new Duration(TimeSpan.FromMilliseconds(COLLAPSE_MS)),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
         };
         Storyboard.SetTarget(fade, this);
@@ -194,6 +208,12 @@ public sealed partial class PsaCard : UserControl
 
     private static void AnimateOpacity(UIElement target, double to, double durationMs)
     {
+        if (AnimationsSuspended)
+        {
+            target.Opacity = to;
+            return;
+        }
+
         var sb = new Storyboard();
         var anim = new DoubleAnimation
         {

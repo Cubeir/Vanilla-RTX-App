@@ -423,6 +423,17 @@ public sealed partial class LUTManagerWindow : Window
             catch (Exception ex) { Trace.WriteLine($"[LUTManager] Image load error: {ex.Message}"); }
         }
 
+        // Suspended: the picture changes snap, no fade.
+        if (Persistent.SuspendUIAnimations)
+        {
+            PresetImageBottom.Source = newBitmap;
+            PresetImageBottom.Opacity = 1;
+            PresetImageTop.Opacity = 0;
+            PresetImageTop.Source = null;
+            _currentImagePath = newImagePath;
+            return;
+        }
+
         bool bottomIsEmpty = _currentImagePath == null;
 
         PresetImageTop.Source = newBitmap;
@@ -432,7 +443,7 @@ public sealed partial class LUTManagerWindow : Window
 
         var storyboard = new Storyboard();
 
-        double duration = Persistent.SuspendUIAnimations ? 0.02 : 0.2;
+        const double duration = 0.2;
 
         if (bottomIsEmpty)
         {

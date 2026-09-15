@@ -19,14 +19,6 @@ namespace Vanilla_RTX_App.Modules.PackUpdater;
 /// Deployment deletes any pack that matches UUIDs as defined at the begenning of PackLocator class
 /// =====================================================================================================================
 
-// Expansion idea:
-// Deploy from a dev branch on github, that is, assuming, you begin actively maintaing Vanilla RTX on a dev branch instead of holding commits back
-// until releases... so??? depends on what happens on the Vanilla RTX repo, but its a cool idea, and definitely doable, rapid updates for preview users, occasional for release
-// Just gotta separate the cache download and handling, easy enough without messing up? the checks are already separate! why not that?!
-// to be honest though:
-// If it comes to that, just rework this whole thing, reutilize ExmpImpDel, and make it into a versatile pack updater FOR ALL PACKS
-// be ambitious with it.
-
 public enum PackType { VanillaRTX, VanillaRTXNormals, VanillaRTXOpus }
 
 public enum VersionSource
@@ -743,7 +735,7 @@ public class PackUpdater
 
     // ======================= Helper Methods =======================
 
-    // Every manifest this class reads now goes through PackManifest - one tolerant parser
+    // Every manifest this class reads now goes through PackManifest.cs - one tolerant parser
     // (comments, trailing commas, duplicate keys, raw control characters in strings) and one
     // definition of "header UUID", "module UUID" and "version", shared with PackLocator,
     // PackBrowser, ExpImpDel, BetterRTXManager and Alchitex. What this class vets is unchanged

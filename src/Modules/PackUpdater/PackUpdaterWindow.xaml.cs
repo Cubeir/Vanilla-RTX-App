@@ -18,9 +18,11 @@ public sealed partial class PackUpdaterWindow : Window
     private readonly PackUpdater _updater;
     private bool _isClosing;
 
-    private double animationSpeedMultiplier => Persistent.SuspendUIAnimations ? 0.01 : 1.0;
-    private TimeSpan _fadeInDuration => TimeSpan.FromMilliseconds(150 * animationSpeedMultiplier);
-    private TimeSpan _fadeOutDuration => TimeSpan.FromMilliseconds(125 * animationSpeedMultiplier);
+    // Suspended means the hover overlay snaps.
+    private static bool AnimationsSuspended => Persistent.SuspendUIAnimations;
+
+    private static readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
 
     // This window's second line of defence against deploying a stale cache now lives in
     // PackUpdater.InvalidateCacheIfStaleAsync, called from UpdateAllButtonStates.
@@ -170,6 +172,12 @@ public sealed partial class PackUpdaterWindow : Window
 
     private void AnimateOpacity(UIElement element, double toValue, TimeSpan duration)
     {
+        if (AnimationsSuspended)
+        {
+            element.Opacity = toValue;
+            return;
+        }
+
         var storyboard = new Storyboard();
 
         var opacityAnimation = new DoubleAnimation
