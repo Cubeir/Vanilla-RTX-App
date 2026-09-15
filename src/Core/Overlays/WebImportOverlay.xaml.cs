@@ -189,10 +189,18 @@ public sealed partial class WebImportOverlay : UserControl
 
         if (!_webViewReady)
         {
+            // Neither failure is the user's fault and neither is the end of the road: this
+            // overlay only ever existed to save a round trip through the browser, so when it
+            // can't run, the browser is still right there and both modules that use it have a
+            // manual import button. Say that, rather than leaving them at a dead end.
+            GetRuntimeButton.Content = _runtimeMissing ? "Install WebView2" : "Repair WebView2";
+
             ShowError(_runtimeMissing
-                ? "This feature needs the Microsoft Edge WebView2 Runtime, which doesn't seem to be installed. Get it, then try again."
-                : "Could not initialize the embedded browser needed to show this page.");
-            GetRuntimeButton.Visibility = _runtimeMissing ? Visibility.Visible : Visibility.Collapsed;
+                ? "This page is shown using the Microsoft Edge WebView2 Runtime, which doesn't seem to be installed on this PC.\n\n" +
+                  "Install it and click Try Again - or open the page in your normal browser, download what you need there, and bring it in with this window's own Add button."
+                : "The embedded browser couldn't start. Repairing or reinstalling the Microsoft Edge WebView2 Runtime usually fixes this.\n\n" +
+                  "Click Try Again once you have - or open the page in your normal browser, download what you need there, and bring it in with this window's own Add button.",
+                offerRuntime: true);
             return;
         }
 
@@ -235,9 +243,16 @@ public sealed partial class WebImportOverlay : UserControl
         ErrorState.Visibility = Visibility.Collapsed;
     }
 
-    private void ShowError(string text)
+    /// <summary>
+    /// <paramref name="offerRuntime"/> is for the two failures a WebView2 install can fix; the
+    /// way out through the real browser is offered whatever went wrong, since by this point the
+    /// URL is always known and a page this can't show is one the user's own browser still can.
+    /// </summary>
+    private void ShowError(string text, bool offerRuntime = false)
     {
         ErrorText.Text = text;
+        GetRuntimeButton.Visibility = offerRuntime ? Visibility.Visible : Visibility.Collapsed;
+        OpenInBrowserButton.Visibility = string.IsNullOrEmpty(_lastUrl) ? Visibility.Collapsed : Visibility.Visible;
         ErrorState.Visibility = Visibility.Visible;
         LoadingState.Visibility = Visibility.Collapsed;
     }
@@ -257,6 +272,21 @@ public sealed partial class WebImportOverlay : UserControl
 
     private void GetRuntimeButton_Click(object sender, RoutedEventArgs e) =>
         _ = Launcher.LaunchUriAsync(new Uri("https://go.microsoft.com/fwlink/p/?LinkId=2124703"));
+
+    /// <summary>
+    /// Hands the page to the user's real browser and gets out of the way. Closing is the point
+    /// rather than a side effect: what they do next - download the file, then import it - needs
+    /// the window underneath this one, and an overlay stuck on an error screen is in the way of
+    /// it. The close path is the ordinary one, so a session that did manage to download
+    /// something before failing still has it imported.
+    /// </summary>
+    private void OpenInBrowserButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_lastUrl))
+            _ = Launcher.LaunchUriAsync(new Uri(_lastUrl));
+
+        Close();
+    }
 
     /// <summary>Opens wherever the embedded browser currently is - not necessarily the entry URL - in the user's real browser.</summary>
     private void HeaderTitleLink_Click(object sender, RoutedEventArgs e)

@@ -90,6 +90,11 @@
                                     Visibility="Collapsed"
                                     Style="{ThemeResource AccentButtonStyle}"
                                     Click="GetRuntimeButton_Click" />
+                            <Button x:Name="OpenInBrowserButton"
+                                    Content="Open in browser"
+                                    Visibility="Collapsed"
+                                    Click="OpenInBrowserButton_Click"
+                                    ToolTipService.ToolTip="Opens this page in your normal browser and closes this view - download what you need there, then use this window's own Add button to import it." />
                             <Button Content="Try Again"
                                     Click="RetryButton_Click" />
                         </StackPanel>
