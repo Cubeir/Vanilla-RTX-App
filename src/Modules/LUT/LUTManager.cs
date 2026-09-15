@@ -519,8 +519,11 @@ internal sealed class LUTManager
             var preset = new LutPreset(Path.GetFileName(dir), dir);
             if (!preset.HasRequiredFiles) continue;
 
+            // Straight to the write rather than through InstallAsync: its Default underlay is
+            // the very thing that doesn't exist yet here, and a backup left over from before
+            // is not something to be filling a broken install from.
             Trace.WriteLine($"[LUTManager] Mending with preset [{preset.Name}]");
-            bool mended = await InstallAsync(preset);
+            bool mended = await WriteToGameAsync(preset.Name, preset.PresentFiles);
             Trace.WriteLine(mended ? "[LUTManager] Game mended" : "[LUTManager] Mend failed or cancelled");
             return mended;
         }
@@ -621,33 +624,71 @@ internal sealed class LUTManager
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Writes every file the preset ships. For Default that is the whole backup, which is
-    /// what makes a rollback a rollback: the optional files a preset overwrote are put back
-    /// alongside the two it was defined by.
+    /// Installs a preset over the Default files rather than over whatever happens to be
+    /// there: every slot this preset doesn't fill is written from the backup.
+    ///
+    /// <para><b>Without that, switching presets accumulates.</b> A preset that ships
+    /// caustics.png and water_n.tga, followed by one that ships only wibbly.png, leaves the
+    /// first preset's caustics and water behind - the second preset has no opinion about
+    /// them, so nothing overwrites them, and the user is looking at two presets mixed
+    /// together with no way to tell. Going through Default first is what makes "installed
+    /// preset" mean the same thing every time.</para>
+    ///
+    /// <para>Expressed as one merged file list rather than two installs, because two would
+    /// mean two UAC prompts and a window in which the game is half reverted. Same end state,
+    /// one write. Default itself is skipped - it <i>is</i> the underlay.</para>
+    ///
+    /// <para>A slot the backup doesn't hold either is left alone: there is nothing to put
+    /// there. That can only happen for a file the game didn't have when the backup was
+    /// taken.</para>
     /// </summary>
     public Task<bool> InstallAsync(LutPreset preset)
     {
-        var sources = preset.PresentFiles;
-
-        Trace.WriteLine($"[LUTManager] Installing [{preset.Name}] - {sources.Count} file(s)");
-
         if (!preset.HasRequiredFiles)
         {
             Trace.WriteLine($"[LUTManager] Aborting - [{preset.Name}] is missing {string.Join(" / ", RequiredFiles.Where(f => preset.ResolveFile(f) == null))}");
             return Task.FromResult(false);
         }
 
+        if (preset.IsDefault)
+            return WriteToGameAsync(preset.Name, preset.PresentFiles);
+
+        var sources = new List<string>();
+
+        foreach (var fileName in AllFiles)
+        {
+            var fromPreset = preset.ResolveFile(fileName);
+            if (fromPreset != null)
+            {
+                sources.Add(fromPreset);
+                continue;
+            }
+
+            var fromDefault = DefaultPath(fileName);
+            if (File.Exists(fromDefault))
+                sources.Add(fromDefault);
+        }
+
+        return WriteToGameAsync(preset.Name, sources);
+    }
+
+    /// <summary>
+    /// The write itself: all of them in one elevated batch, so the user sees a single UAC
+    /// prompt and the game can never end up half-applied because the second copy was the one
+    /// that was declined.
+    /// </summary>
+    private Task<bool> WriteToGameAsync(string label, List<string> sources)
+    {
+        Trace.WriteLine($"[LUTManager] Installing [{label}] - {sources.Count} file(s)");
+
         var files = new List<(string, string)>();
         foreach (var source in sources)
         {
             var fileName = Path.GetFileName(source);
-            Trace.WriteLine($"[LUTManager]   {fileName} -> {DstPath(fileName)}");
+            Trace.WriteLine($"[LUTManager]   {fileName} <- {Path.GetFileName(Path.GetDirectoryName(source))}");
             files.Add((source, DstPath(fileName)));
         }
 
-        // All of them in one elevated batch, so the user sees a single UAC prompt and the
-        // game can never end up with a half-applied preset because the second write was the
-        // one that was declined.
         return Helpers.ReplaceFilesWithElevation(files, "[LUTManager]", "rtx_defaults");
     }
 
