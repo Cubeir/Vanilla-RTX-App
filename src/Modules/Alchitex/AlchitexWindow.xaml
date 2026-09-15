@@ -275,6 +275,7 @@
                             Padding="16,16,16,16"
                             IsTextScaleFactorEnabled="False"
                             Translation="0,0,32"
+                            CornerRadius="0"
                             Click="DisagreeButton_Click"
                             Content="Disagree and close"
                             Background="Transparent"
@@ -291,6 +292,7 @@
                         Style="{ThemeResource AccentButtonStyle}"
                         IsTextScaleFactorEnabled="False"
                         Translation="0,0,32"
+                        CornerRadius="0"
                         Content="I have read and agreed to the terms and conditions of RTX Reactor"
                         Click="AgreeButton_Click">
                     <Button.Shadow>
