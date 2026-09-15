@@ -77,16 +77,6 @@
 
             <!-- ══════════════════════════════════════════
                 Minecraft Preview notice
-
-                Deliberately a hand-built copy of a Pinned PsaCard rather than an actual one:
-                PSA cards are fetched announcements that come and go, and this is a fixed
-                property of the window being open on Preview. Pinned is the right *look*
-                (no dismiss button, full-opacity text) because there is likewise nothing here
-                for the user to dismiss.
-
-                Lives outside the ScrollViewer so it can't be scrolled away from - which is
-                also why it, rather than the scroller, carries the 37px the floating titlebar
-                needs whenever it is shown. ApplyPreviewNotice() owns both halves of that.
             ═══════════════════════════════════════════ -->
             <Border x:Name="PreviewWarningCard"
                     Grid.Row="0"
@@ -124,7 +114,7 @@
                                Opacity="0.95"
                                VerticalAlignment="Center"
                                IsTextScaleFactorEnabled="False"
-                               Text="BetterRTX presets are built and tested against stable Minecraft Release. For the best results, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into Preview regardless - but Preview moves ahead of Release, so the game may render incorrectly or refuse to start. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot;: your Preview install's own untouched files, kept entirely separately from Release's." />
+                               Text="BetterRTX presets are built for and tested against stable Minecraft Release. For the best results, close this window, switch the app back to targeting Minecraft Release, and reopen it.&#x0a;&#x0a;You can carry on and install presets into MC Preview regardless - but Preview moves ahead of Release, so the game may refuse to start or crash. If that happens, come back here and roll back to &quot;Default RTX (Preview)&quot; preset, they're your backed up defaults." />
                 </Grid>
             </Border>
 
