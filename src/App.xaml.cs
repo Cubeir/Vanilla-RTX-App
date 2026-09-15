@@ -3,14 +3,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
-using Microsoft.Windows.AppLifecycle;
 using Vanilla_RTX_App.Core;
-using Windows.ApplicationModel.Activation;
 using Windows.Storage;
 using WinUIEx;
 
@@ -79,9 +76,9 @@ public partial class App : Application
             // was what launched it, that file would otherwise be lost the moment we Exit().
             // Written before the wake signal, never after: the existing instance only checks
             // for this file once it wakes up, so the order here is what guarantees it sees it.
-            var incomingFiles = GetActivationFilePaths();
+            var incomingFiles = FileActivationRouter.GetActivationFilePaths();
             if (incomingFiles.Count > 0)
-                WritePendingImportFile(incomingFiles);
+                FileActivationRouter.WriteHandoffFile(incomingFiles);
 
             // Signal the existing instance to bring itself to front
             if (EventWaitHandle.TryOpenExisting($"{GetUniqueName()}_wake", out var existing))
@@ -106,9 +103,9 @@ public partial class App : Application
 
                     // A second launch that lost the race for the mutex leaves its
                     // .mcpack/.rtpack paths here rather than its files - see the write above.
-                    var pendingFiles = ConsumePendingImportFile();
+                    var pendingFiles = FileActivationRouter.ConsumeHandoffFile();
                     if (pendingFiles.Count > 0)
-                        await RouteIncomingFilesAsync(pendingFiles);
+                        await FileActivationRouter.RouteAsync(pendingFiles);
                 });
             }
         });
@@ -122,168 +119,9 @@ public partial class App : Application
         // Cold launch via .mcpack/.rtpack ("Open with", double-click) rather than the normal
         // icon - this process won the mutex outright, so its own activation args carry the
         // files directly; no hand-off file involved.
-        var launchFiles = GetActivationFilePaths();
+        var launchFiles = FileActivationRouter.GetActivationFilePaths();
         if (launchFiles.Count > 0)
-            _ = RouteIncomingFilesAsync(launchFiles);
-    }
-
-    // ── .mcpack / .rtpack file activation ────────────────────────────────────
-
-    /// <summary>
-    /// Splits incoming activation paths by extension and hands each group to the window
-    /// method that owns that file type - .mcpack/.zip/.mcaddon to
-    /// MainWindow.ImportPackFilesAsync, .rtpack to
-    /// MainWindow.ImportBetterRTXPresetFilesAsync. Both file-type associations funnel
-    /// through here, whether the launch was cold or handed off from a losing second
-    /// instance (see ConsumePendingImportFile), so a mixed selection - unlikely, but Explorer
-    /// permits it - still routes correctly instead of one type winning outright.
-    ///
-    /// FilterRecentlyHandledFiles runs first and is the actual fix for Windows activating the
-    /// FTA handler more than once for a single "Open with" - observed firsthand producing two
-    /// or three separate deliveries of the identical file list within a couple of seconds of
-    /// each other. MainWindow's per-type import locks keep those deliveries from interleaving
-    /// if they do both reach an import call, but that still means real import work runs
-    /// twice and surfaces as duplicate/already-installed warnings for files that were never
-    /// actually duplicates - exactly what was showing up in testing. Recognizing "I've just
-    /// seen this exact path" here means the second delivery never reaches an import call at
-    /// all, which is the "sanitize before we import" this exists for.
-    /// </summary>
-    private static async Task RouteIncomingFilesAsync(IReadOnlyList<string> paths)
-    {
-        if (paths.Count == 0 || MainWindow.Instance == null) return;
-
-        var deduped = FilterRecentlyHandledFiles(paths);
-        if (deduped.Count == 0) return;
-
-        var rtpackFiles = deduped
-            .Where(p => Path.GetExtension(p).Equals(".rtpack", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var packFiles = deduped.Except(rtpackFiles).ToList();
-
-        if (packFiles.Count > 0)
-            await MainWindow.Instance.ImportPackFilesAsync(packFiles);
-
-        if (rtpackFiles.Count > 0)
-            await MainWindow.Instance.ImportBetterRTXPresetFilesAsync(rtpackFiles);
-    }
-
-    // How close together two deliveries of the same path have to be to be treated as the
-    // same underlying user action rather than a deliberate later re-import. Windows'
-    // double-activation quirk delivers the duplicate within a couple of seconds at most
-    // (direct cold-launch args vs. the wake-event hand-off both firing off one Explorer
-    // action); this is generous well past that without being long enough to ever swallow a
-    // genuine second click.
-    private static readonly TimeSpan RecentFileActivationWindow = TimeSpan.FromSeconds(15);
-
-    private static readonly Dictionary<string, DateTime> RecentlyHandledFiles = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly object RecentlyHandledFilesLock = new();
-
-    /// <summary>
-    /// Drops any path this process has already accepted for import within
-    /// RecentFileActivationWindow, and records the rest as freshly accepted. Keyed on the raw
-    /// path as Windows/Explorer hand it over - every delivery of "the same file" for one user
-    /// action carries an identical path string, so no normalization is needed.
-    /// </summary>
-    private static List<string> FilterRecentlyHandledFiles(IReadOnlyList<string> paths)
-    {
-        var now = DateTime.UtcNow;
-        var result = new List<string>(paths.Count);
-
-        lock (RecentlyHandledFilesLock)
-        {
-            // Occasional sweep so a long-running instance doesn't accumulate entries forever.
-            if (RecentlyHandledFiles.Count > 200)
-            {
-                foreach (var stale in RecentlyHandledFiles
-                    .Where(kv => now - kv.Value > RecentFileActivationWindow)
-                    .Select(kv => kv.Key)
-                    .ToList())
-                {
-                    RecentlyHandledFiles.Remove(stale);
-                }
-            }
-
-            foreach (var path in paths)
-            {
-                if (RecentlyHandledFiles.TryGetValue(path, out var lastSeen)
-                    && now - lastSeen < RecentFileActivationWindow)
-                {
-                    Trace.WriteLine($"[FileActivation] Dropping duplicate delivery of '{path}' - accepted for import {(now - lastSeen).TotalSeconds:F1}s ago.");
-                    continue;
-                }
-
-                RecentlyHandledFiles[path] = now;
-                result.Add(path);
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Reads the paths this process was actually launched with, if it was a file activation
-    /// ("Open with", double-click on a .mcpack or .rtpack) - empty otherwise, including for
-    /// the ordinary icon-launch case. The classic LaunchActivatedEventArgs OnLaunched
-    /// receives doesn't carry file activation data for a full-trust packaged app; that lives
-    /// on AppInstance.GetCurrent's own activation args regardless of which OnLaunched
-    /// overload fired.
-    /// </summary>
-    private static List<string> GetActivationFilePaths()
-    {
-        try
-        {
-            var activationArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
-            if (activationArgs?.Kind != ExtendedActivationKind.File) return new List<string>();
-            if (activationArgs.Data is not FileActivatedEventArgs fileArgs) return new List<string>();
-
-            return fileArgs.Files
-                .OfType<IStorageFile>()
-                .Select(f => f.Path)
-                .Where(p => !string.IsNullOrEmpty(p))
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[FileActivation] Failed to read activation args: {ex.Message}");
-            return new List<string>();
-        }
-    }
-
-    private static string PendingImportFilePath =>
-        Path.Combine(ApplicationData.Current.LocalFolder.Path, "pending_pack_import.txt");
-
-    /// <summary>
-    /// One path per line, .mcpack and .rtpack mixed together freely - RouteIncomingFilesAsync
-    /// is what sorts them back out by extension on the reading side. Plain text rather than
-    /// JSON is a deliberate choice here, not laziness: Release publishes trimmed, and
-    /// JsonSerializer's generic overloads need a source-generated context to survive that
-    /// (see AlchitexJsonContext for the pattern and what happens without it). A flat file of
-    /// paths needs none of that, and a Windows path can never itself contain a newline.
-    /// </summary>
-    private static void WritePendingImportFile(List<string> paths)
-    {
-        try { File.WriteAllLines(PendingImportFilePath, paths); }
-        catch (Exception ex) { Trace.WriteLine($"[FileActivation] Failed to write hand-off file: {ex.Message}"); }
-    }
-
-    private static List<string> ConsumePendingImportFile()
-    {
-        try
-        {
-            if (!File.Exists(PendingImportFilePath)) return new List<string>();
-
-            var paths = File.ReadAllLines(PendingImportFilePath)
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .ToList();
-
-            File.Delete(PendingImportFilePath);
-            return paths;
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[FileActivation] Failed to read hand-off file: {ex.Message}");
-            return new List<string>();
-        }
+            _ = FileActivationRouter.RouteAsync(launchFiles);
     }
 
     public static void WriteCrashLog(string source, string message, string detail)
