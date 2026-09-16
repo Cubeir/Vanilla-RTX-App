@@ -1492,14 +1492,14 @@ public sealed partial class MainWindow : Window
 
             if (notice == PackUpdateNotice.NothingInstalled)
             {
-                Log($"Start by installing a Vanilla RTX resource pack from the {menuName} menu!", LogLevel.VanillaRTX);
+                Log($"Start by installing a Vanilla RTX resource pack from the '{menuName}' menu!", LogLevel.VanillaRTX);
                 return;
             }
 
             var editionName = MinecraftUserDataLocator.GetVersionDisplayName(targetingPreview);
             var lead = outdatedCount > 1 ? "Vanilla RTX updates are" : "A Vanilla RTX update is";
 
-            Log($"{lead} available for {editionName}, check the {menuName} menu.", LogLevel.VanillaRTX);
+            Log($"{lead} available for {editionName}, check the '{menuName}' menu.", LogLevel.VanillaRTX);
         }
         catch (Exception ex)
         {
