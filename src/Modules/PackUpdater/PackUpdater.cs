@@ -80,11 +80,16 @@ public class PackUpdater
 
     // ======================= Installation State Management =======================
 
+    /// <summary>
+    /// Whether a deploy is running. The gate that keeps two installs out of the resource
+    /// packs folder at once - see <see cref="UpdateSinglePackAsync"/>.
+    /// </summary>
     public bool IsInstallationInProgress()
     {
         return _installationInProgress;
     }
 
+    /// <summary>Which pack is installing, for the window's status text. Null when idle.</summary>
     public PackType? GetCurrentlyInstallingPack()
     {
         return _currentInstallingPack;
@@ -103,6 +108,9 @@ public class PackUpdater
 
     // ======================= Cache Invalidation (Core) =======================
 
+    /// <summary>
+    /// Drops the cached zipball and forgets its path, so the next install downloads afresh.
+    /// </summary>
     public void InvalidateCache()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -181,6 +189,24 @@ public class PackUpdater
 
     // ======================= Cache Validation Check =======================
 
+    /// <summary>
+    /// Asks whether the cached zipball has fallen behind GitHub, and invalidates it if so.
+    /// </summary>
+    /// <returns>
+    /// True only when the cache was actually invalidated. Every other outcome - no cache, no
+    /// network, still on cooldown, GitHub unreachable, cache current - returns false, so a
+    /// false answer means "nothing to do", never "the cache is fine".
+    /// </returns>
+    /// <remarks>
+    /// <para>Three gates before any request goes out: a cache has to exist, the machine has
+    /// to report a network, and the last check has to be older than <c>CacheCheckCooldown</c>.
+    /// The cooldown stamp is only written after a <i>successful</i> fetch, so a failed attempt
+    /// doesn't burn the window.</para>
+    /// <para>Every failure path keeps the existing cache rather than discarding it. A cache
+    /// that might be one version old is worth far more to an offline user than no cache at
+    /// all, and being unable to reach GitHub says nothing about whether the cache is
+    /// stale.</para>
+    /// </remarks>
     public async Task<bool> ValidateCacheAgainstRemote()
     {
         var cacheInfo = GetCacheInfo();
@@ -246,6 +272,21 @@ public class PackUpdater
         return false;
     }
 
+    /// <summary>
+    /// Compares the three packs inside the cached zipball against the remote manifests,
+    /// per pack. True if <i>any</i> of them is behind, missing from the cache, or present in
+    /// the cache but gone remotely - the zipball is one file, so one stale pack invalidates
+    /// all of it.
+    ///
+    /// <para><b>The question is whether the CACHE is behind the remote, not whether the
+    /// user's installed pack is.</b> Those are different: someone running an older pack on
+    /// purpose has a perfectly current cache, and invalidating it there throws away an ~11MB
+    /// download and hits GitHub to replace a file that was already correct.</para>
+    ///
+    /// <para>A remote pack the cache doesn't have counts as outdated; a cached pack the
+    /// remote no longer publishes does too, since the cache no longer describes what upstream
+    /// ships. Any exception reading the zip means it can't be trusted, which also counts.</para>
+    /// </summary>
     private async Task<bool> DoesCacheNeedUpdate(string cachedPath, (PackManifest? rtx, PackManifest? normals, PackManifest? opus) remoteManifests)
     {
         try
@@ -338,6 +379,22 @@ public class PackUpdater
 
     // ======================= Individual Pack Installation =======================
 
+    /// <summary>
+    /// Installs or updates one pack, end to end: validate the cache, download the zipball if
+    /// there isn't one, deploy just that pack out of it.
+    /// </summary>
+    /// <returns>
+    /// True if the pack deployed. False for a download failure, an unusable cache, an
+    /// unexpected error, or <b>another installation already running</b> - only one runs at a
+    /// time, since two deploys would be extracting into and deleting from the same resource
+    /// packs folder at once.
+    /// </returns>
+    /// <remarks>
+    /// The zipball holds all three packs, so an update of one still costs one download and
+    /// then serves any later pack from cache. The installation flag is always cleared in a
+    /// finally - losing it would leave the feature refusing every install for the rest of the
+    /// session.
+    /// </remarks>
     public async Task<bool> UpdateSinglePackAsync(PackType packType, bool enableEnhancements)
     {
         // Check if another installation is already running
@@ -550,6 +607,11 @@ public class PackUpdater
         );
     }
 
+    /// <summary>
+    /// Turns the persisted version-source setting back into its enum, falling back to the
+    /// default for anything unrecognised - including a value written by a newer build of the
+    /// app, which a downgrade would otherwise choke on.
+    /// </summary>
     private VersionSource ParseVersionSource(string? sourceString)
     {
         if (string.IsNullOrEmpty(sourceString))
@@ -720,12 +782,23 @@ public class PackUpdater
 
     // ======================= Cooldown Management =======================
 
+    /// <summary>
+    /// Forgets when the cache was last validated, so the next
+    /// <see cref="ValidateCacheAgainstRemote"/> goes to the network instead of returning
+    /// early. For the window's manual refresh - the cooldown exists to stop routine checks
+    /// hitting GitHub, not to override the user asking directly.
+    /// </summary>
     public void ResetCacheCheckCooldown()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         localSettings.Values[LastCacheCheckKey] = null;
     }
 
+    /// <summary>
+    /// Drops the in-memory copy of the remote manifests, so the next version display refetches
+    /// them. Independent of the zipball cache - this is what the UI shows, not what it
+    /// installs from.
+    /// </summary>
     public void ResetRemoteVersionCache()
     {
         var localSettings = ApplicationData.Current.LocalSettings;
@@ -788,6 +861,11 @@ public class PackUpdater
         return found;
     }
 
+    /// <summary>
+    /// Which of the three Vanilla RTX packs a manifest belongs to, by matching both its header
+    /// and module UUIDs against the known constants. Null for anything else, which is how a
+    /// third-party pack in the same folder is left alone.
+    /// </summary>
     private static PackType? IdentifyPackType(string headerUUID, string moduleUUID)
     {
         if (headerUUID == VANILLA_RTX_HEADER_UUID && moduleUUID == VANILLA_RTX_MODULE_UUID)
@@ -799,6 +877,11 @@ public class PackUpdater
         return null;
     }
 
+    /// <summary>
+    /// Parses a manifest straight out of a zip entry, without extracting it - which is what
+    /// lets the cache be inspected for what it contains and at what versions before deciding
+    /// whether to deploy or re-download. Null for an entry that isn't readable as a manifest.
+    /// </summary>
     private static async Task<PackManifest?> ReadManifestFromZipEntry(ZipArchiveEntry entry)
     {
         try
@@ -814,6 +897,10 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Short slug ("vrtx", "vrtxn", "vrtxo") used in the <c>__rtxapp_*</c> staging folder
+    /// name. Not user-facing - <see cref="GetPackDisplayName"/> is.
+    /// </summary>
     private string GetPackFolderShortName(PackType packType) => packType switch
     {
         PackType.VanillaRTX => "vrtx",
@@ -872,6 +959,35 @@ public class PackUpdater
 
     // ======================= Deploy Package =======================
 
+    /// <summary>
+    /// Installs packs out of a downloaded zipball into Minecraft's resource packs folder.
+    /// </summary>
+    /// <param name="targetPack">
+    /// One pack, or null for every pack found in the archive. The zipball always carries all
+    /// three, so this is what makes "update just Normals" possible without re-downloading.
+    /// </param>
+    /// <param name="enableEnhancements">
+    /// True hoists each pack's enhancement folder over its shipped files
+    /// (<see cref="ProcessEnhancementFolders"/>); false deletes those folders outright
+    /// (<see cref="RemoveEnhancementsFolder"/>). The packs ship them either way.
+    /// </param>
+    /// <returns>True if at least one pack deployed. A per-pack failure is logged and skipped.</returns>
+    /// <remarks>
+    /// <para><b>Extract to a temporary folder, then move into place.</b> Each pack lands in a
+    /// <c>__rtxapp_*</c> staging directory and is only moved to its real name once its files
+    /// are all written, so a failure or crash mid-extract leaves a prefixed folder Minecraft
+    /// ignores rather than a half-written pack it would try to load.
+    /// <see cref="CleanupOrphanedDirectories"/> sweeps those later.</para>
+    ///
+    /// <para><b>The old copy is removed by UUID, not by folder name</b> (see
+    /// <see cref="DeleteExistingPackByUUID"/>) - a user can rename a pack folder freely, and
+    /// matching on the name would leave the old one installed alongside the new one, giving
+    /// Minecraft two packs with the same UUID.</para>
+    ///
+    /// <para>Deploying while Minecraft is running is not blocked - the game holds no lock
+    /// that stops it - but the user is told once per session, since the game will not see the
+    /// change until it restarts.</para>
+    /// </remarks>
     private async Task<bool> DeployPackage(string packagePath, PackType? targetPack = null, bool enableEnhancements = true)
     {
         if (Helpers.IsMinecraftRunning() && Helpers.RuntimeFlags.Set("Has_Told_User_To_Close_The_Game"))
@@ -1023,6 +1139,22 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Deletes leftover <c>__rtxapp_*</c> staging directories - the temporary folders a deploy
+    /// extracts into before promoting them to their real names.
+    ///
+    /// <para><b>Only ones older than a minute</b>, because a deploy running right now owns a
+    /// folder matching that pattern and deleting it would destroy the install in progress.
+    /// The prefix is the invariant: nothing outside a deploy ever creates one, so an old one
+    /// is by construction abandoned and always safe to remove.</para>
+    ///
+    /// <para>With <c>CleanUpTheOtherFolder</c> set it also sweeps the opposite of
+    /// resource_packs / development_resource_packs, since a previous run with the other
+    /// destination setting can have left debris there.</para>
+    ///
+    /// <para>Every failure is swallowed. This is housekeeping - a locked folder is retried on
+    /// the next deploy, and failing the install over it would be absurd.</para>
+    /// </summary>
     private void CleanupOrphanedDirectories(string resourcePackPath)
     {
         var pathsToCleanOrphans = new List<string> { resourcePackPath };
@@ -1069,6 +1201,15 @@ public class PackUpdater
 
     // ======================= Enhancement Methods =======================
 
+    /// <summary>
+    /// Deletes every enhancement folder in the tree, for a deploy with the toggle off. The
+    /// packs ship these folders unconditionally, so "off" means removing what was shipped
+    /// rather than skipping a step.
+    ///
+    /// <para>Searched recursively because subpacks carry their own. Failures are logged and
+    /// skipped per folder - a leftover enhancement folder is inert, so it is not worth
+    /// failing a deploy over.</para>
+    /// </summary>
     private void RemoveEnhancementsFolder(string rootDirectory)
     {
         if (string.IsNullOrEmpty(EnhancementFolderName)) return;
@@ -1097,6 +1238,19 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Applies enhancements by hoisting each enhancement folder's contents into its parent -
+    /// overwriting the shipped files with the enhanced versions - then removing the now-empty
+    /// folder.
+    ///
+    /// <para>That overwrite is the entire mechanism: the packs ship the enhanced files
+    /// alongside the plain ones in a subfolder, and enabling them is a move, not a download.
+    /// Doing it in place also means a pack deployed with the toggle on carries no trace of
+    /// the folder afterwards, which is what makes the off path a plain delete.</para>
+    ///
+    /// <para>Recursive, since subpacks have their own. Per-folder failures are counted and
+    /// logged rather than thrown: a partially enhanced pack still renders.</para>
+    /// </summary>
     private void ProcessEnhancementFolders(string rootDirectory)
     {
         if (string.IsNullOrEmpty(EnhancementFolderName)) return;
@@ -1140,6 +1294,17 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Moves everything from <paramref name="sourceDir"/> into
+    /// <paramref name="targetDir"/>, overwriting files that already exist there and merging
+    /// directories that do - recursing into a colliding subdirectory rather than replacing
+    /// it, so an enhancement folder only has to contain the files it actually changes.
+    /// </summary>
+    /// <returns>
+    /// A count of failed deletes and moves, not a success flag. Callers aggregate it for the
+    /// log; a non-zero count means the pack is partially enhanced, which is degraded but
+    /// still usable, so nothing here throws.
+    /// </returns>
     private int MoveDirectoryContents(string sourceDir, string targetDir)
     {
         int deleteFailures = 0;
@@ -1181,6 +1346,10 @@ public class PackUpdater
 
     // ======================= Cache & Utility Methods =======================
 
+    /// <summary>
+    /// Whether the cached zipball contains this particular pack. Opens the archive and looks;
+    /// false if there is no cache, it can't be read, or that pack isn't in it.
+    /// </summary>
     public async Task<bool> DoesPackExistInCache(PackType packType)
     {
         var cacheInfo = GetCacheInfo();
@@ -1201,6 +1370,10 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// The pack's proper name for logs and UI ("Vanilla RTX Normals"). Never used as a path
+    /// component - see <see cref="GetPackFolderShortName"/> for that.
+    /// </summary>
     private string GetPackDisplayName(PackType packType)
     {
         return packType switch
@@ -1214,6 +1387,16 @@ public class PackUpdater
 
     private string? ExtractVersionFromManifest(PackManifest? manifest) => manifest?.VersionDisplay;
 
+    /// <summary>
+    /// Whether <paramref name="remoteVersionString"/> is strictly newer than
+    /// <paramref name="installedVersionString"/>. Both are dotted version strings, optionally
+    /// <c>v</c>-prefixed.
+    ///
+    /// <para><b>Anything it cannot parse answers false</b> - a missing version, a
+    /// non-numeric component, either side empty. False means "do not offer an update", so an
+    /// unreadable version is reported as "nothing to do" rather than prompting the user to
+    /// install over something this cannot reason about.</para>
+    /// </summary>
     public bool IsRemoteVersionNewerThanInstalled(string? installedVersionString, string? remoteVersionString)
     {
         try
@@ -1235,6 +1418,13 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Splits a dotted version into components, tolerating a leading <c>v</c>/<c>V</c>.
+    /// Null when any component isn't a plain integer - partial parses are not returned,
+    /// because a half-understood version compares wrong and comparing wrong is worse than
+    /// declining to compare. Length is not fixed; <see cref="CompareVersionArrays"/> handles
+    /// mismatches.
+    /// </summary>
     private int[]? ParseVersionString(string versionString)
     {
         try
@@ -1253,6 +1443,11 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Component-wise comparison, negative/zero/positive for A before/equal/after B. Missing
+    /// trailing components count as 0, so <c>1.2</c> and <c>1.2.0</c> compare equal rather
+    /// than the shorter one losing.
+    /// </summary>
     private static int CompareVersionArrays(int[] versionA, int[] versionB)
     {
         for (int i = 0; i < Math.Max(versionA.Length, versionB.Length); i++)
@@ -1266,6 +1461,14 @@ public class PackUpdater
         return 0;
     }
 
+    /// <summary>
+    /// A directory path that is free to write to: the desired name if it is unused,
+    /// otherwise the same name with a numeric suffix.
+    ///
+    /// <para>An existing but <i>empty</i> directory is deleted and its name reused, so
+    /// repeated deploys don't accumulate <c>name1</c>, <c>name2</c>… behind abandoned empty
+    /// folders. A non-empty one belongs to somebody and is never touched.</para>
+    /// </summary>
     private string GetSafeDirectoryName(string parentPath, string desiredName)
     {
         var fullPath = Path.Combine(parentPath, desiredName);
@@ -1293,6 +1496,16 @@ public class PackUpdater
         return safeName;
     }
 
+    /// <summary>
+    /// Removes any already-installed copy of a pack, identified by its manifest UUIDs rather
+    /// than its folder name or display name - both of which the user is free to change, and
+    /// neither of which Minecraft uses to tell packs apart.
+    ///
+    /// <para>Scans every manifest under the resource packs folder, resolves each match back to
+    /// the pack's top-level folder (<see cref="GetTopLevelFolderForManifest"/>, since a match
+    /// can be a nested subpack manifest) and deletes that whole folder. More than one match is
+    /// possible and all are removed: duplicates are exactly the state this prevents.</para>
+    /// </summary>
     private async Task DeleteExistingPackByUUID(string resourcePackPath, string targetHeaderUUID, string targetModuleUUID, string packName)
     {
         var pathsToClean = new List<string> { resourcePackPath };
@@ -1341,6 +1554,14 @@ public class PackUpdater
         }
     }
 
+    /// <summary>
+    /// Clears the read-only attribute on a directory and everything under it.
+    ///
+    /// <para>Needed before deleting a tree: <see cref="Directory.Delete(string, bool)"/>
+    /// throws on a read-only file, and pack archives in the wild do carry them - extraction
+    /// preserves the flag. Called ahead of every recursive delete here for that reason. Silent
+    /// no-op for a path that doesn't exist.</para>
+    /// </summary>
     private void ForceWritable(string path)
     {
         var di = new DirectoryInfo(path);
@@ -1412,12 +1633,26 @@ public class PackUpdater
         RefreshDeployableCacheState();
     }
 
+    /// <summary>
+    /// Whether a cached zipball is on disk and readable - i.e. whether an install can proceed
+    /// without the network. Does not consider whether it is current;
+    /// <see cref="ValidateCacheAgainstRemote"/> is that question.
+    /// </summary>
     public bool HasDeployableCache()
     {
         var (exists, _) = GetCacheInfo();
         return exists;
     }
 
+    /// <summary>
+    /// Walks up from a manifest to the folder that sits directly inside
+    /// <paramref name="resourcePackPath"/> - the pack's own root as Minecraft sees it, which
+    /// is what has to be deleted or replaced to remove the pack.
+    ///
+    /// <para>Necessary because a manifest can be nested: a pack may keep subpacks with their
+    /// own manifests, so the folder holding the manifest is not always the pack's root. Null
+    /// when the manifest is not under that path at all.</para>
+    /// </summary>
     private string? GetTopLevelFolderForManifest(string manifestPath, string resourcePackPath)
     {
         var manifestDir = Path.GetDirectoryName(manifestPath);
