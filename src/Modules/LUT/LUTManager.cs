@@ -323,12 +323,12 @@ internal sealed class LUTManager
     /// </summary>
     public async Task<DefaultsState> EnsureDefaultsBackedUpAsync()
     {
-        bool justMended = false;
+        var mended = new List<string>();
 
         if (AllFiles.Any(f => !File.Exists(DstPath(f))))
         {
             Trace.WriteLine("[LUTManager] Game is missing ray tracing files - mending what a bundled preset can supply");
-            justMended = await MendGameFilesAsync();
+            mended = await MendGameFilesAsync();
         }
 
         var gameFiles = AllFiles.Where(f => File.Exists(DstPath(f))).ToList();
@@ -342,7 +342,7 @@ internal sealed class LUTManager
         var backedUp = AllFiles.Where(f => File.Exists(DefaultPath(f))).ToList();
 
         if (backedUp.Count == 0)
-            return Defaults = await TakeFreshBackupAsync(gameFiles, justMended);
+            return Defaults = await TakeFreshBackupAsync(gameFiles, mended);
 
         var missingFromBackup = gameFiles.Where(f => !backedUp.Contains(f)).ToList();
         if (missingFromBackup.Count == 0)
@@ -394,39 +394,41 @@ internal sealed class LUTManager
     /// and the window blocks installing - offering no rollback is a smaller harm than
     /// offering a broken one.</para>
     ///
-    /// <para><paramref name="justMended"/> skips the check, and must: mending puts a bundled
-    /// preset into the game deliberately, so the game matches one by construction afterwards,
-    /// and that set is the best "original" such an install has.</para>
+    /// <para><paramref name="mendedFiles"/> are excluded from that check, and only those:
+    /// mending writes bundled-preset files into the game deliberately, so they would match by
+    /// construction and prove nothing. Every file mending did <i>not</i> touch is still real
+    /// evidence - a game missing only wibbly.png but otherwise running a bundled preset is
+    /// exactly the case this must still catch. Mending everything leaves nothing to compare,
+    /// which reads as no match.</para>
     /// </summary>
-    private async Task<DefaultsState> TakeFreshBackupAsync(List<string> gameFiles, bool justMended)
+    private async Task<DefaultsState> TakeFreshBackupAsync(List<string> gameFiles, List<string> mendedFiles)
     {
         List<string> sourceFiles = gameFiles;
         string sourceFolder = Path.Combine(MinecraftRoot, "data", "ray_tracing");
         string origin = "the game";
 
-        if (!justMended)
+        if (MatchBundledPreset(mendedFiles) is { } impostor)
         {
-            var impostor = MatchBundledPreset();
-            if (impostor != null)
+            // The donor has to be able to stand in for a real backup, which means covering
+            // every file the game has. A partial one would leave slots the underlay could not
+            // fill, so it is no better than having nothing.
+            var donorFolder = GetDefaultsFolderPath(!IsPreview);
+            bool donorUsable = donorFolder != null
+                && gameFiles.All(f => File.Exists(Path.Combine(donorFolder, f)));
+
+            if (!donorUsable)
             {
-                var donorFolder = GetDefaultsFolderPath(!IsPreview);
-                bool donorUsable = donorFolder != null
-                    && AllFiles.Any(f => File.Exists(Path.Combine(donorFolder, f)));
-
-                if (!donorUsable)
-                {
-                    Trace.WriteLine($"[LUTManager] ✗ No backup, and the game is running bundled preset [{impostor.Name}] - " +
-                                    "backing that up would make it permanent. Nothing written.");
-                    return DefaultsState.GameRunningAPreset;
-                }
-
-                Trace.WriteLine($"[LUTManager] Game is running bundled preset [{impostor.Name}] and this edition has no backup - " +
-                                $"seeding from {GetDefaultsFolderName(!IsPreview)}, which is what the rollback used while the two folders were shared.");
-
-                sourceFolder = donorFolder!;
-                sourceFiles = AllFiles.Where(f => File.Exists(Path.Combine(donorFolder!, f))).ToList();
-                origin = GetDefaultsFolderName(!IsPreview);
+                Trace.WriteLine($"[LUTManager] ✗ No backup, and the game is running bundled preset [{impostor.Name}] - " +
+                                "backing that up would make it permanent. Nothing written.");
+                return DefaultsState.GameRunningAPreset;
             }
+
+            Trace.WriteLine($"[LUTManager] Game is running bundled preset [{impostor.Name}] and this edition has no backup - " +
+                            $"seeding from {GetDefaultsFolderName(!IsPreview)}, which is what the rollback used while the two folders were shared.");
+
+            sourceFolder = donorFolder!;
+            sourceFiles = gameFiles.ToList();
+            origin = GetDefaultsFolderName(!IsPreview);
         }
 
         return await Task.Run(() =>
@@ -441,6 +443,14 @@ internal sealed class LUTManager
 
                 foreach (var fileName in sourceFiles)
                     File.Copy(Path.Combine(sourceFolder, fileName), DefaultPath(fileName), overwrite: true);
+
+                // Ready has to mean the rollback works, not merely that the copy threw
+                // nothing - DefaultsComplete is the same bar the window gates installing on.
+                if (!DefaultsComplete)
+                {
+                    Trace.WriteLine($"[LUTManager] ✗ Backup from {origin} does not cover every file the game has");
+                    return DefaultsState.BackupFailed;
+                }
 
                 Trace.WriteLine($"[LUTManager] Default backup created from {sourceFiles.Count} file(s) out of {origin}");
                 return DefaultsState.Ready;
@@ -463,7 +473,7 @@ internal sealed class LUTManager
     /// later: tying the backup to list-building order would make the safety-critical half
     /// depend on the cosmetic one.</para>
     /// </summary>
-    private LutPreset? MatchBundledPreset()
+    private LutPreset? MatchBundledPreset(IReadOnlyCollection<string> ignoreFiles)
     {
         if (!Directory.Exists(LutRootFolder))
             return null;
@@ -473,10 +483,15 @@ internal sealed class LUTManager
             foreach (var dir in Directory.GetDirectories(LutRootFolder))
             {
                 var preset = new LutPreset(Path.GetFileName(dir), dir);
-                if (preset.PresentFiles.Count == 0) continue;
+
+                var comparable = preset.PresentFiles
+                    .Where(f => !ignoreFiles.Contains(Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (comparable.Count == 0) continue;
 
                 bool allMatch = true;
-                foreach (var presetFile in preset.PresentFiles)
+                foreach (var presetFile in comparable)
                 {
                     var gameFile = DstPath(Path.GetFileName(presetFile));
                     if (!File.Exists(gameFile) || !HashesMatch(gameFile, presetFile))
@@ -508,16 +523,18 @@ internal sealed class LUTManager
     /// <para>A file no bundled preset carries cannot be repaired and is left absent; the
     /// backup then simply has no slot for it, and installs never touch it.</para>
     /// </summary>
-    private async Task<bool> MendGameFilesAsync()
+    private async Task<List<string>> MendGameFilesAsync()
     {
+        var mended = new List<string>();
+
         if (!Directory.Exists(LutRootFolder))
         {
             Trace.WriteLine($"[LUTManager] LUT folder not found, cannot mend: {LutRootFolder}");
-            return false;
+            return mended;
         }
 
         var missing = AllFiles.Where(f => !File.Exists(DstPath(f))).ToList();
-        if (missing.Count == 0) return false;
+        if (missing.Count == 0) return mended;
 
         var candidates = new List<string>();
 
@@ -538,6 +555,7 @@ internal sealed class LUTManager
 
                 Trace.WriteLine($"[LUTManager] Mending {fileName} from [{Path.GetFileName(dir)}]");
                 sources.Add(candidate);
+                mended.Add(fileName);
                 break;
             }
         }
@@ -545,15 +563,20 @@ internal sealed class LUTManager
         if (sources.Count == 0)
         {
             Trace.WriteLine($"[LUTManager] No bundled preset carries {string.Join(", ", missing)} - user must repair the game");
-            return false;
+            return mended;
         }
 
         // Straight to the write rather than through InstallAsync: its Default underlay is
         // what does not exist yet at this point, and a stale backup is not a safe source
         // to fill a broken install from.
-        bool mended = await WriteToGameAsync("mend", sources);
-        Trace.WriteLine(mended ? "[LUTManager] Game mended" : "[LUTManager] Mend failed or cancelled");
-        return mended;
+        if (await WriteToGameAsync("mend", sources))
+        {
+            Trace.WriteLine("[LUTManager] Game mended");
+            return mended;
+        }
+
+        Trace.WriteLine("[LUTManager] Mend failed or cancelled");
+        return new List<string>();
     }
 
     // -------------------------------------------------------------------------
