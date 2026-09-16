@@ -151,7 +151,7 @@ public static class DefaultsGuard
         {
             var defaultsFolder = LUTManager.GetDefaultsFolderPath(targetPreview);
 
-            if (defaultsFolder == null || LUTManager.RequiredFiles.Any(f => !File.Exists(Path.Combine(defaultsFolder, f))))
+            if (defaultsFolder == null || !LUTManager.AllFiles.Any(f => File.Exists(Path.Combine(defaultsFolder, f))))
             {
                 log?.Invoke($"{tag} No usable Default backup exists - nothing to protect.");
                 return RTXDefaultsGuard.NoActionNeeded;
@@ -175,10 +175,10 @@ public static class DefaultsGuard
                     pairs.Add((backup, LUTManager.GameFilePath(cachedPath!, fileName)));
             }
 
-            if (LUTManager.RequiredFiles.Any(f => !File.Exists(LUTManager.GameFilePath(cachedPath!, f))))
+            if (pairs.Count == 0)
             {
-                log?.Invoke($"{tag} Game's ray_tracing files are missing/incomplete - can't verify current preset state.");
-                return RTXDefaultsGuard.Skipped;
+                log?.Invoke($"{tag} Backup holds no ray_tracing files - nothing to restore.");
+                return RTXDefaultsGuard.NoActionNeeded;
             }
 
             bool alreadyDefault = pairs.All(pair => File.Exists(pair.Item2) && LUTManager.HashesMatch(pair.Item2, pair.Item1));

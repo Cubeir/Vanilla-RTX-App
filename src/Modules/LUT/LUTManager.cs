@@ -15,17 +15,18 @@ namespace Vanilla_RTX_App.Modules.LUT;
 // In case of BetterRTX, it was certain material.bin files go back to defaults upon game updates, here, we don't know.
 
 /// <summary>
-/// One LUT preset: a folder holding some of the five files the game's ray tracing folder
-/// reads. Only <see cref="LUTManager.RequiredFiles"/> and a preview image make a preset
-/// offerable (<see cref="IsComplete"/>); the other three are installed when a preset ships
-/// them and left alone when it doesn't.
+/// One LUT preset: a folder holding any subset of the five files the game's ray tracing
+/// folder reads, plus a preview image.
 ///
-/// <para><b>Why only two are required.</b> look_up_tables.png and sky.png are what a LUT
-/// preset <i>is</i> - the colour grading and the sky. caustics.png, water_n.tga and
-/// wibbly.png are separate effects a preset may have no opinion about; requiring all five
-/// would mean shipping copies of the game's own files to fill the gaps. Omitting one means
-/// "leave whatever is installed alone", which is what lets a preset be partial on
-/// purpose.</para>
+/// <para><b>Every file is optional, and the image is what marks the folder as a preset.</b>
+/// Each of the five is a separate effect an author may or may not have an opinion about, so
+/// requiring any particular one would mean shipping a copy of the game's own file purely to
+/// satisfy this app. A preset that changes only water_n.tga is a legitimate preset, and so is
+/// one that changes only the sky.</para>
+///
+/// <para>Whatever a preset does not ship comes from the Default backup on install (§2e), so a
+/// partial preset is still a complete, deterministic result rather than a partial overwrite
+/// of whatever happened to be there.</para>
 /// </summary>
 internal sealed class LutPreset
 {
@@ -62,7 +63,6 @@ internal sealed class LutPreset
     public List<string> PresentFiles =>
         LUTManager.AllFiles.Select(ResolveFile).Where(p => p != null).Select(p => p!).ToList();
 
-    public bool HasRequiredFiles => LUTManager.RequiredFiles.All(f => ResolveFile(f) != null);
 
     /// <summary>
     /// The preview image. Bundled presets keep theirs beside their files under any of
@@ -73,13 +73,18 @@ internal sealed class LutPreset
     public string? ImagePath => _imagePathOverride ?? LUTManager.FindImage(FolderPath, "image");
 
     /// <summary>
-    /// Offerable: it has the two files that define a preset, and something to show for it.
+    /// Offerable: it has a picture to show, and at least one file to install.
+    ///
+    /// <para>The image is the marker for "this folder is a preset" - a folder without one is
+    /// something else that happens to sit under Presets. The at-least-one-file half is not an
+    /// arbitrary requirement: a preset shipping nothing would install the Default set and so
+    /// be an unlabelled duplicate of Default.</para>
     ///
     /// <para><b>Default is exempt from the image half</b> - its picture is a bundled asset
     /// with a placeholder behind it, so a missing thumbnail must never be able to block a
     /// rollback to the user's own game files.</para>
     /// </summary>
-    public bool IsComplete => HasRequiredFiles && (IsDefault || ImagePath != null);
+    public bool IsComplete => (IsDefault || ImagePath != null) && PresentFiles.Count > 0;
 }
 
 /// <summary>
@@ -106,19 +111,17 @@ internal sealed class LUTManager
     public const string FnCaustics = "caustics.png";
     public const string FnWibbly = "wibbly.png";
 
-    /// <summary>What a preset must ship to be installable at all - see <see cref="LutPreset"/>.</summary>
-    public static readonly string[] RequiredFiles = [FnLut, FnSky];
-
-    /// <summary>Installed when a preset ships them, left alone when it doesn't.</summary>
-    public static readonly string[] OptionalFiles = [FnCaustics, FnWater, FnWibbly];
-
     /// <summary>
-    /// Every file the game reads out of data\ray_tracing. <b>All of these are backed up and
-    /// all of them are restored</b>, regardless of how few a preset needs: the backup's job
-    /// is to undo whatever any preset did, and a preset that ships caustics.png can only be
-    /// undone by a backup that has one.
+    /// Every file the game reads out of data\ray_tracing, and the whole surface this feature
+    /// touches. A stock install ships all five; the folder also holds a <c>blue_noise</c>
+    /// subfolder, which is not ours and is never read or written.
+    ///
+    /// <para><b>All of them are backed up and any of them may be installed</b>, with no
+    /// required subset - see <see cref="LutPreset"/>. The backup's job is to undo whatever
+    /// any preset did, and a preset that ships caustics.png can only be undone by a backup
+    /// that has one.</para>
     /// </summary>
-    public static readonly string[] AllFiles = [.. RequiredFiles, .. OptionalFiles];
+    public static readonly string[] AllFiles = [FnLut, FnSky, FnCaustics, FnWater, FnWibbly];
 
     /// <summary>
     /// Preview-image formats, in priority order. PNG first because that is what everything
@@ -215,11 +218,17 @@ internal sealed class LUTManager
     public string DefaultPath(string fileName) => Path.Combine(DefaultsFolder, fileName);
 
     /// <summary>
-    /// Whether the backup holds what a rollback needs. False is the window's cue to disable
-    /// installing outright: writing shader files into somebody's game with no way back is the
-    /// one thing this feature must never do.
+    /// Whether the backup holds what a rollback needs: <b>every file the game currently has</b>,
+    /// and at least one file overall.
+    ///
+    /// <para>Covering the game's own set is the strict part, and it is what the underlay
+    /// depends on - a slot the game has but the backup doesn't would be left holding whatever
+    /// the previous preset put there, which is the accumulation this design exists to
+    /// prevent. False is the window's cue to disable installing outright.</para>
     /// </summary>
-    public bool DefaultsComplete => RequiredFiles.All(f => File.Exists(DefaultPath(f)));
+    public bool DefaultsComplete =>
+        AllFiles.Any(f => File.Exists(DefaultPath(f))) &&
+        AllFiles.Where(f => File.Exists(DstPath(f))).All(f => File.Exists(DefaultPath(f)));
 
     /// <summary>Why <see cref="DefaultsComplete"/> is what it is, for the window's notice.</summary>
     public enum DefaultsState
@@ -300,13 +309,12 @@ internal sealed class LUTManager
     ///
     /// <para>Three cases, and the middle one is the one worth reading:</para>
     /// <list type="bullet">
-    /// <item>The <i>game</i> is missing a required file - there is nothing worth backing up,
-    /// so this mends the install from a bundled preset instead and then backs that up. A
-    /// known-good set beats leaving the renderer with an incomplete one.</item>
-    /// <item>The backup is missing a required file - it is replaced wholesale rather than
-    /// topped up, because files from two different game versions is not a state anything
-    /// could restore from.</item>
-    /// <item>The backup has the required files but not every optional one. The gaps are
+    /// <item>The <i>game</i> is missing files a bundled preset could supply - it is mended
+    /// first, per missing file, and the result backed up. A stock install ships all five, so
+    /// anything absent means a damaged install rather than a variant.</item>
+    /// <item>The backup holds nothing - it is taken wholesale, subject to the check in
+    /// <see cref="TakeFreshBackupAsync"/>.</item>
+    /// <item>The backup holds some of what the game has but not all of it. The gaps are
     /// filled from the game, <b>but only if what is already held still matches it</b>.
     /// Matching establishes that the game is on its own defaults, so what it holds now is
     /// genuinely default; not matching means a preset is installed, and copying caustics.png
@@ -317,24 +325,23 @@ internal sealed class LUTManager
     {
         bool justMended = false;
 
-        if (RequiredFiles.Any(f => !File.Exists(DstPath(f))))
+        if (AllFiles.Any(f => !File.Exists(DstPath(f))))
         {
-            Trace.WriteLine("[LUTManager] Game is missing required ray tracing files - mending from a bundled preset");
+            Trace.WriteLine("[LUTManager] Game is missing ray tracing files - mending what a bundled preset can supply");
             justMended = await MendGameFilesAsync();
         }
 
         var gameFiles = AllFiles.Where(f => File.Exists(DstPath(f))).ToList();
 
-        if (RequiredFiles.Any(f => !gameFiles.Contains(f)))
+        if (gameFiles.Count == 0)
         {
-            Trace.WriteLine("[LUTManager] Game still missing required ray tracing files after mending - nothing worth backing up");
+            Trace.WriteLine("[LUTManager] Game has no ray tracing files at all - nothing worth backing up");
             return Defaults = DefaultsState.GameFilesMissing;
         }
 
         var backedUp = AllFiles.Where(f => File.Exists(DefaultPath(f))).ToList();
-        bool backupUsable = RequiredFiles.All(backedUp.Contains);
 
-        if (!backupUsable)
+        if (backedUp.Count == 0)
             return Defaults = await TakeFreshBackupAsync(gameFiles, justMended);
 
         var missingFromBackup = gameFiles.Where(f => !backedUp.Contains(f)).ToList();
@@ -404,7 +411,7 @@ internal sealed class LUTManager
             {
                 var donorFolder = GetDefaultsFolderPath(!IsPreview);
                 bool donorUsable = donorFolder != null
-                    && RequiredFiles.All(f => File.Exists(Path.Combine(donorFolder, f)));
+                    && AllFiles.Any(f => File.Exists(Path.Combine(donorFolder, f)));
 
                 if (!donorUsable)
                 {
@@ -466,7 +473,7 @@ internal sealed class LUTManager
             foreach (var dir in Directory.GetDirectories(LutRootFolder))
             {
                 var preset = new LutPreset(Path.GetFileName(dir), dir);
-                if (!preset.HasRequiredFiles) continue;
+                if (preset.PresentFiles.Count == 0) continue;
 
                 bool allMatch = true;
                 foreach (var presetFile in preset.PresentFiles)
@@ -491,8 +498,15 @@ internal sealed class LUTManager
     }
 
     /// <summary>
-    /// Puts a known-good set of ray tracing files into a game that is missing them, from
-    /// whichever bundled preset has the required ones. One elevated write.
+    /// Replaces ray tracing files the game is missing, taking each from the first bundled
+    /// preset that has one. One elevated write for all of them.
+    ///
+    /// <para><b>Only the missing ones.</b> Writing a whole bundled preset would overwrite
+    /// files the game still has and that are perfectly good, turning a repair into an
+    /// unrequested preset install.</para>
+    ///
+    /// <para>A file no bundled preset carries cannot be repaired and is left absent; the
+    /// backup then simply has no slot for it, and installs never touch it.</para>
     /// </summary>
     private async Task<bool> MendGameFilesAsync()
     {
@@ -502,6 +516,9 @@ internal sealed class LUTManager
             return false;
         }
 
+        var missing = AllFiles.Where(f => !File.Exists(DstPath(f))).ToList();
+        if (missing.Count == 0) return false;
+
         var candidates = new List<string>();
 
         var preferred = Path.Combine(LutRootFolder, PreferredMendPreset);
@@ -510,22 +527,33 @@ internal sealed class LUTManager
         candidates.AddRange(Directory.GetDirectories(LutRootFolder)
                                      .OrderBy(d => Path.GetFileName(d), StringComparer.OrdinalIgnoreCase));
 
-        foreach (var dir in candidates)
-        {
-            var preset = new LutPreset(Path.GetFileName(dir), dir);
-            if (!preset.HasRequiredFiles) continue;
+        var sources = new List<string>();
 
-            // Straight to the write rather than through InstallAsync: its Default underlay is
-            // what does not exist yet at this point, and a stale backup is not a safe source
-            // to fill a broken install from.
-            Trace.WriteLine($"[LUTManager] Mending with preset [{preset.Name}]");
-            bool mended = await WriteToGameAsync(preset.Name, preset.PresentFiles);
-            Trace.WriteLine(mended ? "[LUTManager] Game mended" : "[LUTManager] Mend failed or cancelled");
-            return mended;
+        foreach (var fileName in missing)
+        {
+            foreach (var dir in candidates)
+            {
+                var candidate = Path.Combine(dir, fileName);
+                if (!File.Exists(candidate)) continue;
+
+                Trace.WriteLine($"[LUTManager] Mending {fileName} from [{Path.GetFileName(dir)}]");
+                sources.Add(candidate);
+                break;
+            }
         }
 
-        Trace.WriteLine("[LUTManager] No bundled preset has the required files - user must install manually");
-        return false;
+        if (sources.Count == 0)
+        {
+            Trace.WriteLine($"[LUTManager] No bundled preset carries {string.Join(", ", missing)} - user must repair the game");
+            return false;
+        }
+
+        // Straight to the write rather than through InstallAsync: its Default underlay is
+        // what does not exist yet at this point, and a stale backup is not a safe source
+        // to fill a broken install from.
+        bool mended = await WriteToGameAsync("mend", sources);
+        Trace.WriteLine(mended ? "[LUTManager] Game mended" : "[LUTManager] Mend failed or cancelled");
+        return mended;
     }
 
     // -------------------------------------------------------------------------
@@ -581,9 +609,9 @@ internal sealed class LUTManager
     /// </summary>
     public async Task<LutPreset?> DetectCurrentPresetAsync()
     {
-        if (RequiredFiles.Any(f => !File.Exists(DstPath(f))))
+        if (AllFiles.All(f => !File.Exists(DstPath(f))))
         {
-            Trace.WriteLine("[LUTManager] Required game files missing - cannot detect preset");
+            Trace.WriteLine("[LUTManager] Game has no ray tracing files - cannot detect preset");
             return null;
         }
 
@@ -645,9 +673,9 @@ internal sealed class LUTManager
     /// </summary>
     public Task<bool> InstallAsync(LutPreset preset)
     {
-        if (!preset.HasRequiredFiles)
+        if (preset.PresentFiles.Count == 0)
         {
-            Trace.WriteLine($"[LUTManager] Aborting - [{preset.Name}] is missing {string.Join(" / ", RequiredFiles.Where(f => preset.ResolveFile(f) == null))}");
+            Trace.WriteLine($"[LUTManager] Aborting - [{preset.Name}] ships no ray tracing files");
             return Task.FromResult(false);
         }
 
