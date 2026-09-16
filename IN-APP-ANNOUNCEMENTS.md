@@ -5,6 +5,8 @@ Maybe you'll find your name here next time!?
 
 # PSA
 
+### PSA 1
+🍂 Vanilla RTX will support Minecraft 26.50 (Wildreness Bound) later during October.
 
 # PackUpdateAnnouncements
 
@@ -115,8 +117,11 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 2. Wait until BetterRTX developers confirm they've updated the mod.
 3. Use the refresh button in the top left corner to refetch the latest files & continue installing your presets.
 
-## [cd:"120"] [glyph:"F78C"] Is BetterRTX broken?
+## [cd:"120"] [glyph:"F78C"] Is BetterRTX broken? 
 As of MCBE 26.45, it is safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the this game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue to download/import & install presets, also ensure your game is up-to-date.
+
+## [cd:"120"] [glyph:"E7BA"] Is BetterRTX broken? 
+BetterRTX might not yet support Minecraft 26.50. Check back here every day until this text says otherwise. If your game crashes after installing a preset, revert back to the Default RTX backup preset.
 
 # LutManagerAnnouncements 
 Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
@@ -124,21 +129,14 @@ Look up tables provide a simple way to improve or further customize Minecraft RT
 ## [glyph:"E7BA"] [cd:"40000"] 
 This feature will not work if you're using a BetterRTX Preset. Use Default/Unmodified RTX if you want to use LUT presets.
 
-
-
 # DLSSAnnouncements
 ### A friendly note
 Useful fact: the latest DLSS version isn't always the best! Users report 310.5.3.0 is the latest that gives a sharp image. Newer versions and most other versions in-between tend to be a bit blurry!
-
-
-
 
 # ResourcePackSelectionAnnouncements
 ### Text below is a one time tutorial type of thing! [glyph:"E95B"]
 Select from your resource packs from the list below and begin processing them in bulk, tune, delete, or export!
 Use the clear selection button in the main window to clear your selections or by hitting confirm without selecting any packs.
-
-
 
 # AlchitexDevProgressUpdates [glyph:"EC24"]
 The redstone circuits for this feature are still being laid down.
@@ -146,7 +144,7 @@ That said, you can come back here anytime to check on the development news.
 
 ## [cd:"10000"] [glyph:"E823"]
 September News:
-Diligently working on it! Expect its initial arrival later next month. I'm trying to make sure the implementation of RTX Reactor into the app is complete as to not require too many updates afterwards. Also as mentioned in the past, this won't be a simple codebase migration, but also a large rewrite, deploying more modern, advanced approaches to per-block procedural PBR texture generation for Minecraft RTX.
+Diligently working on it! Expect its initial arrival later this month. I'm trying to make sure the implementation of RTX Reactor into the app is complete as to not require too many updates afterwards. Also as mentioned in the past, this won't be a simple codebase migration, but also a large rewrite, deploying more modern, advanced approaches to per-block procedural PBR texture generation for Minecraft RTX.
 
 
 # AlchitexAnnouncements [glyph:"F1D6"]
