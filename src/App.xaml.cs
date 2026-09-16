@@ -92,12 +92,12 @@ public partial class App : Application
         {
             while (_wakeEvent.WaitOne())
             {
+                // Raising a window is the router's call, not this handler's: a wake carrying
+                // a file is answered by whichever window imports it, which is not always
+                // MainWindow.
                 MainWindow.Instance?.DispatcherQueue.TryEnqueue(async () =>
                 {
-                    MainWindow.Instance.Restore();            // un-minimizes/un-maximizes, WinUIEx
-                    MainWindow.Instance.SetForegroundWindow(); // brings to foreground, WinUIEx
-
-                    await FileActivationRouter.RouteHandoffAsync();
+                    await FileActivationRouter.HandleWakeAsync();
                 });
             }
         });

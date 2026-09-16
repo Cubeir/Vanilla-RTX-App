@@ -20,7 +20,7 @@ using static Vanilla_RTX_App.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.PackBrowser;
 
-public sealed partial class PackBrowserWindow : Window
+public sealed partial class PackBrowserWindow : Window, Core.FileActivation.IFileActivationTarget
 {
     private readonly AppWindow _appWindow;
     private bool _isClosing;
@@ -707,6 +707,17 @@ public sealed partial class PackBrowserWindow : Window
     // ════════════════════════════════════════════════════════════════════════
     //  Import orchestration
     // ════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Imports files handed over by a double-click in Explorer, through this window rather
+    /// than MainWindow - see <see cref="Core.FileActivation.IFileActivationTarget"/>.
+    ///
+    /// <para>Deliberately the same call drag-and-drop makes, so an activated file and a
+    /// dropped one are the same operation: same busy state, same confirmation dialogs (this
+    /// window's constructor already points ExpImpDel's at itself), same list reload.</para>
+    /// </summary>
+    public Task ImportActivatedFilesAsync(IReadOnlyList<string> paths) =>
+        RunImportAsync(() => ExpImpDel.ImportFromPathsAsync(paths));
 
     private async Task RunImportAsync(Func<Task<bool>> importWork)
     {

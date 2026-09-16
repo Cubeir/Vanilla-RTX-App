@@ -48,7 +48,7 @@ internal class DownloadQueueItem
 /// downloading, importing, hashing and the elevated install - lives in
 /// <see cref="BetterRTXManager"/>. This holds one and renders it.
 /// </summary>
-public sealed partial class BetterRTXManagerWindow : Window
+public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation.IFileActivationTarget
 {
     private readonly AppWindow _appWindow;
     private bool _isClosing;
@@ -1440,6 +1440,17 @@ public sealed partial class BetterRTXManagerWindow : Window
         }
         _downloadQueue.Clear();
     }
+
+    /// <summary>
+    /// Imports presets handed over by a double-click in Explorer, through this window rather
+    /// than MainWindow - see <see cref="Core.FileActivation.IFileActivationTarget"/>.
+    ///
+    /// <para>Deliberately the same call drag-and-drop and the Add button make, so an
+    /// activated .rtpack and a dropped one are the same operation: same loading panel, same
+    /// extension filtering, same list reload afterwards.</para>
+    /// </summary>
+    public Task ImportActivatedFilesAsync(IReadOnlyList<string> paths) =>
+        ImportCustomPresetsAsync(paths);
 
     // Bulk operation wrapper for custom preset imports
     private async Task ImportCustomPresetsAsync(IEnumerable<string> filePaths)

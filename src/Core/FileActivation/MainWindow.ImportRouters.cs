@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 
@@ -25,6 +26,17 @@ namespace Vanilla_RTX_App;
 /// </summary>
 public sealed partial class MainWindow
 {
+    /// <summary>
+    /// The open child window of the given type, or null when it isn't open.
+    ///
+    /// <para>MainWindow is the only thing that tracks feature windows - it opens them and
+    /// removes them from its list on Closed - so a caller that needs to know whether one is
+    /// up has to ask here. Used by <see cref="Core.FileActivation.FileActivationRouter"/> to
+    /// hand a file activation to the window that owns that file type.</para>
+    /// </summary>
+    internal Window? FindChildWindow(Type windowType) =>
+        _childWindows.FirstOrDefault(w => w.GetType() == windowType);
+
     /// <summary>
     /// Serializes .mcpack imports specifically - see ImportBetterRTXPresetFilesAsync's own
     /// RtpackImportLock for why .rtpack gets a separate one rather than sharing this: they
@@ -53,12 +65,14 @@ public sealed partial class MainWindow
     private static readonly SemaphoreSlim McpackImportLock = new(1, 1);
 
     /// <summary>
-    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs), and
-    /// deliberately independent of PackBrowserWindow rather than opening one on the user's
-    /// behalf: a window appearing on top of a window nobody asked for, and PackBrowserWindow's
-    /// own "no Minecraft data location yet" fallback putting a folder picker in front of them
-    /// unprompted - reachable here because MainWindow_Loaded resolves that cache
-    /// asynchronously and this can run first.
+    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs), used when
+    /// no pack browser is open - one that is takes the import itself
+    /// (<see cref="Core.FileActivation.IFileActivationTarget"/>).
+    ///
+    /// <para>This never <i>opens</i> one on the user's behalf: a window appearing on top of a
+    /// window nobody asked for, and PackBrowserWindow's own "no Minecraft data location yet"
+    /// fallback putting a folder picker in front of them unprompted - reachable here because
+    /// MainWindow_Loaded resolves that cache asynchronously and this can run first.</para>
     ///
     /// <para>Calls ExpImpDel directly instead - the same utility PackBrowserWindow's Add-pack
     /// button and drag-and-drop both reach downstream - and reports through the same Log() the

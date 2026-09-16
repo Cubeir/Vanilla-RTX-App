@@ -4,9 +4,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using Windows.ApplicationModel.Activation;
 using Windows.Storage;
+using WinUIEx;   // Restore/SetForegroundWindow are WinUIEx extensions on Window
 
 namespace Vanilla_RTX_App.Core.FileActivation;
 
@@ -39,10 +41,17 @@ internal static class FileActivationRouter
     /// first matching route wins, and <see cref="Routes"/>' last entry deliberately matches
     /// everything left over - see <see cref="RouteAsync"/>.
     /// </summary>
+    /// <param name="OwnerWindow">
+    /// The feature window that owns this file type. When one is open it takes the import
+    /// itself (see <see cref="IFileActivationTarget"/>) and is what gets raised; otherwise the
+    /// files go to MainWindow via <paramref name="Handler"/>. Must implement
+    /// <see cref="IFileActivationTarget"/> or it is ignored.
+    /// </param>
     private readonly record struct Route(
         string Label,
         string[] Extensions,
-        Func<MainWindow, IReadOnlyList<string>, Task> Handler);
+        Func<MainWindow, IReadOnlyList<string>, Task> Handler,
+        Type OwnerWindow);
 
     /// <summary>
     /// <list type="bullet">
@@ -59,8 +68,10 @@ internal static class FileActivationRouter
     /// </summary>
     private static readonly Route[] Routes =
     [
-        new("BetterRTX preset", [".rtpack"], (window, files) => window.ImportBetterRTXPresetFilesAsync(files)),
-        new("Minecraft pack",   [],          (window, files) => window.ImportPackFilesAsync(files)),
+        new("BetterRTX preset", [".rtpack"], (window, files) => window.ImportBetterRTXPresetFilesAsync(files),
+            typeof(Modules.BetterRTX.BetterRTXManagerWindow)),
+        new("Minecraft pack",   [],          (window, files) => window.ImportPackFilesAsync(files),
+            typeof(Modules.PackBrowser.PackBrowserWindow)),
     ];
 
     // =========================================================================
@@ -84,14 +95,24 @@ internal static class FileActivationRouter
     }
 
     /// <summary>
-    /// For the running instance being woken by another launch: picks up whatever that launch
-    /// left behind and imports it. No-ops when it was woken for any other reason, which is
-    /// the common case - the wake event also just means "bring yourself to the front".
+    /// Everything the wake event means: a second launch either just wants the app in front,
+    /// or brought files with it.
+    ///
+    /// <para><b>Which window is raised is decided here, not by the caller.</b> A plain wake
+    /// raises MainWindow. A wake carrying files raises whichever window ends up importing
+    /// them, which may not be MainWindow - see <see cref="RouteAsync"/>. Raising MainWindow
+    /// unconditionally first is what made a double-clicked file yank the app away from the
+    /// feature window the user had open for exactly that file.</para>
     /// </summary>
-    public static async Task RouteHandoffAsync()
+    public static async Task HandleWakeAsync()
     {
         var pending = ConsumeHandoffFile();
-        if (pending.Count == 0) return;
+
+        if (pending.Count == 0)
+        {
+            BringToFront(MainWindow.Instance);
+            return;
+        }
 
         await RouteAsync(pending);
     }
@@ -154,8 +175,48 @@ internal static class FileActivationRouter
 
             if (matched.Count == 0) continue;
 
+            // A window that owns this file type and is already open takes it, and is raised
+            // in MainWindow's place - the user opened it for this, so that is where they are
+            // looking and where the dialogs belong.
+            if (FindOpenOwner(route) is { } owner)
+            {
+                Trace.WriteLine($"[FileActivation] Routing {matched.Count} file(s) to the open {route.Label} window.");
+                BringToFront((Window)owner);
+                await owner.ImportActivatedFilesAsync(matched);
+                continue;
+            }
+
             Trace.WriteLine($"[FileActivation] Routing {matched.Count} file(s) to {route.Label} import.");
+            BringToFront(MainWindow.Instance);
             await route.Handler(MainWindow.Instance, matched);
+        }
+    }
+
+    /// <summary>
+    /// The open window that owns this route, or null when none is. Null is the ordinary case
+    /// - the user double-clicked a file without the matching window open - and means the
+    /// import goes through MainWindow.
+    /// </summary>
+    private static IFileActivationTarget? FindOpenOwner(Route route) =>
+        MainWindow.Instance?.FindChildWindow(route.OwnerWindow) as IFileActivationTarget;
+
+    /// <summary>
+    /// Un-minimises and raises a window. Both halves are needed: Restore alone leaves a
+    /// minimised window restored but behind, and SetForegroundWindow alone does nothing to a
+    /// minimised one.
+    /// </summary>
+    private static void BringToFront(Window? window)
+    {
+        if (window == null) return;
+
+        try
+        {
+            window.Restore();
+            window.SetForegroundWindow();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[FileActivation] Could not raise window: {ex.Message}");
         }
     }
 
