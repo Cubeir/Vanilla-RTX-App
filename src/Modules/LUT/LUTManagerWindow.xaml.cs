@@ -415,13 +415,7 @@ public sealed partial class LUTManagerWindow : Window
         if (_crossfadeInProgress)
             return;
 
-        BitmapImage? newBitmap = null;
-
-        if (!string.IsNullOrEmpty(newImagePath) && File.Exists(newImagePath))
-        {
-            try { newBitmap = new BitmapImage(new Uri(newImagePath)); }
-            catch (Exception ex) { Trace.WriteLine($"[LUTManager] Image load error: {ex.Message}"); }
-        }
+        var newBitmap = LoadPreviewBitmap(newImagePath);
 
         // Suspended: the picture changes snap, no fade.
         if (Persistent.SuspendUIAnimations)
@@ -473,6 +467,44 @@ public sealed partial class LUTManagerWindow : Window
         };
 
         storyboard.Begin();
+    }
+
+    /// <summary>
+    /// Decodes a preset preview at the size it will actually be drawn at, not the size it was
+    /// authored at.
+    ///
+    /// <para>These are 3840x1080 ultrawide stills - about 16MB each once decoded to a texture,
+    /// whatever the ~500KB file suggests - and they are drawn into a strip a fraction of that
+    /// wide. A plain <c>new BitmapImage(uri)</c> decodes the full thing, so every swap of the
+    /// dropdown handed the compositor another 16MB, and going through all of them cost well
+    /// over a hundred. That is enough to exhaust graphics memory on a modest GPU, and what
+    /// that looks like is not a crash: the app keeps its layout and loses its text and icons,
+    /// everywhere, until it is restarted.</para>
+    ///
+    /// <para>DecodePixelWidth has to be set before UriSource or it does nothing. It counts in
+    /// physical pixels by default, hence the rasterization scale - decoding to the logical
+    /// width would come out soft on a high-DPI display.</para>
+    /// </summary>
+    private BitmapImage? LoadPreviewBitmap(string? path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            return null;
+
+        try
+        {
+            var scale = Content?.XamlRoot?.RasterizationScale ?? 1.0;
+            var logicalWidth = PresetImageBottom.ActualWidth > 0 ? PresetImageBottom.ActualWidth : Bounds.Width;
+            var decodeWidth = (int)Math.Clamp(logicalWidth * scale, 640, 2560);
+
+            var bitmap = new BitmapImage { DecodePixelWidth = decodeWidth };
+            bitmap.UriSource = new Uri(path);
+            return bitmap;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[LUTManager] Image load error: {ex.Message}");
+            return null;
+        }
     }
 
     private static DoubleAnimation MakeOpacityAnimation(UIElement target, double from, double to, double duration)
