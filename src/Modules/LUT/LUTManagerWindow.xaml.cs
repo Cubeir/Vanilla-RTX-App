@@ -470,32 +470,25 @@ public sealed partial class LUTManagerWindow : Window
     }
 
     /// <summary>
-    /// The width preset previews are decoded at, in physical pixels.
+    /// <summary>
+    /// Decode ceiling for preset previews, in physical pixels - a guard rail rather than a
+    /// correction. The bundled previews are authored at this width, so it does nothing until
+    /// something larger is dropped into the Presets folder.
     ///
-    /// <para>A decoded image costs width x height x 4 bytes of graphics memory no matter what
-    /// it weighs on disk, so a 3840x1080 still is ~16MB whether it is a 500KB JPEG or a 5MB
-    /// PNG. Ten of those cycled through the dropdown is enough to exhaust a modest GPU, and
-    /// what that looks like is not a crash - the app keeps its layout and loses every glyph
-    /// and image in every window until it is restarted.</para>
+    /// <para>A decoded image costs width x height x 4 bytes of graphics memory whatever it
+    /// weighs on disk, which is why this is the one thing worth bounding: a preview authored
+    /// at 4K is ~16MB of VRAM per swap no matter how small the JPEG is, and a handful of them
+    /// will exhaust a modest GPU. 2200 is the strip's own width at 200% scale.</para>
     ///
-    /// <para><b>A constant, not the control's measured width.</b> Sizing this per call from
-    /// ActualWidth meant the same file was decoded at a different size depending on how big
-    /// the window happened to be, and XAML's image cache is keyed on the URI alone - ask it
-    /// for a size it doesn't already hold for that URI and the result is a coin toss between
-    /// the size you asked for, the size it had, and nothing at all. Nothing at all is what
-    /// showed up as a blank preview after resizing.</para>
-    ///
-    /// <para>2200 covers the window at 200% scale up to a fair width; the strip is drawn
-    /// UniformToFill, so a wider window than that costs sharpness no one is looking for in a
-    /// thumbnail rather than correctness. <b>The real fix is upstream:</b> a preview authored
-    /// at the size it is shown needs no cap at all, and this exists so that the pack this
-    /// ships with can never take the app down with it.</para>
+    /// <para>Constant rather than measured off the control: XAML's image cache is keyed on
+    /// the URI alone, so asking it for the same file at a second size returns whichever one
+    /// it feels like - including nothing.</para>
     /// </summary>
     private const int PreviewDecodeWidth = 2200;
 
     /// <summary>
-    /// <see cref="BitmapImage.DecodePixelWidth"/> has to be set before UriSource or it does
-    /// nothing at all - which is the whole reason this isn't a one-line <c>new BitmapImage(uri)</c>.
+    /// <see cref="BitmapImage.DecodePixelWidth"/> has to be set before UriSource or it is
+    /// ignored outright - the whole reason this isn't <c>new BitmapImage(uri)</c>.
     /// </summary>
     private static BitmapImage? LoadPreviewBitmap(string? path)
     {
