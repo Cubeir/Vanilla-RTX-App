@@ -470,33 +470,41 @@ public sealed partial class LUTManagerWindow : Window
     }
 
     /// <summary>
-    /// Decodes a preset preview at the size it will actually be drawn at, not the size it was
-    /// authored at.
+    /// The width preset previews are decoded at, in physical pixels.
     ///
-    /// <para>These are 3840x1080 ultrawide stills - about 16MB each once decoded to a texture,
-    /// whatever the ~500KB file suggests - and they are drawn into a strip a fraction of that
-    /// wide. A plain <c>new BitmapImage(uri)</c> decodes the full thing, so every swap of the
-    /// dropdown handed the compositor another 16MB, and going through all of them cost well
-    /// over a hundred. That is enough to exhaust graphics memory on a modest GPU, and what
-    /// that looks like is not a crash: the app keeps its layout and loses its text and icons,
-    /// everywhere, until it is restarted.</para>
+    /// <para>A decoded image costs width x height x 4 bytes of graphics memory no matter what
+    /// it weighs on disk, so a 3840x1080 still is ~16MB whether it is a 500KB JPEG or a 5MB
+    /// PNG. Ten of those cycled through the dropdown is enough to exhaust a modest GPU, and
+    /// what that looks like is not a crash - the app keeps its layout and loses every glyph
+    /// and image in every window until it is restarted.</para>
     ///
-    /// <para>DecodePixelWidth has to be set before UriSource or it does nothing. It counts in
-    /// physical pixels by default, hence the rasterization scale - decoding to the logical
-    /// width would come out soft on a high-DPI display.</para>
+    /// <para><b>A constant, not the control's measured width.</b> Sizing this per call from
+    /// ActualWidth meant the same file was decoded at a different size depending on how big
+    /// the window happened to be, and XAML's image cache is keyed on the URI alone - ask it
+    /// for a size it doesn't already hold for that URI and the result is a coin toss between
+    /// the size you asked for, the size it had, and nothing at all. Nothing at all is what
+    /// showed up as a blank preview after resizing.</para>
+    ///
+    /// <para>2200 covers the window at 200% scale up to a fair width; the strip is drawn
+    /// UniformToFill, so a wider window than that costs sharpness no one is looking for in a
+    /// thumbnail rather than correctness. <b>The real fix is upstream:</b> a preview authored
+    /// at the size it is shown needs no cap at all, and this exists so that the pack this
+    /// ships with can never take the app down with it.</para>
     /// </summary>
-    private BitmapImage? LoadPreviewBitmap(string? path)
+    private const int PreviewDecodeWidth = 2200;
+
+    /// <summary>
+    /// <see cref="BitmapImage.DecodePixelWidth"/> has to be set before UriSource or it does
+    /// nothing at all - which is the whole reason this isn't a one-line <c>new BitmapImage(uri)</c>.
+    /// </summary>
+    private static BitmapImage? LoadPreviewBitmap(string? path)
     {
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
             return null;
 
         try
         {
-            var scale = Content?.XamlRoot?.RasterizationScale ?? 1.0;
-            var logicalWidth = PresetImageBottom.ActualWidth > 0 ? PresetImageBottom.ActualWidth : Bounds.Width;
-            var decodeWidth = (int)Math.Clamp(logicalWidth * scale, 640, 2560);
-
-            var bitmap = new BitmapImage { DecodePixelWidth = decodeWidth };
+            var bitmap = new BitmapImage { DecodePixelWidth = PreviewDecodeWidth };
             bitmap.UriSource = new Uri(path);
             return bitmap;
         }
