@@ -1661,17 +1661,16 @@ public sealed partial class Alchitex : Window
             if (sb.Length > 0) sb.AppendLine();
             sb.AppendLine($"🗑️ Uninstalled the original pack{(_removedOriginalNames.Count == 1 ? "" : "s")} they were generated from:");
             foreach (var name in _removedOriginalNames)
-                sb.AppendLine($"* {Helpers.StripMinecraftFormatting(name)}");
+                sb.AppendLine($"{Helpers.StripMinecraftFormatting(name)}");
         }
 
         if (_failedPackNames.Count > 0)
         {
             if (sb.Length > 0) sb.AppendLine();
-            sb.AppendLine("⚠️ Partially (or fully) failed to add RTX support to the following:");
-            sb.AppendLine();
+            sb.AppendLine("⚠️ Failed to add RTX support to the following:");
             foreach (var name in _failedPackNames)
-                sb.AppendLine($"* {Helpers.StripMinecraftFormatting(name)}");
-            sb.Append($"ℹ️ Better luck with another pack!");
+                sb.AppendLine($"{Helpers.StripMinecraftFormatting(name)}");
+            sb.AppendLine($"ℹ️ Better luck with another pack!");
         }
 
         StatusMessage = sb.ToString().TrimEnd();
