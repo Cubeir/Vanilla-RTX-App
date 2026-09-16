@@ -11,11 +11,29 @@ using Vanilla_RTX_App.Modules;
 namespace Vanilla_RTX_App.Core;
 
 /// <summary>
-/// Universal control toggle utility for WinUI 3 applications
-/// Manages enabling/disabling of controls while preserving original states
+/// Disables and restores interactive controls across a window while a long operation runs,
+/// without any caller having to know what state those controls were in beforehand.
+///
+/// <para><b>Locks are reference-counted, keyed by control instance.</b> Several feature
+/// windows can be open at once and each disables what it cares about; a control's IsEnabled
+/// is only restored once the last of them has released it. Without the count, whichever
+/// window finished first would re-enable buttons another one still needs held down. Keyed on
+/// the instance rather than the name because Control doesn't override Equals/GetHashCode, so
+/// identity is exactly the right comparison and two same-named controls in different windows
+/// stay distinct.</para>
+///
+/// <para><b>Call Acquire and Release in pairs</b> - every <c>Toggle*(window, false)</c> needs
+/// its <c>true</c> counterpart, normally from the window's Closed handler. A lock that is
+/// never released leaves the control disabled for the rest of the session;
+/// <see cref="ClearStates"/> is the way out of that.</para>
 /// </summary>
 public class WindowControlsManager
 {
+    /// <summary>
+    /// Controls that stay live no matter what: help, donate, theme, the log and its progress
+    /// bar. None of them can affect an operation in flight, and locking the user out of help
+    /// or the log during a long run is the opposite of useful.
+    /// </summary>
     private static readonly HashSet<string> _globalExclusions = new()
     {
         "HelpButton", "DonateButton", "ChatButton", "CycleThemeButton",
@@ -68,6 +86,15 @@ public class WindowControlsManager
     // has been torn down (e.g. MainWindow closed while a child feature window is still open
     // and later calls back into it via a captured "this"). Swallow that specific case —
     // there's nothing left to toggle on a dead window — but let anything else bubble up.
+    /// <summary>
+    /// <see cref="Window.Content"/>, or null if the window's native side is already gone.
+    ///
+    /// <para>Window.Content throws COMException rather than returning null once the HWND has
+    /// been torn down, which a child feature window hits whenever it calls back into a
+    /// MainWindow that closed underneath it through a captured reference. Only that case is
+    /// swallowed - there is nothing left to toggle on a dead window - and anything else
+    /// bubbles.</para>
+    /// </summary>
     private static UIElement? TryGetContent(Window window)
     {
         try
@@ -98,12 +125,22 @@ public class WindowControlsManager
         }
     }
 
+    /// <summary>
+    /// Routes to <see cref="Acquire"/> or <see cref="Release"/>, materialising the sequence
+    /// first: <see cref="GetAllSupportedControls"/> walks the live visual tree lazily, and
+    /// enumerating it while changing IsEnabled on what it yields is a mutation mid-walk.
+    /// </summary>
     private static void Apply(bool enable, IEnumerable<Control> controls)
     {
-        var list = controls as IList<Control> ?? controls.ToList(); // materialize before mutating
+        var list = controls as IList<Control> ?? controls.ToList();
         if (enable) Release(list); else Acquire(list);
     }
 
+    /// <summary>
+    /// Takes a lock on each control, recording its pre-lock IsEnabled the first time only -
+    /// on a second acquire the control is already disabled by us, and recording that would
+    /// make the eventual restore re-disable it.
+    /// </summary>
     private static void Acquire(IEnumerable<Control> controls)
     {
         foreach (var control in controls)
@@ -118,6 +155,11 @@ public class WindowControlsManager
         }
     }
 
+    /// <summary>
+    /// Drops one lock per control and restores the recorded state at zero. A release for a
+    /// control that was never locked is ignored rather than counted negative, so an unpaired
+    /// restore cannot leave the next real lock unable to reach zero.
+    /// </summary>
     private static void Release(IEnumerable<Control> controls)
     {
         foreach (var control in controls)
@@ -139,10 +181,24 @@ public class WindowControlsManager
         }
     }
 
+    /// <summary>Adds a control name to <see cref="_globalExclusions"/> for the rest of the session.</summary>
     public static void AddGlobalExclusion(string controlName) { if (!string.IsNullOrEmpty(controlName)) _globalExclusions.Add(controlName); }
+
+    /// <summary>Stops sparing that control name. It does not release a lock already held on it.</summary>
     public static void RemoveGlobalExclusion(string controlName) { if (!string.IsNullOrEmpty(controlName)) _globalExclusions.Remove(controlName); }
+
+    /// <summary>Empties the exclusion set, after which a blanket toggle really does reach everything.</summary>
     public static void ClearGlobalExclusions() => _globalExclusions.Clear();
 
+    /// <summary>
+    /// Every <see cref="IsSupportedControl"/> descendant of <paramref name="parent"/>, depth
+    /// first, skipping names in <paramref name="exclusions"/> (null excludes nothing).
+    ///
+    /// <para>Walks the visual tree rather than a registry, so controls created at runtime are
+    /// found without anyone registering them - which is what lets the preset and version
+    /// lists, rebuilt wholesale on every redraw, participate at all. An excluded parent does
+    /// not exclude its children; exclusion is per control.</para>
+    /// </summary>
     private static IEnumerable<Control> GetAllSupportedControls(DependencyObject parent, HashSet<string>? exclusions)
     {
         if (parent == null) yield break;
@@ -164,6 +220,12 @@ public class WindowControlsManager
         }
     }
 
+    /// <summary>
+    /// Whether this is something with an IsEnabled worth toggling. Deliberately a list of
+    /// input controls rather than "anything deriving from Control": disabling a container,
+    /// a TextBlock or a ContentPresenter greys its subtree without stopping anything, and
+    /// makes the restore ambiguous when a child was independently disabled.
+    /// </summary>
     private static bool IsSupportedControl(DependencyObject control) =>
         control is Button or CheckBox or RadioButton or Slider or TextBox or PasswordBox or ComboBox or
         ListBox or ListView or Microsoft.UI.Xaml.Controls.Primitives.ToggleButton or RatingControl or
@@ -190,43 +252,38 @@ public class WindowControlsManager
 }
 
 /// <summary>
-/// Extension methods for convenient usage
+/// Window-typed shorthand for <see cref="WindowControlsManager"/>'s blanket mode. Every
+/// disable still needs its matching enable - these are sugar, not scope guards.
 /// </summary>
 public static class WindowControlsManagerExtensions
 {
-    /// <summary>
-    /// Toggles all controls in this window
-    /// </summary>
-    /// <param name="window">The window to toggle controls for</param>
-    /// <param name="enable">True to restore, false to disable</param>
-    /// <param name="excludeNames">Optional list of control names to exclude</param>
+    /// <summary>Takes a lock on every supported control in the window.</summary>
+    /// <param name="overrideGlobalExclusions">True also locks help/donate/theme/log.</param>
+    /// <param name="excludeNames">Names to leave alone on top of the global exclusions.</param>
     public static void DisableAllControls(this Window window, bool overrideGlobalExclusions = false, params string[] excludeNames)
     {
         WindowControlsManager.ToggleControls(window, false, overrideGlobalExclusions, excludeNames);
     }
+
     /// <summary>
-    /// Disables all controls in this window
+    /// Releases the lock taken by <see cref="DisableAllControls"/>. Pass the same arguments
+    /// it was given, or the sets won't match and some controls keep a lock nothing releases.
     /// </summary>
-    /// <param name="window">The window to disable controls for</param>
-    /// <param name="excludeNames">Optional list of control names to exclude</param>
     public static void EnableAllControls(this Window window, bool overrideGlobalExclusions = false, params string[] excludeNames)
     {
         WindowControlsManager.ToggleControls(window, true, overrideGlobalExclusions, excludeNames);
     }
 
     /// <summary>
-    /// Restores all controls in this window to their original states
+    /// Releases one lock on every supported control except the global exclusions - the
+    /// counterpart to a plain <c>DisableAllControls()</c> with no arguments.
     /// </summary>
-    /// <param name="window">The window to restore controls for</param>
     public static void RestoreAllControls(this Window window)
     {
         WindowControlsManager.ToggleControls(window, true);
     }
 
-    /// <summary>
-    /// Clears stored control states for this window
-    /// </summary>
-    /// <param name="window">The window to clear states for</param>
+    /// <summary>Emergency reset - see <see cref="WindowControlsManager.ClearStates"/>.</summary>
     public static void ClearControlStates(this Window window)
     {
         WindowControlsManager.ClearStates(window);
@@ -252,6 +309,11 @@ public class ProgressBarManager
     private readonly object _lock = new();
     private int _activeOperations;
 
+    /// <summary>
+    /// Binds to one ProgressBar and captures its DispatcherQueue, which is what makes every
+    /// method here callable from any thread. The bar is reset to hidden immediately, so a
+    /// manager constructed against a bar left visible in XAML starts from a known state.
+    /// </summary>
     public ProgressBarManager(ProgressBar progressBar)
     {
         _progressBar = progressBar ?? throw new ArgumentNullException(nameof(progressBar));
@@ -301,16 +363,27 @@ public class ProgressBarManager
         }
     }
 
+    /// <summary>Whether any indeterminate operation is still outstanding.</summary>
     public bool IsVisible
     {
         get { lock (_lock) { return _activeOperations > 0; } }
     }
 
+    /// <summary>
+    /// How many unmatched <see cref="ShowProgress"/> calls are outstanding. Diagnostic: a
+    /// count that never returns to zero means a caller lost its HideProgress to an early
+    /// return or an exception.
+    /// </summary>
     public int ActiveOperationsCount
     {
         get { lock (_lock) { return _activeOperations; } }
     }
 
+    /// <summary>
+    /// Shows or hides the bar from the operation count, clearing the error and paused tints
+    /// on the way - those are terminal states, and a new operation starting means they no
+    /// longer describe anything. Called under <c>_lock</c>.
+    /// </summary>
     private void UpdateIndeterminateState()
     {
         var shouldShow = _activeOperations > 0;
@@ -382,6 +455,7 @@ public class ProgressBarManager
         });
     }
 
+    /// <summary>Back to hidden, determinate, untinted, value zero - the bar's resting state.</summary>
     private void ResetVisual()
     {
         _progressBar.IsIndeterminate = false;
@@ -393,6 +467,11 @@ public class ProgressBarManager
         _progressBar.Visibility = Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// Runs <paramref name="action"/> on the bar's UI thread, inline when already there.
+    /// The inline path matters for ordering: enqueuing unconditionally would let a UI-thread
+    /// caller's own later statements run before the update it just asked for.
+    /// </summary>
     private void RunOnUi(Action action)
     {
         if (_dispatcherQueue.HasThreadAccess)

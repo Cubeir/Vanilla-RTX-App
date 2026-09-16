@@ -13,10 +13,22 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// </summary>
 public sealed partial class OverlayHeaderBar : UserControl
 {
+    /// <summary>The title, which is a hyperlink - the host decides what it points at.</summary>
     public event RoutedEventHandler? TitleClick;
+
+    /// <summary>Only raised while the nav buttons are shown (<see cref="SetNavButtonsVisible"/>).</summary>
     public event RoutedEventHandler? BackClick;
+
+    /// <inheritdoc cref="BackClick"/>
     public event RoutedEventHandler? ForwardClick;
+
+    /// <summary>Not raised while a cooldown is running - see <see cref="SetReloadCooldown"/>.</summary>
     public event RoutedEventHandler? ReloadClick;
+
+    /// <summary>
+    /// The primary accent button. What "close" means is the host's business: the web overlay
+    /// treats it as Done and imports what was downloaded, the markdown overlay just returns.
+    /// </summary>
     public event RoutedEventHandler? CloseClick;
 
     public OverlayHeaderBar()
@@ -31,14 +43,22 @@ public sealed partial class OverlayHeaderBar : UserControl
         Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyCloseButtonBevel;
     }
 
+    /// <summary>Repaints the Close button's accent seam for a theme. See the constructor for why by hand.</summary>
     private void ApplyCloseButtonBevel(ElementTheme theme) =>
         CloseButtonBevel.BorderBrush = new SolidColorBrush(
             ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Left, accented: true));
 
+    /// <summary>The leading glyph, as a Segoe Fluent character - an empty string leaves a blank slot.</summary>
     public void SetIcon(string glyph) => HeaderIcon.Glyph = glyph;
 
+    /// <summary>The hyperlinked title text. Clicking it raises <see cref="TitleClick"/>.</summary>
     public void SetTitleText(string text) => HeaderTitleText.Text = text;
 
+    /// <summary>
+    /// The static sentence telling the user what "done" means for this particular page.
+    /// An empty string collapses the row rather than leaving a gap, so a plain document
+    /// viewer with nothing to guide reads as deliberately bare.
+    /// </summary>
     public void SetGuideText(string text)
     {
         GuideText.Text = text;
@@ -53,6 +73,11 @@ public sealed partial class OverlayHeaderBar : UserControl
         ForwardButton.Visibility = visibility;
     }
 
+    /// <summary>
+    /// Greys Back/Forward against the host's real history. Separate from
+    /// <see cref="SetNavButtonsVisible"/> because they answer different questions: whether
+    /// this overlay navigates at all, versus whether there is anywhere to go right now.
+    /// </summary>
     public void SetNavButtonsEnabled(bool canGoBack, bool canGoForward)
     {
         BackButton.IsEnabled = canGoBack;
@@ -83,6 +108,11 @@ public sealed partial class OverlayHeaderBar : UserControl
         }
     }
 
+    /// <summary>
+    /// Relabels the primary button, which is the only cue the user gets about what closing
+    /// will do - "Done" when something will be imported on the way out, "Return" when
+    /// nothing will.
+    /// </summary>
     public void SetCloseButton(string glyph, string text, string tooltip)
     {
         CloseButtonIcon.Glyph = glyph;
@@ -90,9 +120,18 @@ public sealed partial class OverlayHeaderBar : UserControl
         ToolTipService.SetToolTip(CloseButton, tooltip);
     }
 
+    /// <summary>XAML handler. Forwarded as <see cref="TitleClick"/>; this control has no opinion on what it means.</summary>
     private void HeaderTitleLink_Click(object sender, RoutedEventArgs e) => TitleClick?.Invoke(this, e);
+
+    /// <summary>XAML handler. Forwarded as <see cref="BackClick"/>.</summary>
     private void BackButton_Click(object sender, RoutedEventArgs e) => BackClick?.Invoke(this, e);
+
+    /// <summary>XAML handler. Forwarded as <see cref="ForwardClick"/>.</summary>
     private void ForwardButton_Click(object sender, RoutedEventArgs e) => ForwardClick?.Invoke(this, e);
+
+    /// <summary>XAML handler. Forwarded as <see cref="ReloadClick"/>.</summary>
     private void ReloadButton_Click(object sender, RoutedEventArgs e) => ReloadClick?.Invoke(this, e);
+
+    /// <summary>XAML handler. Forwarded as <see cref="CloseClick"/>.</summary>
     private void CloseButton_Click(object sender, RoutedEventArgs e) => CloseClick?.Invoke(this, e);
 }

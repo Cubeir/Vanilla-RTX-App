@@ -48,6 +48,7 @@ public static class TitleBarFocus
         Apply(elements, isFocused: true);
     }
 
+    /// <summary>Sets the focused or unfocused opacity on every element, skipping nulls.</summary>
     private static void Apply(UIElement[] elements, bool isFocused)
     {
         var opacity = isFocused ? FocusedOpacity : UnfocusedOpacity;
