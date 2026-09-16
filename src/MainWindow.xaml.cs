@@ -3058,4 +3058,13 @@ apparently some third party launchers use them for other things, like userdata, 
 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line, customize its visuals, etc... to make it look like before with layering tricks
+
+>> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.
+
+- More previewer asset ideas:
+random block renders thrown in there
+iconns/logos of features of app thrown in there too, one for each would be enough
+Idea, of a render of a Tuner block, but each side features one of the feature-unique icons you've made!
+Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
+Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
 */
