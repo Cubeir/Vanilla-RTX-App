@@ -7,11 +7,15 @@ using System.Threading.Tasks;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 
+// Filed under Core\FileActivation with the router that calls it, rather than beside
+// MainWindow, so the whole Explorer-activation path reads as one unit. The namespace stays
+// Vanilla_RTX_App because this is a partial of MainWindow - it is the one place in the repo
+// where namespace and folder deliberately disagree.
 namespace Vanilla_RTX_App;
 
 /// <summary>
 /// What actually happens to a file opened from Explorer once
-/// <see cref="Core.FileActivationRouter"/> has decided where it belongs.
+/// <see cref="Core.FileActivation.FileActivationRouter"/> has decided where it belongs.
 ///
 /// <para><b>These live on MainWindow because what they do is drive it:</b> its log carries
 /// every per-file message from the import, its progress bar runs for the duration, its

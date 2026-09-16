@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Core.FileActivation;
 using Windows.Storage;
 using WinUIEx;
 
@@ -72,13 +73,8 @@ public partial class App : Application
 
         if (!isNewInstance)
         {
-            // This process is about to hand off to the one already running - if a .mcpack
-            // was what launched it, that file would otherwise be lost the moment we Exit().
-            // Written before the wake signal, never after: the existing instance only checks
-            // for this file once it wakes up, so the order here is what guarantees it sees it.
-            var incomingFiles = FileActivationRouter.GetActivationFilePaths();
-            if (incomingFiles.Count > 0)
-                FileActivationRouter.WriteHandoffFile(incomingFiles);
+            // Before the wake signal, never after - see HandOffToRunningInstance.
+            FileActivationRouter.HandOffToRunningInstance();
 
             // Signal the existing instance to bring itself to front
             if (EventWaitHandle.TryOpenExisting($"{GetUniqueName()}_wake", out var existing))
@@ -101,11 +97,7 @@ public partial class App : Application
                     MainWindow.Instance.Restore();            // un-minimizes/un-maximizes, WinUIEx
                     MainWindow.Instance.SetForegroundWindow(); // brings to foreground, WinUIEx
 
-                    // A second launch that lost the race for the mutex leaves its
-                    // .mcpack/.rtpack paths here rather than its files - see the write above.
-                    var pendingFiles = FileActivationRouter.ConsumeHandoffFile();
-                    if (pendingFiles.Count > 0)
-                        await FileActivationRouter.RouteAsync(pendingFiles);
+                    await FileActivationRouter.RouteHandoffAsync();
                 });
             }
         });
@@ -116,12 +108,7 @@ public partial class App : Application
         await Task.Delay(175); // A delay ensures the xaml is constructed before window tries to appear.
         _window.Activate();
 
-        // Cold launch via .mcpack/.rtpack ("Open with", double-click) rather than the normal
-        // icon - this process won the mutex outright, so its own activation args carry the
-        // files directly; no hand-off file involved.
-        var launchFiles = FileActivationRouter.GetActivationFilePaths();
-        if (launchFiles.Count > 0)
-            _ = FileActivationRouter.RouteAsync(launchFiles);
+        _ = FileActivationRouter.RouteLaunchAsync();
     }
 
     public static void WriteCrashLog(string source, string message, string detail)

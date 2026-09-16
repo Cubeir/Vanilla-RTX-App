@@ -1250,21 +1250,7 @@ internal sealed class BetterRTXManager
                 return false;
             }
 
-            // Only CoreRTXFiles is backed up, so only it can be rolled back - which is why a
-            // preset's own .bin files are all that gets written. That set is also what every
-            // hash comparison and DefaultsGuard work from. Backing up a file outside it would
-            // mean copying from a game that may already be running another preset, producing a
-            // safety net made of the wrong bytes.
-            var filesToApply = new List<(string sourcePath, string destPath)>();
-
-            if (preset.BinFiles != null)
-            {
-                foreach (var binFilePath in preset.BinFiles)
-                {
-                    var binFileName = Path.GetFileName(binFilePath);
-                    filesToApply.Add((binFilePath, Path.Combine(GameMaterialsPath, binFileName)));
-                }
-            }
+            var filesToApply = BuildInstallSet(preset);
 
             var success = await Helpers.ReplaceFilesWithElevation(filesToApply, "[BetterRTX]", "betterrtx_install");
             return success;
@@ -1275,6 +1261,65 @@ internal sealed class BetterRTXManager
             return false;
         }
     }
+    /// <summary>
+    /// The exact set of files an install writes: every core file, sourced from the preset
+    /// where it ships one and from this edition's Default backup where it doesn't, plus any
+    /// non-core .bin the preset carries.
+    ///
+    /// <para><b>The Default underlay is what stops presets accumulating.</b> Presets do not
+    /// all ship the same files - some carry all four core .bin files, some fewer, some extra
+    /// ones. Writing only what a preset happens to contain leaves the rest of the previous
+    /// preset in place, so installing a four-file preset and then a one-file preset runs the
+    /// game on three files from one and one from the other. That is not a preset anyone
+    /// authored or tested, and mixed shader binaries are exactly the kind of thing that
+    /// renders wrong or refuses to start.</para>
+    ///
+    /// <para>Expressed as one merged list rather than installing Default and then the preset:
+    /// same end state, but one elevated write and one UAC prompt, with no window in which the
+    /// game holds a half-reverted set. The Default preset itself needs no underlay - it
+    /// <i>is</i> the underlay - and resolves to its own files either way.</para>
+    ///
+    /// <para><b>Known limit:</b> a non-core .bin left behind by an earlier preset is not
+    /// removed, because only <see cref="CoreRTXFiles"/> is backed up and there is nothing to
+    /// put back in its place. Restoring Default cannot clear one either. Presets from
+    /// bedrock.graphics ship the core four, so this only bites on hand-made .rtpacks.</para>
+    /// </summary>
+    private List<(string sourcePath, string destPath)> BuildInstallSet(LocalPresetData preset)
+    {
+        var filesToApply = new List<(string sourcePath, string destPath)>();
+        var presetFiles = preset.BinFiles ?? new List<string>();
+
+        foreach (var coreFileName in CoreRTXFiles)
+        {
+            var fromPreset = presetFiles.FirstOrDefault(f =>
+                Path.GetFileName(f).Equals(coreFileName, StringComparison.OrdinalIgnoreCase));
+
+            var source = fromPreset ?? Path.Combine(DefaultFolder, coreFileName);
+            if (!File.Exists(source)) continue;
+
+            if (fromPreset == null)
+                Trace.WriteLine($"[BetterRTX]   {coreFileName} <- {DefaultFolderName} (preset does not ship it)");
+
+            filesToApply.Add((source, Path.Combine(GameMaterialsPath, coreFileName)));
+        }
+
+        foreach (var binFilePath in presetFiles)
+        {
+            var binFileName = Path.GetFileName(binFilePath);
+            if (CoreRTXFiles.Contains(binFileName, StringComparer.OrdinalIgnoreCase)) continue;
+
+            Trace.WriteLine($"[BetterRTX]   {binFileName} <- preset (non-core, cannot be rolled back)");
+            filesToApply.Add((binFilePath, Path.Combine(GameMaterialsPath, binFileName)));
+        }
+
+        return filesToApply;
+    }
+
+    /// <summary>
+    /// SHA-256 of a file as lowercase hex, or null if it is missing or unreadable. Null is
+    /// never treated as a match by <see cref="AreHashesMatching"/>, so an unreadable file
+    /// reads as "not this preset" rather than as an accidental equality.
+    /// </summary>
     public static string? ComputeFileHash(string filePath)
     {
         try
@@ -1320,6 +1365,12 @@ internal sealed class BetterRTXManager
         return hashes;
     }
 
+    /// <summary>
+    /// Hashes of the <see cref="CoreRTXFiles"/> a preset ships - only those, and only the ones
+    /// it actually has, so a preset carrying two core files produces two entries.
+    /// <see cref="AreHashesMatching"/> compares on the overlap, which is what lets a partial
+    /// preset be recognised as installed.
+    /// </summary>
     public static Dictionary<string, string> GetPresetHashes(List<string> binFiles)
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -1342,6 +1393,15 @@ internal sealed class BetterRTXManager
         return hashes;
     }
 
+    /// <summary>
+    /// Whether the game is currently running this preset: true when every file the two sets
+    /// have in common matches.
+    ///
+    /// <para><b>Compares the intersection, not the whole set</b>, because a preset need not
+    /// ship all four core files - the files it doesn't ship are the Default's (see
+    /// <see cref="BuildInstallSet"/>) and say nothing about which preset is installed. Two
+    /// empty or disjoint sets answer false: no evidence is not a match.</para>
+    /// </summary>
     public static bool AreHashesMatching(Dictionary<string, string> currentHashes, Dictionary<string, string> presetHashes)
     {
         if (currentHashes == null || presetHashes == null)

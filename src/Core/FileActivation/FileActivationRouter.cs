@@ -8,7 +8,7 @@ using Microsoft.Windows.AppLifecycle;
 using Windows.ApplicationModel.Activation;
 using Windows.Storage;
 
-namespace Vanilla_RTX_App.Core;
+namespace Vanilla_RTX_App.Core.FileActivation;
 
 /// <summary>
 /// Everything about being opened <i>from Explorer</i>: reading the paths a file activation
@@ -26,6 +26,11 @@ namespace Vanilla_RTX_App.Core;
 /// opened with, and is meant to be read alongside the FileTypeAssociation entries in
 /// Package.appxmanifest - the manifest is what makes Explorer offer us, this is what happens
 /// afterwards, and the two have to agree.</para>
+///
+/// <para><b>The three ways in</b>, all from App.OnLaunched:
+/// <see cref="HandOffToRunningInstance"/> when this process lost the single-instance mutex,
+/// <see cref="RouteHandoffAsync"/> when it won and is being woken by one that lost, and
+/// <see cref="RouteLaunchAsync"/> when it won and was itself launched with files.</para>
 /// </summary>
 internal static class FileActivationRouter
 {
@@ -57,6 +62,52 @@ internal static class FileActivationRouter
         new("BetterRTX preset", [".rtpack"], (window, files) => window.ImportBetterRTXPresetFilesAsync(files)),
         new("Minecraft pack",   [],          (window, files) => window.ImportPackFilesAsync(files)),
     ];
+
+    // =========================================================================
+    // Entry points - App.OnLaunched calls these and nothing else
+    // =========================================================================
+
+    /// <summary>
+    /// For a process that lost the single-instance mutex and is about to Exit: leaves the
+    /// files it was launched with where the running instance will find them.
+    ///
+    /// <para><b>Call before signalling the wake event, never after.</b> The running instance
+    /// reads the hand-off file when it wakes, so writing afterwards is a race it can lose -
+    /// and losing it means the user's double-clicked pack is silently dropped.</para>
+    /// </summary>
+    public static void HandOffToRunningInstance()
+    {
+        var incoming = GetActivationFilePaths();
+        if (incoming.Count == 0) return;
+
+        WriteHandoffFile(incoming);
+    }
+
+    /// <summary>
+    /// For the running instance being woken by another launch: picks up whatever that launch
+    /// left behind and imports it. No-ops when it was woken for any other reason, which is
+    /// the common case - the wake event also just means "bring yourself to the front".
+    /// </summary>
+    public static async Task RouteHandoffAsync()
+    {
+        var pending = ConsumeHandoffFile();
+        if (pending.Count == 0) return;
+
+        await RouteAsync(pending);
+    }
+
+    /// <summary>
+    /// For a cold launch that won the mutex: imports the files this process was itself
+    /// started with. No hand-off file involved - the activation args carry them directly.
+    /// No-ops for an ordinary launch from the Start menu or taskbar.
+    /// </summary>
+    public static async Task RouteLaunchAsync()
+    {
+        var launched = GetActivationFilePaths();
+        if (launched.Count == 0) return;
+
+        await RouteAsync(launched);
+    }
 
     // =========================================================================
     // Routing
@@ -174,7 +225,7 @@ internal static class FileActivationRouter
     /// on AppInstance.GetCurrent's own activation args regardless of which OnLaunched
     /// overload fired.
     /// </summary>
-    public static List<string> GetActivationFilePaths()
+    internal static List<string> GetActivationFilePaths()
     {
         try
         {
@@ -209,14 +260,14 @@ internal static class FileActivationRouter
     /// AlchitexJsonContext for the pattern and what happens without it). A flat file of paths
     /// needs none of that, and a Windows path can never itself contain a newline.</para>
     /// </summary>
-    public static void WriteHandoffFile(IReadOnlyList<string> paths)
+    internal static void WriteHandoffFile(IReadOnlyList<string> paths)
     {
         try { File.WriteAllLines(HandoffFilePath, paths); }
         catch (Exception ex) { Trace.WriteLine($"[FileActivation] Failed to write hand-off file: {ex.Message}"); }
     }
 
     /// <summary>Reads and deletes the hand-off file in one go - it is only ever read once.</summary>
-    public static List<string> ConsumeHandoffFile()
+    internal static List<string> ConsumeHandoffFile()
     {
         try
         {
