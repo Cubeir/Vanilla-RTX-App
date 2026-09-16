@@ -760,7 +760,7 @@ internal sealed class BetterRTXManager
             var icon = await LoadIconAsync(manifestDir ?? presetFolder) ?? await LoadIconAsync(presetFolder);
             var binFiles = Directory.GetFiles(presetFolder, "*.bin", SearchOption.AllDirectories).ToList();
 
-            var presetHashes = GetPresetHashes(binFiles);
+            var presetHashes = GetExpectedInstalledHashes(binFiles);
 
             return new LocalPresetData
             {
@@ -918,7 +918,7 @@ internal sealed class BetterRTXManager
         if (binFiles.Count == 0)
             return null;
 
-        var presetHashes = GetPresetHashes(binFiles);
+        var presetHashes = GetExpectedInstalledHashes(binFiles);
 
         return new LocalPresetData
         {
@@ -1304,10 +1304,13 @@ internal sealed class BetterRTXManager
     /// may never do (see <see cref="EnsureDefaultBackedUp"/>). Installing one would also put
     /// a file in the game that no rollback, not even Default, could ever clear.</para>
     /// </summary>
-    private List<(string sourcePath, string destPath)> BuildInstallSet(LocalPresetData preset)
+    private List<(string sourcePath, string destPath)> BuildInstallSet(LocalPresetData preset) =>
+        BuildInstallSet(preset.BinFiles ?? new List<string>());
+
+    /// <inheritdoc cref="BuildInstallSet(LocalPresetData)"/>
+    private List<(string sourcePath, string destPath)> BuildInstallSet(List<string> presetFiles)
     {
         var filesToApply = new List<(string sourcePath, string destPath)>();
-        var presetFiles = preset.BinFiles ?? new List<string>();
 
         foreach (var fileName in RTXFiles)
         {
@@ -1385,10 +1388,38 @@ internal sealed class BetterRTXManager
     }
 
     /// <summary>
-    /// Hashes of the <see cref="RTXFiles"/> a preset ships - only those, and only the ones it
-    /// actually has, so a preset carrying three of the four produces three entries.
-    /// <see cref="AreHashesMatching"/> compares on the overlap, which is what lets a preset
-    /// that doesn't ship all four still be recognised as installed.
+    /// Hashes of what installing these files would leave in the game: the preset's own file
+    /// for every <see cref="RTXFiles"/> entry it ships, and this edition's Default backup for
+    /// the rest.
+    ///
+    /// <para><b>Derived from <see cref="BuildInstallSet(List{string})"/>, which is what the
+    /// install itself writes</b>, so "is this preset installed" and "what does installing it
+    /// do" can never drift apart. Comparing a preset's own three files alone would report it
+    /// as installed even when the fourth had been changed by something else - a state no
+    /// install of that preset produces.</para>
+    ///
+    /// <para>On an instance that was never attached to a game there is no backup to fall back
+    /// on, so this degrades to the preset's own files. That path only feeds the headless
+    /// importer, which never compares anything.</para>
+    /// </summary>
+    public Dictionary<string, string> GetExpectedInstalledHashes(List<string> binFiles)
+    {
+        var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (sourcePath, destPath) in BuildInstallSet(binFiles))
+        {
+            var hash = ComputeFileHash(sourcePath);
+            if (!string.IsNullOrEmpty(hash))
+                hashes[Path.GetFileName(destPath)] = hash;
+        }
+
+        return hashes;
+    }
+
+    /// <summary>
+    /// Hashes of the <see cref="RTXFiles"/> present in <paramref name="binFiles"/>, with no
+    /// Default underlay. For callers holding a complete set already - DefaultsGuard hashing
+    /// the backup folder to ask whether the game still matches it.
     /// </summary>
     public static Dictionary<string, string> GetPresetHashes(List<string> binFiles)
     {
@@ -1416,9 +1447,9 @@ internal sealed class BetterRTXManager
     /// Whether the game is currently running this preset: true when every file the two sets
     /// have in common matches.
     ///
-    /// <para><b>Compares the intersection, not the whole set</b>, because a preset need not
-    /// ship all four - the ones it doesn't ship come from the Default backup (see
-    /// <see cref="BuildInstallSet"/>) and say nothing about which preset is installed. Two
+    /// <para>Every file the expected set names has to be present in the game and identical.
+    /// Since the expected set comes from <see cref="GetExpectedInstalledHashes"/> it normally
+    /// names all four, so this is a byte-for-byte comparison of the whole RTX file set. Two
     /// empty or disjoint sets answer false: no evidence is not a match.</para>
     /// </summary>
     public static bool AreHashesMatching(Dictionary<string, string> currentHashes, Dictionary<string, string> presetHashes)
@@ -1435,35 +1466,29 @@ internal sealed class BetterRTXManager
             return false;
         }
 
-        // Find files present in BOTH
-        var commonFiles = currentHashes.Keys.Intersect(presetHashes.Keys, StringComparer.OrdinalIgnoreCase).ToList();
+        Trace.WriteLine($"[BetterRTX] 🔍 Comparing {presetHashes.Count} expected file(s) against the game:");
 
-        if (commonFiles.Count == 0)
+        foreach (var (fileName, expectedHash) in presetHashes)
         {
-            Trace.WriteLine("[BetterRTX] ⚠ No common files to compare");
-            return false;
-        }
+            // Absent counts as a mismatch, not as nothing to compare: the game is missing a
+            // file this preset would have written, so it is not in the state installing it
+            // produces.
+            if (!currentHashes.TryGetValue(fileName, out var currentHash))
+            {
+                Trace.WriteLine($"[BetterRTX]   ✗ {fileName}: not in the game");
+                return false;
+            }
 
-        Trace.WriteLine($"[BetterRTX] 🔍 Comparing {commonFiles.Count} common files:");
-
-        // ALL common files must match
-        foreach (var fileName in commonFiles)
-        {
-            var currentHash = currentHashes[fileName];
-            var presetHash = presetHashes[fileName];
-
-            if (currentHash != presetHash)
+            if (currentHash != expectedHash)
             {
                 Trace.WriteLine($"[BetterRTX]   ✗ {fileName}: MISMATCH");
                 return false;
             }
-            else
-            {
-                Trace.WriteLine($"[BetterRTX]   ✓ {fileName}: Match");
-            }
+
+            Trace.WriteLine($"[BetterRTX]   ✓ {fileName}: Match");
         }
 
-        Trace.WriteLine("[BetterRTX]   ✓✓✓ ALL common files match!");
+        Trace.WriteLine("[BetterRTX]   ✓✓✓ Game matches this preset exactly");
         return true;
     }
 

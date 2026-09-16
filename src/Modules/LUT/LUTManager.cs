@@ -568,11 +568,16 @@ internal sealed class LUTManager
     /// Which preset the game is currently running, by hashing the game's files against each
     /// complete preset's.
     ///
-    /// <para>A preset matches when every file <i>it ships</i> is the one installed; files it
-    /// doesn't ship are not compared, since it has no opinion about them. List order settles
-    /// the ambiguity that creates - Default is checked first, so a wholly stock install reads
-    /// as Default. Null means nothing matched: a hand-modified install, or a preset that
-    /// isn't ours.</para>
+    /// <para><b>A preset matches when the game is byte-for-byte what installing it would
+    /// produce</b> - its own files where it ships them and the Default backup's everywhere
+    /// else, via <see cref="BuildInstallSources"/>. Comparing only the files a preset ships
+    /// would call it installed even if a slot it leaves alone had since been changed by
+    /// something outside this app, which is a state no install of that preset ever
+    /// produces.</para>
+    ///
+    /// <para>Default is checked first, which settles the one ambiguity this creates: a wholly
+    /// stock install reads as Default. Null means nothing matched - a hand-modified install,
+    /// or a preset that isn't ours.</para>
     /// </summary>
     public async Task<LutPreset?> DetectCurrentPresetAsync()
     {
@@ -586,12 +591,15 @@ internal sealed class LUTManager
         {
             foreach (var preset in _presets.Where(p => p.IsComplete))
             {
+                var expected = BuildInstallSources(preset);
+                if (expected.Count == 0) continue;
+
                 bool allMatch = true;
 
-                foreach (var presetFile in preset.PresentFiles)
+                foreach (var sourceFile in expected)
                 {
-                    var gameFile = DstPath(Path.GetFileName(presetFile));
-                    if (!File.Exists(gameFile) || !HashesMatch(gameFile, presetFile))
+                    var gameFile = DstPath(Path.GetFileName(sourceFile));
+                    if (!File.Exists(gameFile) || !HashesMatch(gameFile, sourceFile))
                     {
                         allMatch = false;
                         break;
@@ -643,9 +651,26 @@ internal sealed class LUTManager
             return Task.FromResult(false);
         }
 
-        if (preset.IsDefault)
-            return WriteToGameAsync(preset.Name, preset.PresentFiles);
+        return WriteToGameAsync(preset.Name, BuildInstallSources(preset));
+    }
 
+    /// <summary>
+    /// The source file for every slot installing <paramref name="preset"/> would write: the
+    /// preset's own where it ships one, the Default backup's everywhere else. A slot neither
+    /// holds is absent, because there is nothing to write there.
+    ///
+    /// <para><b>Install and detection both go through this, and that is the point.</b> The
+    /// question "what does the game look like after installing X" has one answer, so
+    /// <see cref="DetectCurrentPresetAsync"/> cannot drift from what
+    /// <see cref="InstallAsync"/> actually writes. Comparing a preset's own files alone would
+    /// report it as installed even when a slot it doesn't ship had been changed by something
+    /// else - the game would not be in the state installing it produces, but detection would
+    /// say it was.</para>
+    ///
+    /// <para>The Default preset needs no special case: every slot it has resolves to itself.</para>
+    /// </summary>
+    private List<string> BuildInstallSources(LutPreset preset)
+    {
         var sources = new List<string>();
 
         foreach (var fileName in AllFiles)
@@ -662,7 +687,7 @@ internal sealed class LUTManager
                 sources.Add(fromDefault);
         }
 
-        return WriteToGameAsync(preset.Name, sources);
+        return sources;
     }
 
     /// <summary>
