@@ -77,7 +77,25 @@ internal sealed class BetterRTXManager
 {
     #region Identity and cache layout
 
-    public static readonly string[] CoreRTXFiles =
+    /// <summary>
+    /// The four files in <c>data\renderer\materials</c> that ray tracing is made of, and the
+    /// entire surface this feature touches. All four are backed up, all four are written on
+    /// every install, and nothing outside this list is ever read or replaced - the folder
+    /// holds ~150 other .material.bin files that have nothing to do with RTX.
+    ///
+    /// <para><b>There is no required/optional split.</b> A preset is a consistent set of
+    /// these four, so one of them coming from a different preset than the other three is a
+    /// combination nobody authored. That is why installing underlays the Default backup
+    /// (<see cref="BuildInstallSet"/>) and why <see cref="EnsureDefaultBackedUp"/> refuses to
+    /// report Ready unless the game has all four.</para>
+    ///
+    /// <para><b>Presets do not ship all four.</b> The bedrock.graphics API exposes exactly
+    /// three per preset - stub, tonemapping and bloom - and every custom .rtpack seen so far
+    /// carries the same three. <c>RTXPostFX.material.bin</c> is currently shipped by nothing,
+    /// so on every install today it comes from the backup. The underlay is load-bearing in
+    /// the normal case, not a guard against a hypothetical one.</para>
+    /// </summary>
+    public static readonly string[] RTXFiles =
     [
        "RTXPostFX.Bloom.material.bin",
        "RTXPostFX.material.bin",
@@ -191,19 +209,21 @@ internal sealed class BetterRTXManager
     /// </summary>
     public enum DefaultBackupState
     {
-        /// <summary>Every core file is in this edition's backup folder.</summary>
+        /// <summary>All four of <see cref="RTXFiles"/> are in this edition's backup folder.</summary>
         Ready,
 
         /// <summary>
-        /// The game itself is missing core .bin files, so no complete backup can be taken from
-        /// it. Reached before anything is copied - a partial backup is not a rollback.
+        /// The game is missing one or more of <see cref="RTXFiles"/>, so no complete backup
+        /// can be taken from it. Reached before anything is copied - a partial backup is not a
+        /// rollback.
         /// </summary>
         GameFilesIncomplete,
 
         /// <summary>
-        /// Some core files are backed up and some aren't, and what is held differs from what
-        /// is installed - so the game is running something other than its own defaults, and
-        /// completing the backup from it would record another preset as this install's.
+        /// Some of <see cref="RTXFiles"/> are backed up and some aren't, and what is held
+        /// differs from what is installed - so the game is running something other than its
+        /// own defaults, and completing the backup from it would record another preset as
+        /// this install's.
         /// </summary>
         BackupUnverifiable,
 
@@ -740,7 +760,6 @@ internal sealed class BetterRTXManager
             var icon = await LoadIconAsync(manifestDir ?? presetFolder) ?? await LoadIconAsync(presetFolder);
             var binFiles = Directory.GetFiles(presetFolder, "*.bin", SearchOption.AllDirectories).ToList();
 
-            // Compute hashes for ALL Core RTX files
             var presetHashes = GetPresetHashes(binFiles);
 
             return new LocalPresetData
@@ -812,13 +831,14 @@ internal sealed class BetterRTXManager
         return null;
     }
     /// <summary>
-    /// Makes sure this edition's Default folder holds a copy of the game's own core .bin
-    /// files - the only route back to stock once a preset has been installed.
+    /// Makes sure this edition's Default folder holds a copy of all four of the game's own
+    /// <see cref="RTXFiles"/> - the only route back to stock once a preset is installed.
     ///
     /// <para><b>Called at window open, before the list is drawn.</b> Failing to take this
     /// backup means something is wrong with the game folder, which the user needs to know
     /// before a preset is offered rather than after one has been written - the window turns
-    /// any state but <see cref="DefaultBackupState.Ready"/> into a disabled list.</para>
+    /// any state but <see cref="DefaultBackupState.Ready"/> into a disabled list. Ready means
+    /// all four of <see cref="RTXFiles"/> are held; a partial backup is not a rollback.</para>
     ///
     /// <para><b>The assumption:</b> when the backup folder is empty, whatever the game holds
     /// is this install's defaults. Nothing in a .bin file says otherwise, so it cannot be
@@ -835,23 +855,23 @@ internal sealed class BetterRTXManager
         {
             Directory.CreateDirectory(DefaultFolder);
 
-            var alreadyBackedUp = CoreRTXFiles
+            var alreadyBackedUp = RTXFiles
                 .Where(f => File.Exists(Path.Combine(DefaultFolder, f)))
                 .ToList();
 
-            if (alreadyBackedUp.Count == CoreRTXFiles.Length)
+            if (alreadyBackedUp.Count == RTXFiles.Length)
             {
-                Trace.WriteLine($"[BetterRTX] [Default] ✓ {DefaultFolderName} already holds all {CoreRTXFiles.Length} core files");
+                Trace.WriteLine($"[BetterRTX] [Default] ✓ {DefaultFolderName} already holds all {RTXFiles.Length} RTX files");
                 return DefaultBackup = DefaultBackupState.Ready;
             }
 
-            var missingFromGame = CoreRTXFiles
+            var missingFromGame = RTXFiles
                 .Where(f => !File.Exists(Path.Combine(GameMaterialsPath, f)))
                 .ToList();
 
             if (missingFromGame.Count > 0)
             {
-                Trace.WriteLine($"[BetterRTX] [Default] ✗ Game is missing {missingFromGame.Count} core file(s): {string.Join(", ", missingFromGame)}");
+                Trace.WriteLine($"[BetterRTX] [Default] ✗ Game is missing {missingFromGame.Count} RTX file(s): {string.Join(", ", missingFromGame)}");
                 return DefaultBackup = DefaultBackupState.GameFilesIncomplete;
             }
 
@@ -869,7 +889,7 @@ internal sealed class BetterRTXManager
                 }
             }
 
-            foreach (var fileName in CoreRTXFiles)
+            foreach (var fileName in RTXFiles)
             {
                 var destination = Path.Combine(DefaultFolder, fileName);
                 if (File.Exists(destination)) continue;
@@ -898,7 +918,6 @@ internal sealed class BetterRTXManager
         if (binFiles.Count == 0)
             return null;
 
-        // Compute hashes for ALL Core RTX files
         var presetHashes = GetPresetHashes(binFiles);
 
         return new LocalPresetData
@@ -1243,6 +1262,9 @@ internal sealed class BetterRTXManager
             // Enforces the invariant at the point of the write rather than only where the
             // button is drawn: nothing reaches the game without a verified way back. Cheap to
             // re-run - the window has already done this at open.
+            //
+            // Ready means all four RTX files are backed up, which is also what makes the
+            // underlay below able to fill whatever the preset doesn't ship.
             var backup = EnsureDefaultBackedUp();
             if (backup != DefaultBackupState.Ready)
             {
@@ -1262,54 +1284,51 @@ internal sealed class BetterRTXManager
         }
     }
     /// <summary>
-    /// The exact set of files an install writes: every core file, sourced from the preset
-    /// where it ships one and from this edition's Default backup where it doesn't, plus any
-    /// non-core .bin the preset carries.
+    /// The exact set of files an install writes: all four of <see cref="RTXFiles"/>, each
+    /// taken from the preset where it ships one and from this edition's Default backup where
+    /// it doesn't.
     ///
-    /// <para><b>The Default underlay is what stops presets accumulating.</b> Presets do not
-    /// all ship the same files - some carry all four core .bin files, some fewer, some extra
-    /// ones. Writing only what a preset happens to contain leaves the rest of the previous
-    /// preset in place, so installing a four-file preset and then a one-file preset runs the
-    /// game on three files from one and one from the other. That is not a preset anyone
-    /// authored or tested, and mixed shader binaries are exactly the kind of thing that
-    /// renders wrong or refuses to start.</para>
+    /// <para><b>The underlay is what stops presets accumulating.</b> Writing only what a
+    /// preset happens to contain leaves the rest of the previous preset installed, so a
+    /// preset shipping three files followed by one shipping two runs the game on two files
+    /// from one and two from the other - a combination nobody authored or tested, out of
+    /// binaries that have to agree with each other.</para>
     ///
-    /// <para>Expressed as one merged list rather than installing Default and then the preset:
-    /// same end state, but one elevated write and one UAC prompt, with no window in which the
-    /// game holds a half-reverted set. The Default preset itself needs no underlay - it
-    /// <i>is</i> the underlay - and resolves to its own files either way.</para>
+    /// <para>One merged list rather than installing Default and then the preset: same end
+    /// state, one elevated write, one UAC prompt, and no window in which the game holds a
+    /// half-reverted set. The Default preset resolves to its own files either way, so it
+    /// needs no special case.</para>
     ///
-    /// <para><b>Known limit:</b> a non-core .bin left behind by an earlier preset is not
-    /// removed, because only <see cref="CoreRTXFiles"/> is backed up and there is nothing to
-    /// put back in its place. Restoring Default cannot clear one either. Presets from
-    /// bedrock.graphics ship the core four, so this only bites on hand-made .rtpacks.</para>
+    /// <para><b>A .bin outside <see cref="RTXFiles"/> is ignored, deliberately.</b> There is
+    /// no backup of it and therefore no way to undo it, which is the one thing this feature
+    /// may never do (see <see cref="EnsureDefaultBackedUp"/>). Installing one would also put
+    /// a file in the game that no rollback, not even Default, could ever clear.</para>
     /// </summary>
     private List<(string sourcePath, string destPath)> BuildInstallSet(LocalPresetData preset)
     {
         var filesToApply = new List<(string sourcePath, string destPath)>();
         var presetFiles = preset.BinFiles ?? new List<string>();
 
-        foreach (var coreFileName in CoreRTXFiles)
+        foreach (var fileName in RTXFiles)
         {
             var fromPreset = presetFiles.FirstOrDefault(f =>
-                Path.GetFileName(f).Equals(coreFileName, StringComparison.OrdinalIgnoreCase));
+                Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
 
-            var source = fromPreset ?? Path.Combine(DefaultFolder, coreFileName);
+            var source = fromPreset ?? Path.Combine(DefaultFolder, fileName);
             if (!File.Exists(source)) continue;
 
             if (fromPreset == null)
-                Trace.WriteLine($"[BetterRTX]   {coreFileName} <- {DefaultFolderName} (preset does not ship it)");
+                Trace.WriteLine($"[BetterRTX]   {fileName} <- {DefaultFolderName} (preset does not ship it)");
 
-            filesToApply.Add((source, Path.Combine(GameMaterialsPath, coreFileName)));
+            filesToApply.Add((source, Path.Combine(GameMaterialsPath, fileName)));
         }
 
         foreach (var binFilePath in presetFiles)
         {
             var binFileName = Path.GetFileName(binFilePath);
-            if (CoreRTXFiles.Contains(binFileName, StringComparer.OrdinalIgnoreCase)) continue;
+            if (RTXFiles.Contains(binFileName, StringComparer.OrdinalIgnoreCase)) continue;
 
-            Trace.WriteLine($"[BetterRTX]   {binFileName} <- preset (non-core, cannot be rolled back)");
-            filesToApply.Add((binFilePath, Path.Combine(GameMaterialsPath, binFileName)));
+            Trace.WriteLine($"[BetterRTX]   ⚠ Ignoring {binFileName}: outside the four RTX files, so it could never be undone");
         }
 
         return filesToApply;
@@ -1347,7 +1366,7 @@ internal sealed class BetterRTXManager
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var fileName in CoreRTXFiles)
+        foreach (var fileName in RTXFiles)
         {
             var filePath = Path.Combine(gameMaterialsPath, fileName);
             if (File.Exists(filePath))
@@ -1361,21 +1380,21 @@ internal sealed class BetterRTXManager
             }
         }
 
-        Trace.WriteLine($"[BetterRTX] 📊 Current game has {hashes.Count}/{CoreRTXFiles.Length} Core RTX files");
+        Trace.WriteLine($"[BetterRTX] 📊 Current game has {hashes.Count}/{RTXFiles.Length} RTX files");
         return hashes;
     }
 
     /// <summary>
-    /// Hashes of the <see cref="CoreRTXFiles"/> a preset ships - only those, and only the ones
-    /// it actually has, so a preset carrying two core files produces two entries.
-    /// <see cref="AreHashesMatching"/> compares on the overlap, which is what lets a partial
-    /// preset be recognised as installed.
+    /// Hashes of the <see cref="RTXFiles"/> a preset ships - only those, and only the ones it
+    /// actually has, so a preset carrying three of the four produces three entries.
+    /// <see cref="AreHashesMatching"/> compares on the overlap, which is what lets a preset
+    /// that doesn't ship all four still be recognised as installed.
     /// </summary>
     public static Dictionary<string, string> GetPresetHashes(List<string> binFiles)
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var fileName in CoreRTXFiles)
+        foreach (var fileName in RTXFiles)
         {
             var matchingFile = binFiles.FirstOrDefault(f =>
                 Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
@@ -1398,7 +1417,7 @@ internal sealed class BetterRTXManager
     /// have in common matches.
     ///
     /// <para><b>Compares the intersection, not the whole set</b>, because a preset need not
-    /// ship all four core files - the files it doesn't ship are the Default's (see
+    /// ship all four - the ones it doesn't ship come from the Default backup (see
     /// <see cref="BuildInstallSet"/>) and say nothing about which preset is installed. Two
     /// empty or disjoint sets answer false: no evidence is not a match.</para>
     /// </summary>

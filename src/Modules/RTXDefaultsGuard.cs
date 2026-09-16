@@ -111,7 +111,7 @@ public static class DefaultsGuard
 
             if (currentHashes.Count == 0)
             {
-                log?.Invoke($"{tag} Could not read any Core RTX files from the game - skipping to avoid acting on incomplete info.");
+                log?.Invoke($"{tag} Could not read any RTX files from the game - skipping to avoid acting on incomplete info.");
                 return RTXDefaultsGuard.Skipped;
             }
 

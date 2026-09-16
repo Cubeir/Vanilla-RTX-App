@@ -635,7 +635,6 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             PresetListContainer.Children.Clear();
 
-            // Get current game hashes (ALL Core RTX files)
             var currentHashes = _manager.GetCurrentlyInstalledHashes();
 
             // Always add Default preset first
