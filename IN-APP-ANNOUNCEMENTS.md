@@ -6,7 +6,7 @@ Maybe you'll find your name here next time!?
 # PSA
 
 ### PSA 1
-🍂 Vanilla RTX will support Minecraft 26.50 (Wildreness Bound) later during October.
+🍂 Vanilla RTX will support Minecraft 26.50 (Wilderness Bound) later during October.
 
 # PackUpdateAnnouncements
 
