@@ -332,6 +332,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(ExportButton,
+            "ms-appx:///Assets/previews/chest.export.png",
             "ms-appx:///Assets/previews/chest.export.png"
         );
         Previewer.Instance.InitializeButton(DeleteButton,
@@ -346,7 +347,8 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(TuneSelectionButton,
-            "ms-appx:///Assets/previews/table.tune.png"
+            "ms-appx:///Assets/previews/table.tune.png",
+            "ms-appx:///Assets/previews/table.tune.overlay.png"
         );
 
         Previewer.Instance.InitializeButton(LaunchMinecraftButton,
@@ -374,11 +376,17 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/bonfire.png"
         );
 
+        Previewer.Instance.InitializeButton(BugButton,
+            "ms-appx:///Assets/previews/cubeir.bugs.png"
+        );
+
         Previewer.Instance.InitializeButton(ResetButton,
+            "ms-appx:///Assets/previews/table.reset.variables.png",
             "ms-appx:///Assets/previews/table.reset.variables.png"
         );
 
         Previewer.Instance.InitializeButton(ClearButton,
+            "ms-appx:///Assets/previews/table.reset.png",
             "ms-appx:///Assets/previews/table.reset.png"
         );
 
@@ -395,7 +403,8 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(LaunchAlchitexButton,
-            "ms-appx:///Assets/previews/alchitex.png"
+            "ms-appx:///Assets/previews/alchitex.png",
+            "ms-appx:///Assets/previews/alchitex.overlay.png"
         );
 
         _ = Previewer.Instance.PreloadAllRegisteredImagesAsync();
