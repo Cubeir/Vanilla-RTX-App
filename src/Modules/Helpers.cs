@@ -202,6 +202,16 @@ public static class Helpers
         Trace.WriteLine("[HttpsHelper] SharedHttpClient and UpdaterHttpClient configured");
     }
 
+    /// <summary>
+    /// Builds one of the app's two long-lived clients.
+    ///
+    /// <para><b>Timeout is infinite on purpose.</b> HttpClient.Timeout covers the whole
+    /// request including the response body, so any finite value is a cap on download <i>size
+    /// over speed</i> rather than on hanging - an 11MB pack on a slow line would be cancelled
+    /// mid-transfer. Per-request deadlines belong to the caller instead, via a
+    /// CancellationToken (see <see cref="Download"/>, which takes its own timeout and turns it
+    /// into one).</para>
+    /// </summary>
     private static HttpClient CreateClient(string? component = null)
     {
         var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
@@ -926,14 +936,28 @@ public static class Helpers
 
 
     /// <summary>
-    /// Additional helper to do a thing only once per runtime, use RanOnceFlag.Set("key") to set a flag with a unique key.
+    /// "Have I already done this in this session?", keyed by an arbitrary string. Process
+    /// lifetime only - nothing is persisted, so every launch starts clean.
+    ///
+    /// <para>Typical use is a message shown once and not repeated:
+    /// <c>Set("key") ? longExplanation : ""</c>, which relies on <see cref="Set"/> returning
+    /// true exactly once. Not thread-safe; call from the UI thread.</para>
     /// </summary>
     public static class RuntimeFlags
     {
         private static readonly HashSet<string> _flags = new();
 
-        public static bool Has(string key) => _flags.Contains(key); // Below does the same as this one if already set
+        /// <summary>
+        /// Whether the flag is set, without setting it. Use this to <i>test</i>;
+        /// <see cref="Set"/> is the one that claims.
+        /// </summary>
+        public static bool Has(string key) => _flags.Contains(key);
 
+        /// <summary>
+        /// Claims the flag. <b>True means the caller is the first</b> and should do the
+        /// once-per-session thing; false means someone already has. Calling this in a
+        /// condition is the intended use, so be aware it is not a pure test - it sets.
+        /// </summary>
         public static bool Set(string key)
         {
             try
@@ -951,6 +975,10 @@ public static class Helpers
             }
         }
 
+        /// <summary>
+        /// Forgets the flag, so the next <see cref="Set"/> claims it again. True if it was
+        /// set. For a state that can legitimately recur within one session.
+        /// </summary>
         public static bool Unset(string key) => _flags.Remove(key);
     }
 }
@@ -2014,8 +2042,19 @@ public static class TextureSetHelper
             SourceNode = null;
         }
 
+        /// <summary>A layer backed by a real image file on disk.</summary>
         public static TextureLayerValue FromFile(string path) => new(path);
 
+        /// <summary>
+        /// Parses a texture set layer written as a colour rather than a file name, or null if
+        /// the node is neither form (in which case it names a texture file).
+        ///
+        /// <para>Minecraft accepts two spellings and this round-trips whichever it was given:
+        /// a <c>"#RRGGBB"</c> / <c>"#RRGGBBAA"</c> hex string, or an array of 3 or 4 numbers.
+        /// Both are held internally as RGBA, with the original channel count remembered so a
+        /// three-component value is not written back as four - an edit that changes the shape
+        /// of a pack author's file is an edit they did not ask for.</para>
+        /// </summary>
         public static TextureLayerValue? TryParseInline(JsonNode node)
         {
             // Hex string
@@ -2047,6 +2086,11 @@ public static class TextureSetHelper
             return null;
         }
 
+        /// <summary>
+        /// Parses <c>#RRGGBB</c> or <c>#RRGGBBAA</c> into RGBA, reporting which of the two it
+        /// was via <paramref name="originalChannels"/> so it can be written back the same
+        /// way. Alpha defaults to 255 for the six-digit form.
+        /// </summary>
         private static bool TryParseHex(string hex, out byte[] rgba, out int originalChannels)
         {
             rgba = Array.Empty<byte>();
@@ -2072,6 +2116,11 @@ public static class TextureSetHelper
             return false;
         }
 
+        /// <summary>
+        /// One colour component from a JSON array element, false for anything out of 0-255 or
+        /// not a number. Lenient about how the number is written (packs in the wild quote
+        /// them), strict about its value.
+        /// </summary>
         private static bool TryGetByte(JsonNode? t, out byte b)
         {
             b = 0;
@@ -2357,6 +2406,18 @@ public static class TextureSetHelper
         return Helpers.ReadImage(layer.FilePath!, false);
     }
 
+    /// <summary>
+    /// Resolves a bare texture name (no extension) to the file the <b>game</b> would load,
+    /// or null if the folder has none.
+    ///
+    /// <para><b>Always resolve texture names through this, never by hand.</b> Minecraft takes
+    /// the first match in <c>SupportedExtensions</c> order (.tga, .png, .jpg, .jpeg), so a
+    /// folder holding both foo.tga and foo.png has exactly one answer and a hand-rolled
+    /// existence check that assumes one extension silently picks the wrong file. That is a
+    /// real bug this app has shipped before - see CLAUDE.md §4.4.</para>
+    ///
+    /// <para>The returned path is the real on-disk one, so its casing is usable as-is.</para>
+    /// </summary>
     public static string? FindTextureFile(string folder, string textureName)
     {
         foreach (var ext in SupportedExtensions)
@@ -2536,6 +2597,14 @@ public static class TextureSetHelper
                 }
     }
 
+    /// <summary>
+    /// The bitmap as Format32bppArgb, converting only if it isn't already.
+    ///
+    /// <para>Everything this app loads goes through <see cref="ReadImage"/>, which always
+    /// allocates that format, so in practice this returns its argument and costs nothing. It
+    /// exists for the write-back path, where the source could in principle be anything, and
+    /// because <see cref="FastBitmap"/> reads raw bytes in that exact layout.</para>
+    /// </summary>
     private static Bitmap EnsureArgb32(Bitmap src)
     {
         if (src.PixelFormat == PixelFormat.Format32bppArgb)
@@ -2547,6 +2616,11 @@ public static class TextureSetHelper
         return dst;
     }
 
+    /// <summary>
+    /// The GDI+ encoder for a format, needed only where an encoder <i>parameter</i> has to be
+    /// passed - JPEG quality. Null if the codec isn't registered, which the caller treats as
+    /// "fall back to a plain Save".
+    /// </summary>
     private static ImageCodecInfo? GetEncoder(ImageFormat format)
     {
         foreach (var codec in ImageCodecInfo.GetImageEncoders())
@@ -2612,6 +2686,10 @@ public sealed class FastBitmap : IDisposable
         Marshal.Copy(_data.Scan0, _buffer, 0, _buffer.Length);
     }
 
+    /// <summary>
+    /// Reads one pixel out of the local buffer. Bounds are not checked - this is the hot path
+    /// for whole-image loops, and the indexer is the public way in.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Color Get(int x, int y)
     {
@@ -2620,6 +2698,10 @@ public sealed class FastBitmap : IDisposable
         return Color.FromArgb(_buffer[i + 3], _buffer[i + 2], _buffer[i + 1], _buffer[i]);
     }
 
+    /// <summary>
+    /// Writes one pixel into the local buffer. <b>Nothing reaches the Bitmap until
+    /// <see cref="Dispose"/></b>, and only if this instance was constructed writable.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Set(int x, int y, Color c)
     {
@@ -2645,6 +2727,12 @@ public sealed class FastBitmap : IDisposable
         set => Set(x, y, value);
     }
 
+    /// <summary>
+    /// <b>Where writes actually happen.</b> Copies the buffer back into the Bitmap (writable
+    /// instances only) and unlocks it. Skipping this - or constructing read-only and then
+    /// assigning through the indexer - loses every pixel written, silently, because the
+    /// buffer is a copy rather than a view. Always <c>using</c>.
+    /// </summary>
     public void Dispose()
     {
         if (_disposed) return;

@@ -66,6 +66,16 @@ public static class PackContextFile
         public bool HadAmbientLighting { get; set; }
     }
 
+    /// <summary>
+    /// Reads the bookkeeping file this app leaves inside a pack it has tuned. Missing or
+    /// unreadable yields an all-false context, which reads as "never tuned by us" - the safe
+    /// answer, since the alternative is claiming a prior pass happened that didn't.
+    ///
+    /// <para>What it is for: some passes are not idempotent. Ambient lighting adds a constant
+    /// to the emissive channel, so a second run over an already-lit pack would stack on top
+    /// of the first. The flag is how a later run knows to suppress that rather than double
+    /// it.</para>
+    /// </summary>
     public static PackContext Read(string packRoot)
     {
         var ctx = new PackContext();
@@ -90,6 +100,14 @@ public static class PackContextFile
         return ctx;
     }
 
+    /// <summary>
+    /// Persists the context inside the pack, one key per line.
+    ///
+    /// <para>Writes nothing when there is nothing to record and no file already exists, so a
+    /// pack that never needed bookkeeping does not gain a stray file - but an existing file
+    /// <i>is</i> rewritten when the state clears, otherwise a stale flag would outlive the
+    /// condition it describes.</para>
+    /// </summary>
     public static void Write(string packRoot, PackContext ctx)
     {
         var path = Path.Combine(packRoot, FileName);
@@ -529,6 +547,13 @@ public class Tuner
     //  Fog processor  ──  standalone
     // ══════════════════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// Applies the fog multiplier to a pack's fog definitions.
+    ///
+    /// <para><paramref name="processWaterOnly"/> restricts it to water fog, which is the case
+    /// where the user wants underwater visibility changed without touching how the sky and
+    /// distance read - two settings that happen to live in the same files.</para>
+    /// </summary>
     private static void ProcessFog(PackInfo pack, CancellationToken cancellationToken, bool processWaterOnly = false)
     {
         const double MIN_VALUE_THRESHOLD = 0.00000001;
@@ -919,6 +944,12 @@ public class Tuner
         return wroteBack;
     }
 
+    /// <summary>
+    /// Dispatches to the heightmap or normal-map variant. Both answer the same user-facing
+    /// slider, but the two encodings mean completely different things by "intensity" - see
+    /// each method.
+    /// </summary>
+    /// <returns>Whether any pixel changed, so the caller can skip writing the file back.</returns>
     private static bool ApplyNormalIntensity(Bitmap bmp, bool isHeightmap)
     {
         return isHeightmap
@@ -926,6 +957,17 @@ public class Tuner
             : ApplyNormalMapIntensity(bmp);
     }
 
+    /// <summary>
+    /// Scales a tangent-space normal map's strength around flat.
+    ///
+    /// <para>R and G encode the surface tilt with 128 as "no tilt", so intensity scales each
+    /// channel's <i>distance from 128</i> - at 0% every pixel becomes flat, at 100% nothing
+    /// changes. The blue channel is not a direction in this app's packs but parallax depth,
+    /// where 255 is the surface and lower is recessed, so it scales its <i>recession from
+    /// 255</i> instead. Treating blue like R and G would push the whole surface toward a
+    /// midpoint rather than flattening its depth, and can overflow past 255.</para>
+    /// </summary>
+    /// <returns>Whether any pixel changed.</returns>
     private static bool ApplyNormalMapIntensity(Bitmap bmp)
     {
         var intensityPercent = NormalIntensity / 100.0;
@@ -1015,6 +1057,12 @@ public class Tuner
         return wroteBack;
     }
 
+    /// <summary>
+    /// Scales a heightmap's relief. A heightmap is a single greyscale elevation rather than a
+    /// direction, so intensity blends each pixel toward the neutral midpoint - 0% is
+    /// perfectly flat, 100% leaves it untouched.
+    /// </summary>
+    /// <returns>Whether any pixel changed.</returns>
     private static bool ApplyHeightmapIntensity(Bitmap bmp)
     {
         var userIntensity = NormalIntensity / 100.0;
@@ -1160,6 +1208,12 @@ public class Tuner
         return LazifyNormalMap(normalFb, stretched, ceiling, alpha, width, height);
     }
 
+    /// <summary>
+    /// Blends a heightmap toward its own contrast-stretched version by
+    /// <paramref name="alpha"/> (0-100), which lifts shallow detail without inventing any:
+    /// the stretch is derived from the texture's own range, so a flat texture stays flat.
+    /// </summary>
+    /// <returns>Whether any pixel changed.</returns>
     private static bool LazifyHeightmap(FastBitmap fb, byte[,] stretched, int alpha, int width, int height)
     {
         var wroteBack = false;
@@ -1181,6 +1235,16 @@ public class Tuner
         return wroteBack;
     }
 
+    /// <summary>
+    /// The normal-map counterpart of <see cref="LazifyHeightmap"/>, blending toward a
+    /// stretched relief by <paramref name="alpha"/> (0-100).
+    ///
+    /// <para>Takes a <paramref name="ceiling"/> as well because this writes the parallax
+    /// (blue) channel, where 255 means the surface: the blend has to stay under a per-pixel
+    /// ceiling rather than a flat 255, or deepening the relief would push parts of the
+    /// texture above the surface plane.</para>
+    /// </summary>
+    /// <returns>Whether any pixel changed.</returns>
     private static bool LazifyNormalMap(FastBitmap fb, byte[,] stretched, byte[,] ceiling, int alpha, int width, int height)
     {
         var expW = width * 3;
@@ -1303,6 +1367,16 @@ public class Tuner
         return wroteBack;
     }
 
+    /// <summary>
+    /// Copies the image into a grid one pixel larger on every side, with the border filled
+    /// from the opposite edge (wraparound).
+    ///
+    /// <para>Every neighbourhood operation downstream can then read x-1..x+1 without bounds
+    /// checks, and - more importantly - an edge pixel sees the pixel it will actually sit
+    /// next to in game. Minecraft tiles block textures and randomly rotates isometric ones,
+    /// so a filter that clamps at the edge instead produces a visible seam wherever two
+    /// copies meet.</para>
+    /// </summary>
     private static Color[,] ApplyEdgePadding(FastBitmap fb)
     {
         var width = fb.Width;
@@ -1353,6 +1427,23 @@ public class Tuner
         return result;
     }
 
+    /// <summary>
+    /// Applies the roughness slider to a MER/MERS map, writing the blue (roughness) and red
+    /// (metalness) channels. Emissive and subsurface are untouched.
+    ///
+    /// <para><b>Metalness moves opposite to roughness, by a fraction of the same delta, and
+    /// only for pixels that are already metallic.</b> Metal reads as metal largely through
+    /// sharp reflection, so roughening a metal surface without pulling its metalness down
+    /// turns it to dull plastic; smoothing one looks flat unless metalness rises with it.
+    /// A non-metal pixel (red 0) stays non-metal - this adjusts materials, it does not invent
+    /// them.</para>
+    ///
+    /// <para>Both directions are curved rather than linear so the slider spends its range
+    /// where there is something to change: roughening pushes hardest on already-smooth pixels
+    /// and tapers as they approach fully rough, and smoothing does the reverse, with an extra
+    /// reduction proportional to how metallic the pixel already is.</para>
+    /// </summary>
+    /// <returns>Whether any pixel changed.</returns>
     private static bool ApplyRoughness(Bitmap bmp)
     {
         const double MetalnessModificationFraction = 0.33;
@@ -1426,6 +1517,21 @@ public class Tuner
         return wroteBack;
     }
 
+    /// <summary>
+    /// Adds per-pixel material noise and a checkerboard to a MER/MERS map, breaking up the
+    /// flat uniform surfaces that make vanilla textures read as plastic under ray tracing.
+    ///
+    /// <para><b>Noise fields are cached per texture name and frame size</b>
+    /// (<paramref name="noiseCache"/>), which is what makes the result deterministic rather
+    /// than shimmering: the same texture tuned twice gets the same grain, and every frame of
+    /// an animation gets the same field as the others. An animated strip is detected
+    /// arithmetically - height an exact multiple of width, at least two frames - so the field
+    /// is generated once at frame size instead of stretching across the whole strip.</para>
+    ///
+    /// <para><paramref name="sourceFilePath"/> is only used to derive that cache key; pass
+    /// null for a texture with no file behind it and it gets a size-based key instead.</para>
+    /// </summary>
+    /// <returns>Whether any pixel changed.</returns>
     private static bool ApplyMaterialGrain(
         Bitmap bmp,
         string? sourceFilePath,

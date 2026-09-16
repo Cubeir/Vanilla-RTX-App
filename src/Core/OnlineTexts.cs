@@ -396,6 +396,18 @@ public static class OnlineTexts
 
     // ── Hash helper ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// The identity a dismissal is stored under: the first 8 bytes of SHA-256 over the PSA's
+    /// own text, as 16 hex characters.
+    ///
+    /// <para><b>The text is the identity.</b> Editing a published PSA - even fixing a typo -
+    /// produces a different hash, so everyone who dismissed the old wording sees the new one
+    /// again. That is the intended behaviour for a changed announcement, and the reason not
+    /// to touch the text of one that is merely still running.</para>
+    ///
+    /// <para>Truncated because these are stored per user and only ever compared against each
+    /// other; a collision costs one wrongly-hidden announcement, not correctness.</para>
+    /// </summary>
     private static string DismissHash(string text)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();
@@ -407,6 +419,10 @@ public static class OnlineTexts
     // Permanent dismiss storage
     // =========================================================================
 
+    /// <summary>
+    /// The permanently-dismissed hash set, loaded from LocalSettings on first use and cached
+    /// for the session. Double-checked so concurrent first callers load it once.
+    /// </summary>
     private static HashSet<string> GetDismissed()
     {
         if (_dismissed is not null) return _dismissed;
@@ -453,6 +469,11 @@ public static class OnlineTexts
     // Timed dismiss storage
     // =========================================================================
 
+    /// <summary>
+    /// Hash to expiry time for temporarily-dismissed PSAs, loaded once and cached like
+    /// <see cref="GetDismissed"/>. An entry whose time has passed is simply no longer
+    /// dismissed; pruning is separate housekeeping, not a precondition for correctness.
+    /// </summary>
     private static Dictionary<string, DateTime> GetTimedDismissed()
     {
         if (_timedDismissed is not null) return _timedDismissed;
@@ -512,6 +533,11 @@ public static class OnlineTexts
     private static string GetCacheFilePath() =>
         Path.Combine(ApplicationData.Current.LocalFolder.Path, "OnlineTexts_Cache.md");
 
+    /// <summary>
+    /// Populates <see cref="OnlineTextsContent"/> from the on-disk cache, so the app has
+    /// something to show before - or instead of - a successful fetch. Silent on failure: no
+    /// cache is a normal first-run state, not an error.
+    /// </summary>
     private static void TryApplyCache()
     {
         try
@@ -550,6 +576,11 @@ public static class OnlineTexts
         }
     }
 
+    /// <summary>
+    /// Whether enough time has passed since the last successful fetch to go back to the
+    /// network. True when there is no stamp at all, when the stamp is unreadable, or when it
+    /// sits in the future - all of which mean "the recorded time can't be trusted, refetch".
+    /// </summary>
     private static bool IsCooldownExpired()
     {
         try
@@ -561,12 +592,11 @@ public static class OnlineTexts
                 return true;
             }
 
-            // RoundtripKind matters: the stamp is written as UTC with "O", and the default
-            // styles convert it to local time on the way back. Comparing that against
-            // DateTime.UtcNow is off by the machine's offset, which meant the cooldown never
-            // held for anyone not sitting on UTC - west of it every check looked older than
-            // an hour, east of it every check looked like it came from the future and hit the
-            // reset below. Either way the cache was refetched on every launch.
+            // RoundtripKind is required, not stylistic. The stamp is written as UTC with "O",
+            // and the default parse styles reinterpret it as local time, so the result is off
+            // by the machine's offset when compared against DateTime.UtcNow: west of UTC every
+            // check reads as older than the cooldown, east of it every check reads as being in
+            // the future and takes the reset branch below. Both refetch on every launch.
             if (DateTime.TryParse(val, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last))
             {
                 var age = DateTime.UtcNow - last;
@@ -592,6 +622,11 @@ public static class OnlineTexts
     // Network
     // =========================================================================
 
+    /// <summary>
+    /// Fetches the announcements markdown, or null on any failure. The short default timeout
+    /// is deliberate - this runs at startup and nothing waits on it, so a slow or unreachable
+    /// host must not hold the app up when a cached copy will do.
+    /// </summary>
     private static async Task<string?> FetchAsync(int timeoutSeconds = 8)
     {
         try
