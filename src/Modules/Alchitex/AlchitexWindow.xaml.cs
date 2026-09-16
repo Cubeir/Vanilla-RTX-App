@@ -1348,7 +1348,7 @@ public sealed partial class Alchitex : Window
 
         // The reactor washes left to right alongside the tile's own travel, so the two
         // are one event: the pack goes in, and the thing it went into reacts.
-        _reactor?.PlayQueueWash(leftToRight: true);
+        _reactor?.PlayQueueWash(ReactorWashDirection.LeftToRight);
 
         await AnimateIntoReactorAsync(tile);
 
@@ -1381,7 +1381,7 @@ public sealed partial class Alchitex : Window
         // resolve against, and the wash bakes actual Color values into its keyframes the
         // moment it's called, so flipping the palette after would miss it entirely.
         _reactor?.PlayErrorFlash();
-        _reactor?.PlayQueueWash(leftToRight: false);
+        _reactor?.PlayQueueWash(ReactorWashDirection.RightToLeft);
 
         using (BeginQueueTransition())
             await AnimateArrivalAsync(tile);
@@ -1405,7 +1405,7 @@ public sealed partial class Alchitex : Window
         var tile = BuildPackTile(location, packName, allowDiscard: false);
         OutputQueuePanel.Children.Add(tile);
 
-        _reactor?.PlayQueueWash(leftToRight: false);
+        _reactor?.PlayQueueWash(ReactorWashDirection.RightToLeft);
 
         using (BeginQueueTransition())
             await AnimateArrivalAsync(tile);
@@ -1670,7 +1670,7 @@ public sealed partial class Alchitex : Window
             sb.AppendLine("⚠️ Failed to add RTX support to the following:");
             foreach (var name in _failedPackNames)
                 sb.AppendLine($"{Helpers.StripMinecraftFormatting(name)}");
-            sb.AppendLine($"ℹ️ Better luck with another pack!");
+            sb.AppendLine($"\nℹ️ Better luck with another pack!");
         }
 
         StatusMessage = sb.ToString().TrimEnd();

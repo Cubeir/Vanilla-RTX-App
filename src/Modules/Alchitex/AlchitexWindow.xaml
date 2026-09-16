@@ -361,6 +361,7 @@
                     <Grid x:Name="AlchitexControlsArea"
                           Grid.Row="0"
                           Height="340"
+                          Canvas.ZIndex="2"
                           Translation="0,0,64"
                           SizeChanged="AlchitexControlsArea_SizeChanged">
                         <Grid.Shadow>
@@ -620,23 +621,44 @@
                                 </Grid>
                             </Button>
 
-                            <!-- Where a rejected pack gets thrown. It has to live outside
-                                 the queue rows: those are ScrollViewers, which clip, so a
-                                 tile flung toward the reactor would just vanish at the
-                                 panel's edge instead of being seen leaving through it.
-                                 Spans both columns and sits above the reactor so the tile
-                                 crosses over it on its way out. -->
-                            <Grid x:Name="QueueEjectionHost"
-                                  Grid.ColumnSpan="2"
-                                  IsHitTestVisible="False"
-                                  Canvas.ZIndex="50" />
                         </Grid>
                     </Grid>
+
+                    <!-- ══ WHERE A FAILED PACK GETS THROWN ═══════════════════
+                         It has to live outside the queue rows: those are ScrollViewers,
+                         which clip, so a tile flung at the reactor would vanish at the
+                         panel's edge instead of being seen leaving through it.
+
+                         A failed pack drops out of the reactor's underside, so this must
+                         render BENEATH the button and ABOVE what sits below it - the tile
+                         starts hidden behind the reactor and only appears once it clears
+                         the bottom edge, which is what makes it read as falling out of the
+                         thing rather than sliding across the front of it.
+
+                         That sandwich is why this is a sibling of the controls area rather
+                         than a child of it. Canvas.ZIndex only orders siblings, and inside
+                         the controls area there is no index that is under the button and
+                         over the announcements at the same time. The three explicit indices
+                         are the ordering - controls area (2), this (1), announcements (0) -
+                         and none of the three may be dropped.
+
+                         A Canvas rather than a Grid, and that part is load-bearing: it
+                         spans both rows, and a Grid takes its children's size as its own,
+                         so a tile parked a few hundred pixels down would inflate the Auto
+                         row it spans into and push the announcements around. A Canvas
+                         measures to nothing, so the layout never learns this is here.
+                         ═════════════════════════════════════════════════ -->
+                    <Canvas x:Name="QueueEjectionHost"
+                            Grid.Row="0"
+                            Grid.RowSpan="2"
+                            IsHitTestVisible="False"
+                            Canvas.ZIndex="1" />
 
 
                     <!-- ── PSA / announcements ── -->
                     <Border x:Name="AnnouncementBackground"
                             Grid.Row="1"
+                            Canvas.ZIndex="0"
                             Padding="6"
                             BorderThickness="0"
                             CornerRadius="0"

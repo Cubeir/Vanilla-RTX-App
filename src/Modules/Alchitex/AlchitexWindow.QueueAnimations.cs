@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 
@@ -19,8 +20,8 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 ///
 /// Four departures, four directions, and the distinction is the whole point of having them:
 /// up and out for a discarded pack, right into the reactor for an accepted one, left back
-/// down the row for a result, and straight out the far side for a failure. A pack should
-/// never have to be read to know what happened to it.
+/// down the row for a result, and down out of the reactor's underside for a failure. A pack
+/// should never have to be read to know what happened to it.
 ///
 /// Each one is paired with a matching stance on the reactor itself (ReactorAnimator.
 /// PlayQueueWash), washing the same direction the tile travels, so a hand-off reads as one
@@ -34,7 +35,15 @@ public sealed partial class Alchitex
     private const double DismissAnimationMs = 150;
     private const double IntoReactorAnimationMs = 260;
     private const double ArrivalAnimationMs = 220;
-    private const double EjectAnimationMs = 380;
+    private const double EjectAnimationMs = 460;
+
+    /// <summary>
+    /// How far a failed pack falls once it is clear of the reactor, on top of the tile's own
+    /// height (which is spent emerging from behind it). Fixed rather than measured against
+    /// whatever is below: the announcements panel's height depends on how many PSAs there
+    /// are that day, and how long a failure takes to read should not.
+    /// </summary>
+    private const double EjectVisibleTravel = 170;
 
     /// <summary>
     /// How small a tile gets on its way into the reactor, and how it fades.
@@ -126,16 +135,28 @@ public sealed partial class Alchitex
         => Math.Max(120, PackQueueHost.ActualWidth - tile.ActualOffset.X);
 
     /// <summary>
-    /// A pack that errored out: thrown clear through the reactor and off the far side,
+    /// A pack that errored out: dropped straight out of the reactor's underside and away,
     /// rather than coming back down the output row like a finished one. The reactor also
     /// flashes its alert palette red (ReactorAnimator.PlayErrorFlash) alongside the wash
     /// below - the tile leaving is the queue's own way of saying "this one failed", and the
     /// flash is the reactor's, so the background actually answers an error rather than
     /// treating it as an ordinary hand-off.
     ///
+    /// Down rather than out the far side, and the reason is the layout rather than taste:
+    /// the reactor sits flush against the window's right edge, so a tile thrown through it
+    /// had a couple of dozen pixels to be seen in before it ran out of window. Underneath it
+    /// there is the whole announcements panel to fall across. Down is also the one exit no
+    /// other outcome uses - in from the left, back out to the left, out of the bottom for a
+    /// failure - so the direction alone says which of the three happened.
+    ///
+    /// The tile starts fully hidden behind the reactor's lower edge and is only ever seen
+    /// once it has cleared it, which is what makes it read as falling out of the thing
+    /// rather than sliding down the front of it. That depends entirely on QueueEjectionHost
+    /// rendering BENEATH the button - see the XAML, where the three Canvas.ZIndex values
+    /// that arrange it are set and explained.
+    ///
     /// The tile is built fresh here: the original left the input row when the pack was
     /// handed over, so there's nothing left to animate by the time the failure is known.
-    /// It's parented to QueueEjectionHost (see the XAML) because the queue rows clip.
     /// </summary>
     private async Task EjectFailedPackAsync(string location, string packName)
     {
@@ -144,24 +165,22 @@ public sealed partial class Alchitex
         try
         {
             var tile = BuildPackTile(location, packName, allowDiscard: false);
+            var tileSize = _packTileSize + TileShadowPadding * 2;
 
-            // Start where the pack was last seen - the reactor's leading edge, on the
-            // input row's line - measured rather than assumed, so it stays right through
-            // any layout change.
-            var reactorEdge = GenerateButton.TransformToVisual(QueueEjectionHost)
-                .TransformPoint(new Windows.Foundation.Point(0, 0));
-            var rowLine = InputQueuePanel.TransformToVisual(QueueEjectionHost)
+            // The reactor's own box, measured rather than assumed so this stays right
+            // through a resize (the button is squared to the panel's height in code).
+            var reactor = GenerateButton.TransformToVisual(QueueEjectionHost)
                 .TransformPoint(new Windows.Foundation.Point(0, 0));
 
-            tile.HorizontalAlignment = HorizontalAlignment.Left;
-            tile.VerticalAlignment = VerticalAlignment.Top;
-            tile.Margin = new Thickness(reactorEdge.X, rowLine.Y, 0, 0);
+            // Centred on the reactor and tucked just inside its bottom edge: hidden at rest,
+            // one pixel of travel from being visible.
+            Canvas.SetLeft(tile, reactor.X + (GenerateButton.ActualWidth - tileSize) / 2);
+            Canvas.SetTop(tile, reactor.Y + GenerateButton.ActualHeight - tileSize);
 
             QueueEjectionHost.Children.Add(tile);
 
-            // Left to right, matching its travel: a failure still leaves the way an intake
-            // arrived, which is what makes it read as "thrown through" rather than "handed
-            // back". A returned or finished pack washes the other way.
+            // The wash falls with it. A returned or finished pack washes right to left, an
+            // intake left to right; this is the only thing that goes down.
             //
             // PlayErrorFlash first, deliberately: it only flips which palette AnimateTile
             // resolves against, and PlayQueueWash bakes actual Color values into its
@@ -169,16 +188,23 @@ public sealed partial class Alchitex
             // reach back into an already-built sequence, so the wash would play blue instead
             // of red.
             _reactor?.PlayErrorFlash();
-            _reactor?.PlayQueueWash(leftToRight: true);
+            _reactor?.PlayQueueWash(ReactorWashDirection.TopToBottom);
 
+            // EaseOut on the motion, which is the opposite of every other departure here
+            // and is about visibility rather than taste. The first tileSize of this travel
+            // is spent behind the button, and that is 42% of the distance: under the
+            // EaseIn the intake uses - its slow end at the front - the tile would still be
+            // hidden two thirds of the way through its own animation. EaseOut spends about
+            // a tenth of a second clearing the reactor and the rest of it visibly falling.
+            // It reads correctly too: expelled hard, then drifting away as it fades.
             using (BeginQueueTransition())
             {
                 await RunStoryboardAsync(
                     BuildTileStoryboard(tile, EjectAnimationMs,
-                        translateX: GenerateButton.ActualWidth + _packTileSize,
+                        translateY: tileSize + EjectVisibleTravel,
                         opacity: 0,
                         scale: 0.85,
-                        easing: TravelEase(EasingMode.EaseIn), opacityEasing: FadeEase(EasingMode.EaseIn)),
+                        easing: TravelEase(EasingMode.EaseOut), opacityEasing: FadeEase(EasingMode.EaseIn)),
                     EjectAnimationMs);
             }
 

@@ -11,6 +11,23 @@ using Windows.UI;
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
 /// <summary>
+/// Which way a queue wash crosses the grid. It is always the direction the pack's own tile
+/// is travelling at that moment, which is the only thing that decides it: in, back out, or
+/// down and away for one that failed.
+/// </summary>
+public enum ReactorWashDirection
+{
+    /// <summary>A pack being taken in, following its tile toward the reactor.</summary>
+    LeftToRight,
+
+    /// <summary>A finished or returned pack, following its tile back down the row.</summary>
+    RightToLeft,
+
+    /// <summary>A failed pack dropping out of the reactor's underside.</summary>
+    TopToBottom,
+}
+
+/// <summary>
 /// Drives the Generate button's three layers so the reactor reads as a live instrument
 /// rather than a picture of one - the same idea as the main window's lamp
 /// (Core/MainWindow.LampAnimator.cs), tied here to what generation is actually doing:
@@ -975,24 +992,31 @@ public sealed class ReactorAnimator
 
     private void ReleaseGrid() => _gridClaimedUntilUtc = DateTime.MinValue;
 
-    // A wash's leading edge crossing one column, and how long a column stays lit behind it.
-    private const double WashColumnDelayMs = 80;
+    // A wash's leading edge crossing one line of the grid - a column or a row, depending
+    // which way it runs - and how long that line stays lit behind it.
+    private const double WashLineDelayMs = 80;
     private const double WashRiseMs = 100;
     private const double WashFallMs = 220;
 
     /// <summary>
-    /// A pack being taken in or handed back: a bright band washing across the grid, left to
-    /// right on the way in and right to left on the way out - the same direction the pack's
-    /// own tile travels, so the two read as one event rather than two things happening at
-    /// once.
+    /// A pack being taken in, handed back, or thrown out: a bright band washing across the
+    /// grid in the same direction the pack's own tile travels, so the two read as one event
+    /// rather than two things happening at once. Right on the way in, left on the way back
+    /// out, down for a failure leaving through the reactor's underside.
     ///
-    /// Three columns is not much to say "something landed in water" with, so the band is
-    /// built from the active palette rather than a single bright frame: each column rises to
-    /// its brightest shade, falls back through the middle of the ramp, and settles at its
-    /// resting value, one column-delay behind the column before it. What sells it is that
-    /// the trailing columns are still falling while the leading one has already settled.
+    /// Three lines is not much to say "something landed in water" with, so the band is built
+    /// from the active palette rather than a single bright frame: each line rises to its
+    /// brightest shade, falls back through the middle of the ramp, and settles at its
+    /// resting value, one delay behind the line before it. What sells it is that the
+    /// trailing lines are still falling while the leading one has already settled.
+    ///
+    /// Both axes are three cells long, so the timing constants and the claim are the same
+    /// whichever way it runs - the direction only decides which index a cell reads its
+    /// place in the queue from. That is the whole reason this is one method: a separate
+    /// vertical copy would be the same sequence with one subscript changed, and the two
+    /// would drift the first time the band was retuned.
     /// </summary>
-    public void PlayQueueWash(bool leftToRight)
+    public void PlayQueueWash(ReactorWashDirection direction)
     {
         if (!_isInitialized) return;
 
@@ -1000,7 +1024,15 @@ public sealed class ReactorAnimator
         {
             for (var col = 0; col < GridSize; col++)
             {
-                var lead = (leftToRight ? col : GridSize - 1 - col) * WashColumnDelayMs;
+                var rank = direction switch
+                {
+                    ReactorWashDirection.LeftToRight => col,
+                    ReactorWashDirection.RightToLeft => GridSize - 1 - col,
+                    ReactorWashDirection.TopToBottom => row,
+                    _ => col,
+                };
+
+                var lead = rank * WashLineDelayMs;
                 var rest = _activePalette[RestLayout[row, col]];
 
                 PlayTileSequence(row, col,
@@ -1011,7 +1043,7 @@ public sealed class ReactorAnimator
             }
         }
 
-        ClaimGrid((GridSize - 1) * WashColumnDelayMs + WashRiseMs + WashFallMs);
+        ClaimGrid((GridSize - 1) * WashLineDelayMs + WashRiseMs + WashFallMs);
     }
 
     private const double RippleRingDelayMs = 75;
