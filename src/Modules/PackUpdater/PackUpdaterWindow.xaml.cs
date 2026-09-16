@@ -18,7 +18,8 @@ public sealed partial class PackUpdaterWindow : Window
     private readonly PackUpdater _updater;
     private bool _isClosing;
 
-    // Suspended means the hover overlay snaps.
+    // With animations suspended the hover overlay is assigned, not crossfaded - see
+    // AnimateOpacity.
     private static bool AnimationsSuspended => Persistent.SuspendUIAnimations;
 
     private static readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);

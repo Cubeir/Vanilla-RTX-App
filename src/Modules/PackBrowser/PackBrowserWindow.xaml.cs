@@ -1020,6 +1020,11 @@ public sealed partial class PackBrowserWindow : Window
     /// </summary>
     public static async Task<BitmapImage?> LoadPackIconAsync(string packDir)
     {
+        // The list draws these at 96x96; 192 is 2x that for 200% scale. A decoded image costs
+        // width x height x 4 bytes of graphics memory regardless of file size, and a pack's
+        // icon is whatever resolution its author chose.
+        const int iconDecodeWidth = 192;
+
         if (string.IsNullOrEmpty(packDir) || !Directory.Exists(packDir)) return null;
 
         var iconFiles = Directory.GetFiles(packDir, "pack_icon.*")
@@ -1030,7 +1035,8 @@ public sealed partial class PackBrowserWindow : Window
         {
             try
             {
-                var bitmap = new BitmapImage();
+                // DecodePixelWidth is ignored unless it is set before the source is handed over.
+                var bitmap = new BitmapImage { DecodePixelWidth = iconDecodeWidth };
                 using var fs = File.OpenRead(iconPath);
                 using var ms = new MemoryStream();
                 await fs.CopyToAsync(ms);

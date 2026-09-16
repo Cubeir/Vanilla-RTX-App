@@ -90,14 +90,12 @@ internal sealed class BetterRTXManager
     /// The Release backup folder. Its Preview counterpart is
     /// <see cref="DEFAULT_PREVIEW_PRESET_FOLDER_NAME"/>.
     ///
-    /// <para><b>The two are never shared, and that is the one part of Preview support that
-    /// isn't cosmetic.</b> Everything else in the cache - the API JSON, downloaded presets,
-    /// imported .rtpacks - is the same third party's files whichever edition installs them.
-    /// A Default backup is the opposite: it is a copy of <i>this</i> install's own shipped
-    /// .bin files, taken before we overwrote them, and Preview is routinely a different
-    /// build from Release. One folder for both would mean whichever edition reached
-    /// <see cref="ApplyPresetAsync"/> first defines "default" for the other, and a rollback
-    /// would quietly install the wrong game's shaders.</para>
+    /// <para><b>The two are never shared.</b> The rest of the cache - API JSON, downloaded
+    /// presets, imported .rtpacks - is the same third party's files whichever edition
+    /// installs them. A Default backup is a copy of <i>this</i> install's own shipped .bin
+    /// files, and Preview is routinely a different build from Release, so one folder for both
+    /// would let whichever edition reaches <see cref="ApplyPresetAsync"/> first define
+    /// "default" for the other and make a rollback install the wrong game's shaders.</para>
     /// </summary>
     public const string DEFAULT_PRESET_FOLDER_NAME = "__DEFAULT";
 
@@ -142,19 +140,17 @@ internal sealed class BetterRTXManager
         isPreview ? DEFAULT_PREVIEW_PRESET_FOLDER_NAME : DEFAULT_PRESET_FOLDER_NAME;
 
     /// <summary>
-    /// True for <i>either</i> edition's Default folder. Every sweep over the cache asks this
-    /// rather than comparing against one name: a Release soft wipe that only spared
-    /// "__DEFAULT" would delete Preview's backup, which is the only way back to that
-    /// install's own shaders.
+    /// True for <i>either</i> edition's Default folder. Every sweep over the cache must ask
+    /// this rather than compare against one name: a Release sweep that only spared "__DEFAULT"
+    /// deletes Preview's backup, which is that install's only way back to its own shaders.
     /// </summary>
     public static bool IsDefaultFolderName(string folderName) =>
         folderName.Equals(DEFAULT_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase) ||
         folderName.Equals(DEFAULT_PREVIEW_PRESET_FOLDER_NAME, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Where an edition's Default backup sits, resolved without attaching to anything.
-    /// DefaultsGuard runs before a hard wipe with no manager instance in hand, and this is
-    /// what stops it re-spelling the cache layout on its own.
+    /// Where an edition's Default backup sits, resolved without attaching to anything, for
+    /// callers that have no manager instance - DefaultsGuard runs before a hard wipe.
     /// </summary>
     public static string? GetDefaultFolderPath(bool isPreview)
     {
@@ -205,9 +201,9 @@ internal sealed class BetterRTXManager
         GameFilesIncomplete,
 
         /// <summary>
-        /// Some core files are backed up and some aren't, and what we hold no longer matches
-        /// the game - so the game is running something other than its own defaults and topping
-        /// the backup up from it would record someone else's preset as this install's.
+        /// Some core files are backed up and some aren't, and what is held differs from what
+        /// is installed - so the game is running something other than its own defaults, and
+        /// completing the backup from it would record another preset as this install's.
         /// </summary>
         BackupUnverifiable,
 
@@ -247,22 +243,17 @@ internal sealed class BetterRTXManager
 
         bool versionChanged = await GameVersionDetector.HasGameVersionChanged(minecraftPath, isPreview);
 
-        // What an update invalidates depends on which edition updated, and the two answers are
-        // not the same. This was one Directory.Delete of the whole cache, which was right back
-        // when only one edition could ever be in it.
+        // What an update invalidates depends on which edition updated:
         //
-        //   This edition's Default backup - always. It is a copy of this install's own files
-        //   and the update just replaced them. The other edition's copy is untouched: that
-        //   game didn't change, and deleting its backup would strand it on whatever preset it
-        //   is running with no way home.
+        //   This edition's Default backup - always. It is a copy of this install's own files,
+        //   which the update just replaced. The other edition's copy stays: that game did not
+        //   change, and deleting its backup strands it on whatever preset it is running.
         //
-        //   The shared cache (downloads, imports, the API JSON) - only for Release. Everything
-        //   in it came from bedrock.graphics, which builds against stable Minecraft, so a
-        //   Release update is a real reason to suspect those files are now for the wrong game.
-        //   A Preview update says nothing about them - it is the same third party's Release
-        //   files either way - and Preview ships weekly, so wiping on it would mean a user who
-        //   opens this window on Preview re-downloads every preset they own, most weeks, for
-        //   no reason.
+        //   The shared cache (downloads, imports, API JSON) - Release only. Its contents come
+        //   from bedrock.graphics, which builds against stable Minecraft, so a Release update
+        //   is grounds to suspect they are now for the wrong game. A Preview update is not,
+        //   and Preview ships weekly, so wiping on it would re-download every preset the user
+        //   owns most weeks for nothing.
         bool sharedCacheWiped = false;
 
         if (versionChanged)
@@ -277,9 +268,9 @@ internal sealed class BetterRTXManager
             }
         }
 
-        // Skipped only when the wipe above has just deleted the API cache this would compare
-        // against. A Preview update leaves it in place, so the check still runs - it is the
-        // thing that actually notices BetterRTX shipping new files.
+        // Skipped only when the wipe above has just deleted the API cache this compares
+        // against. It is what notices BetterRTX shipping new files, so it still runs after a
+        // Preview update, which leaves the cache in place.
         if (!sharedCacheWiped)
             await CheckApiStalenessOnStartupAsync();
 
@@ -324,10 +315,10 @@ internal sealed class BetterRTXManager
     #region Cache wiping
 
     /// <summary>
-    /// Drops <b>this edition's</b> Default backup, so the next install re-takes it from the
-    /// game's current files. Only a version change for this edition warrants that - the
-    /// backup is the user's only route back to their own install's shaders, and the other
-    /// edition's copy is none of this one's business.
+    /// Drops <b>this edition's</b> Default backup so the next install re-takes it from the
+    /// game's current files. Only a version change for this edition warrants that: the backup
+    /// is the only route back to that install's own shaders, and the other edition's copy
+    /// belongs to a game this update did not touch.
     /// </summary>
     public void WipeDefaultPresetCache()
     {
@@ -346,10 +337,9 @@ internal sealed class BetterRTXManager
         }
     }
     /// <summary>
-    /// Soft wipe: deletes all downloaded and custom imported preset folders and the API cache JSON.
-    /// <b>Both</b> editions' Default folders are intentionally preserved - only a game version
-    /// change warrants clearing one, and only for the edition that changed (see
-    /// <see cref="IsDefaultFolderName"/>).
+    /// Soft wipe: deletes every downloaded and custom-imported preset folder and the API cache
+    /// JSON. <b>Both</b> editions' Default folders are preserved - only a game version change
+    /// clears one, and only for the edition that changed (see <see cref="IsDefaultFolderName"/>).
     /// </summary>
     public async Task WipeNonDefaultPresetsCacheAsync()
     {
@@ -686,10 +676,9 @@ internal sealed class BetterRTXManager
                 return;
             }
 
-            // Every folder except the two Default backups. Neither carries a manifest, so
-            // ParseLocalPresetAsync would reject them anyway - but excluding them by name is
-            // what guarantees the *other* edition's default can never surface in this one's
-            // list, however its contents end up looking.
+            // Every folder except the two Default backups. Excluding them by name is what
+            // guarantees the other edition's default can never surface in this one's list,
+            // whatever its contents look like.
             var presetFolders = Directory.GetDirectories(CacheFolder)
                 .Where(d => !IsDefaultFolderName(Path.GetFileName(d)))
                 .ToList();
@@ -771,6 +760,15 @@ internal sealed class BetterRTXManager
         }
     }
 
+    /// <summary>
+    /// Decode ceiling for preset icons, in physical pixels: the list draws them at 96x96, so
+    /// this is 2x that for 200% scale. A decoded image costs width x height x 4 bytes of
+    /// graphics memory regardless of its file size, and these come out of third-party
+    /// .rtpack archives at whatever resolution their author chose - every loaded preset holds
+    /// one for the window's lifetime.
+    /// </summary>
+    private const int IconDecodeWidth = 192;
+
     private async Task<BitmapImage?> LoadIconAsync(string directory)
     {
         if (!Directory.Exists(directory))
@@ -788,7 +786,8 @@ internal sealed class BetterRTXManager
         {
             try
             {
-                var bitmap = new BitmapImage();
+                // DecodePixelWidth is ignored unless it is set before the source is handed over.
+                var bitmap = new BitmapImage { DecodePixelWidth = IconDecodeWidth };
 
                 using (var fileStream = File.OpenRead(iconPath))
                 {
@@ -816,22 +815,17 @@ internal sealed class BetterRTXManager
     /// Makes sure this edition's Default folder holds a copy of the game's own core .bin
     /// files - the only route back to stock once a preset has been installed.
     ///
-    /// <para><b>Run at window open, not at first install.</b> It used to happen inside
-    /// <see cref="ApplyPresetAsync"/>, which meant the first anyone heard of a broken install
-    /// was the moment they tried to change it, and "Default RTX" simply wasn't in the list
-    /// until they had installed something else first - the one entry a new user most needs to
-    /// see, missing precisely because they hadn't taken the risk yet. Failing to take this
-    /// backup means something is wrong with the game folder, and that is worth knowing before
-    /// a single preset is offered rather than after one has been written.</para>
+    /// <para><b>Called at window open, before the list is drawn.</b> Failing to take this
+    /// backup means something is wrong with the game folder, which the user needs to know
+    /// before a preset is offered rather than after one has been written - the window turns
+    /// any state but <see cref="DefaultBackupState.Ready"/> into a disabled list.</para>
     ///
-    /// <para><b>The assumption, stated plainly:</b> when the backup folder is empty, whatever
-    /// the game currently holds *is* this install's defaults. Nothing in a .bin file says
-    /// otherwise, so there is no way to verify it - this is the same assumption the old lazy
-    /// path made, just made earlier. What is new is that a <i>partial</i> backup is no longer
-    /// quietly completed: if what we already hold doesn't match the game, the game is running
-    /// something else and finishing the set from it would bake that into the backup forever.
-    /// That reports <see cref="DefaultBackupState.BackupUnverifiable"/> and touches
-    /// nothing.</para>
+    /// <para><b>The assumption:</b> when the backup folder is empty, whatever the game holds
+    /// is this install's defaults. Nothing in a .bin file says otherwise, so it cannot be
+    /// verified. A <i>partial</i> backup is the case that can be: if what is held differs
+    /// from what is installed, the game is running something else and completing the set from
+    /// it would bake that in permanently, so it reports
+    /// <see cref="DefaultBackupState.BackupUnverifiable"/> and writes nothing.</para>
     ///
     /// <para>Idempotent and cheap once complete - the common case is four File.Exists calls.</para>
     /// </summary>
@@ -861,8 +855,8 @@ internal sealed class BetterRTXManager
                 return DefaultBackup = DefaultBackupState.GameFilesIncomplete;
             }
 
-            // Partial backup: only safe to finish if the files we already hold are still the
-            // ones in the game, which is what tells us the game is on its own defaults.
+            // Only safe to finish a partial backup if the files already held are still the
+            // ones installed, which is what establishes that the game is on its own defaults.
             foreach (var fileName in alreadyBackedUp)
             {
                 var backedUpHash = ComputeFileHash(Path.Combine(DefaultFolder, fileName));
@@ -909,8 +903,8 @@ internal sealed class BetterRTXManager
 
         return new LocalPresetData
         {
-            // The folder name doubles as the UUID, which keeps Release's and Preview's
-            // entries distinct in every dictionary keyed by it.
+            // The folder name doubles as the UUID, keeping Release's and Preview's entries
+            // distinct in every dictionary keyed by it.
             Uuid = DefaultFolderName,
             Name = IsPreview ? "Default RTX (Preview)" : "Default RTX",
             PresetPath = DefaultFolder,
@@ -1119,14 +1113,12 @@ internal sealed class BetterRTXManager
     /// still only happens through the window itself, disclaimer and all, completely
     /// unaffected by this method.
     ///
-    /// <para>This used to construct a <c>BetterRTXManagerWindow</c> purely to borrow its
-    /// extraction logic, and then had to detach that window's own Loaded handler by hand,
-    /// because it fires even on an instance that is never Activate()d and would run the
-    /// whole startup pipeline - including a scan of this very cache folder - concurrently
-    /// with the import loop below. That race is what produced "pack_icon.png is being used
-    /// by another process" and "could not find a part of the path ...__staging_...". With
-    /// the import living here instead, there is no window to construct and therefore no
-    /// handler to detach and no pipeline that could run.</para>
+    /// <para><b>Never route this through the window.</b> A <c>BetterRTXManagerWindow</c> runs
+    /// its Loaded handler even on an instance that is never Activate()d, which starts the full
+    /// startup pipeline - including a scan of this very cache folder - concurrently with the
+    /// import loop below. That race surfaces as "pack_icon.png is being used by another
+    /// process" and "could not find a part of the path ...__staging_...". Keeping the import
+    /// here means there is no window to construct and no pipeline that could run.</para>
     ///
     /// <para>Files are processed strictly one at a time - MainWindow.ImportBetterRTXPresetFilesAsync
     /// already serializes calls to this method globally, but the loop below is what makes a
@@ -1248,10 +1240,9 @@ internal sealed class BetterRTXManager
         {
             Trace.WriteLine($"[BetterRTX] === APPLYING PRESET: {preset.Name} ===");
 
-            // Backing the defaults up is EnsureDefaultBackedUp's job and has already happened
-            // at window open; this re-runs it only so the invariant is enforced where it
-            // actually matters rather than only where the button is drawn. Nothing gets
-            // written to the game without a verified way back out of it.
+            // Enforces the invariant at the point of the write rather than only where the
+            // button is drawn: nothing reaches the game without a verified way back. Cheap to
+            // re-run - the window has already done this at open.
             var backup = EnsureDefaultBackedUp();
             if (backup != DefaultBackupState.Ready)
             {
@@ -1259,12 +1250,11 @@ internal sealed class BetterRTXManager
                 return false;
             }
 
-            // Only the four core files are backed up, so only they can be rolled back, so a
-            // preset's own .bin files are all that gets written. That set is what CoreRTXFiles
-            // means and what every hash comparison and DefaultsGuard already work from; a file
-            // outside it was never restorable in a way anything here could verify, and taking
-            // one from a game that may already be running somebody else's preset would be a
-            // backup of the wrong bytes rather than a safety net.
+            // Only CoreRTXFiles is backed up, so only it can be rolled back - which is why a
+            // preset's own .bin files are all that gets written. That set is also what every
+            // hash comparison and DefaultsGuard work from. Backing up a file outside it would
+            // mean copying from a game that may already be running another preset, producing a
+            // safety net made of the wrong bytes.
             var filesToApply = new List<(string sourcePath, string destPath)>();
 
             if (preset.BinFiles != null)

@@ -16,13 +16,11 @@ namespace Vanilla_RTX_App.Core;
 /// the mutex, dropping the duplicate deliveries Windows produces on its own, and routing what
 /// survives to whichever import owns that extension.
 ///
-/// <para><b>Why it's one place.</b> This was split between App.xaml.cs and a region in
-/// MainWindow, which meant the answer to "what happens when someone double-clicks a .rtpack?"
-/// was assembled from two files that otherwise have nothing to do with each other. Adding a
-/// third file type meant finding both. Everything up to the moment a list of paths becomes an
-/// import now lives here; the imports themselves stay on MainWindow, because what they
-/// actually do is drive its log, its progress bar and its buttons
-/// (see MainWindow.ImportRouters.cs).</para>
+/// <para><b>Everything up to the moment a list of paths becomes an import lives here</b>, so
+/// that "what happens when someone double-clicks a .rtpack?" has one answer in one file, and
+/// adding a file type is one entry rather than a hunt. The imports themselves stay on
+/// MainWindow, since what they do is drive its log, progress bar and buttons - see
+/// MainWindow.ImportRouters.cs.</para>
 ///
 /// <para><see cref="Routes"/> is the whole of the app's answer to which files it can be
 /// opened with, and is meant to be read alongside the FileTypeAssociation entries in
@@ -71,16 +69,13 @@ internal static class FileActivationRouter
     /// mixed selection - unlikely, but Explorer permits it - still routes correctly instead
     /// of one type winning outright.
     ///
-    /// <para><see cref="FilterRecentlyHandledFiles"/> runs first and is the actual fix for
-    /// Windows activating the FTA handler more than once for a single "Open with" - observed
-    /// firsthand producing two or three separate deliveries of the identical file list within
-    /// a couple of seconds of each other. MainWindow's per-type import locks keep those
-    /// deliveries from interleaving if they do both reach an import call, but that still means
-    /// real import work runs twice and surfaces as duplicate/already-installed warnings for
-    /// files that were never actually duplicates - exactly what was showing up in testing.
-    /// Recognizing "I've just seen this exact path" here means the second delivery never
-    /// reaches an import call at all, which is the "sanitize before we import" this exists
-    /// for.</para>
+    /// <para><see cref="FilterRecentlyHandledFiles"/> runs first, and is what handles Windows
+    /// activating the FTA handler more than once for a single "Open with" - two or three
+    /// separate deliveries of an identical file list within seconds. MainWindow's per-type
+    /// import locks stop those interleaving, but both still reach an import and the second
+    /// surfaces as duplicate/already-installed warnings for files that were never duplicates.
+    /// Dropping a path already seen means the second delivery never reaches an import at
+    /// all.</para>
     /// </summary>
     public static async Task RouteAsync(IReadOnlyList<string> paths)
     {

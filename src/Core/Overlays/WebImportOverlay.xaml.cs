@@ -19,11 +19,11 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// for DLSS DLLs, bedrock.graphics/creator for BetterRTX presets) from inside the app, and hands
 /// whatever they downloaded there back to the caller in one batch the moment they close it.
 ///
-/// <para><b>Why this exists.</b> These modules used to just launch the user's real browser via a
-/// <c>HyperlinkButton</c> and leave them to find their way back with a downloaded file in hand.
-/// Neither TechPowerUp nor bedrock.graphics has an API worth scraping (see the design notes this
-/// replaced), so the reliable middle ground is: let the user do exactly what they'd do in a real
-/// browser, just without leaving the app, and watch the one folder their downloads land in.</para>
+/// <para><b>Why this exists.</b> Neither TechPowerUp nor bedrock.graphics has an API worth
+/// scraping - one is a download mirror, the other a build-your-own-preset tool - so there is no
+/// way to fetch these files directly. The reliable middle ground is to let the user do exactly
+/// what they would do in a real browser without leaving the app, and watch the one folder their
+/// downloads land in, so the file comes back on its own instead of being hunted for.</para>
 ///
 /// <para><b>Deliberately detachable.</b> This control knows nothing about DLSS or BetterRTX - it
 /// takes a URL, a set of file extensions to watch for, static instruction text, and a callback,
@@ -71,7 +71,13 @@ public sealed partial class WebImportOverlay : UserControl
     private readonly HashSet<string> _completedPaths = new(StringComparer.OrdinalIgnoreCase);
 
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
-    private const double FADE_MS = 50;
+    /// <summary>
+    /// Fade duration for the whole overlay, bounded at both ends: below ~100ms a 60Hz display
+    /// has too few frames left for the ease to read as anything but a snap, and much above it
+    /// the overlay feels slow to open on a high-refresh display. 100ms is 6 frames at 60Hz
+    /// and 14 at 144Hz.
+    /// </summary>
+    private const double FADE_MS = 100;
 
     public WebImportOverlay()
     {

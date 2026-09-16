@@ -627,6 +627,8 @@ public sealed class MarkdownRenderer
         return built;
     }
 
+    private const int ImageDecodeHeight = 800;
+
     private Inline BuildInlineImage(MI.LinkInline image)
     {
         var altText = GetPlainText(image);
@@ -651,7 +653,15 @@ public sealed class MarkdownRenderer
         };
 
         host.Children.Add(img);
-        img.Source = new BitmapImage(uri);
+
+        // Height is what bounds these on screen (MaxHeight above, Stretch.Uniform), so it is
+        // what bounds the decode: 2x that for 200% scale. The source is a remote URL of
+        // unknown size and a decoded image costs width x height x 4 bytes of graphics memory
+        // whatever it weighs on the wire. DecodePixelHeight is ignored unless it is set before
+        // UriSource.
+        var bitmap = new BitmapImage { DecodePixelHeight = ImageDecodeHeight };
+        bitmap.UriSource = uri;
+        img.Source = bitmap;
 
         return new InlineUIContainer { Child = host };
     }

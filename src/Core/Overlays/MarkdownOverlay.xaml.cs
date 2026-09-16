@@ -83,7 +83,13 @@ public sealed partial class MarkdownOverlay : UserControl
     private Storyboard? _fadeStoryboard;
 
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
-    private const double FADE_MS = 50;
+    /// <summary>
+    /// Fade duration for the whole overlay, bounded at both ends: below ~100ms a 60Hz display
+    /// has too few frames left for the ease to read as anything but a snap, and much above it
+    /// the overlay feels slow to open on a high-refresh display. 100ms is 6 frames at 60Hz
+    /// and 14 at 144Hz.
+    /// </summary>
+    private const double FADE_MS = 100;
 
     public MarkdownOverlay()
     {

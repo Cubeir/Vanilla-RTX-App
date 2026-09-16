@@ -13,10 +13,10 @@ namespace Vanilla_RTX_App.Core;
 /// reads as the titlebar being two mismatched pieces. UnfocusedOpacity is matched to the
 /// caption buttons by eye and holds up in both light and dark themes.
 ///
-/// Attach whole containers, not individual controls. The main window used to assign the
-/// same opacity to five named buttons one at a time, which meant a sixth titlebar button
-/// silently didn't fade until someone remembered to add a line. Give the group a name in
-/// XAML and hand that over instead - anything added inside it inherits this for free.
+/// Attach whole containers, not individual controls: name the group in XAML and hand that
+/// over, so anything added inside it inherits the fade for free. Attaching named buttons one
+/// at a time means the next button added silently doesn't fade until someone remembers to
+/// add a line for it, and nothing about the result looks wrong enough to notice.
 ///
 /// One thing deliberately stays out of it: the centered title text. It's a separate
 /// element from the button group in both windows that have both, and the main window's

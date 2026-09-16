@@ -417,7 +417,8 @@ public sealed partial class LUTManagerWindow : Window
 
         var newBitmap = LoadPreviewBitmap(newImagePath);
 
-        // Suspended: the picture changes snap, no fade.
+        // Suspended: assign straight into the settled state the Completed handler below
+        // would leave things in, with no storyboard.
         if (Persistent.SuspendUIAnimations)
         {
             PresetImageBottom.Source = newBitmap;

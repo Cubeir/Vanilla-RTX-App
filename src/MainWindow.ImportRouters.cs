@@ -13,12 +13,11 @@ namespace Vanilla_RTX_App;
 /// What actually happens to a file opened from Explorer once
 /// <see cref="Core.FileActivationRouter"/> has decided where it belongs.
 ///
-/// <para><b>Why these are still MainWindow's.</b> Neither method is routing - that moved out.
-/// What they do is drive this window: its log is where every per-file message from the import
-/// goes, its progress bar runs for the duration, its buttons are disabled while it runs, and
-/// its open child windows get refreshed afterwards so they aren't left showing a list built
-/// before the import landed. All of that is private to the window, and the alternative to a
-/// partial was widening it for the sake of which file the code sits in.</para>
+/// <para><b>These live on MainWindow because what they do is drive it:</b> its log carries
+/// every per-file message from the import, its progress bar runs for the duration, its
+/// buttons are disabled while it runs, and its open child windows are refreshed afterwards so
+/// they aren't left showing a list built before the import landed. All of that is private to
+/// the window; a partial keeps it that way.</para>
 /// </summary>
 public sealed partial class MainWindow
 {
@@ -50,16 +49,16 @@ public sealed partial class MainWindow
     private static readonly SemaphoreSlim McpackImportLock = new(1, 1);
 
     /// <summary>
-    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs) -
+    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs), and
     /// deliberately independent of PackBrowserWindow rather than opening one on the user's
-    /// behalf. Opening a window on top of a window the user never asked for turned out to
-    /// look exactly as bad as it sounds, and it raced PackBrowserWindow's own "no Minecraft
-    /// data location yet" fallback into popping a folder picker in front of the user
-    /// unprompted (MainWindow_Loaded resolves that cache asynchronously; this could run
-    /// before it had). This calls ExpImpDel directly instead - the same utility both
-    /// PackBrowserWindow's Add-pack button and its drag-and-drop already call downstream -
-    /// and reports progress through the same Log() the rest of the window uses, one pack at
-    /// a time, no windows and no pickers involved either way.
+    /// behalf: a window appearing on top of a window nobody asked for, and PackBrowserWindow's
+    /// own "no Minecraft data location yet" fallback putting a folder picker in front of them
+    /// unprompted - reachable here because MainWindow_Loaded resolves that cache
+    /// asynchronously and this can run first.
+    ///
+    /// <para>Calls ExpImpDel directly instead - the same utility PackBrowserWindow's Add-pack
+    /// button and drag-and-drop both reach downstream - and reports through the same Log() the
+    /// rest of the window uses, one pack at a time, no windows and no pickers either way.</para>
     ///
     /// Per-file messages come straight from ExpImpDel.ImportStatusChanged rather than a
     /// generic pass/fail here - PackBrowserWindow already subscribes to the exact same event

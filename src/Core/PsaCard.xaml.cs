@@ -15,11 +15,11 @@ public sealed partial class PsaCard : UserControl
     private readonly PsaKind _kind;
     private readonly int? _cooldownMinutes;
 
-    // Suspending animations means not running them, not running them at 1/100th speed: the
-    // storyboard below still has to be built, begun and awaited by the compositor for a
-    // duration rounded to a frame it can't subdivide. Each animated property is assigned
-    // outright instead - see AnimateOpacity and AnimateCollapse. Same shape the overlays in
-    // Core\Overlays use.
+    // When animations are suspended each animated property is assigned outright rather than
+    // animated over a very short duration - see AnimateOpacity and AnimateCollapse. A
+    // storyboard still has to be built, begun and stepped by the compositor whatever its
+    // duration, and a duration under one frame is not a faster animation, it is a snap with
+    // overhead. Same shape as the overlays in Core\Overlays.
     private static bool AnimationsSuspended => EnvironmentVariables.Persistent.SuspendUIAnimations;
 
     private const double FADE_IN_MS = 50;

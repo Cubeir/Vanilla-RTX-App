@@ -56,11 +56,11 @@ public sealed partial class BetterRTXManagerWindow : Window
     private readonly BetterRTXManager _manager = new();
 
     /// <summary>
-    /// Which edition this window is for, taken once at construction rather than read live.
-    /// A cache folder, a Default backup and an elevated write all belong to the edition the
-    /// window opened under, and MainWindow disables the Preview toggle for as long as this
-    /// window is up - so the two can't diverge, and the snapshot is what keeps that from
-    /// being load-bearing. Same reasoning as AlchitexWindow's IsTargetingPreview.
+    /// Which edition this window is for, taken once at construction rather than read live:
+    /// the cache folder, the Default backup and the elevated write all belong to the edition
+    /// it opened under, and a mid-session flip would leave them pointing at different games.
+    /// MainWindow disables the Preview toggle while this window is up, so the snapshot is
+    /// what keeps that from being load-bearing. AlchitexWindow does the same.
     /// </summary>
     private readonly bool _isPreview = Persistent.IsTargetingPreview;
 
@@ -146,10 +146,9 @@ public sealed partial class BetterRTXManagerWindow : Window
 
             WindowTitle.Text = $"BetterRTX Preset Manager - Minecraft {(_isPreview ? "Preview" : "Release")}";
 
-            // bedrock.graphics builds its presets against stable Minecraft, so on Preview the
-            // notice at the top of the list is the whole of what makes this supported rather
-            // than refused: the user is told what they're risking and what to do if it bites.
-            // Everything below it works identically either way.
+            // bedrock.graphics builds against stable Minecraft, so on Preview the notice at
+            // the top of the list is the whole of what makes the feature supported there
+            // rather than refused. Everything below it behaves identically either way.
             ApplyNotices();
 
             await InitializeAsync();
@@ -198,23 +197,20 @@ public sealed partial class BetterRTXManagerWindow : Window
 
     /// <summary>
     /// Settles the two notice cards. Both are hand-written Pinned <see cref="PsaCard"/>
-    /// lookalikes rather than fetched ones, because neither can fail to apply and neither may
-    /// depend on the announcements fetch having succeeded - but only one of them is pinned to
-    /// the window:
+    /// lookalikes rather than fetched ones: neither can fail to apply, and neither may depend
+    /// on the announcements fetch having succeeded. Only one of them is pinned to the window:
     ///
     /// <list type="bullet">
-    /// <item>The Preview warning scrolls with the announcements it sits above. It is advice,
-    /// it is long, and a fixed card that tall costs the list most of its height for something
-    /// the user has read once.</item>
-    /// <item>The no-backup card stays put, because it is not advice: nothing in the list
-    /// below it can be installed while it is up, so being able to scroll away from it would
-    /// leave a greyed-out list with no explanation on screen. It is then the thing directly
-    /// under the floating titlebar, so it takes over the 37px the scroller normally
-    /// reserves.</item>
+    /// <item>The Preview warning scrolls with the announcements it sits above - it is advice
+    /// read once, and a fixed card that tall costs the list most of its height.</item>
+    /// <item>The no-backup card stays put: nothing in the list below it can be installed
+    /// while it is up, so scrolling away from it would leave a greyed-out list with no
+    /// explanation on screen. Being the topmost element it then takes over the 37px the
+    /// scroller reserves for the floating titlebar.</item>
     /// </list>
     ///
-    /// <para>Called twice: once from Loaded, when only the Preview half is known, and again
-    /// once the backup has been checked.</para>
+    /// <para>Called twice - from Loaded, when only the Preview half is known, and again once
+    /// the backup has been checked.</para>
     /// </summary>
     private void ApplyNotices()
     {
@@ -236,10 +232,9 @@ public sealed partial class BetterRTXManagerWindow : Window
     /// things the window does with it: whether anything may be installed, and what the notice
     /// card says.
     ///
-    /// <para>Deliberately run before the list is drawn rather than at first install. Every
-    /// one of these states means something is wrong with the game folder itself, and a user
-    /// finding that out when they click Install - having already been shown a list that
-    /// implied it would work - is the worst possible moment for it.</para>
+    /// <para>Runs before the list is drawn. Every non-Ready state means something is wrong
+    /// with the game folder itself, and a list that implies installing will work is the worst
+    /// place for the user to find that out.</para>
     /// </summary>
     private void EvaluateDefaultBackup()
     {
@@ -367,11 +362,9 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         try
         {
-            // Each edition caches its own install path, and the one we validate has to be the
-            // one we're about to write .bin files into. This read the Release path
-            // unconditionally while asking RevalidateCachedPath to check it against the
-            // *targeted* edition - which never bit only because the window used to refuse to
-            // open on Preview at all.
+            // Each edition caches its own install path, and the one validated here has to be
+            // the one about to be written into - RevalidateCachedPath checks the path against
+            // the edition, so a mismatch is an eviction rather than a wrong-game write.
             var cachedPath = _isPreview
                 ? Persistent.MinecraftPreviewInstallPath
                 : Persistent.MinecraftInstallPath;
@@ -493,13 +486,12 @@ public sealed partial class BetterRTXManagerWindow : Window
             return;
         }
 
-        // Same collision from the other end: a download in flight is extracting into a folder
-        // directly under the cache, and the wipe walks that cache deleting folders. Clearing
-        // the queue (DownloadTrackingReset) only stops what hasn't started - the extraction
-        // already running would carry on writing into a folder being deleted underneath it,
-        // and every per-entry failure there is caught and logged, so what's left is a preset
-        // with a readable manifest and some of its .bin files missing. Refusing is the same
-        // answer an install gets, for the same reason.
+        // Same collision from the other end: a download in flight extracts into a folder
+        // directly under the cache, and the wipe walks that cache deleting folders.
+        // DownloadTrackingReset only stops what hasn't started; an extraction already running
+        // keeps writing into a folder being deleted underneath it, and its per-entry failures
+        // are caught and logged, leaving a preset with a readable manifest and missing .bin
+        // files. Refused rather than queued, same as an install.
         if (_isProcessingQueue)
         {
             Trace.WriteLine("[BetterRTX] A preset download is in progress - ignoring refresh");
@@ -599,9 +591,9 @@ public sealed partial class BetterRTXManagerWindow : Window
         {
             PsaCard.Populate(BetterRTXAnnouncementsPanel, OnlineTextsContent.BetterRTXAnnouncements);
 
-            // Populate can legitimately add nothing - every announcement dismissed - and an
-            // empty-but-visible panel still contributes its margin, which reads as an oversized
-            // gap between whatever is above it and the preset list.
+            // Populate can legitimately add nothing (every announcement dismissed), and an
+            // empty-but-visible panel still contributes its margin, which reads as an
+            // oversized gap between whatever is above it and the preset list.
             BetterRTXAnnouncementsPanel.Visibility = BetterRTXAnnouncementsPanel.Children.Count > 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -1004,11 +996,10 @@ public sealed partial class BetterRTXManagerWindow : Window
             button.Click += PresetButton_Click;
         }
 
-        // No usable Default backup means no installing and no downloading - the rows still
-        // draw, because a greyed-out list next to the notice card says "this is blocked" far
-        // better than an empty one does, but none of them leads anywhere. The delete button
-        // built below is deliberately left alive: it only ever removes a folder from our own
-        // cache, and the bottom bar's import buttons are untouched for the same reason.
+        // No usable Default backup means no installing and no downloading. The rows still
+        // draw - a greyed-out list beside the notice card reads as blocked, where an empty
+        // one reads as broken - but none of them leads anywhere. The delete button below
+        // stays live, as do the bottom bar's import buttons: neither touches the game.
         if (!_defaultReady)
             button.IsEnabled = false;
 
@@ -1239,11 +1230,10 @@ public sealed partial class BetterRTXManagerWindow : Window
     {
         if (sender is not Button button) return;
 
-        // Undo exactly what DragEnter did. It used to ClearValue Background/BorderBrush/
-        // BorderThickness instead, none of which DragEnter touches - so the dim was never
-        // lifted and the button stayed at 0.7 for the rest of the window's life, while
-        // clearing BorderThickness actively threw away the BorderThickness="0" set on it
-        // in XAML and gave it the theme's 1px border.
+        // Undo exactly what DragEnter did, and only that. Clearing Background/BorderBrush/
+        // BorderThickness here instead leaves the dim in place for the rest of the window's
+        // life (DragEnter never touched those) and throws away the BorderThickness="0" set
+        // in XAML, handing the button the theme's 1px border.
         _addPresetDragToken++;
         button.Opacity = 1.0;
     }

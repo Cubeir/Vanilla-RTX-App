@@ -44,11 +44,10 @@ public static class DefaultsGuard
     /// edition from the call site instead; this one answers for the feature as a whole
     /// because its two backups live in one cache folder and are cleared by one wipe.
     ///
-    /// <para>Combining the two results keeps the worst news: a failure anywhere reports
-    /// RestoreFailed, then Restored, then Skipped, and only "neither edition needed
-    /// anything" reports NoActionNeeded. Each edition still logs under its own label, so the
-    /// combined verdict never hides which one it came from. Each dirty edition costs one UAC
-    /// prompt, exactly as one dirty feature did before.</para>
+    /// <para>The combined result keeps the worst news: RestoreFailed beats Restored beats
+    /// Skipped, and only "neither edition needed anything" reports NoActionNeeded. Each
+    /// edition logs under its own label, so the combined verdict never hides which one it
+    /// came from. Each dirty edition costs one UAC prompt.</para>
     /// </summary>
     public static async Task<RTXDefaultsGuard> RestoreBetterRTXDefaultIfNeededAsync(Action<string>? log = null)
     {
@@ -67,10 +66,10 @@ public static class DefaultsGuard
         return RTXDefaultsGuard.NoActionNeeded;
     }
 
-    // Folder layout comes from BetterRTXManager rather than being spelled again here - this
-    // guard exists to protect that feature's backup, so it has to be looking at the same
-    // folder permanently. Re-spelling "RTX_Cache" and "__DEFAULT" here is exactly how this
-    // would have quietly kept guarding Release only once Preview got a backup of its own.
+    // Folder layout comes from BetterRTXManager rather than being spelled again here: this
+    // guard protects that feature's backup, so it has to resolve the same folder permanently.
+    // A local copy of "RTX_Cache" / "__DEFAULT" silently stops matching the moment the
+    // manager's layout changes - a new edition, a renamed folder - and guards nothing.
     private static async Task<RTXDefaultsGuard> RestoreBetterRTXDefaultForEditionAsync(bool targetPreview, Action<string>? log)
     {
         var tag = $"[BetterRTX Guard{(targetPreview ? " Preview" : "")}]";
@@ -141,10 +140,9 @@ public static class DefaultsGuard
     }
 
     // File names, folder layout and the hash check all come from LUTManager rather than being
-    // spelled again here - this guard exists to protect that feature's backup, so it has to be
-    // looking at the same files in the same place, permanently. That now includes *which*
-    // folder: each edition keeps its own, and a guard that only knew about Release's would
-    // have gone on quietly checking the wrong one for Preview.
+    // spelled again here: this guard protects that feature's backup, so it has to resolve the
+    // same files in the same place permanently - including *which* folder, since each edition
+    // keeps its own.
     public static async Task<RTXDefaultsGuard> RestoreLutDefaultIfNeededAsync(bool targetPreview, Action<string>? log = null)
     {
         var tag = $"[LUT Guard{(targetPreview ? " Preview" : "")}]";
@@ -166,10 +164,9 @@ public static class DefaultsGuard
                 return RTXDefaultsGuard.Skipped;
             }
 
-            // Only the files the backup actually holds, which is however many the game had
-            // when it was taken - the same set LUTManager.InstallAsync would write for the
-            // Default preset, and for the same reason: a file we never backed up is one we
-            // have nothing to say about.
+            // Only the files the backup actually holds - however many the game had when it
+            // was taken. Same set LUTManager.InstallAsync writes for the Default preset, for
+            // the same reason: a file that was never backed up cannot be restored.
             var pairs = new List<(string, string)>();
             foreach (var fileName in LUTManager.AllFiles)
             {

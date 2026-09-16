@@ -22,10 +22,10 @@ namespace Vanilla_RTX_App.Modules.LUT;
 ///
 /// <para><b>Why only two are required.</b> look_up_tables.png and sky.png are what a LUT
 /// preset <i>is</i> - the colour grading and the sky. caustics.png, water_n.tga and
-/// wibbly.png are separate effects a preset may or may not have an opinion about, and
-/// forcing an author to ship all five means shipping copies of the game's own files just to
-/// fill the gaps. Not shipping one now means "leave whatever is installed alone", which is
-/// both the honest reading and the one that lets presets be partial on purpose.</para>
+/// wibbly.png are separate effects a preset may have no opinion about; requiring all five
+/// would mean shipping copies of the game's own files to fill the gaps. Omitting one means
+/// "leave whatever is installed alone", which is what lets a preset be partial on
+/// purpose.</para>
 /// </summary>
 internal sealed class LutPreset
 {
@@ -75,10 +75,9 @@ internal sealed class LutPreset
     /// <summary>
     /// Offerable: it has the two files that define a preset, and something to show for it.
     ///
-    /// <para><b>Default is exempt from the image half</b> - its picture is one of our own
-    /// bundled assets with a placeholder behind it, and refusing to let somebody roll back to
-    /// their own game files because a thumbnail is missing from our install would be
-    /// absurd.</para>
+    /// <para><b>Default is exempt from the image half</b> - its picture is a bundled asset
+    /// with a placeholder behind it, so a missing thumbnail must never be able to block a
+    /// rollback to the user's own game files.</para>
     /// </summary>
     public bool IsComplete => HasRequiredFiles && (IsDefault || ImagePath != null);
 }
@@ -138,11 +137,10 @@ internal sealed class LUTManager
     /// <summary>
     /// Preview's own backup folder.
     ///
-    /// <para>These used to be one folder for both editions, on the reasoning that the LUT
-    /// files themselves haven't changed in years - which is true, and is also why nobody
-    /// noticed. It still meant whichever edition installed a preset first defined "default"
-    /// for the other, and a rollback restored one install's files into the other's. Keeping
-    /// them apart costs a few megabytes and removes the whole class of question.</para>
+    /// <para>Kept apart from Release's even though the LUT files themselves rarely change
+    /// between builds: one folder for both editions would let whichever installed a preset
+    /// first define "default" for the other, and make a rollback restore one install's files
+    /// into the other's.</para>
     /// </summary>
     public const string PreviewDefaultsFolderName = "Lut_Defaults_Preview";
 
@@ -193,11 +191,10 @@ internal sealed class LUTManager
     /// preset with the required files would do; this one is picked first only so the outcome
     /// is the same every time rather than depending on folder order.
     ///
-    /// <para>It has to be a folder name that actually exists under <see cref="LutRootFolder"/>
-    /// or the preference is silently dead and the alphabetical fallback below picks instead -
-    /// which is what it had been doing, this having read "Gamescom 2019 Demo" while the folder
-    /// on disk is "Gamescom 2019 Demo V2". Nothing breaks when they disagree, which is exactly
-    /// why it went unnoticed.</para>
+    /// <para>It has to name a folder that exists under <see cref="LutRootFolder"/>. A name
+    /// that doesn't match makes the preference silently dead and hands the choice to the
+    /// alphabetical fallback below - nothing breaks, so the two drifting apart is invisible
+    /// unless checked.</para>
     /// </summary>
     private const string PreferredMendPreset = "Gamescom 2019 Demo V2";
 
@@ -309,13 +306,11 @@ internal sealed class LUTManager
     /// <item>The backup is missing a required file - it is replaced wholesale rather than
     /// topped up, because files from two different game versions is not a state anything
     /// could restore from.</item>
-    /// <item>The backup has the required files but not every optional one - which is exactly
-    /// what every existing install looks like, since only three of the five were ever backed
-    /// up before. Those are filled in from the game, <b>but only if what we already hold
-    /// still matches it</b>. Matching means the game is running its own defaults, so what it
-    /// has now is genuinely default; not matching means it is running a preset, and copying
-    /// caustics.png out of it would record that preset's file as the user's original
-    /// forever.</item>
+    /// <item>The backup has the required files but not every optional one. The gaps are
+    /// filled from the game, <b>but only if what is already held still matches it</b>.
+    /// Matching establishes that the game is on its own defaults, so what it holds now is
+    /// genuinely default; not matching means a preset is installed, and copying caustics.png
+    /// out of it would record that preset's file as the user's original permanently.</item>
     /// </list>
     /// </summary>
     public async Task<DefaultsState> EnsureDefaultsBackedUpAsync()
@@ -382,23 +377,19 @@ internal sealed class LUTManager
     /// Takes the backup from scratch, all-or-none: whatever partial set is there is cleared
     /// first, so the folder can't end up holding one file from before and four from now.
     ///
-    /// <para><b>Unless the game isn't running its own files.</b> With no backup to compare
-    /// against, the assumption that whatever the game holds is its default is normally the
-    /// only one available - but a bundled preset is a known set of bytes, so when the game
-    /// matches one we know for a fact it doesn't. That case is real rather than theoretical:
-    /// these two folders were one shared folder until recently, so a Preview install that had
-    /// a preset applied through it arrives here with no backup of its own and a game full of
-    /// somebody else's colour grading. Copying that in would make the preset permanent.</para>
+    /// <para><b>Unless the game is demonstrably not running its own files.</b> With no backup
+    /// to compare against, "whatever the game holds is its default" is normally the only
+    /// assumption available - but a bundled preset is a known set of bytes, so a match proves
+    /// the install is not stock, and copying it in would make that preset permanent.</para>
     ///
-    /// <para>The other edition's backup is the way out, and taking it is continuity rather
-    /// than a shortcut: it is the file set this install's rollback was using yesterday, when
-    /// the folder was shared. Failing that, nothing is written and the window blocks
-    /// installing - being unable to offer a rollback is a far smaller harm than offering a
-    /// broken one.</para>
+    /// <para>The other edition's backup is the fallback: the same file set a rollback would
+    /// have used while the two editions shared one folder. Failing that, nothing is written
+    /// and the window blocks installing - offering no rollback is a smaller harm than
+    /// offering a broken one.</para>
     ///
-    /// <para><paramref name="justMended"/> skips the check entirely, and has to: mending
-    /// puts a bundled preset into the game on purpose, so of course the game matches one
-    /// afterwards, and that set is the best "original" that install is ever going to have.</para>
+    /// <para><paramref name="justMended"/> skips the check, and must: mending puts a bundled
+    /// preset into the game deliberately, so the game matches one by construction afterwards,
+    /// and that set is the best "original" such an install has.</para>
     /// </summary>
     private async Task<DefaultsState> TakeFreshBackupAsync(List<string> gameFiles, bool justMended)
     {
@@ -456,14 +447,14 @@ internal sealed class LUTManager
     }
 
     /// <summary>
-    /// The bundled preset the game's files currently match, or null. A match is proof the
-    /// game is <i>not</i> running its own originals - the one thing that can be established
-    /// about an install with no backup to compare against, since a bundled preset is a known
-    /// set of bytes and none of them is anything Mojang ever shipped.
+    /// The bundled preset the game's files currently match, or null. A match proves the game
+    /// is <i>not</i> running its own originals - the only thing establishable about an install
+    /// with no backup to compare against, since a bundled preset is a known set of bytes and
+    /// none of them is anything Mojang shipped.
     ///
-    /// <para>Reads the presets folder directly rather than <see cref="Presets"/>: this runs
-    /// before <see cref="LoadPresets"/>, and dragging that earlier would tie the backup - the
-    /// safety-critical half - to list-building order.</para>
+    /// <para>Reads the presets folder directly rather than <see cref="Presets"/>, which runs
+    /// later: tying the backup to list-building order would make the safety-critical half
+    /// depend on the cosmetic one.</para>
     /// </summary>
     private LutPreset? MatchBundledPreset()
     {
@@ -525,8 +516,8 @@ internal sealed class LUTManager
             if (!preset.HasRequiredFiles) continue;
 
             // Straight to the write rather than through InstallAsync: its Default underlay is
-            // the very thing that doesn't exist yet here, and a backup left over from before
-            // is not something to be filling a broken install from.
+            // what does not exist yet at this point, and a stale backup is not a safe source
+            // to fill a broken install from.
             Trace.WriteLine($"[LUTManager] Mending with preset [{preset.Name}]");
             bool mended = await WriteToGameAsync(preset.Name, preset.PresentFiles);
             Trace.WriteLine(mended ? "[LUTManager] Game mended" : "[LUTManager] Mend failed or cancelled");
@@ -577,12 +568,11 @@ internal sealed class LUTManager
     /// Which preset the game is currently running, by hashing the game's files against each
     /// complete preset's.
     ///
-    /// <para>A preset matches when every file <i>it ships</i> is the one in the game - it has
-    /// no opinion about the files it doesn't ship, so those aren't compared. List order
-    /// settles the one ambiguity that creates: Default is checked first, so an install that
-    /// is wholly stock reads as Default rather than as some preset whose two files happen to
-    /// be the stock ones (which no bundled preset's are). Null means nothing matched - a
-    /// hand-modified install, or a preset that isn't ours.</para>
+    /// <para>A preset matches when every file <i>it ships</i> is the one installed; files it
+    /// doesn't ship are not compared, since it has no opinion about them. List order settles
+    /// the ambiguity that creates - Default is checked first, so a wholly stock install reads
+    /// as Default. Null means nothing matched: a hand-modified install, or a preset that
+    /// isn't ours.</para>
     /// </summary>
     public async Task<LutPreset?> DetectCurrentPresetAsync()
     {
@@ -632,20 +622,18 @@ internal sealed class LUTManager
     /// Installs a preset over the Default files rather than over whatever happens to be
     /// there: every slot this preset doesn't fill is written from the backup.
     ///
-    /// <para><b>Without that, switching presets accumulates.</b> A preset that ships
-    /// caustics.png and water_n.tga, followed by one that ships only wibbly.png, leaves the
-    /// first preset's caustics and water behind - the second preset has no opinion about
-    /// them, so nothing overwrites them, and the user is looking at two presets mixed
-    /// together with no way to tell. Going through Default first is what makes "installed
-    /// preset" mean the same thing every time.</para>
+    /// <para><b>Without the underlay, switching presets accumulates.</b> A preset shipping
+    /// caustics.png and water_n.tga followed by one shipping only wibbly.png leaves the
+    /// first's two files in place - the second has no opinion about them, so nothing
+    /// overwrites them and the game ends up running two presets mixed together. Going through
+    /// Default is what makes "installed preset" mean the same thing every time.</para>
     ///
-    /// <para>Expressed as one merged file list rather than two installs, because two would
-    /// mean two UAC prompts and a window in which the game is half reverted. Same end state,
-    /// one write. Default itself is skipped - it <i>is</i> the underlay.</para>
+    /// <para>One merged file list rather than two installs: same end state, but one UAC
+    /// prompt and no window in which the game is half reverted. Default skips the merge - it
+    /// <i>is</i> the underlay.</para>
     ///
-    /// <para>A slot the backup doesn't hold either is left alone: there is nothing to put
-    /// there. That can only happen for a file the game didn't have when the backup was
-    /// taken.</para>
+    /// <para>A slot the backup doesn't hold either is left alone; that can only happen for a
+    /// file the game lacked when the backup was taken.</para>
     /// </summary>
     public Task<bool> InstallAsync(LutPreset preset)
     {
