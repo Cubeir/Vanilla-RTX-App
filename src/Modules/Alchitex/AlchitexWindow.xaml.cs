@@ -718,7 +718,11 @@ public sealed partial class Alchitex : Window
         InputQueuePanel.Children.Clear();
         OutputQueuePanel.Children.Clear();
 
-        foreach (var (location, name) in InputQueue())
+        // Built in reverse of run order, so the pack that goes next is the RIGHTMOST tile -
+        // the end the reactor is on. InputQueue() is selection order and the batch loop takes
+        // its head first, so building it straight put the pack about to run at the far left
+        // with the whole queue between it and the thing it was entering.
+        foreach (var (location, name) in Enumerable.Reverse(InputQueue()))
             InputQueuePanel.Children.Add(BuildPackTile(location, name, allowDiscard: true));
 
         foreach (var (location, name) in _outputPacks)
@@ -1352,8 +1356,10 @@ public sealed partial class Alchitex : Window
 
         await AnimateIntoReactorAsync(tile);
 
+        // No reflow to play: the pack being handed over is the row's last child, and the
+        // panel packs from the left, so removing it leaves every tile still queued exactly
+        // where it was standing.
         InputQueuePanel.Children.Remove(tile);
-        AnimateReflow();
     }
 
     /// <summary>
