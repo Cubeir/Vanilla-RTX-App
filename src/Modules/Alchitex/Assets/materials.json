@@ -34458,7 +34458,7 @@
             "invert": false
         },
         "normal": {
-            "intensity": 0.025,
+            "intensity": 0.1,
             "invert": false
         }
     },
@@ -34512,7 +34512,7 @@
             "invert": false
         },
         "normal": {
-            "intensity": 0.025,
+            "intensity": 0.1,
             "invert": false
         }
     },
@@ -34566,7 +34566,7 @@
             "invert": false
         },
         "normal": {
-            "intensity": 0.025,
+            "intensity": 0.1,
             "invert": false
         }
     },
@@ -34593,7 +34593,7 @@
             "invert": false
         },
         "normal": {
-            "intensity": 0.025,
+            "intensity": 0.1,
             "invert": false
         }
     },
@@ -34620,7 +34620,7 @@
             "invert": false
         },
         "normal": {
-            "intensity": 0.025,
+            "intensity": 0.1,
             "invert": false
         }
     },
