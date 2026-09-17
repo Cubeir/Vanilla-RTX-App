@@ -28,7 +28,7 @@
         ════════════════════════════════════════════════════ -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,37,0,0"
+              Margin="0,36,0,0"
               Background="Transparent">
             <ProgressRing IsActive="True"
                           Width="100"
@@ -63,7 +63,7 @@
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Margin="5,37,5,0">
+                              Margin="5,36,5,0">
 
                     <!-- Wrap both panels in a single parent StackPanel -->
                     <StackPanel>
@@ -84,7 +84,7 @@
                 <!-- Empty state overlays the scroll area -->
                 <StackPanel x:Name="EmptyStatePanel"
                             Grid.Row="1"
-                            Margin="0,37,0,0"
+                            Margin="0,36,0,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Visibility="Collapsed"

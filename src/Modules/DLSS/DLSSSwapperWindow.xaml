@@ -25,7 +25,7 @@
         <!-- Loading Screen -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,37,0,0"
+              Margin="0,36,0,0"
               Background="Transparent">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -80,7 +80,7 @@
 
             <ScrollViewer Grid.Row="0"
                           Padding="20,0,20,0"
-                          Margin="0,37,0,0"
+                          Margin="0,36,0,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
@@ -97,7 +97,7 @@
             <!-- Empty State -->
             <StackPanel x:Name="EmptyStatePanel"
                         Grid.Row="0"
-                        Margin="0,37,0,0"
+                        Margin="0,36,0,0"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         Visibility="Collapsed"

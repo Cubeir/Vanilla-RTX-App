@@ -23,7 +23,7 @@
         <!-- Loading Screen -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,37,0,0"
+              Margin="0,36,0,0"
               Background="Transparent">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -67,7 +67,7 @@
         <Grid x:Name="MainPanel"
               Visibility="Collapsed">
             <!-- Content -->
-            <Grid Margin="0,37,0,0">
+            <Grid Margin="0,36,0,0">
                 <Grid.RowDefinitions>
                     <!-- Row 0: Button pair -->
                     <RowDefinition Height="Auto" />

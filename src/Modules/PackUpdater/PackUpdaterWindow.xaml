@@ -27,7 +27,7 @@
         <Grid>
             <!-- Scrollable Content Area -->
             <ScrollViewer x:Name="ContentScrollViewer"
-                          Margin="0,37,0,0"
+                          Margin="0,36,0,0"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="12"

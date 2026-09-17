@@ -38,7 +38,7 @@
 
             <!-- Titlebar Background -->
             <Border x:Name="TitleBarBackground"
-                    Height="36"
+                    Height="37"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Top"
                     BorderThickness="0,0,0,5"
@@ -194,7 +194,7 @@
         <!-- ═══════════════════════════════════════════════════════ -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,35,0,0"
+              Margin="0,37,0,0"
               Background="Transparent">
             <ProgressRing IsActive="True"
                           Width="100"
@@ -205,14 +205,14 @@
 
         <!-- ═══════════════════════════════════════════════════════ -->
         <!--  LICENSE PANEL                                          -->
-        <!--  Sits BELOW the shared titlebar (Margin top = 35)       -->
+        <!--  Sits BELOW the shared titlebar                         -->
         <!-- ═══════════════════════════════════════════════════════ -->
         <Grid x:Name="LicensePanel"
               Visibility="Collapsed"
               Background="{ThemeResource OverlayBackgroundColor}"
               Padding="16, 0, 16 16"
               Opacity="1.0"
-              Margin="0,36,0,0">
+              Margin="0,37,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <!-- license text  -->
@@ -658,7 +658,7 @@
                     <!-- ── PSA / announcements ── -->
                     <Border x:Name="AnnouncementBackground"
                             Grid.Row="1"
-                            Canvas.ZIndex="0"
+                            Canvas.ZIndex="2"
                             Padding="6"
                             BorderThickness="0"
                             CornerRadius="0"
