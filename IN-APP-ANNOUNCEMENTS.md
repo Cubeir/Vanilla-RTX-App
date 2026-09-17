@@ -118,7 +118,7 @@ In other words: Minecraft updates can break BetterRTX, it depends on you to upda
 3. Use the refresh button in the top left corner to refetch the latest files & continue installing your presets.
 
 ## [cd:"120"] [glyph:"F78C"] Is BetterRTX broken? 
-As of MCBE 26.45, it is safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for the this game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue to download/import & install presets, also ensure your game is up-to-date.
+As of MCBE 26.45, it is safe to install BetterRTX presets, the files were tested and the endpoint seems up-to-date for this game version, hit the refresh button in the top left corner just to be sure you're not installing old files, and continue to download/import & install presets, also ensure your game is up-to-date.
 
 ## [cd:"120"] [glyph:"E7BA"] Is BetterRTX broken? 
 BetterRTX might not yet support Minecraft 26.50. Check back here every day until this text says otherwise. If your game crashes after installing a preset, revert back to the Default RTX backup preset.
