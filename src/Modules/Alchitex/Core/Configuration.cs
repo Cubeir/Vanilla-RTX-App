@@ -330,6 +330,20 @@ public static class MaterialDefaults
     /// Every value here is by construction what an absent property already resolves to, so
     /// writing the full set into a file changes no output - it only makes the file say out
     /// loud what it was silently relying on.
+    ///
+    /// <b>invisible_emission is deliberately not here</b>, and the distinction is the schema's
+    /// rather than an oversight. Most of what a material carries is a property that applies to
+    /// every texture and merely has a value - a roughness range, an intensity, an invert flag -
+    /// and the built-in constant is what that value is when nobody said. invisible_emission is
+    /// not that: its PRESENCE is what turns it on, the way a recursive pass's is, because it is
+    /// a treatment a handful of blocks get rather than a dial every block sits somewhere on.
+    /// The constants it does have (white, strength 0) exist to make a half-written section fail
+    /// visibly rather than silently, which is a different job from being a default. Writing it
+    /// into the default entry would resolve identically and still be a claim about the model
+    /// that isn't true - that every texture carries a white emission at zero strength.
+    ///
+    /// blend_suitable reads similarly at a glance and is the opposite case, so it IS here: it
+    /// is a plain switch whose absence means off and whose value every texture genuinely has.
     /// </summary>
     public static MaterialEntry BuildFullDefaultEntry() => new()
     {
@@ -352,11 +366,6 @@ public static class MaterialDefaults
             Invert = SssInvert,
         },
         Recursive = new List<RecursivePass>(),
-        InvisibleEmission = new InvisibleEmissionParams
-        {
-            Color = new List<int> { InvisibleEmissionR, InvisibleEmissionG, InvisibleEmissionB },
-            Strength = InvisibleEmissionStrength,
-        },
         Heightmap = new HeightmapParams
         {
             Intensity = HeightmapIntensity,
