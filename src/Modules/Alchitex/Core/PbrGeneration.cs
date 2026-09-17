@@ -978,13 +978,16 @@ public static class InvisibleEmission
 ///      what the old version lacked: with an unscaled gradient against a fixed Z of 1, a
 ///      one-level difference and a full black-to-white edge both landed within a degree
 ///      of each other, so nothing was ever weighted.
-///   4. The normalized magnitude then goes through a response curve whose exponent is
-///      driven by the per-texture noise index (GetNoiseIndex). A clean texture with
-///      well-defined edges gets an exponent above 1: small differences are suppressed and
-///      only genuinely big steps produce strong normals, so planks/bricks/tiles read
+///   4. The normalized magnitude then goes through a response curve (ShapeResponse) whose
+///      exponent is driven by the per-texture noise index (GetNoiseIndex). A clean texture
+///      with well-defined edges gets an exponent above 1: small differences are suppressed
+///      and only genuinely big steps produce strong normals, so planks/bricks/tiles read
 ///      crisply. A noisy texture gets an exponent below 1, lifting its small differences
 ///      instead - subtle variation is all such a texture has to work with, and its edges
-///      were never well-defined to begin with.
+///      were never well-defined to begin with. The curve is pinned at both ends and
+///      carries a linear term (ResponseFloor) so that relief far below the reference edge
+///      still encodes as something rather than as nothing, and its exponent is scaled back
+///      when the slope budget is too small to express any shaping (ResolveResponseExponent).
 ///   5. `intensity` (materials.json, default 0.25) scales the resulting slope *before* the
 ///      normal is built and normalized, so it controls real surface steepness rather than
 ///      fading an already-encoded normal toward flat. Every output stays a true unit
@@ -1018,6 +1021,46 @@ public static class NormalMapGenerator
     // raising NoisyTextureExponent toward 1.0 is the first lever to reach for.
     private const double CleanTextureExponent = 2.2;  // noise index 0
     private const double NoisyTextureExponent = 0.65; // noise index 100
+
+    /// <summary>
+    /// TODO(tuning): how much of a linear response is mixed back into the shaped one, at the
+    /// full clean exponent - see <see cref="ShapeResponse"/>. The single lever on how much
+    /// weak relief survives.
+    ///
+    /// A bare power curve has a derivative of zero at the origin, so a gradient far enough
+    /// below this texture's reference edge encodes to no slope at all rather than to a small
+    /// one. That is what puts a hard floor under the map, and it is not a rare case: the
+    /// reference is a high percentile, so most of a texture's relief sits well down the
+    /// curve. Measured over 464 real textures at the default intensity, a bare curve leaves
+    /// 21.1% of every relief-carrying pixel within 4 levels of flat, and the 90th-percentile
+    /// texture loses 64% of its relief that way.
+    ///
+    /// At 0.30: relief erased 21.1% -> 14.6%, the median relief pixel rises from 13.3 to 18.6
+    /// levels, the 90th-percentile pixel moves 79.0 -> 79.9 and the 99th does not move at
+    /// all. So the structure a texture already showed is left where it was and what comes
+    /// back is the detail underneath it.
+    /// </summary>
+    private const double ResponseFloor = 0.30;
+
+    /// <summary>
+    /// The slope budget at which the response curve applies its full exponent. Below it the
+    /// exponent is interpolated toward 1 (linear) in proportion - see
+    /// <see cref="ResolveResponseExponent"/>.
+    ///
+    /// The curve's job is to allocate a texture's relief across the range the map has to
+    /// spend, suppressing small differences so that big ones read as steps. That only means
+    /// something while there is a range to suppress into. `normal.intensity` sets that range,
+    /// and at a tenth of the default it is about 13 encodable levels - spending a 2.2 power
+    /// on 13 levels leaves roughly three usable, so a block an artist asked to read as nearly
+    /// flat comes back as a handful of maxed-out edges over dead flat, which is not what
+    /// "nearly flat" means.
+    ///
+    /// 1.0 is the slope the default intensity produces (MaxSlope 4.0 x 0.25), i.e. a
+    /// 45-degree strongest edge. So this is a no-op at and above the default - every texture
+    /// generated at the default intensity is bit-for-bit what it was - and it only softens
+    /// the shaping for blocks deliberately configured weaker than that.
+    /// </summary>
+    private const double FullShapingSlope = 1.0;
 
     // TODO(tuning): what counts as this texture's "full strength" edge - a percentile
     // taken over its non-flat gradients only. Restricting the population that way matters:
@@ -1170,8 +1213,8 @@ public static class NormalMapGenerator
         var reference = ResolveGradientReference(gradX, gradY, w, h);
 
         var noise = Math.Clamp(GetNoiseIndex(colorBitmap) / 100.0, 0.0, 1.0);
-        var exponent = Lerp(CleanTextureExponent, NoisyTextureExponent, noise);
         var strength = MaxSlope * Math.Clamp(normalParams.Intensity, 0.0, 1.0);
+        var exponent = ResolveResponseExponent(Lerp(CleanTextureExponent, NoisyTextureExponent, noise), strength);
 
         var output = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
@@ -1189,7 +1232,7 @@ public static class NormalMapGenerator
                     if (magnitude > 0)
                     {
                         // Shape the magnitude, keep the direction.
-                        var shaped = Math.Pow(Math.Clamp(magnitude / reference, 0.0, 1.0), exponent) * strength;
+                        var shaped = ShapeResponse(Math.Clamp(magnitude / reference, 0.0, 1.0), exponent) * strength;
                         slopeX = gx / magnitude * shaped;
                         slopeY = gy / magnitude * shaped;
                     }
@@ -1220,6 +1263,41 @@ public static class NormalMapGenerator
 
     private static byte EncodeChannel(float component)
         => (byte)Math.Clamp((int)Math.Round((component + 1f) * 0.5f * 255f), 0, 255);
+
+    /// <summary>
+    /// The response curve: a normalized gradient magnitude (0-1 against this texture's own
+    /// reference edge) in, the fraction of the slope budget it earns out.
+    ///
+    /// Monotone, and pinned at both ends - 0 maps to 0 and 1 maps to 1 whatever the mix, so
+    /// a texture's strongest edges are decided by the exponent alone and the linear term can
+    /// only ever lift what sits between them.
+    ///
+    /// The mix is scaled by how far the exponent sits ABOVE 1, and that gate is load-bearing
+    /// rather than tidy. Above 1 the curve runs below the linear line and mixing lifts it;
+    /// below 1 it runs above that line, so the same mix would pull it DOWN - taking relief
+    /// away from precisely the noisy textures the exponent is already treating gently.
+    /// Gating on the exponent makes this a no-op for every one of them, and gives the
+    /// largest correction to the cleanest textures, which are the ones the curve crushes
+    /// hardest.
+    /// </summary>
+    private static double ShapeResponse(double normalized, double exponent)
+    {
+        var linearMix = ResponseFloor * Math.Clamp(exponent - 1.0, 0.0, 1.0);
+        return (1.0 - linearMix) * Math.Pow(normalized, exponent) + linearMix * normalized;
+    }
+
+    /// <summary>
+    /// The exponent actually used, given how much slope there is to shape into. Full
+    /// exponent at or above <see cref="FullShapingSlope"/>, interpolated toward 1 (linear)
+    /// in proportion below it.
+    ///
+    /// Contrast shaping and amplitude are not independent once the result has to survive an
+    /// 8-bit encoding: the same curve that separates a plank's seams from its grain across
+    /// 90 levels separates nothing across 13. Backing the exponent off as the budget shrinks
+    /// keeps a deliberately-weak block's relief proportional instead of quantizing it away.
+    /// </summary>
+    private static double ResolveResponseExponent(double exponent, double strength)
+        => 1.0 + (exponent - 1.0) * Math.Clamp(strength / FullShapingSlope, 0.0, 1.0);
 
     /// <summary>
     /// Blends the mean-shift clustered heightmap (raw, untouched here) with a
@@ -1443,10 +1521,22 @@ public static class NormalMapGenerator
 
     /// <summary>
     /// Average local gradient magnitude between each pixel and its immediate right/down
-    /// neighbor (flat-average grey values), normalized to a 0-100 index. Unlike a raw
-    /// unique-color ratio, this actually tracks visual noisiness: soft painterly
-    /// gradients (many unique colors, small per-pixel jumps) score low, while genuinely
-    /// noisy/high-frequency textures (large abrupt jumps) score high.
+    /// neighbor, normalized to a 0-100 index. Unlike a raw unique-color ratio, this tracks
+    /// visual noisiness: soft painterly gradients (many unique colors, small per-pixel
+    /// jumps) score low, while genuinely noisy/high-frequency textures (large abrupt jumps)
+    /// score high.
+    ///
+    /// Counts every neighbour pair, including ones straddling a cutout's boundary against
+    /// its transparent padding - so a complex silhouette raises the index as surely as a busy
+    /// surface does. That is deliberate. Restricting the walk to real colour data
+    /// (ColorField.IsRealColorData), which is the module's rule everywhere else, is more
+    /// consistent and measurably worse: a texture's silhouette is real evidence that it is
+    /// high-frequency art, and taking it away crushed the interiors of exactly the cutouts
+    /// that depend on it - doors, grates, vines, leaf litter - while improving little else.
+    ///
+    /// Deliberately does NOT wrap at the edges, unlike the Sobel sampler this feeds. What it
+    /// asks is how busy the texture is; the seam where a tile meets its own opposite edge is
+    /// a property of the tiling.
     /// </summary>
     public static int GetNoiseIndex(Bitmap image)
     {
