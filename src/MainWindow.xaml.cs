@@ -2534,7 +2534,7 @@ public sealed partial class MainWindow : Window
             // friction during development. Generate refuses an empty queue on its own anyway.
             Log("No packs selected - opening RTX Reactor anyway (Debug build).", LogLevel.Alchitex);
 #else
-            Log("You must select at least one resource pack to use this feature on.", LogLevel.Warning);
+            Log("You must select at least one texture pack to use this feature on.", LogLevel.Warning);
             return;
 #endif
         }

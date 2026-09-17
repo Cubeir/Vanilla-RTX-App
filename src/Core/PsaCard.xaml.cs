@@ -38,7 +38,7 @@ public sealed partial class PsaCard : UserControl
     /// its own the next time the fetch works.
     /// </summary>
     private static readonly PsaItem RetrievalFailedNotice = new(
-        "An error occurred when trying to retrieve the texts for this module, please try again later " +
+        "An error occurred when trying to retrieve text contents for this module, please try again later " +
         "and make sure the app has internet access. Some features may be limited without internet.",
         PsaKind.Pinned,
         Glyph: "EB5E");
