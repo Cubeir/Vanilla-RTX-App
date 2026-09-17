@@ -19,12 +19,16 @@
         "recursive": [],
         "heightmap": {
             "intensity": 1,
-            "invert": false
+            "invert": false,
+            "skip": false
         },
         "normal": {
             "intensity": 0.25,
-            "invert": false
-        }
+            "invert": false,
+            "skip": false,
+            "padding_type": "tile"
+        },
+        "blend_suitable": false
     },
     "acacia_shelf": {
         "mer": {
