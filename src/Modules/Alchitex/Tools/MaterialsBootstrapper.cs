@@ -534,41 +534,9 @@ public static class MaterialsBootstrapper
     }
 
     /// <summary>
-    /// MaterialDefaults, made explicit as a materials.json entry. These are the same values
-    /// the code falls back to when the file is missing or a property is absent - the file's
-    /// "default" entry and the built-in constants are meant to agree, and this is what keeps
-    /// them agreeing without anyone retyping them.
+    /// The "default" entry, taken from <see cref="MaterialDefaults.BuildFullDefaultEntry"/>
+    /// so that what a fresh file claims its fallbacks are and what the code actually falls
+    /// back to are one definition rather than two that agree today.
     /// </summary>
-    private static MaterialEntry BuildDefaultEntry() => new()
-    {
-        Mer = new MerParams
-        {
-            MetalMin = MaterialDefaults.MetalMin,
-            MetalMax = MaterialDefaults.MetalMax,
-            EmissiveMin = MaterialDefaults.EmissiveMin,
-            EmissiveMax = MaterialDefaults.EmissiveMax,
-            RoughnessMin = MaterialDefaults.RoughnessMin,
-            RoughnessMax = MaterialDefaults.RoughnessMax,
-            InvertMetal = MaterialDefaults.InvertMetal,
-            InvertEmissive = MaterialDefaults.InvertEmissive,
-            InvertRoughness = MaterialDefaults.InvertRoughness,
-        },
-        Sss = new SssParams
-        {
-            Min = MaterialDefaults.SssMin,
-            Max = MaterialDefaults.SssMax,
-            Invert = MaterialDefaults.SssInvert,
-        },
-        Recursive = new List<RecursivePass>(),
-        Heightmap = new HeightmapParams
-        {
-            Intensity = MaterialDefaults.HeightmapIntensity,
-            Invert = MaterialDefaults.HeightmapInvert,
-        },
-        Normal = new NormalParams
-        {
-            Intensity = MaterialDefaults.NormalIntensity,
-            Invert = MaterialDefaults.NormalInvert,
-        },
-    };
+    private static MaterialEntry BuildDefaultEntry() => MaterialDefaults.BuildFullDefaultEntry();
 }

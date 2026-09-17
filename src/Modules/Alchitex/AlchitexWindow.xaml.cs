@@ -1693,7 +1693,73 @@ public sealed partial class Alchitex : Window
 
     // ── Debug: materials.json bootstrap ─────────────────────────────────────
 
-    private async void GenerateMaterialsConfigButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>Click opens a menu rather than a picker, because this button now fronts two
+    /// tools that happen to share a file - the same shape the test bench button uses.</summary>
+    private void GenerateMaterialsConfigButton_Click(object sender, RoutedEventArgs e)
+    {
+        var flyout = new MenuFlyout { Placement = FlyoutPlacementMode.Bottom };
+
+        var bootstrap = new MenuFlyoutItem { Text = "Bootstrap from a PBR pack..." };
+        bootstrap.Click += async (_, _) => await RunMaterialsBootstrapAsync();
+
+        var optimize = new MenuFlyoutItem { Text = "Optimize an existing materials.json..." };
+        optimize.Click += async (_, _) => await RunMaterialsOptimizeAsync();
+
+        flyout.Items.Add(bootstrap);
+        flyout.Items.Add(optimize);
+        flyout.ShowAt(GenerateMaterialsConfigButton);
+    }
+
+    /// <summary>
+    /// Collapses a materials.json to the properties that actually change generated output -
+    /// see Tools/MaterialsOptimizer for how "actually" is decided.
+    ///
+    /// Picks the FOLDER materials.json lives in, not the file, for the same reason the
+    /// bootstrapper does: WinRT's save picker empties the file it hands back. There is no
+    /// open-file picker here either, because the two tools should not disagree about where
+    /// the file is.
+    /// </summary>
+    private async Task RunMaterialsOptimizeAsync()
+    {
+        var folder = await PickFolderAsync("Optimize materials.json here");
+        if (folder == null) return;
+
+        var path = System.IO.Path.Combine(folder, "materials.json");
+
+        SetGenerationControlsEnabled(false);
+        GenerateProgressBar.Visibility = Visibility.Visible;
+        GenerateProgressBar.IsIndeterminate = true;
+        SetStatus("Collapsing redundant materials.json properties...");
+
+        try
+        {
+            var result = await WhileWaitingAsync(
+                () => Task.Run(() => MaterialsOptimizer.Optimize(path)));
+
+            var saved = result.BytesBefore > 0
+                ? (result.BytesBefore - result.BytesAfter) * 100.0 / result.BytesBefore
+                : 0;
+
+            SetStatusThenRevert(
+                $"materials.json: {result.PropertiesRemoved} redundant properties removed from " +
+                $"{result.EntriesCollapsed}/{result.EntriesRead} entries" +
+                (result.EntriesSkipped > 0 ? $" ({result.EntriesSkipped} left untouched)" : "") +
+                $" - {result.BytesBefore / 1024} KB -> {result.BytesAfter / 1024} KB, {saved:0.#}% smaller");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ALCHITEX] RunMaterialsOptimizeAsync failed: {ex}");
+            SetStatusThenRevert($"Failed to optimize materials.json: {ex.Message}");
+        }
+        finally
+        {
+            GenerateProgressBar.IsIndeterminate = false;
+            GenerateProgressBar.Visibility = Visibility.Collapsed;
+            SetGenerationControlsEnabled(true);
+        }
+    }
+
+    private async Task RunMaterialsBootstrapAsync()
     {
         var sourceFolder = await PickFolderAsync("Use as source pack");
         if (sourceFolder == null) return;
@@ -1724,7 +1790,7 @@ public sealed partial class Alchitex : Window
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[ALCHITEX] GenerateMaterialsConfigButton_Click failed: {ex}");
+            Trace.WriteLine($"[ALCHITEX] RunMaterialsBootstrapAsync failed: {ex}");
             SetStatusThenRevert($"Failed to generate materials.json: {ex.Message}");
         }
         finally

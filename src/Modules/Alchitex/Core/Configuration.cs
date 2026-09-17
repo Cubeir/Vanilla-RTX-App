@@ -312,6 +312,66 @@ public static class MaterialDefaults
     public const bool BlendSuitable = false;
 
     public const string RecursiveChannel = "R";
+
+    /// <summary>
+    /// Every constant above, written out as a <see cref="MaterialEntry"/> - the "default"
+    /// entry a materials.json should carry.
+    ///
+    /// It lives here, beside the constants, so the two cannot drift: adding a constant
+    /// without adding it below is a change to one half of a pair that sits three lines
+    /// away. Both writers of a default entry use this - MaterialsBootstrapper when it
+    /// creates a file, MaterialsOptimizer when it tops up an existing one - so neither has
+    /// its own idea of what the internals are.
+    ///
+    /// It has to be spelled out rather than taken from `new MaterialEntry()`: every
+    /// property is nullable, which is what makes per-property fallback possible, so an
+    /// empty entry serializes to nothing at all.
+    ///
+    /// Every value here is by construction what an absent property already resolves to, so
+    /// writing the full set into a file changes no output - it only makes the file say out
+    /// loud what it was silently relying on.
+    /// </summary>
+    public static MaterialEntry BuildFullDefaultEntry() => new()
+    {
+        Mer = new MerParams
+        {
+            MetalMin = MetalMin,
+            MetalMax = MetalMax,
+            EmissiveMin = EmissiveMin,
+            EmissiveMax = EmissiveMax,
+            RoughnessMin = RoughnessMin,
+            RoughnessMax = RoughnessMax,
+            InvertMetal = InvertMetal,
+            InvertEmissive = InvertEmissive,
+            InvertRoughness = InvertRoughness,
+        },
+        Sss = new SssParams
+        {
+            Min = SssMin,
+            Max = SssMax,
+            Invert = SssInvert,
+        },
+        Recursive = new List<RecursivePass>(),
+        InvisibleEmission = new InvisibleEmissionParams
+        {
+            Color = new List<int> { InvisibleEmissionR, InvisibleEmissionG, InvisibleEmissionB },
+            Strength = InvisibleEmissionStrength,
+        },
+        Heightmap = new HeightmapParams
+        {
+            Intensity = HeightmapIntensity,
+            Invert = HeightmapInvert,
+            Skip = HeightmapSkip,
+        },
+        Normal = new NormalParams
+        {
+            Intensity = NormalIntensity,
+            Invert = NormalInvert,
+            Skip = NormalSkip,
+            PaddingType = NormalPaddingType.ToString().ToLowerInvariant(),
+        },
+        BlendSuitable = BlendSuitable,
+    };
 }
 
 // =====================================================================================
@@ -347,6 +407,11 @@ public static class MaterialDefaults
     WriteIndented = true)]
 [JsonSerializable(typeof(Dictionary<string, MaterialEntry>))]
 [JsonSerializable(typeof(MaterialEntry))]
+// Serialized, never deserialized - MaterialsOptimizer compares two resolutions by their
+// JSON rather than field by field, so that a property added to ResolvedMaterial is
+// automatically part of the comparison instead of being silently ignored by a hand-written
+// equality check that nobody remembered to extend.
+[JsonSerializable(typeof(ResolvedMaterial))]
 // InvisibleEmissionParams.Color is a List<int>. Nested types get picked up through
 // MaterialEntry, but this shape is listed explicitly for the same reason everything else
 // here is: a missing metadata entry fails silently, and only in a trimmed Release build.
@@ -488,6 +553,22 @@ public sealed class MaterialsConfig
         _resolvedCache[textureNameWithoutExtension] = resolved;
         return resolved;
     }
+
+    /// <summary>
+    /// Resolves an arbitrary entry against this config's "default" and the built-in
+    /// fallbacks - the same merge <see cref="Resolve"/> performs for a texture that is in
+    /// the file, for one that need not be.
+    ///
+    /// Exists for MaterialsOptimizer, which decides whether a property is redundant by
+    /// asking what the pipeline makes of the entry with it and without it. Sharing the merge
+    /// is the entire mechanism: a change to how a value falls back moves both answers at
+    /// once, so the optimizer cannot start collapsing something that has begun to matter.
+    ///
+    /// <paramref name="entryName"/> only labels the log line when a value is out of range
+    /// and gets clamped.
+    /// </summary>
+    public ResolvedMaterial ResolveEntry(MaterialEntry entry, string entryName)
+        => Merge(entry, entryName);
 
     // ── Merge: entry value, else "default" entry's value, else MaterialDefaults ────────
 

@@ -123,7 +123,10 @@
                                 Margin="4,6,4,6"
                                 Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                        <!-- Bootstrap materials.json from an already-PBR'd pack. -->
+                        <!-- materials.json authoring: bootstrap new entries from an
+                             already-PBR'd pack, or collapse the file down to the properties
+                             that actually change what the pipeline produces. Click opens a
+                             menu over the two, the same way the test bench does. -->
                         <Button x:Name="GenerateMaterialsConfigButton"
                                 FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                 Style="{ThemeResource SubtleButtonStyle}"
@@ -133,7 +136,7 @@
                                 CornerRadius="0"
                                 FontSize="16"
                                 Click="GenerateMaterialsConfigButton_Click"
-                                ToolTipService.ToolTip="DEVELOPER TOOL FOR APPENDING OR GENERATING A BOOTSTRAP FOR MATERIALS.JSON FILE FROM AN EXISTING PBR TEXTURE PACK."
+                                ToolTipService.ToolTip="DEVELOPER TOOL: BOOTSTRAP MATERIALS.JSON ENTRIES FROM AN EXISTING PBR TEXTURE PACK, OR OPTIMIZE AN EXISTING MATERIALS.JSON BY REMOVING EVERY PROPERTY THE PIPELINE WOULD HAVE ARRIVED AT ANYWAY."
                                 IsTextScaleFactorEnabled="False" />
                         
                         <!-- Separator -->
