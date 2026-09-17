@@ -363,7 +363,7 @@
                          ═════════════════════════════════════════════════════ -->
                     <Grid x:Name="AlchitexControlsArea"
                           Grid.Row="0"
-                          Height="340"
+                          Height="333"
                           Canvas.ZIndex="2"
                           Translation="0,0,64"
                           SizeChanged="AlchitexControlsArea_SizeChanged">
@@ -427,7 +427,7 @@
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="260" />
+                                            <ColumnDefinition Width="Auto" MinWidth="300" />
                                             <!-- options -->
                                             <ColumnDefinition Width="3" />
                                             <!-- bevel, light edge -->
