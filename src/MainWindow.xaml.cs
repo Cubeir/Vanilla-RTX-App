@@ -251,7 +251,7 @@ public sealed partial class MainWindow : Window
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
-        Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt, PreviewArt);
+        Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt);
 
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,
             "ms-appx:///Assets/previews/fog.default.png",
