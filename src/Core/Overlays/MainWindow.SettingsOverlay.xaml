@@ -142,7 +142,7 @@
     <Grid x:Name="Root"
           Margin="0,36,0,0">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="1.05*" />
             <ColumnDefinition Width="1*" />
         </Grid.ColumnDefinitions>
 
@@ -291,10 +291,10 @@
                             <StackPanel Grid.Column="0"
                                         Margin="0,0,10,0"
                                         VerticalAlignment="Center">
-                                <TextBlock Text="Suspend User Interface animations"
+                                <TextBlock Text="Suspend UI animations"
                                            TextWrapping="Wrap"
                                            IsTextScaleFactorEnabled="False" />
-                                <TextBlock Text="Turns off decorative animations. Enable if they bother you."
+                                <TextBlock Text="Toggle on if they bother you, saves some energy."
                                            Style="{StaticResource SettingsHintTextStyle}" />
                             </StackPanel>
 
