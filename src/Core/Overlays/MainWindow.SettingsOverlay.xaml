@@ -624,14 +624,14 @@
                         <TextBlock Text="Maintenance"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="5">
                             <Button x:Name="HardResetButton"
                                     Style="{StaticResource SettingsActionButtonStyle}"
                                     Click="HardResetButton_Click">
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="10">
                                     <FontIcon Glyph="&#xE7BA;"
-                                              FontSize="15"
+                                              FontSize="16"
                                               VerticalAlignment="Center" />
                                     <TextBlock Text="Wipe all app data"
                                                VerticalAlignment="Center"
@@ -642,14 +642,14 @@
                                        Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone." />
                         </StackPanel>
 
-                        <StackPanel Spacing="4">
+                        <StackPanel Spacing="5">
                             <Button x:Name="CopyLogsButton"
                                     Style="{StaticResource SettingsActionButtonStyle}"
                                     Click="CopyLogsButton_Click">
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="10">
                                     <FontIcon Glyph="&#xE8C8;"
-                                              FontSize="15"
+                                              FontSize="16"
                                               VerticalAlignment="Center" />
                                     <TextBlock x:Name="CopyLogsButtonText"
                                                Text="Copy debug logs"
