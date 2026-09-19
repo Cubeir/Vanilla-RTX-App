@@ -112,27 +112,6 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
-        <!-- The close button, which lives on the scrim rather than in the panel.
-             <b>An opaque background, not the stock one.</b> Out here there is nothing behind it
-             to borrow contrast from and the default button fill is translucent, so the dimmed
-             main window reads straight through it - the scrim's own content ends up printed
-             across the glyph. The hover and pressed states still come from the template; only
-             the resting fill is overridden. -->
-        <Style x:Key="SettingsCloseButtonStyle"
-               TargetType="Button">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="CornerRadius" Value="6" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="VerticalAlignment" Value="Top" />
-            <Setter Property="Margin" Value="16,16,0,0" />
-            <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}" />
-            <Setter Property="BorderBrush" Value="{ThemeResource ControlElevationBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
-        </Style>
-
         <Style x:Key="SettingsUrlResetButtonStyle"
                TargetType="Button"
                BasedOn="{StaticResource SubtleButtonStyle}">
@@ -176,11 +155,21 @@
              this" rather than as one more setting. -->
         <Button x:Name="CloseButton"
                 Grid.Column="1"
-                Style="{StaticResource SettingsCloseButtonStyle}"
+                Width="32"
+                Height="32"
+                Padding="0"
+                CornerRadius="6"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="16,16,0,0"
+                Style="{ThemeResource AccentButtonStyle}"
+                BorderThickness="1"
+                IsTextScaleFactorEnabled="False"
                 Click="CloseButton_Click"
                 ToolTipService.ToolTip="Close settings">
-            <FontIcon Glyph="&#xE711;" FontSize="16" />
+            <FontIcon Glyph="&#xE711;" FontSize="18" />
         </Button>
+
 
         <Border x:Name="Panel"
                 Grid.Column="0"
@@ -222,11 +211,11 @@
                                        IsTextScaleFactorEnabled="False" />
 
                             <!-- DropDownButton + MenuFlyout rather than a ComboBox, the same
-                                 choice AlchitexWindow and LUTManagerWindow made: a flyout is
-                                 translucent out of the box and matches the acrylic around it,
-                                 where a ComboBox's open list reads ComboBoxDropDownBackground
-                                 from a popup outside the control's tree and cannot be re-keyed
-                                 from here. -->
+                                choice AlchitexWindow and LUTManagerWindow made: a flyout is
+                                translucent out of the box and matches the acrylic around it,
+                                where a ComboBox's open list reads ComboBoxDropDownBackground
+                                from a popup outside the control's tree and cannot be re-keyed
+                                from here. -->
                             <DropDownButton x:Name="ThemeModeButton"
                                             Grid.Column="1"
                                             MinWidth="132"
@@ -296,12 +285,12 @@
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
 
                         <!-- ═══ Game installations ═══════════════════════════════════════
-                             Split from user data below on purpose. They are found by two
-                             independent systems, they live nowhere near each other on disk, and
-                             they answer different questions - this is the game's own shipped
-                             files, that is everything the game wrote after you played it. Four
-                             paths under one heading made "Release vs Preview" the only visible
-                             distinction, which is the less important of the two. -->
+                            Split from user data below on purpose. They are found by two
+                            independent systems, they live nowhere near each other on disk, and
+                            they answer different questions - this is the game's own shipped
+                            files, that is everything the game wrote after you played it. Four
+                            paths under one heading made "Release vs Preview" the only visible
+                            distinction, which is the less important of the two. -->
                         <TextBlock Text="Game installations"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
@@ -309,8 +298,8 @@
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <!-- The rows are spelled out rather than generated so they stay editable
-                             in XAML hot reload; the wiring that fills and drives them is
-                             table-driven in code-behind. -->
+                            in XAML hot reload; the wiring that fills and drives them is
+                            table-driven in code-behind. -->
                         <StackPanel Spacing="4">
                             <TextBlock Text="Minecraft (Release)"
                                        Style="{StaticResource SettingsItemLabelStyle}" />
@@ -521,11 +510,11 @@
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
 
                         <!-- ═══ Content sources ══════════════════════════════════════════
-                             Every address the app goes to for something it doesn't ship. Each
-                             row is a box, a revert-to-built-in button, and a line that doubles
-                             as the rejection message - see the code-behind's UrlField. The
-                             built-in address always comes back on its own if what is stored
-                             ever stops validating, which is what makes these safe to expose. -->
+                            Every address the app goes to for something it doesn't ship. Each
+                            row is a box, a revert-to-built-in button, and a line that doubles
+                            as the rejection message - see the code-behind's UrlField. The
+                            built-in address always comes back on its own if what is stored
+                            ever stops validating, which is what makes these safe to expose. -->
                         <TextBlock Text="Content sources"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
@@ -546,7 +535,8 @@
                             <Button x:Name="DocumentationResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="DocumentationHint"
@@ -567,7 +557,8 @@
                             <Button x:Name="BugTrackerResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="BugTrackerHint"
@@ -588,7 +579,8 @@
                             <Button x:Name="AnnouncementsResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="AnnouncementsHint"
@@ -609,7 +601,8 @@
                             <Button x:Name="DlssProviderResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="DlssProviderHint"
@@ -630,7 +623,8 @@
                             <Button x:Name="BetterRtxCreatorResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="BetterRtxCreatorHint"
@@ -651,7 +645,8 @@
                             <Button x:Name="BetterRtxApiResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="BetterRtxApiHint"
@@ -659,9 +654,9 @@
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <!-- Not a URL. PackUpdater builds four different addresses out of this
-                             one owner/repo pair, so the pair is the only part that is a real
-                             choice - and a repo behind it has to be laid out exactly like the
-                             original, which is what the hyperlink is there to show. -->
+                            one owner/repo pair, so the pair is the only part that is a real
+                            choice - and a repo behind it has to be laid out exactly like the
+                            original, which is what the hyperlink is there to show. -->
                         <StackPanel Orientation="Horizontal"
                                     Spacing="6">
                             <TextBlock Text="Vanilla RTX repository"
@@ -689,7 +684,8 @@
                             <Button x:Name="VanillaRtxRepoResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="VanillaRtxRepoHint"
@@ -710,7 +706,8 @@
                             <Button x:Name="AlchitexMaterialsResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="AlchitexMaterialsHint"
@@ -731,7 +728,8 @@
                             <Button x:Name="AlchitexBlacklistResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="AlchitexBlacklistHint"
@@ -752,7 +750,8 @@
                             <Button x:Name="AlchitexFogResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="AlchitexFogHint"
@@ -773,7 +772,8 @@
                             <Button x:Name="AlchitexWaterResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
-                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="13" />
                             </Button>
                         </Grid>
                         <TextBlock x:Name="AlchitexWaterHint"
