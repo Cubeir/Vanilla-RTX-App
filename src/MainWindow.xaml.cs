@@ -90,6 +90,14 @@ public static class EnvironmentVariables
         // primitives - see MinecraftLauncher.ParseOptions for the format and why an explicitly
         // empty configuration is stored as a marker instead of "".
         public static string LaunchOptions = Defaults.LaunchOptions;
+
+        // Where the app goes for someone else's content. Read them through Core.ProviderLinks,
+        // never directly - it is what falls back to the built-in address when one of these has
+        // gone stale, which is the only reason exposing them is safe.
+        public static string DlssProviderUrl = Core.ProviderLinks.DefaultDlssProvider;
+        public static string BetterRtxProviderUrl = Core.ProviderLinks.DefaultBetterRtxProvider;
+        public static string DocumentationUrl = Core.ProviderLinks.DefaultDocumentation;
+        public static string BugTrackerUrl = Core.ProviderLinks.DefaultBugTracker;
     }
 
     public static class Defaults // These are backed up to be used as a compass by other classes
@@ -797,6 +805,25 @@ public sealed partial class MainWindow : Window
 #endif
     }
 
+    /// <summary>
+    /// Every long-running operation in this window locks its controls through here rather than
+    /// calling <see cref="WindowControlsManager.ToggleSpecificControls"/> directly, and the only
+    /// thing this adds is <c>SettingsButton</c>.
+    ///
+    /// <para><b>It is the one place that rule can be written down.</b> The settings panel is
+    /// where the Minecraft install and user data locations are changed; every operation that
+    /// disables anything here is using those locations while it runs, so none of them may leave
+    /// that panel reachable. Ten call sites each remembering to list the button is ten chances
+    /// to forget, and the eleventh - added later, by someone who never read this - would forget
+    /// silently.</para>
+    ///
+    /// <para>Pass the same names to the <c>false</c> and <c>true</c> calls: the manager
+    /// reference-counts per control, and an unbalanced pair leaves a control disabled for the
+    /// rest of the session.</para>
+    /// </summary>
+    private void LockControls(bool enable, params string[] names)
+        => WindowControlsManager.ToggleSpecificControls(this, enable, [.. names, nameof(SettingsButton)]);
+
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.05)
     {
         if (!SuspendUIAnimations || !enable) // If the intention is to disable, allow it to pass in
@@ -1241,7 +1268,7 @@ public sealed partial class MainWindow : Window
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
         OpenDocument(
-            url: "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation",
+            url: ProviderLinks.Documentation,
             title: "Vanilla RTX App Documentation");
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
@@ -1263,7 +1290,7 @@ public sealed partial class MainWindow : Window
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
         OpenDocument(
-            url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md#-unresolved",
+            url: ProviderLinks.BugTracker,
             title: "Known Minecraft RTX Bugs & Issues");
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }
@@ -1525,15 +1552,15 @@ public sealed partial class MainWindow : Window
         // to let the user locate the data folder manually instead.
         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
         {
-            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+            LockControls(false, ToDisable);
             await HandleManualDataLocationAsync(IsTargetingPreview);
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
             return;
         }
 
         // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         var packBrowserWindow = new Modules.PackBrowser.PackBrowserWindow();
         var mainAppWindow = this.AppWindow;
@@ -1547,7 +1574,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(packBrowserWindow);
 
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
@@ -1595,26 +1622,23 @@ public sealed partial class MainWindow : Window
             ? MinecraftUserDataLocator.PreviewRootFolderName
             : MinecraftUserDataLocator.StableRootFolderName;
 
-        var picker = new Windows.Storage.Pickers.FolderPicker
-        {
-            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder,
-            ViewMode = Windows.Storage.Pickers.PickerViewMode.List
-        };
-        picker.FileTypeFilter.Add("*");
-        WinRT.Interop.InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        // Opens on this edition's currently cached data root when there is one - see
+        // Helpers.PickFolderAsync for why the picker is the Microsoft.Windows one.
+        var selectedPath = await Helpers.PickFolderAsync(
+            WindowNative.GetWindowHandle(this),
+            MinecraftUserDataLocator.GetDataRoot(isPreview));
 
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder == null) return false;
+        if (selectedPath == null) return false;
 
         string? acceptedPath = null;
 
-        if (MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, folder.Path))
+        if (MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, selectedPath))
         {
-            acceptedPath = folder.Path;
+            acceptedPath = selectedPath;
         }
         else
         {
-            var parent = Directory.GetParent(folder.Path)?.FullName;
+            var parent = Directory.GetParent(selectedPath)?.FullName;
             if (parent != null && MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, parent))
                 acceptedPath = parent;
         }
@@ -1667,7 +1691,8 @@ public sealed partial class MainWindow : Window
 
             PackVM.SetLabelOverride($"Locate {editionLabel} user data");
             ToolTipService.SetToolTip(BrowsePacksButton,
-                $"The app couldn't find {versionName} data folder automatically - click to locate it manually.");
+                $"The app couldn't find {versionName} data folder automatically - click to locate it manually." +
+                $"\n\nYou can also set it, and the Preview one, from the Settings menu under Game user data.");
 
             BrowsePacksButton.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
             ApplyLocateUserDataColors(RightEdgeOfLocateButton.ActualTheme);
@@ -1676,7 +1701,7 @@ public sealed partial class MainWindow : Window
                 $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
                 $"- It's the one with a \"Users\" subfolder inside it.\n" +
                 $"If you don't have {versionName} installed, you can ignore this warning. Also make sure you've played the game at least once if you've installed or reinstalled recently.\n" +
-                $"If you select a wrong location, you can change it again at any time from the Settings menu.",
+                $"Both editions' folders also live in the Settings menu, under Game user data - that's where to go if you pick the wrong one and want to change it again.",
                 LogLevel.Error);
         }
     }
@@ -2066,7 +2091,7 @@ public sealed partial class MainWindow : Window
 
 
         _progressManager.ShowProgress();
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         int deletedCount = 0;
 
@@ -2111,7 +2136,7 @@ public sealed partial class MainWindow : Window
 
             _progressManager.HideProgress();
 
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             _ = LocatePacksTask(); // Controls get enabled, their state was captured before deletion, so we re-locate AFTER they're restored, so it properly disables packs that aren't there anymore
             SelectedPacks.Clear();
@@ -2131,7 +2156,7 @@ public sealed partial class MainWindow : Window
         ];
 
         _progressManager.ShowProgress();
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         int exportedCount = 0;
 
@@ -2214,7 +2239,7 @@ public sealed partial class MainWindow : Window
                 Log("All exports failed.", LogLevel.Warning);
 
             _progressManager.HideProgress();
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
         }
     }
 
@@ -2270,7 +2295,7 @@ public sealed partial class MainWindow : Window
             var progress = new Progress<Tuner.TuningProgress>(p => _progressManager.ReportTuningProgress(p));
 
             _ = BlinkingLamp(true);
-            WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+            LockControls(false, ToDisable);
 
             TuneSelectionButtonIcon.Glyph = "\uE733";
             TuneSelectionButtonText.Text = "Abort tuning operation";
@@ -2294,7 +2319,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _ = BlinkingLamp(false);
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             TuneSelectionButtonIcon.Glyph = "\uE9F5";
             TuneSelectionButtonText.Text = "Tune selection";
@@ -2329,7 +2354,7 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         var packUpdaterWindow = new Modules.PackUpdater.PackUpdaterWindow(this);
         var mainAppWindow = this.AppWindow;
@@ -2345,7 +2370,7 @@ public sealed partial class MainWindow : Window
             _childWindows.Remove(packUpdaterWindow);
 
             // Enable main UI buttons again
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             // The cache glyph used to be re-derived by hand here, and at startup, and would have
             // owed a third copy at every future cache-touching site. It now follows
@@ -2361,7 +2386,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton", "ResetButton"];
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         var betterRTXWindow = new Modules.BetterRTX.BetterRTXManagerWindow();
 
@@ -2375,7 +2400,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(betterRTXWindow);
 
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             // Log status after window closes
             if (betterRTXWindow.OperationSuccessful)
@@ -2401,7 +2426,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton", "ResetButton"];
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         var DLSSSwapperWindow = new Modules.DLSS.DLSSSwapperWindow();
         var mainAppWindow = this.AppWindow;
@@ -2415,7 +2440,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(DLSSSwapperWindow);
 
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             // Log status after window closes
             if (DLSSSwapperWindow.OperationSuccessful)
@@ -2441,7 +2466,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton", "ResetButton"];
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
 
         var LutManagerWindow = new Modules.LUT.LUTManagerWindow();
         var mainAppWindow = this.AppWindow;
@@ -2455,7 +2480,7 @@ public sealed partial class MainWindow : Window
         {
             _childWindows.Remove(LutManagerWindow);
 
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             if (LutManagerWindow.OperationSuccessful)
             {
@@ -2513,7 +2538,7 @@ public sealed partial class MainWindow : Window
         "BrowsePacksButton", "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
         ];
 
-        WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
+        LockControls(false, ToDisable);
         var alchitexWindow = new Modules.Alchitex.Alchitex();
         var mainAppWindow = this.AppWindow;
         alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
@@ -2523,7 +2548,7 @@ public sealed partial class MainWindow : Window
         alchitexWindow.Closed += (s, args) =>
         {
             _childWindows.Remove(alchitexWindow);
-            WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
+            LockControls(true, ToDisable);
 
             // Log status after window closes
             if (alchitexWindow.OperationSuccessful)

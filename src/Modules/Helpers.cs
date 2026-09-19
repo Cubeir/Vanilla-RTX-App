@@ -911,6 +911,42 @@ public static class Helpers
 
 
     /// <summary>
+    /// Shows a folder picker owned by <paramref name="windowHandle"/> and returns the chosen
+    /// path, or null if the user cancelled. Every folder the app asks for goes through here.
+    ///
+    /// <para><b>It uses <c>Microsoft.Windows.Storage.Pickers.FolderPicker</c>, not the WinRT
+    /// one, for exactly one reason: <c>SuggestedStartFolder</c>.</b> WinRT's picker can only
+    /// be aimed at a well-known location from a fixed enum, so "open where the path you are
+    /// about to change already points" is not expressible with it - and the alternative is
+    /// making the user navigate back to a folder the app already knows.</para>
+    ///
+    /// <para><paramref name="startAtPath"/> is only applied when it exists on disk. A stale
+    /// path is the normal case here (it is usually *why* the user is re-picking), and handing
+    /// the shell a folder that is gone is how a picker opens somewhere arbitrary instead of
+    /// its own default.</para>
+    /// </summary>
+    public static async Task<string?> PickFolderAsync(IntPtr windowHandle, string? startAtPath = null)
+    {
+        try
+        {
+            var picker = new Microsoft.Windows.Storage.Pickers.FolderPicker(
+                Microsoft.UI.Win32Interop.GetWindowIdFromWindow(windowHandle));
+
+            if (!string.IsNullOrWhiteSpace(startAtPath) && Directory.Exists(startAtPath))
+                picker.SuggestedStartFolder = startAtPath;
+
+            var result = await picker.PickSingleFolderAsync();
+            return string.IsNullOrEmpty(result?.Path) ? null : result.Path;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Helpers] Folder picker failed: {ex.Message}");
+            return null;
+        }
+    }
+
+
+    /// <summary>
     /// Checks if Minecraft.Windows process is running, returns true if so
     /// </summary>
     public static bool IsMinecraftRunning()
@@ -1209,27 +1245,25 @@ public static class MinecraftGDKLocator
 
         try
         {
-            var picker = new FolderPicker
-            {
-                SuggestedStartLocation = PickerLocationId.ComputerFolder,
-                ViewMode = PickerViewMode.List
-            };
-            picker.FileTypeFilter.Add("*");
+            // Opens on this edition's currently cached install, when there is one - a re-pick is
+            // usually a correction to a path that is nearly right, so starting anywhere else
+            // makes the user navigate back to where the app already was.
+            var cached = isPreview
+                ? EnvironmentVariables.Persistent.MinecraftPreviewInstallPath
+                : EnvironmentVariables.Persistent.MinecraftInstallPath;
 
-            InitializeWithWindow.Initialize(picker, windowHandle);
-
-            var folder = await picker.PickSingleFolderAsync();
-            if (folder == null)
+            var selectedPath = await Helpers.PickFolderAsync(windowHandle, cached);
+            if (selectedPath == null)
             {
                 Trace.WriteLine("[GDKLocator] User cancelled folder selection");
                 return null;
             }
 
-            Trace.WriteLine($"[GDKLocator] User selected: {folder.Path}");
+            Trace.WriteLine($"[GDKLocator] User selected: {selectedPath}");
 
-            var resolvedSelection = ResolveToPhysicalPath(folder.Path);
-            if (!resolvedSelection.Equals(folder.Path, StringComparison.OrdinalIgnoreCase))
-                Trace.WriteLine($"[GDKLocator] Resolved selection: {folder.Path} → {resolvedSelection}");
+            var resolvedSelection = ResolveToPhysicalPath(selectedPath);
+            if (!resolvedSelection.Equals(selectedPath, StringComparison.OrdinalIgnoreCase))
+                Trace.WriteLine($"[GDKLocator] Resolved selection: {selectedPath} → {resolvedSelection}");
 
             var exeDirectory = FindExecutableDirectoryNearby(resolvedSelection);
             if (exeDirectory == null)
@@ -1992,7 +2026,8 @@ public static class MinecraftUserDataLocator
 
         MainWindow.Log($"You can't use this feature without first telling the app where your {versionName} user data folder is located. " +
                        $"Click \"Locate {editionLabel} user data\" above, find and select the folder named \"{expectedFolderName}\" " +
-                       $"- It's the one with a \"Users\" subfolder inside it. You can also set it from the Settings menu.", LogLevel.Warning);
+                       $"- It's the one with a \"Users\" subfolder inside it.\n" +
+                       $"The same folder can be set from the Settings menu, under Game user data, which is also where to change it later.", LogLevel.Warning);
 
         return false;
     }

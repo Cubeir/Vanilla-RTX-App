@@ -30,20 +30,19 @@ namespace Vanilla_RTX_App.Core;
 public class WindowControlsManager
 {
     /// <summary>
-    /// Controls that stay live no matter what: the titlebar buttons, the two appearance
-    /// settings, the log and its progress bar. None of them can affect an operation in flight,
-    /// and locking the user out of help, the log or the theme during a long run is the
-    /// opposite of useful.
+    /// Controls that stay live no matter what: the two document buttons, the lamp, the log and
+    /// its progress bar. None of them can affect an operation in flight, and locking the user
+    /// out of help or the log during a long run is the opposite of useful.
     ///
-    /// <para>The settings panel's other controls are deliberately NOT here. Changing a
-    /// Minecraft location, editing launch options or wiping all app data while something is
-    /// mid-run are all things that can affect it, so they lock down with everything else -
-    /// the panel still opens, it just reads as busy.</para>
+    /// <para><b>SettingsButton is deliberately NOT here.</b> The settings panel is where the
+    /// Minecraft install and user data locations are changed, and every feature that locks this
+    /// window down is using those locations while it runs - a path swapped mid-operation leaves
+    /// that operation writing to one folder and the app pointed at another. It is excluded from
+    /// nothing, so <see cref="MainWindow.LockControls"/> can take it away for the duration.</para>
     /// </summary>
     private static readonly HashSet<string> _globalExclusions = new()
     {
-        "SettingsButton", "HelpButton", "BugButton",
-        "ThemeModeButton", "SuspendAnimationsSwitch",
+        "HelpButton", "BugButton",
         "LampInteractionButton", "SidebarLog", "SidelogProgressBar",
     };
 

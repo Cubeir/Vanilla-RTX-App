@@ -1119,11 +1119,15 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
     /// <see cref="WebImportOverlay"/> for the mechanism, which knows nothing about BetterRTX
     /// specifically - it just hands back whatever matched and lets this reuse the exact same
     /// <see cref="ImportCustomPresetsAsync"/> a manual drag-and-drop already goes through.
+    ///
+    /// <para>Which page that is comes from <see cref="Core.ProviderLinks"/> rather than being
+    /// written here: the settings panel lets it be pointed somewhere else, and that class is
+    /// what falls back to the built-in address when the stored one stops being usable.</para>
     /// </summary>
     private void CreatePresetButton_Click(object sender, RoutedEventArgs e)
     {
         WebImportOverlay.Show(
-            url: "https://bedrock.graphics/creator",
+            url: Core.ProviderLinks.BetterRtxProvider,
             title: "Create your own preset",
             glyph: "",
             guideText: "Once you've customized your preset, click Export, and export as .rtpack. Once downloaded, click Done; It'll auto-import & you can install it from the window.",

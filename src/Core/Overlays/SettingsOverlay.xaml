@@ -25,6 +25,23 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
+        <!-- The label that opens a section. -->
+        <Style x:Key="SettingsSectionHeaderStyle"
+               TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+        <!-- The name above a single setting, inside a section. -->
+        <Style x:Key="SettingsItemLabelStyle"
+               TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
         <!-- The horizontal rule between sections. Extra margin above and below because the
              panel's own StackPanel spacing is tuned for controls sitting next to each other,
              not for a break between subjects. -->
@@ -35,19 +52,24 @@
             <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
         </Style>
 
-        <!-- Left half of a path selector. Its corner radius is rounded only on the outer edge
-             and square where the bevel and button meet it, which is what makes the three
-             elements read as one rectangle rather than a box with a button parked beside it.
-             Height is never set: the row is as tall as the wrapped path, and the button
-             stretches to match (see SettingsPathButtonStyle). -->
+        <!-- Left half of a path selector, and a real Button rather than a Border: clicking it
+             opens the folder in File Explorer, so it has to take focus and show hover and
+             pressed states like any other control that does something. Its corner radius is
+             rounded only on the outer edge and square where the bevel and button meet it, which
+             is what makes the three elements read as one rectangle rather than a box with a
+             button parked beside it. Height is never set: the row is as tall as the wrapped
+             path, and the Change button stretches to match. -->
         <Style x:Key="SettingsPathBoxStyle"
-               TargetType="Border">
+               TargetType="Button">
             <Setter Property="CornerRadius" Value="4,0,0,4" />
             <Setter Property="MinHeight" Value="32" />
             <Setter Property="Padding" Value="10,6,10,6" />
-            <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1,1,0,1" />
-            <Setter Property="BorderBrush" Value="{ThemeResource ControlElevationBorderBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
         <Style x:Key="SettingsPathTextStyle"
@@ -67,17 +89,34 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
+        <!-- A full-width accent action. Left-aligned content because these sit in a column of
+             left-aligned text and a centred label would float away from everything around it. -->
+        <Style x:Key="SettingsActionButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource AccentButtonStyle}">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+        <Style x:Key="SettingsUrlBoxStyle"
+               TargetType="TextBox">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
     </UserControl.Resources>
 
     <!-- Sibling of MarkdownOverlay - same 36px top inset, so it starts flush under the
          titlebar's bevelled edge and reads as the window's body being replaced rather than as
-         a panel dropped on top of the whole app. Unlike that one it only claims the left 40%:
+         a panel dropped on top of the whole app. Unlike that one it only claims the left half:
          everything in here is a setting about the app, and the tuning surface staying visible
          behind it is what keeps that legible.
 
-         The two columns ARE the 40/60 split (2* : 3*). The blocker spans both and sits behind
-         the panel, so a click anywhere the panel isn't - including the strip underneath it,
-         which the panel's own background absorbs first - dismisses. -->
+         The two columns ARE the split. The blocker spans both and sits behind the panel, so a
+         click anywhere the panel isn't - including the strip underneath it, which the panel's
+         own background absorbs first - dismisses. -->
     <Grid x:Name="Root"
           Margin="0,36,0,0">
         <Grid.ColumnDefinitions>
@@ -107,398 +146,535 @@
                 <ThemeShadow />
             </Border.Shadow>
 
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto"
-                          Padding="18,0,30,22">
-                <StackPanel Spacing="14">
+            <Grid>
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="18,0,30,22">
+                    <StackPanel Spacing="14">
 
-                    <!-- ═══ Section 1 - Appearance ═══════════════════════════════════════ -->
-                    <TextBlock Text="Appearance"
-                               FontSize="12"
-                               Margin="0,16,0,0"
-                               FontWeight="SemiBold"
-                               Opacity="0.6"
-                               IsTextScaleFactorEnabled="False" />
+                        <!-- ═══ Appearance ═══════════════════════════════════════════════
+                             The top margin is what keeps this clear of the floating close
+                             button below, which scrolling content passes behind. -->
+                        <TextBlock Text="Appearance"
+                                   Margin="0,46,0,0"
+                                   Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0"
-                                   Text="App theme"
-                                   VerticalAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,10,0"
-                                   IsTextScaleFactorEnabled="False" />
+                            <TextBlock Grid.Column="0"
+                                       Text="App theme"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,10,0"
+                                       IsTextScaleFactorEnabled="False" />
 
-                        <!-- DropDownButton + MenuFlyout rather than a ComboBox, the same choice
-                             AlchitexWindow and LUTManagerWindow made: a flyout is translucent
-                             out of the box and matches the acrylic around it, where a ComboBox's
-                             open list reads ComboBoxDropDownBackground from a popup outside the
-                             control's tree and cannot be re-keyed from here. -->
-                        <DropDownButton x:Name="ThemeModeButton"
+                            <!-- DropDownButton + MenuFlyout rather than a ComboBox, the same
+                                 choice AlchitexWindow and LUTManagerWindow made: a flyout is
+                                 translucent out of the box and matches the acrylic around it,
+                                 where a ComboBox's open list reads ComboBoxDropDownBackground
+                                 from a popup outside the control's tree and cannot be re-keyed
+                                 from here. -->
+                            <DropDownButton x:Name="ThemeModeButton"
+                                            Grid.Column="1"
+                                            MinWidth="132"
+                                            HorizontalContentAlignment="Left"
+                                            IsTextScaleFactorEnabled="False">
+                                <DropDownButton.Content>
+                                    <StackPanel Orientation="Horizontal"
+                                                Spacing="8">
+                                        <FontIcon x:Name="ThemeModeGlyph"
+                                                  Glyph="&#xEC46;"
+                                                  FontSize="15"
+                                                  VerticalAlignment="Center" />
+                                        <TextBlock x:Name="ThemeModeLabel"
+                                                   Text="Dark"
+                                                   VerticalAlignment="Center"
+                                                   IsTextScaleFactorEnabled="False" />
+                                    </StackPanel>
+                                </DropDownButton.Content>
+                                <DropDownButton.Flyout>
+                                    <MenuFlyout Placement="Bottom">
+                                        <RadioMenuFlyoutItem x:Name="ThemeSystemItem"
+                                                             Text="Auto"
+                                                             GroupName="AppThemeMode"
+                                                             Click="ThemeModeItem_Click"
+                                                             Tag="System" />
+                                        <RadioMenuFlyoutItem x:Name="ThemeLightItem"
+                                                             Text="Light"
+                                                             GroupName="AppThemeMode"
+                                                             Click="ThemeModeItem_Click"
+                                                             Tag="Light" />
+                                        <RadioMenuFlyoutItem x:Name="ThemeDarkItem"
+                                                             Text="Dark"
+                                                             GroupName="AppThemeMode"
+                                                             Click="ThemeModeItem_Click"
+                                                             Tag="Dark" />
+                                    </MenuFlyout>
+                                </DropDownButton.Flyout>
+                            </DropDownButton>
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0"
+                                        Margin="0,0,10,0"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="Suspend UI animations"
+                                           TextWrapping="Wrap"
+                                           IsTextScaleFactorEnabled="False" />
+                                <TextBlock Text="Turns off the app's decorative animations."
+                                           Style="{StaticResource SettingsHintTextStyle}" />
+                            </StackPanel>
+
+                            <ToggleSwitch x:Name="SuspendAnimationsSwitch"
+                                          Grid.Column="1"
+                                          OnContent="On"
+                                          OffContent="Off"
+                                          VerticalAlignment="Center"
+                                          MinWidth="0"
+                                          Toggled="SuspendAnimationsSwitch_Toggled"
+                                          IsTextScaleFactorEnabled="False" />
+                        </Grid>
+
+                        <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                        <!-- ═══ Game installations ═══════════════════════════════════════
+                             Split from user data below on purpose. They are found by two
+                             independent systems, they live nowhere near each other on disk, and
+                             they answer different questions - this is the game's own shipped
+                             files, that is everything the game wrote after you played it. Four
+                             paths under one heading made "Release vs Preview" the only visible
+                             distinction, which is the less important of the two. -->
+                        <TextBlock Text="Game installations"
+                                   Style="{StaticResource SettingsSectionHeaderStyle}" />
+
+                        <TextBlock Text="Where Minecraft itself is installed. The RTX LUT manager, BetterRTX manager and DLSS swapper write into these folders. The app finds them at every launch and only keeps a location it can verify."
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <!-- The rows are spelled out rather than generated so they stay editable
+                             in XAML hot reload; the wiring that fills and drives them is
+                             table-driven in code-behind. -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Minecraft (Release)"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ReleaseInstallPathButton"
+                                        Grid.Column="0"
+                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Click="ReleaseInstallPathButton_Click">
+                                    <TextBlock x:Name="ReleaseInstallPathText"
+                                               Style="{StaticResource SettingsPathTextStyle}" />
+                                </Button>
+                                <Rectangle Grid.Column="1"
+                                           Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                                <Border x:Name="ReleaseInstallBevel"
                                         Grid.Column="1"
-                                        MinWidth="132"
-                                        HorizontalContentAlignment="Left"
-                                        IsTextScaleFactorEnabled="False">
-                            <DropDownButton.Content>
+                                        BorderThickness="3,0,0,0" />
+                                <Button x:Name="ReleaseInstallButton"
+                                        Grid.Column="2"
+                                        Style="{StaticResource SettingsPathButtonStyle}"
+                                        Click="ReleaseInstallButton_Click"
+                                        Content="Select" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                       Text="Pick the folder holding Minecraft.Windows.exe, or the &quot;Minecraft for Windows&quot; folder one level above it." />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Minecraft Preview"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="PreviewInstallPathButton"
+                                        Grid.Column="0"
+                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Click="PreviewInstallPathButton_Click">
+                                    <TextBlock x:Name="PreviewInstallPathText"
+                                               Style="{StaticResource SettingsPathTextStyle}" />
+                                </Button>
+                                <Rectangle Grid.Column="1"
+                                           Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                                <Border x:Name="PreviewInstallBevel"
+                                        Grid.Column="1"
+                                        BorderThickness="3,0,0,0" />
+                                <Button x:Name="PreviewInstallButton"
+                                        Grid.Column="2"
+                                        Style="{StaticResource SettingsPathButtonStyle}"
+                                        Click="PreviewInstallButton_Click"
+                                        Content="Select" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                       Text="Same, under &quot;Minecraft Preview for Windows&quot;. The app reads the game's own config to make sure it isn't the Release copy." />
+                        </StackPanel>
+
+                        <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                        <!-- ═══ Game user data ═══════════════════════════════════════════ -->
+                        <TextBlock Text="Game user data"
+                                   Style="{StaticResource SettingsSectionHeaderStyle}" />
+
+                        <TextBlock Text="Where the game keeps your worlds, settings and resource packs. Pack selection, tuning, importing, exporting and the Launch button all need this one, and it only exists once you've played the game at least once."
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Minecraft (Release)"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ReleaseDataPathButton"
+                                        Grid.Column="0"
+                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Click="ReleaseDataPathButton_Click">
+                                    <TextBlock x:Name="ReleaseDataPathText"
+                                               Style="{StaticResource SettingsPathTextStyle}" />
+                                </Button>
+                                <Rectangle Grid.Column="1"
+                                           Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                                <Border x:Name="ReleaseDataBevel"
+                                        Grid.Column="1"
+                                        BorderThickness="3,0,0,0" />
+                                <Button x:Name="ReleaseDataButton"
+                                        Grid.Column="2"
+                                        Style="{StaticResource SettingsPathButtonStyle}"
+                                        Click="ReleaseDataButton_Click"
+                                        Content="Select" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                       Text="Pick the folder named &quot;Minecraft Bedrock&quot; - the one with a &quot;Users&quot; subfolder inside it. Usually under %appdata%." />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Minecraft Preview"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="PreviewDataPathButton"
+                                        Grid.Column="0"
+                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Click="PreviewDataPathButton_Click">
+                                    <TextBlock x:Name="PreviewDataPathText"
+                                               Style="{StaticResource SettingsPathTextStyle}" />
+                                </Button>
+                                <Rectangle Grid.Column="1"
+                                           Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                                <Border x:Name="PreviewDataBevel"
+                                        Grid.Column="1"
+                                        BorderThickness="3,0,0,0" />
+                                <Button x:Name="PreviewDataButton"
+                                        Grid.Column="2"
+                                        Style="{StaticResource SettingsPathButtonStyle}"
+                                        Click="PreviewDataButton_Click"
+                                        Content="Select" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                       Text="Same, named &quot;Minecraft Bedrock Preview&quot;." />
+                        </StackPanel>
+
+                        <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                        <!-- ═══ Launch options ═══════════════════════════════════════════ -->
+                        <TextBlock Text="Launch options"
+                                   Style="{StaticResource SettingsSectionHeaderStyle}" />
+
+                        <TextBlock Text="Settings written into every account's options.txt just before the Launch Minecraft RTX button starts the game. The defaults turn ray tracing on, allow switching graphics modes in-game, and disable VSync."
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <!-- Rows are built in code - there is no fixed number of them. -->
+                        <StackPanel x:Name="LaunchOptionRows"
+                                    Spacing="6" />
+
+                        <TextBlock x:Name="LaunchOptionsEmptyText"
+                                   Visibility="Collapsed"
+                                   Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="No options - the Launch button will start the game without touching any game setting." />
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="AddLaunchOptionButton"
+                                    Grid.Column="0"
+                                    Style="{ThemeResource AccentButtonStyle}"
+                                    Click="AddLaunchOptionButton_Click"
+                                    IsTextScaleFactorEnabled="False"
+                                    ToolTipService.ToolTip="Add another options.txt setting to write before launching.">
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="8">
-                                    <FontIcon x:Name="ThemeModeGlyph"
-                                              Glyph="&#xEC46;"
-                                              FontSize="15"
+                                    <FontIcon Glyph="&#xE710;"
+                                              FontSize="14"
                                               VerticalAlignment="Center" />
-                                    <TextBlock x:Name="ThemeModeLabel"
-                                               Text="Dark"
+                                    <TextBlock Text="Add option"
                                                VerticalAlignment="Center"
                                                IsTextScaleFactorEnabled="False" />
                                 </StackPanel>
-                            </DropDownButton.Content>
-                            <DropDownButton.Flyout>
-                                <MenuFlyout Placement="Bottom">
-                                    <RadioMenuFlyoutItem x:Name="ThemeSystemItem"
-                                                         Text="Auto"
-                                                         GroupName="AppThemeMode"
-                                                         Click="ThemeModeItem_Click"
-                                                         Tag="System" />
-                                    <RadioMenuFlyoutItem x:Name="ThemeLightItem"
-                                                         Text="Light"
-                                                         GroupName="AppThemeMode"
-                                                         Click="ThemeModeItem_Click"
-                                                         Tag="Light" />
-                                    <RadioMenuFlyoutItem x:Name="ThemeDarkItem"
-                                                         Text="Dark"
-                                                         GroupName="AppThemeMode"
-                                                         Click="ThemeModeItem_Click"
-                                                         Tag="Dark" />
-                                </MenuFlyout>
-                            </DropDownButton.Flyout>
-                        </DropDownButton>
-                    </Grid>
+                            </Button>
+                            <Button x:Name="ResetLaunchOptionsButton"
+                                    Grid.Column="2"
+                                    Style="{ThemeResource SubtleButtonStyle}"
+                                    Click="ResetLaunchOptionsButton_Click"
+                                    IsTextScaleFactorEnabled="False"
+                                    ToolTipService.ToolTip="Put the three default options back.">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="8">
+                                    <FontIcon Glyph="&#xE777;"
+                                              FontSize="14"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Defaults"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SettingsSeparatorStyle}" />
 
-                        <StackPanel Grid.Column="0"
-                                    Margin="0,0,10,0"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="Suspend UI animations"
-                                       TextWrapping="Wrap"
-                                       IsTextScaleFactorEnabled="False" />
-                            <TextBlock Text="Turns off the app's decorative animations."
+                        <!-- ═══ Content sources ══════════════════════════════════════════
+                             Four addresses that used to be string literals at their call sites.
+                             Each row is a box, a revert-to-built-in button, and a line that
+                             doubles as the rejection message - see SettingsOverlay's UrlField. -->
+                        <TextBlock Text="Content sources"
+                                   Style="{StaticResource SettingsSectionHeaderStyle}" />
+
+                        <TextBlock Text="Where the app goes for things it doesn't ship itself. Change one and that feature goes to your address instead; the built-in one comes back on its own if what's here ever stops being usable."
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="DLSS downloads"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="DlssProviderBox"
+                                         Grid.Column="0"
+                                         Margin="0,0,6,0"
+                                         Style="{StaticResource SettingsUrlBoxStyle}" />
+                                <Button x:Name="DlssProviderResetButton"
+                                        Grid.Column="1"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Padding="8,6,8,6"
+                                        VerticalAlignment="Center"
+                                        ToolTipService.ToolTip="Put the built-in address back.">
+                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                </Button>
+                            </Grid>
+                            <TextBlock x:Name="DlssProviderHint"
                                        Style="{StaticResource SettingsHintTextStyle}" />
                         </StackPanel>
 
-                        <ToggleSwitch x:Name="SuspendAnimationsSwitch"
-                                      Grid.Column="1"
-                                      OnContent="On"
-                                      OffContent="Off"
-                                      VerticalAlignment="Center"
-                                      MinWidth="0"
-                                      Toggled="SuspendAnimationsSwitch_Toggled"
-                                      IsTextScaleFactorEnabled="False" />
-                    </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="BetterRTX preset creator"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="BetterRtxProviderBox"
+                                         Grid.Column="0"
+                                         Margin="0,0,6,0"
+                                         Style="{StaticResource SettingsUrlBoxStyle}" />
+                                <Button x:Name="BetterRtxProviderResetButton"
+                                        Grid.Column="1"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Padding="8,6,8,6"
+                                        VerticalAlignment="Center"
+                                        ToolTipService.ToolTip="Put the built-in address back.">
+                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                </Button>
+                            </Grid>
+                            <TextBlock x:Name="BetterRtxProviderHint"
+                                       Style="{StaticResource SettingsHintTextStyle}" />
+                        </StackPanel>
 
-                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Documentation page"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="DocumentationBox"
+                                         Grid.Column="0"
+                                         Margin="0,0,6,0"
+                                         Style="{StaticResource SettingsUrlBoxStyle}" />
+                                <Button x:Name="DocumentationResetButton"
+                                        Grid.Column="1"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Padding="8,6,8,6"
+                                        VerticalAlignment="Center"
+                                        ToolTipService.ToolTip="Put the built-in address back.">
+                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                </Button>
+                            </Grid>
+                            <TextBlock x:Name="DocumentationHint"
+                                       Style="{StaticResource SettingsHintTextStyle}" />
+                        </StackPanel>
 
-                    <!-- ═══ Section 2 - Where the game lives ═════════════════════════════ -->
-                    <TextBlock Text="Minecraft locations"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Opacity="0.6"
-                               IsTextScaleFactorEnabled="False" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Minecraft RTX bug list"
+                                       Style="{StaticResource SettingsItemLabelStyle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="BugTrackerBox"
+                                         Grid.Column="0"
+                                         Margin="0,0,6,0"
+                                         Style="{StaticResource SettingsUrlBoxStyle}" />
+                                <Button x:Name="BugTrackerResetButton"
+                                        Grid.Column="1"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Padding="8,6,8,6"
+                                        VerticalAlignment="Center"
+                                        ToolTipService.ToolTip="Put the built-in address back.">
+                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
+                                </Button>
+                            </Grid>
+                            <TextBlock x:Name="BugTrackerHint"
+                                       Style="{StaticResource SettingsHintTextStyle}" />
+                        </StackPanel>
 
-                    <TextBlock Text="The app finds these on its own at every launch and only keeps a location it can verify - if one of them is wrong or missing, point it at the right folder here."
-                               Style="{StaticResource SettingsHintTextStyle}" />
+                        <Border Style="{StaticResource SettingsSeparatorStyle}" />
 
-                    <!-- Four selectors, one per (edition × kind). The rows are spelled out
-                         rather than generated so they stay editable in XAML hot reload; the
-                         wiring that fills and drives them is table-driven in code-behind. -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Minecraft (Release) installation"
-                                   FontWeight="SemiBold"
-                                   FontSize="13"
+                        <!-- ═══ Maintenance ══════════════════════════════════════════════ -->
+                        <TextBlock Text="Maintenance"
+                                   Style="{StaticResource SettingsSectionHeaderStyle}" />
+
+                        <StackPanel Spacing="4">
+                            <Button x:Name="HardResetButton"
+                                    Style="{StaticResource SettingsActionButtonStyle}"
+                                    Click="HardResetButton_Click">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="10">
+                                    <FontIcon Glyph="&#xE7BA;"
+                                              FontSize="15"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Wipe all app data"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                       Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone. Asks for confirmation first." />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <Button x:Name="CopyLogsButton"
+                                    Style="{StaticResource SettingsActionButtonStyle}"
+                                    Click="CopyLogsButton_Click">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="10">
+                                    <FontIcon Glyph="&#xE8C8;"
+                                              FontSize="15"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock Text="Copy debug logs"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                       Text="Copies a diagnostic report to your clipboard - system info, the app's log, every setting and the state of every control. Paste it into a bug report." />
+                        </StackPanel>
+
+                        <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                        <!-- ═══ Links and credits ════════════════════════════════════════ -->
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="4"
+                                    Margin="0,2,0,0">
+                            <HyperlinkButton x:Name="GitHubLink"
+                                             Content="GitHub"
+                                             Padding="6,2,6,2"
+                                             Click="GitHubLink_Click"
+                                             IsTextScaleFactorEnabled="False"
+                                             ToolTipService.ToolTip="Source code, releases and issue tracker." />
+                            <TextBlock Text="•"
+                                       Opacity="0.4"
+                                       VerticalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                            <HyperlinkButton x:Name="KoFiLink"
+                                             Content="Ko-fi"
+                                             Padding="6,2,6,2"
+                                             Click="KoFiLink_Click"
+                                             IsTextScaleFactorEnabled="False"
+                                             ToolTipService.ToolTip="Buy the developer some coffee - Vanilla RTX is free and continued, help keep it that way!" />
+                            <TextBlock Text="•"
+                                       Opacity="0.4"
+                                       VerticalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                            <HyperlinkButton x:Name="DiscordLink"
+                                             Content="Discord"
+                                             Padding="6,2,6,2"
+                                             Click="DiscordLink_Click"
+                                             IsTextScaleFactorEnabled="False"
+                                             ToolTipService.ToolTip="An invitation to the Vanilla RTX Discord server." />
+                        </StackPanel>
+
+                        <TextBlock x:Name="CreditsText"
+                                   Text=""
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   FontSize="11"
+                                   Opacity="0.55"
+                                   LineHeight="16"
+                                   Margin="4,0,4,4"
                                    IsTextScaleFactorEnabled="False" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="3" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0"
-                                    Style="{StaticResource SettingsPathBoxStyle}">
-                                <TextBlock x:Name="ReleaseInstallPathText"
-                                           Style="{StaticResource SettingsPathTextStyle}" />
-                            </Border>
-                            <Rectangle Grid.Column="1"
-                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border x:Name="ReleaseInstallBevel"
-                                    Grid.Column="1"
-                                    BorderThickness="3,0,0,0" />
-                            <Button x:Name="ReleaseInstallButton"
-                                    Grid.Column="2"
-                                    Style="{StaticResource SettingsPathButtonStyle}"
-                                    Click="ReleaseInstallButton_Click"
-                                    Content="Select" />
-                        </Grid>
-                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                   Text="Select the folder holding Minecraft.Windows.exe, or the &quot;Minecraft for Windows&quot; folder one level above it." />
+
                     </StackPanel>
+                </ScrollViewer>
 
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Minecraft Preview installation"
-                                   FontWeight="SemiBold"
-                                   FontSize="13"
-                                   IsTextScaleFactorEnabled="False" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="3" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0"
-                                    Style="{StaticResource SettingsPathBoxStyle}">
-                                <TextBlock x:Name="PreviewInstallPathText"
-                                           Style="{StaticResource SettingsPathTextStyle}" />
-                            </Border>
-                            <Rectangle Grid.Column="1"
-                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border x:Name="PreviewInstallBevel"
-                                    Grid.Column="1"
-                                    BorderThickness="3,0,0,0" />
-                            <Button x:Name="PreviewInstallButton"
-                                    Grid.Column="2"
-                                    Style="{StaticResource SettingsPathButtonStyle}"
-                                    Click="PreviewInstallButton_Click"
-                                    Content="Select" />
-                        </Grid>
-                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                   Text="Same, but under &quot;Minecraft Preview for Windows&quot; - the app checks the game's own config to make sure it isn't the Release copy." />
-                    </StackPanel>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Minecraft (Release) user data"
-                                   FontWeight="SemiBold"
-                                   FontSize="13"
-                                   IsTextScaleFactorEnabled="False" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="3" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0"
-                                    Style="{StaticResource SettingsPathBoxStyle}">
-                                <TextBlock x:Name="ReleaseDataPathText"
-                                           Style="{StaticResource SettingsPathTextStyle}" />
-                            </Border>
-                            <Rectangle Grid.Column="1"
-                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border x:Name="ReleaseDataBevel"
-                                    Grid.Column="1"
-                                    BorderThickness="3,0,0,0" />
-                            <Button x:Name="ReleaseDataButton"
-                                    Grid.Column="2"
-                                    Style="{StaticResource SettingsPathButtonStyle}"
-                                    Click="ReleaseDataButton_Click"
-                                    Content="Select" />
-                        </Grid>
-                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                   Text="Select the folder named &quot;Minecraft Bedrock&quot; - the one with a &quot;Users&quot; subfolder inside it. Resource packs and options.txt live under it." />
-                    </StackPanel>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Minecraft Preview user data"
-                                   FontWeight="SemiBold"
-                                   FontSize="13"
-                                   IsTextScaleFactorEnabled="False" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="3" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0"
-                                    Style="{StaticResource SettingsPathBoxStyle}">
-                                <TextBlock x:Name="PreviewDataPathText"
-                                           Style="{StaticResource SettingsPathTextStyle}" />
-                            </Border>
-                            <Rectangle Grid.Column="1"
-                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
-                            <Border x:Name="PreviewDataBevel"
-                                    Grid.Column="1"
-                                    BorderThickness="3,0,0,0" />
-                            <Button x:Name="PreviewDataButton"
-                                    Grid.Column="2"
-                                    Style="{StaticResource SettingsPathButtonStyle}"
-                                    Click="PreviewDataButton_Click"
-                                    Content="Select" />
-                        </Grid>
-                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                   Text="Same, but named &quot;Minecraft Bedrock Preview&quot;." />
-                    </StackPanel>
-
-                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
-
-                    <!-- ═══ Section 3 - What the Launch button does ══════════════════════ -->
-                    <TextBlock Text="Launch options"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Opacity="0.6"
-                               IsTextScaleFactorEnabled="False" />
-
-                    <TextBlock Text="Settings written into every account's options.txt just before the Launch Minecraft RTX button starts the game. The defaults turn ray tracing on, allow switching graphics modes in-game, and disable VSync."
-                               Style="{StaticResource SettingsHintTextStyle}" />
-
-                    <!-- Rows are built in code - there is no fixed number of them. -->
-                    <StackPanel x:Name="LaunchOptionRows"
-                                Spacing="6" />
-
-                    <TextBlock x:Name="LaunchOptionsEmptyText"
-                               Visibility="Collapsed"
-                               Style="{StaticResource SettingsHintTextStyle}"
-                               Text="No options - the Launch button will start the game without touching any game setting." />
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Button x:Name="AddLaunchOptionButton"
-                                Grid.Column="0"
-                                Click="AddLaunchOptionButton_Click"
-                                IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Add another options.txt setting to write before launching.">
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="8">
-                                <FontIcon Glyph="&#xE710;"
-                                          FontSize="14"
-                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Add option"
-                                           VerticalAlignment="Center"
-                                           IsTextScaleFactorEnabled="False" />
-                            </StackPanel>
-                        </Button>
-                        <Button x:Name="ResetLaunchOptionsButton"
-                                Grid.Column="2"
-                                Style="{ThemeResource SubtleButtonStyle}"
-                                Click="ResetLaunchOptionsButton_Click"
-                                IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Put the three default options back.">
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="8">
-                                <FontIcon Glyph="&#xE777;"
-                                          FontSize="14"
-                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Defaults"
-                                           VerticalAlignment="Center"
-                                           IsTextScaleFactorEnabled="False" />
-                            </StackPanel>
-                        </Button>
-                    </Grid>
-
-                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
-
-                    <!-- ═══ Section 4 - Maintenance ══════════════════════════════════════ -->
-                    <TextBlock Text="Maintenance"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Opacity="0.6"
-                               IsTextScaleFactorEnabled="False" />
-
-                    <StackPanel Spacing="4">
-                        <Button x:Name="HardResetButton"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left"
-                                Click="HardResetButton_Click"
-                                IsTextScaleFactorEnabled="False">
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="10">
-                                <FontIcon Glyph="&#xE7BA;"
-                                          FontSize="15"
-                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Wipe all app data"
-                                           VerticalAlignment="Center"
-                                           IsTextScaleFactorEnabled="False" />
-                            </StackPanel>
-                        </Button>
-                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                   Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone. Asks for confirmation first." />
-                    </StackPanel>
-
-                    <StackPanel Spacing="4">
-                        <Button x:Name="CopyLogsButton"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left"
-                                Click="CopyLogsButton_Click"
-                                IsTextScaleFactorEnabled="False">
-                            <StackPanel Orientation="Horizontal"
-                                        Spacing="10">
-                                <FontIcon Glyph="&#xE8C8;"
-                                          FontSize="15"
-                                          VerticalAlignment="Center" />
-                                <TextBlock Text="Copy debug logs"
-                                           VerticalAlignment="Center"
-                                           IsTextScaleFactorEnabled="False" />
-                            </StackPanel>
-                        </Button>
-                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                   Text="Copies a diagnostic report to your clipboard - system info, the app's log, every setting and the state of every control. Paste it into a bug report." />
-                    </StackPanel>
-
-                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
-
-                    <!-- ═══ Section 5 - Links and credits ════════════════════════════════ -->
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                Spacing="4"
-                                Margin="0,2,0,0">
-                        <HyperlinkButton x:Name="GitHubLink"
-                                         Content="GitHub"
-                                         Padding="6,2,6,2"
-                                         Click="GitHubLink_Click"
-                                         IsTextScaleFactorEnabled="False"
-                                         ToolTipService.ToolTip="Source code, releases and issue tracker." />
-                        <TextBlock Text="•"
-                                   Opacity="0.4"
-                                   VerticalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False" />
-                        <HyperlinkButton x:Name="KoFiLink"
-                                         Content="Ko-fi"
-                                         Padding="6,2,6,2"
-                                         Click="KoFiLink_Click"
-                                         IsTextScaleFactorEnabled="False"
-                                         ToolTipService.ToolTip="Buy the developer some coffee - Vanilla RTX is free and continued, help keep it that way!" />
-                        <TextBlock Text="•"
-                                   Opacity="0.4"
-                                   VerticalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False" />
-                        <HyperlinkButton x:Name="DiscordLink"
-                                         Content="Discord"
-                                         Padding="6,2,6,2"
-                                         Click="DiscordLink_Click"
-                                         IsTextScaleFactorEnabled="False"
-                                         ToolTipService.ToolTip="An invitation to the Vanilla RTX Discord server." />
-                    </StackPanel>
-
-                    <TextBlock x:Name="CreditsText"
-                               Text=""
-                               TextWrapping="Wrap"
-                               TextAlignment="Center"
-                               FontSize="11"
-                               Opacity="0.55"
-                               LineHeight="16"
-                               Margin="4,0,4,4"
-                               IsTextScaleFactorEnabled="False" />
-
-                </StackPanel>
-            </ScrollViewer>
+                <!-- Floats over the scrolling content rather than sitting in a header strip of
+                     its own, which would put an opaque band exactly where the content is
+                     supposed to slide up under the titlebar. Same treatment MarkdownOverlay's
+                     search toggle gets, and the reason the first section header carries a top
+                     margin. -->
+                <Button x:Name="CloseButton"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Width="36"
+                        Height="36"
+                        Padding="0"
+                        CornerRadius="8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,8,24,0"
+                        Click="CloseButton_Click"
+                        IsTextScaleFactorEnabled="False"
+                        ToolTipService.ToolTip="Close settings">
+                    <FontIcon Glyph="&#xE711;" FontSize="14" />
+                </Button>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

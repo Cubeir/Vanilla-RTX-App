@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -17,7 +18,7 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// <summary>
 /// The app's one settings surface - everything that configures the app rather than a pack.
 /// A sibling of <see cref="MarkdownOverlay"/> in placement and chrome (36px down, acrylic,
-/// shadowed, fades in and out), but it claims only the left 40% and leaves the tuning surface
+/// shadowed, fades in and out), but it claims only half the width and leaves the tuning surface
 /// visible behind a dismiss scrim.
 ///
 /// <para><b>It drives MainWindow directly through <see cref="MainWindow.Instance"/> rather than
@@ -28,9 +29,15 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// around the same coupling.</para>
 ///
 /// <para><b>Nothing here is applied optimistically.</b> A path is shown only once the locator
-/// that owns it has validated and cached it - the same check that runs at every startup. A
-/// setting accepted here that startup would reject is a setting that appears to silently
-/// revert itself, which reads as a bug rather than as a rejection.</para>
+/// that owns it has validated and cached it - the same check that runs at every startup. A URL
+/// is written only once <see cref="ProviderLinks.IsValid"/> accepts it. A setting accepted here
+/// that startup would reject is a setting that appears to silently revert itself, which reads as
+/// a bug rather than as a rejection.</para>
+///
+/// <para><b>The panel is never reachable while the window is busy.</b> MainWindow's
+/// <c>LockControls</c> disables the titlebar's Settings button for the duration of every
+/// operation, because half of what is in here - the four Minecraft locations - is what those
+/// operations are reading from while they run.</para>
 /// </summary>
 public sealed partial class SettingsOverlay : UserControl
 {
@@ -48,9 +55,9 @@ public sealed partial class SettingsOverlay : UserControl
 
     /// <summary>
     /// Guards the handlers that write a setting while <see cref="Refresh"/> is painting the
-    /// controls from that same setting. Without it, assigning <c>IsOn</c> or clicking a radio
-    /// item in code raises the very handler that would then write it back - harmless for the
-    /// theme, but it would make the animations toggle flip itself.
+    /// controls from that same setting. Without it, assigning <c>IsOn</c> or a TextBox's
+    /// <c>Text</c> in code raises the very handler that would then write it back - harmless for
+    /// the theme, but it would make the animations toggle flip itself.
     /// </summary>
     private bool _suppressCallbacks;
 
@@ -61,9 +68,18 @@ public sealed partial class SettingsOverlay : UserControl
     /// </summary>
     private readonly List<LaunchOptionRow> _launchRows = new();
 
+    /// <summary>The four editable addresses, built once in the constructor - see <see cref="UrlField"/>.</summary>
+    private readonly List<UrlField> _urlFields = new();
+
+    /// <summary>Every path row, so refreshing and bevel repainting can walk them rather than naming eight controls each time.</summary>
+    private PathRow[] _pathRows = Array.Empty<PathRow>();
+
     public SettingsOverlay()
     {
         InitializeComponent();
+
+        BuildPathRows();
+        BuildUrlFields();
 
         // The path selectors' 3px seams are a ThemeService color choice, not a ThemeResource
         // binding that re-resolves itself, so they have to be repainted by hand on every theme
@@ -107,16 +123,30 @@ public sealed partial class SettingsOverlay : UserControl
         AnimateOpacity(1.0, null);
     }
 
+    /// <summary>
+    /// Closes the panel and flushes every setting to disk.
+    ///
+    /// <para><b>The save is here rather than only in MainWindow's Closed handler</b> because
+    /// this panel is the one place a user changes several settings in a row and then expects
+    /// them kept. Everything in here writes its value into <see cref="Persistent"/> the moment
+    /// it changes, but that is memory - a crash, a hard kill, or the app being restarted by
+    /// something else between now and window close would take the lot. Saving on close costs
+    /// one pass over a dozen fields at the one moment the user has finished.</para>
+    /// </summary>
     public void Hide()
     {
         if (!_isOpen) return;
         _isOpen = false;
+
+        SaveSettings();
 
         IsHitTestVisible = false;
         AnimateOpacity(0.0, () => Visibility = Visibility.Collapsed);
     }
 
     private void ModalBlocker_Tapped(object sender, TappedRoutedEventArgs e) => Hide();
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Hide();
 
     private void AnimateOpacity(double to, Action? onCompleted)
     {
@@ -174,13 +204,14 @@ public sealed partial class SettingsOverlay : UserControl
             ThemeModeGlyph.Glyph = mode switch
             {
                 "Light" => "",  // Brightness
-                "Dark" => "",   // QuietHours (moon)
-                _ => ""         // DevUpdate - "whatever Windows says"
+                "Dark" => "",   // QuietHours - the moon the old titlebar button used
+                _ => ""         // DevUpdate - "whatever Windows is set to"
             };
 
             SuspendAnimationsSwitch.IsOn = Persistent.SuspendUIAnimations;
 
             RefreshPaths();
+            RefreshUrlFields();
             RefreshCredits();
         }
         finally
@@ -189,49 +220,11 @@ public sealed partial class SettingsOverlay : UserControl
         }
     }
 
-    private void RefreshPaths()
-    {
-        // Install paths are read straight out of the cache: MinecraftGDKLocator only ever
-        // writes a path it has verified, and re-verifying here would mean a filesystem walk
-        // every time the panel opens.
-        SetPathRow(ReleaseInstallPathText, ReleaseInstallButton, Persistent.MinecraftInstallPath);
-        SetPathRow(PreviewInstallPathText, PreviewInstallButton, Persistent.MinecraftPreviewInstallPath);
-
-        // Data roots go through GetDataRoot rather than the raw field, so a folder that has
-        // gone missing since startup reads as "not set" instead of as a path that works.
-        SetPathRow(ReleaseDataPathText, ReleaseDataButton, MinecraftUserDataLocator.GetDataRoot(isPreview: false));
-        SetPathRow(PreviewDataPathText, PreviewDataButton, MinecraftUserDataLocator.GetDataRoot(isPreview: true));
-    }
-
-    /// <summary>
-    /// The button says "Select" when there is nothing to change and "Change" when there is -
-    /// which is also the only cue that the path above it is real rather than a placeholder.
-    /// </summary>
-    private static void SetPathRow(TextBlock text, Button button, string? path)
-    {
-        var known = !string.IsNullOrWhiteSpace(path);
-
-        text.Text = known ? path! : "Not found";
-        text.Opacity = known ? 1.0 : 0.55;
-        button.Content = known ? "Change" : "Select";
-    }
-
     private void RefreshCredits()
     {
         var credits = OnlineTextsContent.Credits?.FirstOrDefault()?.Text;
         CreditsText.Text = credits ?? string.Empty;
         CreditsText.Visibility = string.IsNullOrWhiteSpace(credits) ? Visibility.Collapsed : Visibility.Visible;
-    }
-
-    /// <summary>Repaints the four path-selector seams for a theme. See the constructor for why by hand.</summary>
-    private void ApplyBevelColors(ElementTheme theme)
-    {
-        var brush = new SolidColorBrush(ThemeService.GetBevelColor(theme, ThemeService.BevelEdge.Left, accented: true));
-
-        ReleaseInstallBevel.BorderBrush = brush;
-        PreviewInstallBevel.BorderBrush = brush;
-        ReleaseDataBevel.BorderBrush = brush;
-        PreviewDataBevel.BorderBrush = brush;
     }
 
     // =========================================================================
@@ -246,6 +239,16 @@ public sealed partial class SettingsOverlay : UserControl
         Persistent.AppThemeMode = mode;
         _host?.ApplyThemeMode();
         Refresh();
+
+        // The lamp answers with the thing the mode means: off for dark, lit for light, and a
+        // rapid flicker for Auto, which is neither and follows whatever Windows decides.
+        if (_host is null) return;
+        _ = mode switch
+        {
+            "Light" => _host.BlinkingLamp(true, true, 1.0, 0.0),
+            "Dark" => _host.BlinkingLamp(true, true, 0.0, 0.0),
+            _ => _host.BlinkingLamp(true, true, 0.5, 1.0)
+        };
     }
 
     private void SuspendAnimationsSwitch_Toggled(object sender, RoutedEventArgs e)
@@ -260,70 +263,195 @@ public sealed partial class SettingsOverlay : UserControl
     //  Minecraft locations
     // =========================================================================
 
-    private void ReleaseInstallButton_Click(object sender, RoutedEventArgs e) => _ = PickInstallPathAsync(isPreview: false, (Button)sender);
-    private void PreviewInstallButton_Click(object sender, RoutedEventArgs e) => _ = PickInstallPathAsync(isPreview: true, (Button)sender);
-    private void ReleaseDataButton_Click(object sender, RoutedEventArgs e) => _ = PickDataPathAsync(isPreview: false, (Button)sender);
-    private void PreviewDataButton_Click(object sender, RoutedEventArgs e) => _ = PickDataPathAsync(isPreview: true, (Button)sender);
+    /// <summary>
+    /// One (edition x kind) location: the clickable path, the Select/Change button, the seam
+    /// between them, and the two operations that differ per kind - how to read the current
+    /// path, and how to ask the user for a new one.
+    /// </summary>
+    private sealed class PathRow
+    {
+        public required TextBlock Text { get; init; }
+        public required Button PathButton { get; init; }
+        public required Button ChangeButton { get; init; }
+        public required Border Bevel { get; init; }
+        public required Func<string?> Current { get; init; }
+        public required Func<Task> Pick { get; init; }
+    }
+
+    private void BuildPathRows()
+    {
+        _pathRows =
+        [
+            new PathRow
+            {
+                Text = ReleaseInstallPathText, PathButton = ReleaseInstallPathButton,
+                ChangeButton = ReleaseInstallButton, Bevel = ReleaseInstallBevel,
+                // Install paths are read straight out of the cache: MinecraftGDKLocator only
+                // ever writes a path it has verified, and re-verifying here would mean a
+                // filesystem walk every time the panel opens.
+                Current = () => Persistent.MinecraftInstallPath,
+                Pick = () => PickInstallPathAsync(isPreview: false)
+            },
+            new PathRow
+            {
+                Text = PreviewInstallPathText, PathButton = PreviewInstallPathButton,
+                ChangeButton = PreviewInstallButton, Bevel = PreviewInstallBevel,
+                Current = () => Persistent.MinecraftPreviewInstallPath,
+                Pick = () => PickInstallPathAsync(isPreview: true)
+            },
+            new PathRow
+            {
+                Text = ReleaseDataPathText, PathButton = ReleaseDataPathButton,
+                ChangeButton = ReleaseDataButton, Bevel = ReleaseDataBevel,
+                // Data roots go through GetDataRoot rather than the raw field, so a folder that
+                // has gone missing since startup reads as "not set" instead of as a path that
+                // still works.
+                Current = () => MinecraftUserDataLocator.GetDataRoot(isPreview: false),
+                Pick = () => PickDataPathAsync(isPreview: false)
+            },
+            new PathRow
+            {
+                Text = PreviewDataPathText, PathButton = PreviewDataPathButton,
+                ChangeButton = PreviewDataButton, Bevel = PreviewDataBevel,
+                Current = () => MinecraftUserDataLocator.GetDataRoot(isPreview: true),
+                Pick = () => PickDataPathAsync(isPreview: true)
+            },
+        ];
+
+        foreach (var row in _pathRows)
+        {
+            // The seam is drawn from the button's accent, so it has to follow that button's
+            // enabled state the way MainWindow's Preview toggle bevels follow theirs - an
+            // accent stripe glued to a greyed-out button reads as a rendering bug. Subscribing
+            // here covers both ways it gets disabled: a picker being open, and
+            // WindowControlsManager locking the window down.
+            var captured = row;
+            row.ChangeButton.IsEnabledChanged += (_, _) => ApplyBevelColor(captured);
+        }
+    }
+
+    private void RefreshPaths()
+    {
+        foreach (var row in _pathRows)
+        {
+            var path = row.Current();
+            var known = !string.IsNullOrWhiteSpace(path);
+
+            row.Text.Text = known ? path! : "Not found";
+            row.Text.Opacity = known ? 1.0 : 0.55;
+
+            // "Select" when there is nothing set and "Change" when there is - which is also the
+            // only cue that the path above it is real rather than a placeholder.
+            row.ChangeButton.Content = known ? "Change" : "Select";
+
+            row.PathButton.IsEnabled = known;
+            ToolTipService.SetToolTip(row.PathButton, known
+                ? "Open this folder in File Explorer."
+                : "Nothing to open yet - the app hasn't found this location.");
+        }
+    }
+
+    /// <summary>Repaints the four path-selector seams for a theme. See <see cref="BuildPathRows"/> for why by hand.</summary>
+    private void ApplyBevelColors(ElementTheme theme)
+    {
+        foreach (var row in _pathRows)
+            ApplyBevelColor(row, theme);
+    }
+
+    private void ApplyBevelColor(PathRow row, ElementTheme? theme = null)
+        => row.Bevel.BorderBrush = new SolidColorBrush(ThemeService.GetBevelColor(
+            theme ?? ActualTheme,
+            ThemeService.BevelEdge.Left,
+            accented: true,
+            isEnabled: row.ChangeButton.IsEnabled));
+
+    private void ReleaseInstallPathButton_Click(object sender, RoutedEventArgs e) => OpenInExplorer(Persistent.MinecraftInstallPath);
+    private void PreviewInstallPathButton_Click(object sender, RoutedEventArgs e) => OpenInExplorer(Persistent.MinecraftPreviewInstallPath);
+    private void ReleaseDataPathButton_Click(object sender, RoutedEventArgs e) => OpenInExplorer(MinecraftUserDataLocator.GetDataRoot(isPreview: false));
+    private void PreviewDataPathButton_Click(object sender, RoutedEventArgs e) => OpenInExplorer(MinecraftUserDataLocator.GetDataRoot(isPreview: true));
 
     /// <summary>
-    /// Runs one picker, with the button disabled for its whole duration. The disable is not
+    /// Opens a folder in File Explorer. A path the app is showing can still be gone by the time
+    /// it is clicked, and <c>explorer.exe</c> answers a missing folder by opening Documents
+    /// instead of failing - so the existence check is what keeps a stale path from looking like
+    /// the app navigated somewhere random on purpose.
+    /// </summary>
+    private void OpenInExplorer(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        if (!Directory.Exists(path))
+        {
+            MainWindow.Log($"That folder isn't there any more: {path}", MainWindow.LogLevel.Warning);
+            RefreshPaths();
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[SettingsOverlay] Couldn't open '{path}' in Explorer: {ex.Message}");
+            MainWindow.Log($"Couldn't open that folder: {ex.Message}", MainWindow.LogLevel.Error);
+        }
+    }
+
+    private void ReleaseInstallButton_Click(object sender, RoutedEventArgs e) => _ = RunPickerAsync(_pathRows[0]);
+    private void PreviewInstallButton_Click(object sender, RoutedEventArgs e) => _ = RunPickerAsync(_pathRows[1]);
+    private void ReleaseDataButton_Click(object sender, RoutedEventArgs e) => _ = RunPickerAsync(_pathRows[2]);
+    private void PreviewDataButton_Click(object sender, RoutedEventArgs e) => _ = RunPickerAsync(_pathRows[3]);
+
+    /// <summary>
+    /// Runs one row's picker with its button disabled for the duration. The disable is not
     /// cosmetic: a second picker opened on top of the first resolves against the same cached
     /// field, and whichever finishes last silently wins.
     /// </summary>
-    private async System.Threading.Tasks.Task PickInstallPathAsync(bool isPreview, Button button)
+    private async Task RunPickerAsync(PathRow row)
     {
         if (_host is null) return;
 
-        button.IsEnabled = false;
+        row.ChangeButton.IsEnabled = false;
         try
         {
-            var edition = isPreview ? "Minecraft Preview" : "Minecraft";
-            var hWnd = WindowNative.GetWindowHandle(_host);
-
-            // LocateMinecraftManuallyAsync does the picking, the one-level-deep tolerance, the
-            // MicrosoftGame.Config edition check and the caching. Nothing is written here.
-            var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
-
-            if (path is null)
-            {
-                MainWindow.Log($"That folder wasn't accepted as a {edition} installation. " +
-                               $"Pick the folder that holds {MinecraftGDKLocator.MinecraftExecutableName}, or the one directly above it.",
-                               MainWindow.LogLevel.Error);
-                return;
-            }
-
-            MainWindow.Log($"{edition} installation set: {path}", MainWindow.LogLevel.Success);
+            await row.Pick();
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[SettingsOverlay] Install path selection failed: {ex}");
+            Trace.WriteLine($"[SettingsOverlay] Path selection failed: {ex}");
         }
         finally
         {
-            button.IsEnabled = true;
+            row.ChangeButton.IsEnabled = true;
             RefreshPaths();
         }
     }
 
-    private async System.Threading.Tasks.Task PickDataPathAsync(bool isPreview, Button button)
+    private async Task PickInstallPathAsync(bool isPreview)
     {
-        if (_host is null) return;
+        _ = _host!.BlinkingLamp(false, true, 0.5, 1.0);
 
-        button.IsEnabled = false;
-        try
+        var edition = isPreview ? "Minecraft Preview" : "Minecraft";
+        var hWnd = WindowNative.GetWindowHandle(_host);
+
+        // LocateMinecraftManuallyAsync does the picking (starting at the current path), the
+        // one-level-deep tolerance, the MicrosoftGame.Config edition check and the caching.
+        // Nothing is written here.
+        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
+
+        if (path is null)
         {
-            await _host.HandleManualDataLocationAsync(isPreview);
+            MainWindow.Log($"No {edition} installation was set. Pick the folder that holds " +
+                           $"{MinecraftGDKLocator.MinecraftExecutableName}, or the one directly above it.",
+                           MainWindow.LogLevel.Warning);
+            return;
         }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[SettingsOverlay] Data path selection failed: {ex}");
-        }
-        finally
-        {
-            button.IsEnabled = true;
-            RefreshPaths();
-        }
+
+        MainWindow.Log($"{edition} installation set: {path}", MainWindow.LogLevel.Success);
     }
+
+    private Task PickDataPathAsync(bool isPreview) => _host!.HandleManualDataLocationAsync(isPreview);
 
     // =========================================================================
     //  Launch options
@@ -447,6 +575,7 @@ public sealed partial class SettingsOverlay : UserControl
         BuildLaunchOptionRows(MinecraftLauncher.DefaultOptions);
         CommitLaunchOptions();
         MainWindow.Log("Launch options restored to defaults: ray tracing on, in-game graphics mode switching on, VSync off.", MainWindow.LogLevel.Reset);
+        _ = _host?.BlinkingLamp(true, true, 0.0);
     }
 
     /// <summary>
@@ -471,11 +600,146 @@ public sealed partial class SettingsOverlay : UserControl
         LaunchOptionsEmptyText.Visibility = _launchRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     // =========================================================================
+    //  Content sources
+    // =========================================================================
+
+    /// <summary>
+    /// One editable address: its box, its revert button, the line under it, and the things that
+    /// differ per field - what it must look like, what the built-in value is, and how to read
+    /// and write the stored one.
+    /// </summary>
+    private sealed class UrlField
+    {
+        public required TextBox Box { get; init; }
+        public required Button ResetButton { get; init; }
+        public required TextBlock Hint { get; init; }
+        public required string Description { get; init; }
+        public required string Fallback { get; init; }
+        public required ProviderLinks.LinkKind Kind { get; init; }
+        public required Func<string?> Read { get; init; }
+        public required Action<string> Write { get; init; }
+    }
+
+    private void BuildUrlFields()
+    {
+        _urlFields.AddRange(
+        [
+            new UrlField
+            {
+                Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
+                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to.",
+                Fallback = ProviderLinks.DefaultDlssProvider, Kind = ProviderLinks.LinkKind.WebPage,
+                Read = () => Persistent.DlssProviderUrl, Write = v => Persistent.DlssProviderUrl = v
+            },
+            new UrlField
+            {
+                Box = BetterRtxProviderBox, ResetButton = BetterRtxProviderResetButton, Hint = BetterRtxProviderHint,
+                Description = "The page the BetterRTX manager's \"Create preset\" button browses to.",
+                Fallback = ProviderLinks.DefaultBetterRtxProvider, Kind = ProviderLinks.LinkKind.WebPage,
+                Read = () => Persistent.BetterRtxProviderUrl, Write = v => Persistent.BetterRtxProviderUrl = v
+            },
+            new UrlField
+            {
+                Box = DocumentationBox, ResetButton = DocumentationResetButton, Hint = DocumentationHint,
+                Description = "The markdown the titlebar's Help button renders. A #heading at the end is honoured.",
+                Fallback = ProviderLinks.DefaultDocumentation, Kind = ProviderLinks.LinkKind.Markdown,
+                Read = () => Persistent.DocumentationUrl, Write = v => Persistent.DocumentationUrl = v
+            },
+            new UrlField
+            {
+                Box = BugTrackerBox, ResetButton = BugTrackerResetButton, Hint = BugTrackerHint,
+                Description = "The markdown the titlebar's Bugs button renders. A #heading at the end is honoured.",
+                Fallback = ProviderLinks.DefaultBugTracker, Kind = ProviderLinks.LinkKind.Markdown,
+                Read = () => Persistent.BugTrackerUrl, Write = v => Persistent.BugTrackerUrl = v
+            },
+        ]);
+
+        foreach (var field in _urlFields)
+        {
+            var captured = field;
+
+            // Committed on focus loss and on Enter, never per keystroke: a half-typed address
+            // is invalid for most of the time it is being typed, and rejecting it letter by
+            // letter turns the hint into a flicker nobody can read.
+            captured.Box.LostFocus += (_, _) => CommitUrlField(captured);
+            captured.Box.KeyDown += (_, e) =>
+            {
+                if (e.Key != Windows.System.VirtualKey.Enter) return;
+                CommitUrlField(captured);
+                e.Handled = true;
+            };
+
+            captured.ResetButton.Click += (_, _) =>
+            {
+                captured.Write(captured.Fallback);
+                SetBoxText(captured, captured.Fallback);
+                ShowUrlFieldHint(captured, accepted: true);
+            };
+        }
+    }
+
+    private void RefreshUrlFields()
+    {
+        foreach (var field in _urlFields)
+        {
+            field.Box.Text = ProviderLinks.Resolve(field.Read(), field.Fallback, field.Kind);
+            ShowUrlFieldHint(field, accepted: true);
+        }
+    }
+
+    /// <summary>Writes into the box without the write coming back around as an edit to commit.</summary>
+    private void SetBoxText(UrlField field, string text)
+    {
+        _suppressCallbacks = true;
+        try { field.Box.Text = text; }
+        finally { _suppressCallbacks = false; }
+    }
+
+    /// <summary>
+    /// Validates what's in the box and stores it if it passes. A rejected value is left on
+    /// screen with the reason under it rather than being snapped back: the user is looking at
+    /// what they typed and needs to see what is wrong with it, and nothing downstream has
+    /// changed because the stored value was never touched.
+    /// </summary>
+    private void CommitUrlField(UrlField field)
+    {
+        if (_suppressCallbacks) return;
+
+        var typed = field.Box.Text?.Trim() ?? string.Empty;
+
+        // An emptied box means "go back to the built-in one" - the same thing the revert button
+        // does, and a more discoverable way to ask for it than finding that button.
+        if (typed.Length == 0)
+        {
+            field.Write(field.Fallback);
+            SetBoxText(field, field.Fallback);
+            ShowUrlFieldHint(field, accepted: true);
+            return;
+        }
+
+        var accepted = ProviderLinks.IsValid(typed, field.Kind);
+        if (accepted) field.Write(typed);
+
+        ShowUrlFieldHint(field, accepted);
+    }
+
+    private void ShowUrlFieldHint(UrlField field, bool accepted)
+    {
+        field.Hint.Text = accepted ? field.Description : ProviderLinks.RejectionReason(field.Kind);
+        field.Hint.Opacity = accepted ? 0.55 : 1.0;
+        field.Hint.Foreground = accepted
+            ? (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+            : (Brush)Application.Current.Resources["SystemFillColorCautionBrush"];
+    }
+
+    // =========================================================================
     //  Maintenance
     // =========================================================================
 
     private void HardResetButton_Click(object sender, RoutedEventArgs e)
     {
+        _ = _host?.BlinkingLamp(true, true, 0.0, 1.0);
+
         // The panel gets out of the way first: the confirmation dialog and the progress bar it
         // leads to both belong to the window behind this, and a modal scrim over them would
         // leave the user looking at a dimmed app they can't see the progress of.

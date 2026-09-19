@@ -605,11 +605,15 @@ public sealed partial class DLSSSwapperWindow : Window
     /// right here. Whatever they download that looks like a DLSS runtime gets imported
     /// automatically once they close the overlay - see <see cref="WebImportOverlay"/> for the
     /// mechanism, which knows nothing about DLSS specifically.
+    ///
+    /// <para>Which page that is comes from <see cref="Core.ProviderLinks"/> rather than being
+    /// written here: the settings panel lets it be pointed somewhere else, and that class is
+    /// what falls back to the built-in address when the stored one stops being usable.</para>
     /// </summary>
     private void DownloadDllsButton_Click(object sender, RoutedEventArgs e)
     {
         WebImportOverlay.Show(
-            url: "https://www.techpowerup.com/download/nvidia-dlss-dll/",
+            url: Core.ProviderLinks.DlssProvider,
             title: "Download DLSS files",
             glyph: "",
             guideText: "Once your your desired DLSS dll files have finished downloading, click Done.",
