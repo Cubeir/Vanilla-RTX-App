@@ -16,7 +16,7 @@ using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules.Json;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.PackBrowser;
 

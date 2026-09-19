@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Vanilla_RTX_App.Modules.BetterRTX;
 using Vanilla_RTX_App.Modules.LUT;
-using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules;
 

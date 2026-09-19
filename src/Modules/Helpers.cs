@@ -20,6 +20,7 @@ using Vanilla_RTX_App.Modules.Json;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using static Vanilla_RTX_App.MainWindow;
+using Vanilla_RTX_App.Core;
 
 namespace Vanilla_RTX_App.Modules;
 

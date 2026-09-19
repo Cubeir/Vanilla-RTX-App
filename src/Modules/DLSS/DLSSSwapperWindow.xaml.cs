@@ -16,7 +16,7 @@ using Vanilla_RTX_App.Core.Overlays;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.DLSS;
 
@@ -606,14 +606,15 @@ public sealed partial class DLSSSwapperWindow : Window
     /// automatically once they close the overlay - see <see cref="WebImportOverlay"/> for the
     /// mechanism, which knows nothing about DLSS specifically.
     ///
-    /// <para>Which page that is comes from <see cref="Core.ProviderLinks"/> rather than being
-    /// written here: the settings panel lets it be pointed somewhere else, and that class is
-    /// what falls back to the built-in address when the stored one stops being usable.</para>
+    /// <para>Which page that is comes from <see cref="Core.EnvironmentVariables.Links"/> rather
+    /// than being written here: the settings panel lets it be pointed somewhere else, and that
+    /// class is what falls back to the built-in address when the stored one stops being
+    /// usable.</para>
     /// </summary>
     private void DownloadDllsButton_Click(object sender, RoutedEventArgs e)
     {
         WebImportOverlay.Show(
-            url: Core.ProviderLinks.DlssProvider,
+            url: Links.DlssProvider,
             title: "Download DLSS files",
             glyph: "",
             guideText: "Once your your desired DLSS dll files have finished downloading, click Done.",

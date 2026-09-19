@@ -7,7 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using WinUIEx;
-using static Vanilla_RTX_App.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
+using static Vanilla_RTX_App.Core.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
 
 namespace Vanilla_RTX_App.Modules.PackUpdater;
 

@@ -30,133 +30,11 @@ using Windows.Storage;
 using Windows.System;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.EnvironmentVariables;
-using static Vanilla_RTX_App.EnvironmentVariables.Persistent;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
+using static Vanilla_RTX_App.Core.EnvironmentVariables.Persistent;
 using static Vanilla_RTX_App.Modules.Helpers;
 
 namespace Vanilla_RTX_App;
-
-/// <summary>
-/// Hosts the Persistent and Default variables where it mattered for it to persist between sessons,
-/// or for defaults to remain accessible, as well as the methods to save and load these variables
-/// </summary>
-public static class EnvironmentVariables
-{
-    private static readonly Windows.ApplicationModel.PackageVersion _version = App.GetPackageVersion();
-    public static readonly string appVersion = $"{_version.Major}.{_version.Minor}.{_version.Build}.{_version.Revision}";
-    public static readonly string appVersionMajor = $"{_version.Major}";
-    public static readonly string appVersionMajorMinor = $"{_version.Major}.{_version.Minor}";
-    public static readonly string appVersionMajorMinorBuild = $"{_version.Major}.{_version.Minor}.{_version.Build}";
-
-    public static string VanillaRTXLocation = string.Empty;
-    public static string VanillaRTXNormalsLocation = string.Empty;
-    public static string VanillaRTXOpusLocation = string.Empty;
-
-    public static string VanillaRTXVersion = string.Empty;
-    public static string VanillaRTXNormalsVersion = string.Empty;
-    public static string VanillaRTXOpusVersion = string.Empty;
-
-    // Tied to checkboxes
-    public static bool IsVanillaRTXEnabled = false;
-    public static bool IsNormalsEnabled = false;
-    public static bool IsOpusEnabled = false;
-
-    public static ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> SelectedPacks = new();
-
-    public static class Persistent // These are saved and reloaded on app launch
-    {
-        public static bool IsTargetingPreview = Defaults.IsTargetingPreview;
-
-        public static string? MinecraftInstallPath = null;
-        public static string? MinecraftPreviewInstallPath = null;
-
-        public static string? MinecraftDataPath = null;
-        public static string? MinecraftPreviewDataPath = null;
-
-        public static double FogMultiplier = Defaults.FogMultiplier;
-        public static double EmissivityMultiplier = Defaults.EmissivityMultiplier;
-        public static int NormalIntensity = Defaults.NormalIntensity;
-        public static int MaterialNoiseOffset = Defaults.MaterialNoiseOffset;
-        public static int RoughnessControlValue = Defaults.RoughnessControlValue;
-        public static int LazifyNormalAlpha = Defaults.LazifyNormalAlpha;
-        public static bool AddEmissivityAmbientLight = Defaults.AddEmissivityAmbientLight;
-
-        public static string AppThemeMode = "Dark";
-        public static bool SuspendUIAnimations = false;
-
-        // The Launch button's options.txt edits, as MinecraftLauncher's name=value;name=value
-        // form. A string rather than a collection because SaveSettings/LoadSettings round-trip
-        // every field in here through LocalSettings via Convert.ChangeType, which only handles
-        // primitives - see MinecraftLauncher.ParseOptions for the format and why an explicitly
-        // empty configuration is stored as a marker instead of "".
-        public static string LaunchOptions = Defaults.LaunchOptions;
-
-        // Where the app goes for someone else's content. Read them through Core.ProviderLinks,
-        // never directly - it is what falls back to the built-in address when one of these has
-        // gone stale, which is the only reason exposing them is safe.
-        public static string DlssProviderUrl = Core.ProviderLinks.DefaultDlssProvider;
-        public static string BetterRtxProviderUrl = Core.ProviderLinks.DefaultBetterRtxProvider;
-        public static string DocumentationUrl = Core.ProviderLinks.DefaultDocumentation;
-        public static string BugTrackerUrl = Core.ProviderLinks.DefaultBugTracker;
-    }
-
-    public static class Defaults // These are backed up to be used as a compass by other classes
-    {
-        public const bool IsTargetingPreview = false;
-        public const double FogMultiplier = 1.0;
-        public const double EmissivityMultiplier = 1.0;
-        public const int NormalIntensity = 100;
-        public const int MaterialNoiseOffset = 0;
-        public const int RoughnessControlValue = 0;
-        public const int LazifyNormalAlpha = 0;
-        public const bool AddEmissivityAmbientLight = false;
-
-        /// <summary>Serialized <see cref="Modules.MinecraftLauncher.DefaultOptions"/> - resolved once here so the stored form and the launcher's own defaults can never drift.</summary>
-        public static readonly string LaunchOptions = Modules.MinecraftLauncher.SerializeOptions(Modules.MinecraftLauncher.DefaultOptions);
-    }
-
-    // Window size defaults for all windows
-    public const int WindowSizeX = 1150;
-    public const int WindowSizeY = 620;
-    public const int WindowMinSizeX = 950;
-    public const int WindowMinSizeY = 615;
-
-    // Saves persistent variables
-    public static void SaveSettings()
-    {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        var fields = typeof(Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
-
-        foreach (var field in fields)
-        {
-            var value = field.GetValue(null);
-            localSettings.Values[field.Name] = value;
-        }
-    }
-
-    // Loads persitent variables
-    public static void LoadSettings()
-    {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        var fields = typeof(Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
-        foreach (var field in fields)
-        {
-            try
-            {
-                if (localSettings.Values.ContainsKey(field.Name))
-                {
-                    var savedValue = localSettings.Values[field.Name];
-                    var convertedValue = Convert.ChangeType(savedValue, field.FieldType);
-                    field.SetValue(null, convertedValue);
-                }
-            }
-            catch
-            {
-                Trace.WriteLine($"[MainWindow] An issue occured loading settings");
-            }
-        }
-    }
-}
 
 // For dynamically updating number of other selected packs in the UI (select other packs button)
 public class PackSelectionViewModel : INotifyPropertyChanged
@@ -224,7 +102,12 @@ public sealed partial class MainWindow : Window
     private readonly TaskCompletionSource _initializedTcs = new();
     private Task WaitUntilInitializedAsync() => _initializedTcs.Task;
 
-    private readonly ProgressBarManager _progressManager;
+    /// <summary>
+    /// Shared with the settings panel, which drives it for the duration of a hard reset -
+    /// see MainWindow.SettingsOverlay.xaml.cs. Internal rather than private for that one
+    /// reason; nothing outside this assembly touches it.
+    /// </summary>
+    internal readonly ProgressBarManager _progressManager;
 
     public readonly PackUpdater _updater = new();
 
@@ -918,218 +801,6 @@ public sealed partial class MainWindow : Window
 
     #region Titlebar Features -------------------------------
     private static int lampSecretMessageCounter = 0;
-    /// <summary>
-    /// Builds the whole diagnostic snapshot - system info, the sidebar log, every tuner and
-    /// persistent variable, the trace buffer and the live state of every supported control in
-    /// this window - and puts it on the clipboard. The settings panel's "Copy debug logs" is
-    /// the only caller.
-    ///
-    /// <para>It reflects over <c>this</c> to enumerate controls, which is what lets a control
-    /// added to MainWindow.xaml years from now show up in a report without anyone remembering
-    /// to list it. Nothing here throws outward: a report that can't be built is worth a log
-    /// line, never a crash in the middle of someone trying to report a bug.</para>
-    /// </summary>
-    public void CopyDebugReportToClipboard()
-    {
-        try
-        {
-            var sb = new StringBuilder();
-            AppendSystemInfo(sb);
-            sb.AppendLine($"===== Sidebar Log (Last {MaxLogChars.ToString()} Chars)");
-            string logSnapshot;
-            lock (_logGate) logSnapshot = LogText;
-            sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
-            sb.AppendLine();
-            sb.AppendLine("===== Tuner Variables");
-            var fields = typeof(EnvironmentVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
-
-            foreach (var field in fields)
-            {
-                var value = field.GetValue(null);
-
-                // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
-                if (field.Name == nameof(EnvironmentVariables.SelectedPacks) &&
-                    value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
-                {
-                    if (selectedPacks.Count == 0)
-                    {
-                        sb.AppendLine("SelectedPacks: (empty)");
-                    }
-                    else
-                    {
-                        sb.AppendLine("SelectedPacks:");
-                        foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
-                            sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
-                    }
-                    continue;
-                }
-                else if (value is System.Collections.IEnumerable enumerable && value is not string)
-                {
-                    var items = enumerable.Cast<object>().ToList();
-                    sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
-                    foreach (var item in items)
-                        sb.AppendLine($"  {FormatValue(item)}");
-                    continue;
-                }
-
-                sb.AppendLine($"{field.Name}: {value ?? "null"}");
-            }
-            static string FormatValue(object? value)
-            {
-                if (value is null) return "null";
-                if (value is System.Runtime.CompilerServices.ITuple tuple)
-                {
-                    var items = new object?[tuple.Length];
-                    for (int i = 0; i < tuple.Length; i++)
-                        items[i] = tuple[i]?.ToString() ?? "null";
-                    return string.Join(", ", items);
-                }
-                return value.ToString() ?? "null";
-            }
-
-            sb.AppendLine();
-            // Persistent variables
-            sb.AppendLine("===== Persistent Tuner Variables");
-            var persistentFields = typeof(EnvironmentVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
-            foreach (var field in persistentFields)
-            {
-                var value = field.GetValue(null);
-                sb.AppendLine($"{field.Name}: {value ?? "null"}");
-            }
-            sb.AppendLine();
-            // Trace logs
-            sb.AppendLine(TraceManager.GetAllTraceLogs());
-
-            // UI Controls State
-            sb.AppendLine();
-            sb.AppendLine("===== UI Controls State");
-            CollectUIControlsState(sb);
-
-            // TODO: Stack trace
-            // Append later, could be useful
-
-            var dataPackage = new DataPackage();
-            dataPackage.SetText(sb.ToString());
-            Clipboard.SetContent(dataPackage);
-            Log("Copied app logs to clipboard.", LogLevel.Success);
-            _ = BlinkingLamp(true, true, 0.0, 1.0);
-
-            // ============================================
-            void CollectUIControlsState(StringBuilder sb)
-            {
-                var fields = this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-
-                foreach (var field in fields)
-                {
-                    var value = field.GetValue(this);
-                    if (value == null) continue;
-
-                    var type = value.GetType();
-                    var name = field.Name;
-
-                    // Toggle-type controls
-                    if (value is ToggleButton toggleBtn)
-                    {
-                        sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
-                    }
-                    else if (value is CheckBox checkBox)
-                    {
-                        sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
-                    }
-                    else if (value is ToggleSwitch toggleSwitch)
-                    {
-                        sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
-                    }
-                    else if (value is RadioButton radioBtn)
-                    {
-                        sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
-                    }
-                    // Value controls
-                    else if (value is Slider slider)
-                    {
-                        sb.AppendLine($"{name} (Slider): {slider.Value}");
-                    }
-                    else if (value is NumberBox numberBox)
-                    {
-                        sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
-                    }
-                    else if (value is ComboBox comboBox)
-                    {
-                        sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
-                    }
-                    else if (value is TextBox textBox)
-                    {
-                        var text = textBox.Text;
-                        if (!string.IsNullOrEmpty(text) && text.Length > 50)
-                            text = text.Substring(0, 50) + "...";
-                        sb.AppendLine($"{name} (TextBox): \"{text}\"");
-                    }
-                    else if (value is RatingControl rating)
-                    {
-                        sb.AppendLine($"{name} (RatingControl): {rating.Value}");
-                    }
-                    else if (value is ColorPicker colorPicker)
-                    {
-                        sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
-                    }
-                    else if (value is DatePicker datePicker)
-                    {
-                        sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
-                    }
-                    else if (value is TimePicker timePicker)
-                    {
-                        sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
-                    }
-                }
-            }
-            void AppendSystemInfo(StringBuilder sb)
-            {
-                sb.AppendLine("===== System Info");
-
-                // Process architecture = what's actually executing right now
-                sb.AppendLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
-                // OS architecture = the machine's native architecture (differs from above if running under emulation)
-                sb.AppendLine($"OS Architecture: {RuntimeInformation.OSArchitecture}");
-                sb.AppendLine($"Is Emulated (x64-on-ARM64): {(RuntimeInformation.ProcessArchitecture != RuntimeInformation.OSArchitecture)}");
-
-                sb.AppendLine($"OS Version: {RuntimeInformation.OSDescription}");
-                sb.AppendLine($".NET Runtime: {RuntimeInformation.FrameworkDescription}");
-
-                sb.AppendLine($"Processor Count: {Environment.ProcessorCount}");
-                sb.AppendLine($"Working Set: {Environment.WorkingSet / 1024 / 1024} MB");
-                sb.AppendLine($"64-bit OS: {Environment.Is64BitOperatingSystem}");
-                sb.AppendLine($"64-bit Process: {Environment.Is64BitProcess}");
-
-                try
-                {
-                    var package = Windows.ApplicationModel.Package.Current;
-                    var v = package.Id.Version;
-                    sb.AppendLine($"Package Version: {v.Major}.{v.Minor}.{v.Build}.{v.Revision}");
-                    sb.AppendLine($"Package Architecture: {package.Id.Architecture}");
-                    sb.AppendLine($"Package Full Name: {package.Id.FullName}");
-                }
-                catch (Exception ex)
-                {
-                    sb.AppendLine($"Package Info: unavailable ({ex.Message})");
-                }
-
-                try
-                {
-                    var culture = System.Globalization.CultureInfo.CurrentUICulture;
-                    sb.AppendLine($"UI Culture: {culture.Name}");
-                }
-                catch { /* non-critical */ }
-
-                sb.AppendLine();
-            }
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[MainWindow] Error building the debug report: {ex}");
-            Log("Something went wrong while building the debug report.", LogLevel.Error);
-        }
-    }
-
     private void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true, 1.0, 0.1);
@@ -1268,7 +939,7 @@ public sealed partial class MainWindow : Window
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
         OpenDocument(
-            url: ProviderLinks.Documentation,
+            url: Links.Documentation,
             title: "Vanilla RTX App Documentation");
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
@@ -1290,7 +961,7 @@ public sealed partial class MainWindow : Window
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
         OpenDocument(
-            url: ProviderLinks.BugTracker,
+            url: Links.BugTracker,
             title: "Known Minecraft RTX Bugs & Issues");
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }
@@ -1301,20 +972,6 @@ public sealed partial class MainWindow : Window
     }
     private void BugButton_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-    }
-
-
-    /// <summary>
-    /// Writes the supporter/credits text into the log, once per session. The settings panel
-    /// shows the same text inline; this is what keeps the log's version of the gesture - the
-    /// Ko-fi link there calls it on the way out to the browser, exactly as the old titlebar
-    /// Donate button did.
-    /// </summary>
-    public void RollCredits()
-    {
-        var credits = OnlineTextsContent.Credits?.FirstOrDefault()?.Text;
-        if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Has_Rolled_Credits"))
-            Log(credits);
     }
 
 
@@ -1796,53 +1453,6 @@ public sealed partial class MainWindow : Window
 
 
 
-    /// <summary>
-    /// The settings panel's Hard reset. Confirms, locks the window down and hands off to
-    /// <see cref="WipeAllStorageData"/>, which takes it from there (including re-enabling the
-    /// window when it's done).
-    ///
-    /// <para>The confirmation is not a formality: this deletes the Default RTX and LUT backups
-    /// taken out of the user's own game files, so it may have to hand those back through
-    /// several elevation prompts before they're gone. Declining leaves everything untouched.</para>
-    /// </summary>
-    public async Task RequestHardResetAsync()
-    {
-        try
-        {
-            var dialog = new ContentDialog
-            {
-                Title = "You're about to completely wipe all of app's data.",
-                Content = $"This will delete all of application's data across your device, including Default RTX & LUT files which the app obtained from your actual game files!" +
-                $"\nAs such, you may be prompted to accept multiple admin privilege requests in order to let the app restore your game's default files before they're gone from app's data.",
-                PrimaryButtonText = "Confirm",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot,
-                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
-            };
-
-            var result = await dialog.ShowAsync();
-            if (result != ContentDialogResult.Primary)
-            {
-                Log("Wiping app's data was cancelled by user.", LogLevel.Warning);
-                return;
-            }
-
-            WindowControlsManagerExtensions.DisableAllControls(this);
-            _progressManager.ShowProgress();
-            _ = BlinkingLamp(true);
-
-            _ = WipeAllStorageData();
-        }
-        catch (Exception ex)
-        {
-            Log($"Hard Reset Error: {ex.Message}", LogLevel.Error);
-            WindowControlsManagerExtensions.RestoreAllControls(this);
-            _ = BlinkingLamp(false);
-            _progressManager.HideProgress();
-        }
-    }
-
     private void ResetButton_Click(object sender, RoutedEventArgs e)
     {
         // Defaults
@@ -1893,149 +1503,6 @@ public sealed partial class MainWindow : Window
         else
             Log("You haven't selected any resource pack to clear.", LogLevel.Cleaning);
     }
-
-    private async Task WipeAllStorageData()
-    {
-        try
-        {
-            Log("Starting hard reset, this will wipe all of app's storage and temporary files...", LogLevel.Warning);
-            await Task.Delay(250);
-
-            await GuardActivePresetsBeforeWipeAsync();
-
-            // ── 1. Local Settings (recursive containers) ─────────────────────────
-            var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-            var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
-            int totalKeysWiped = 0;
-
-            foreach (var (root, rootName) in new[] { (localSettings, "LocalSettings"), (roamingSettings, "RoamingSettings") })
-            {
-                foreach (var key in root.Values.Keys.ToList())
-                {
-                    root.Values.Remove(key);
-                    Log($"Deleted key: {rootName}/{key}", LogLevel.Cache);
-                    totalKeysWiped++;
-                }
-
-                foreach (var containerKey in root.Containers.Keys.ToList())
-                {
-                    root.DeleteContainer(containerKey);
-                    Log($"Deleted container: {rootName}/{containerKey}", LogLevel.Cache);
-                }
-            }
-
-            Log($"Wiped {totalKeysWiped} setting key(s) across all containers.", LogLevel.Cache);
-            await Task.Delay(100);
-
-            // ── 2. Wipe all storage folders ───────────────────────────────────────
-            var foldersToWipe = new[]
-            {
-            (path: Windows.Storage.ApplicationData.Current.LocalFolder.Path,      label: "LocalFolder (LocalState)"),
-            (path: Windows.Storage.ApplicationData.Current.LocalCacheFolder.Path, label: "LocalCacheFolder"),
-            (path: Windows.Storage.ApplicationData.Current.TemporaryFolder.Path,  label: "TemporaryFolder"),
-            };
-
-            int totalItemsDeleted = 0;
-
-            foreach (var (path, label) in foldersToWipe)
-            {
-                Log($"Wiping {label}: {path}", LogLevel.Cache);
-                int deletedInFolder = 0;
-
-                if (!Directory.Exists(path))
-                {
-                    Log($"{label} not found, skipping.", LogLevel.Cache);
-                    continue;
-                }
-
-                foreach (var file in Directory.GetFiles(path))
-                {
-                    try
-                    {
-                        File.Delete(file);
-                        Log($"Deleted file: {Path.GetFileName(file)}", LogLevel.Cache);
-                        deletedInFolder++;
-                        await Task.Delay(10);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log($"Could not delete file {Path.GetFileName(file)}: {ex.Message}", LogLevel.Warning);
-                    }
-                }
-
-                foreach (var dir in Directory.GetDirectories(path))
-                {
-                    try
-                    {
-                        Directory.Delete(dir, recursive: true);
-                        Log($"Deleted folder: {Path.GetFileName(dir)}", LogLevel.Cache);
-                        deletedInFolder++;
-                        await Task.Delay(15);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log($"Could not delete folder {Path.GetFileName(dir)}: {ex.Message}", LogLevel.Warning);
-                    }
-                }
-
-                Log($"{label} wiped ({deletedInFolder} item(s)).", LogLevel.Cache);
-                totalItemsDeleted += deletedInFolder;
-            }
-
-            Log($"Deleted {totalItemsDeleted} file/folder item(s) total.", LogLevel.Cache);
-            await Task.Delay(500);
-            Log("Hard reset complete! The app will restart in a moment...", LogLevel.Lengthy);
-            await Task.Delay(4444);
-
-            Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
-        }
-        catch (Exception ex)
-        {
-            Log($"Error during hard reset: {ex.Message}", LogLevel.Error);
-        }
-
-        // ── local helpers, only meaningful when trying to wipe and user doesn't have their default presets installed if any ───────────
-
-        async Task GuardActivePresetsBeforeWipeAsync()
-        {
-            Log("Checking for active custom presets that need to be reverted first...", LogLevel.BetterRTX);
-
-            await RunGuard("BetterRTX",
-                DefaultsGuard.RestoreBetterRTXDefaultIfNeededAsync(
-                    msg => Log(msg, LogLevel.Informational)));
-
-            await RunGuard("RTX LUT (Release)",
-                DefaultsGuard.RestoreLutDefaultIfNeededAsync(
-                    targetPreview: false, log: msg => Log(msg, LogLevel.Informational)));
-
-            await RunGuard("RTX LUT (Preview)",
-                DefaultsGuard.RestoreLutDefaultIfNeededAsync(
-                    targetPreview: true, log: msg => Log(msg, LogLevel.Informational)));
-
-            await Task.Delay(150);
-        }
-
-        async Task RunGuard(string featureName, Task<RTXDefaultsGuard> guardTask)
-        {
-            var result = await guardTask;
-            switch (result)
-            {
-                case RTXDefaultsGuard.Restored:
-                    Log($"{featureName}: reverted to Default before wipe.", LogLevel.Success);
-                    break;
-                case RTXDefaultsGuard.RestoreFailed:
-                    Log($"{featureName}: tried to revert to Default but it failed - the game may still be on a modified preset.", LogLevel.Warning);
-                    break;
-                case RTXDefaultsGuard.Skipped:
-                    Log($"{featureName}: couldn't safely verify preset state - left untouched.", LogLevel.Warning);
-                    break;
-                case RTXDefaultsGuard.NoActionNeeded:
-                    Log($"{featureName}: already on Default or nothing to protect.", LogLevel.Informational);
-                    break;
-            }
-        }
-    }
-
 
     private async void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2728,7 +2195,7 @@ public sealed partial class MainWindow : Window
 
     // The single source of truth, Log() only ever writes here
     internal static string LogText = "";
-    private static readonly Lock _logGate = new();
+    internal static readonly Lock _logGate = new();
 
     // Typewriter state, only ever touched on the UI thread, inside TypewriterTick()
     // Logger writes fast; typewriter reveals it to the UI on its own schedule – always the
@@ -2741,7 +2208,7 @@ public sealed partial class MainWindow : Window
     private string? _lastRenderedText;
     private static string? _lastSeenLogText;
 
-    private const int MaxLogChars = 4000;
+    internal const int MaxLogChars = 4000;
 
     private const double BaselineCharsPerTick = 2.0; // relaxed pace for small/no backlog
     private const double CatchUpFraction = 0.10;      // reveal % of the backlog each tick
@@ -2766,7 +2233,7 @@ public sealed partial class MainWindow : Window
 
 
     // Structural marker ONLY – never rendered, never typed character-by-character, never
-    private const string EntrySentinel = "\uE000\uE001";
+    internal const string EntrySentinel = "\uE000\uE001";
 
     // Idle/typing cursor – sits at the current write-head
     private const bool ShowTypingCursor = true;

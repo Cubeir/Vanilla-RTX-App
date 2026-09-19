@@ -171,8 +171,10 @@ public static class OnlineTexts
 {
     // ── Config ────────────────────────────────────────────────────────────────
 
-    private const string URL =
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/IN-APP-ANNOUNCEMENTS.md";
+    // A property rather than a const: the address is a setting now
+    // (EnvironmentVariables.Links.Announcements), so it has to be read at fetch time rather
+    // than baked in when this class is first touched.
+    private static string URL => EnvironmentVariables.Links.Announcements;
 
     private const string KEY_TIMESTAMP = "OnlineTexts_Timestamp";
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";

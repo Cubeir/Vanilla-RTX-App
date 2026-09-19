@@ -54,17 +54,17 @@
 
         <!-- Left half of a path selector, and a real Button rather than a Border: clicking it
              opens the folder in File Explorer, so it has to take focus and show hover and
-             pressed states like any other control that does something. Its corner radius is
-             rounded only on the outer edge and square where the bevel and button meet it, which
-             is what makes the three elements read as one rectangle rather than a box with a
-             button parked beside it. Height is never set: the row is as tall as the wrapped
-             path, and the Change button stretches to match. -->
+             pressed states like any other control that does something.
+
+             It is the stock button style with nothing but a corner radius and an alignment
+             changed. An earlier version overrode BorderThickness to drop the right edge, which
+             fights the default template: that border is a two-tone elevation brush and the
+             template swaps it for a flat one on press, so the row visibly changed shape under
+             the pointer and came apart from the accent button glued to it. -->
         <Style x:Key="SettingsPathBoxStyle"
                TargetType="Button">
             <Setter Property="CornerRadius" Value="4,0,0,4" />
             <Setter Property="MinHeight" Value="32" />
-            <Setter Property="Padding" Value="10,6,10,6" />
-            <Setter Property="BorderThickness" Value="1,1,0,1" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -99,11 +99,48 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
+        <!-- Wraps rather than scrolling sideways: these hold long raw.githubusercontent paths,
+             and a single line shows the user the middle of their own URL with both ends hidden.
+             AcceptsReturn stays false - the row grows to fit, but Enter still means "commit". -->
         <Style x:Key="SettingsUrlBoxStyle"
                TargetType="TextBox">
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="AcceptsReturn" Value="False" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+        <!-- The close button, which lives on the scrim rather than in the panel.
+             <b>An opaque background, not the stock one.</b> Out here there is nothing behind it
+             to borrow contrast from and the default button fill is translucent, so the dimmed
+             main window reads straight through it - the scrim's own content ends up printed
+             across the glyph. The hover and pressed states still come from the template; only
+             the resting fill is overridden. -->
+        <Style x:Key="SettingsCloseButtonStyle"
+               TargetType="Button">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="16,16,0,0" />
+            <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{ThemeResource ControlElevationBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+        <Style x:Key="SettingsUrlResetButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource SubtleButtonStyle}">
+            <Setter Property="Padding" Value="8,6,8,6" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+            <Setter Property="ToolTipService.ToolTip" Value="Put the built-in address back." />
         </Style>
 
     </UserControl.Resources>
@@ -132,6 +169,19 @@
                 Background="#66000000"
                 Tapped="ModalBlocker_Tapped" />
 
+        <!-- Sits on the scrim just past the panel's edge rather than inside the panel. Every
+             in-panel position covered something: the content scrolls the full height of the
+             panel, so a floating button is always over a control at some scroll offset. Out
+             here it overlaps nothing, stays put while the content scrolls, and reads as "close
+             this" rather than as one more setting. -->
+        <Button x:Name="CloseButton"
+                Grid.Column="1"
+                Style="{StaticResource SettingsCloseButtonStyle}"
+                Click="CloseButton_Click"
+                ToolTipService.ToolTip="Close settings">
+            <FontIcon Glyph="&#xE711;" FontSize="16" />
+        </Button>
+
         <Border x:Name="Panel"
                 Grid.Column="0"
                 HorizontalAlignment="Stretch"
@@ -150,13 +200,12 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
                               Padding="18,0,30,22">
-                    <StackPanel Spacing="14">
+                    <StackPanel Spacing="14"
+                                Tapped="PanelBody_Tapped">
 
-                        <!-- ═══ Appearance ═══════════════════════════════════════════════
-                             The top margin is what keeps this clear of the floating close
-                             button below, which scrolling content passes behind. -->
+                        <!-- ═══ Appearance ═══════════════════════════════════════════════ -->
                         <TextBlock Text="Appearance"
-                                   Margin="0,46,0,0"
+                                   Margin="0,16,0,0"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
                         <Grid>
@@ -456,114 +505,264 @@
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
 
                         <!-- ═══ Content sources ══════════════════════════════════════════
-                             Four addresses that used to be string literals at their call sites.
-                             Each row is a box, a revert-to-built-in button, and a line that
-                             doubles as the rejection message - see SettingsOverlay's UrlField. -->
+                             Every address the app goes to for something it doesn't ship. Each
+                             row is a box, a revert-to-built-in button, and a line that doubles
+                             as the rejection message - see the code-behind's UrlField. The
+                             built-in address always comes back on its own if what is stored
+                             ever stops validating, which is what makes these safe to expose. -->
                         <TextBlock Text="Content sources"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                        <TextBlock Text="Where the app goes for things it doesn't ship itself. Change one and that feature goes to your address instead; the built-in one comes back on its own if what's here ever stops being usable."
+                        <TextBlock Text="Where the app goes for things it doesn't ship itself. Change one and that feature goes to your address instead; the built-in one comes back on its own if what's here ever stops being usable. Empty a box to go straight back to the built-in."
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="DLSS downloads"
-                                       Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="DlssProviderBox"
-                                         Grid.Column="0"
-                                         Margin="0,0,6,0"
-                                         Style="{StaticResource SettingsUrlBoxStyle}" />
-                                <Button x:Name="DlssProviderResetButton"
-                                        Grid.Column="1"
-                                        Style="{ThemeResource SubtleButtonStyle}"
-                                        Padding="8,6,8,6"
-                                        VerticalAlignment="Center"
-                                        ToolTipService.ToolTip="Put the built-in address back.">
-                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
-                                </Button>
-                            </Grid>
-                            <TextBlock x:Name="DlssProviderHint"
-                                       Style="{StaticResource SettingsHintTextStyle}" />
-                        </StackPanel>
+                        <TextBlock Text="Documentation page"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="DocumentationBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="DocumentationResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="DocumentationHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
 
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="BetterRTX preset creator"
-                                       Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="BetterRtxProviderBox"
-                                         Grid.Column="0"
-                                         Margin="0,0,6,0"
-                                         Style="{StaticResource SettingsUrlBoxStyle}" />
-                                <Button x:Name="BetterRtxProviderResetButton"
-                                        Grid.Column="1"
-                                        Style="{ThemeResource SubtleButtonStyle}"
-                                        Padding="8,6,8,6"
-                                        VerticalAlignment="Center"
-                                        ToolTipService.ToolTip="Put the built-in address back.">
-                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
-                                </Button>
-                            </Grid>
-                            <TextBlock x:Name="BetterRtxProviderHint"
-                                       Style="{StaticResource SettingsHintTextStyle}" />
-                        </StackPanel>
+                        <TextBlock Text="Minecraft RTX bug list"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="BugTrackerBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="BugTrackerResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="BugTrackerHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
 
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Documentation page"
-                                       Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="DocumentationBox"
-                                         Grid.Column="0"
-                                         Margin="0,0,6,0"
-                                         Style="{StaticResource SettingsUrlBoxStyle}" />
-                                <Button x:Name="DocumentationResetButton"
-                                        Grid.Column="1"
-                                        Style="{ThemeResource SubtleButtonStyle}"
-                                        Padding="8,6,8,6"
-                                        VerticalAlignment="Center"
-                                        ToolTipService.ToolTip="Put the built-in address back.">
-                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
-                                </Button>
-                            </Grid>
-                            <TextBlock x:Name="DocumentationHint"
-                                       Style="{StaticResource SettingsHintTextStyle}" />
-                        </StackPanel>
+                        <TextBlock Text="In-app announcements"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AnnouncementsBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="AnnouncementsResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="AnnouncementsHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
 
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Minecraft RTX bug list"
+                        <TextBlock Text="DLSS downloads"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="DlssProviderBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="DlssProviderResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="DlssProviderHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <TextBlock Text="BetterRTX preset creator"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="BetterRtxCreatorBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="BetterRtxCreatorResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="BetterRtxCreatorHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <TextBlock Text="BetterRTX preset index"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="BetterRtxApiBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="BetterRtxApiResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="BetterRtxApiHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <!-- Not a URL. PackUpdater builds four different addresses out of this
+                             one owner/repo pair, so the pair is the only part that is a real
+                             choice - and a repo behind it has to be laid out exactly like the
+                             original, which is what the hyperlink is there to show. -->
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="6">
+                            <TextBlock Text="Vanilla RTX repository"
+                                       VerticalAlignment="Center"
                                        Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="BugTrackerBox"
-                                         Grid.Column="0"
-                                         Margin="0,0,6,0"
-                                         Style="{StaticResource SettingsUrlBoxStyle}" />
-                                <Button x:Name="BugTrackerResetButton"
-                                        Grid.Column="1"
-                                        Style="{ThemeResource SubtleButtonStyle}"
-                                        Padding="8,6,8,6"
-                                        VerticalAlignment="Center"
-                                        ToolTipService.ToolTip="Put the built-in address back.">
-                                    <FontIcon Glyph="&#xE777;" FontSize="13" />
-                                </Button>
-                            </Grid>
-                            <TextBlock x:Name="BugTrackerHint"
-                                       Style="{StaticResource SettingsHintTextStyle}" />
+                            <HyperlinkButton x:Name="VanillaRtxRepoLink"
+                                             Content="see the original"
+                                             FontSize="11"
+                                             Padding="2,0,2,0"
+                                             VerticalAlignment="Center"
+                                             Click="VanillaRtxRepoLink_Click"
+                                             IsTextScaleFactorEnabled="False"
+                                             ToolTipService.ToolTip="Open the repository this has to be structured like." />
                         </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="VanillaRtxRepoBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     PlaceholderText="owner/repo"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="VanillaRtxRepoResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="VanillaRtxRepoHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <TextBlock Text="RTX Reactor - materials"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AlchitexMaterialsBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="AlchitexMaterialsResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="AlchitexMaterialsHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <TextBlock Text="RTX Reactor - PBR blacklist"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AlchitexBlacklistBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="AlchitexBlacklistResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="AlchitexBlacklistHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <TextBlock Text="RTX Reactor - fog files"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AlchitexFogBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="AlchitexFogResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="AlchitexFogHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
+
+                        <TextBlock Text="RTX Reactor - fallback water"
+                                   Style="{StaticResource SettingsItemLabelStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AlchitexWaterBox"
+                                     Grid.Column="0"
+                                     Margin="0,0,6,0"
+                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                            <Button x:Name="AlchitexWaterResetButton"
+                                    Grid.Column="1"
+                                    Style="{StaticResource SettingsUrlResetButtonStyle}">
+                                <FontIcon Glyph="&#xE777;" FontSize="13" />
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="AlchitexWaterHint"
+                                   Margin="0,-10,0,0"
+                                   Style="{StaticResource SettingsHintTextStyle}" />
 
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
 
@@ -598,7 +797,8 @@
                                     <FontIcon Glyph="&#xE8C8;"
                                               FontSize="15"
                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="Copy debug logs"
+                                    <TextBlock x:Name="CopyLogsButtonText"
+                                               Text="Copy debug logs"
                                                VerticalAlignment="Center"
                                                IsTextScaleFactorEnabled="False" />
                                 </StackPanel>
@@ -655,25 +855,6 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <!-- Floats over the scrolling content rather than sitting in a header strip of
-                     its own, which would put an opaque band exactly where the content is
-                     supposed to slide up under the titlebar. Same treatment MarkdownOverlay's
-                     search toggle gets, and the reason the first section header carries a top
-                     margin. -->
-                <Button x:Name="CloseButton"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Width="36"
-                        Height="36"
-                        Padding="0"
-                        CornerRadius="8"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="0,8,24,0"
-                        Click="CloseButton_Click"
-                        IsTextScaleFactorEnabled="False"
-                        ToolTipService.ToolTip="Close settings">
-                    <FontIcon Glyph="&#xE711;" FontSize="14" />
-                </Button>
             </Grid>
         </Border>
     </Grid>

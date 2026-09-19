@@ -1,17 +1,24 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Modules;
+using Windows.ApplicationModel.DataTransfer;
 using WinRT.Interop;
-using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Core.Overlays;
 
@@ -21,18 +28,23 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// shadowed, fades in and out), but it claims only half the width and leaves the tuning surface
 /// visible behind a dismiss scrim.
 ///
-/// <para><b>It drives MainWindow directly through <see cref="MainWindow.Instance"/> rather than
-/// raising events.</b> Almost everything in here is a change to the window - the theme applies
-/// to its root, suspending animations hides its preview vessels, setting a data path refreshes
-/// its pack list, and both maintenance buttons are the window's own long-running work. Wiring
-/// six events for a control that only ever lives inside that one window would be ceremony
-/// around the same coupling.</para>
+/// <para><b>The file is named for the window it serves, not for the class</b> - the same
+/// convention <c>MainWindow.LampAnimator.cs</c> and <c>PackBrowserWindow.BadgeVFX.cs</c> follow.
+/// It is not a partial of MainWindow (two XAML files cannot compile into one class) and it does
+/// not need to be: the split is by what you are looking at. What is on the main window is
+/// handled in <c>MainWindow.xaml.cs</c>; what is on this panel - including the wipe and the
+/// debug report, which used to sit over there and be called across - is handled here.</para>
+///
+/// <para><b>What it still reaches into MainWindow for is only what belongs to that window:</b>
+/// its progress bar, its control lock, its log and its lamp. Those are reached through
+/// <see cref="_host"/> rather than raised as events, because every one of them is a change to
+/// that window and this control only ever lives inside it.</para>
 ///
 /// <para><b>Nothing here is applied optimistically.</b> A path is shown only once the locator
-/// that owns it has validated and cached it - the same check that runs at every startup. A URL
-/// is written only once <see cref="ProviderLinks.IsValid"/> accepts it. A setting accepted here
-/// that startup would reject is a setting that appears to silently revert itself, which reads as
-/// a bug rather than as a rejection.</para>
+/// that owns it has validated and cached it - the same check that runs at every startup. An
+/// address is written only once <see cref="EnvironmentVariables.IsValidLink"/> accepts it. A
+/// setting accepted here that startup would reject is a setting that appears to silently revert
+/// itself, which reads as a bug rather than as a rejection.</para>
 ///
 /// <para><b>The panel is never reachable while the window is busy.</b> MainWindow's
 /// <c>LockControls</c> disables the titlebar's Settings button for the duration of every
@@ -74,9 +86,20 @@ public sealed partial class SettingsOverlay : UserControl
     /// <summary>Every path row, so refreshing and bevel repainting can walk them rather than naming eight controls each time.</summary>
     private PathRow[] _pathRows = Array.Empty<PathRow>();
 
+    /// <summary>How long "Copied to clipboard!" stays on the Copy debug logs button.</summary>
+    private const int CopyFeedbackMs = 1800;
+
+    /// <summary>What that button says the rest of the time - captured rather than re-typed so the two can't drift.</summary>
+    private readonly string CopyLogsDefaultLabel;
+
+    /// <summary>Bumped on every copy so a late timer can tell whether it is still the one that owns the label.</summary>
+    private int _copyFeedbackToken;
+
     public SettingsOverlay()
     {
         InitializeComponent();
+
+        CopyLogsDefaultLabel = CopyLogsButtonText.Text;
 
         BuildPathRows();
         BuildUrlFields();
@@ -615,7 +638,7 @@ public sealed partial class SettingsOverlay : UserControl
         public required TextBlock Hint { get; init; }
         public required string Description { get; init; }
         public required string Fallback { get; init; }
-        public required ProviderLinks.LinkKind Kind { get; init; }
+        public required LinkKind Kind { get; init; }
         public required Func<string?> Read { get; init; }
         public required Action<string> Write { get; init; }
     }
@@ -626,31 +649,80 @@ public sealed partial class SettingsOverlay : UserControl
         [
             new UrlField
             {
-                Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
-                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to.",
-                Fallback = ProviderLinks.DefaultDlssProvider, Kind = ProviderLinks.LinkKind.WebPage,
-                Read = () => Persistent.DlssProviderUrl, Write = v => Persistent.DlssProviderUrl = v
-            },
-            new UrlField
-            {
-                Box = BetterRtxProviderBox, ResetButton = BetterRtxProviderResetButton, Hint = BetterRtxProviderHint,
-                Description = "The page the BetterRTX manager's \"Create preset\" button browses to.",
-                Fallback = ProviderLinks.DefaultBetterRtxProvider, Kind = ProviderLinks.LinkKind.WebPage,
-                Read = () => Persistent.BetterRtxProviderUrl, Write = v => Persistent.BetterRtxProviderUrl = v
-            },
-            new UrlField
-            {
                 Box = DocumentationBox, ResetButton = DocumentationResetButton, Hint = DocumentationHint,
                 Description = "The markdown the titlebar's Help button renders. A #heading at the end is honoured.",
-                Fallback = ProviderLinks.DefaultDocumentation, Kind = ProviderLinks.LinkKind.Markdown,
+                Fallback = Defaults.DocumentationUrl, Kind = LinkKind.Markdown,
                 Read = () => Persistent.DocumentationUrl, Write = v => Persistent.DocumentationUrl = v
             },
             new UrlField
             {
                 Box = BugTrackerBox, ResetButton = BugTrackerResetButton, Hint = BugTrackerHint,
                 Description = "The markdown the titlebar's Bugs button renders. A #heading at the end is honoured.",
-                Fallback = ProviderLinks.DefaultBugTracker, Kind = ProviderLinks.LinkKind.Markdown,
+                Fallback = Defaults.BugTrackerUrl, Kind = LinkKind.Markdown,
                 Read = () => Persistent.BugTrackerUrl, Write = v => Persistent.BugTrackerUrl = v
+            },
+            new UrlField
+            {
+                Box = AnnouncementsBox, ResetButton = AnnouncementsResetButton, Hint = AnnouncementsHint,
+                Description = "The markdown every in-app announcement and the supporter list are parsed out of.",
+                Fallback = Defaults.AnnouncementsUrl, Kind = LinkKind.Markdown,
+                Read = () => Persistent.AnnouncementsUrl, Write = v => Persistent.AnnouncementsUrl = v
+            },
+            new UrlField
+            {
+                Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
+                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to.",
+                Fallback = Defaults.DlssProviderUrl, Kind = LinkKind.WebPage,
+                Read = () => Persistent.DlssProviderUrl, Write = v => Persistent.DlssProviderUrl = v
+            },
+            new UrlField
+            {
+                Box = BetterRtxCreatorBox, ResetButton = BetterRtxCreatorResetButton, Hint = BetterRtxCreatorHint,
+                Description = "The page the BetterRTX manager's \"Create preset\" button browses to.",
+                Fallback = Defaults.BetterRtxCreatorUrl, Kind = LinkKind.WebPage,
+                Read = () => Persistent.BetterRtxCreatorUrl, Write = v => Persistent.BetterRtxCreatorUrl = v
+            },
+            new UrlField
+            {
+                Box = BetterRtxApiBox, ResetButton = BetterRtxApiResetButton, Hint = BetterRtxApiHint,
+                Description = "The preset index the BetterRTX manager lists. Presets download from this same host.",
+                Fallback = Defaults.BetterRtxApiUrl, Kind = LinkKind.WebPage,
+                Read = () => Persistent.BetterRtxApiUrl, Write = v => Persistent.BetterRtxApiUrl = v
+            },
+            new UrlField
+            {
+                Box = VanillaRtxRepoBox, ResetButton = VanillaRtxRepoResetButton, Hint = VanillaRtxRepoHint,
+                Description = "The GitHub owner/repo \"Get latest RTX packs\" downloads from. It has to be laid out exactly like the original repository - linked above - or that window will find nothing.",
+                Fallback = Defaults.VanillaRtxRepository, Kind = LinkKind.GitHubRepository,
+                Read = () => Persistent.VanillaRtxRepository, Write = v => Persistent.VanillaRtxRepository = v
+            },
+            new UrlField
+            {
+                Box = AlchitexMaterialsBox, ResetButton = AlchitexMaterialsResetButton, Hint = AlchitexMaterialsHint,
+                Description = "RTX Reactor's per-block PBR configuration. The packaged copy is used until this one downloads.",
+                Fallback = Defaults.AlchitexMaterialsUrl, Kind = LinkKind.Json,
+                Read = () => Persistent.AlchitexMaterialsUrl, Write = v => Persistent.AlchitexMaterialsUrl = v
+            },
+            new UrlField
+            {
+                Box = AlchitexBlacklistBox, ResetButton = AlchitexBlacklistResetButton, Hint = AlchitexBlacklistHint,
+                Description = "The texture names RTX Reactor gives a colour-only texture set instead of PBR.",
+                Fallback = Defaults.AlchitexBlacklistUrl, Kind = LinkKind.Json,
+                Read = () => Persistent.AlchitexBlacklistUrl, Write = v => Persistent.AlchitexBlacklistUrl = v
+            },
+            new UrlField
+            {
+                Box = AlchitexFogBox, ResetButton = AlchitexFogResetButton, Hint = AlchitexFogHint,
+                Description = "The fog files RTX Reactor deploys when its fog option is on.",
+                Fallback = Defaults.AlchitexFogUrl, Kind = LinkKind.Zip,
+                Read = () => Persistent.AlchitexFogUrl, Write = v => Persistent.AlchitexFogUrl = v
+            },
+            new UrlField
+            {
+                Box = AlchitexWaterBox, ResetButton = AlchitexWaterResetButton, Hint = AlchitexWaterHint,
+                Description = "The placeholder water RTX Reactor falls back to when a pack ships none of its own.",
+                Fallback = Defaults.AlchitexWaterUrl, Kind = LinkKind.Zip,
+                Read = () => Persistent.AlchitexWaterUrl, Write = v => Persistent.AlchitexWaterUrl = v
             },
         ]);
 
@@ -666,6 +738,7 @@ public sealed partial class SettingsOverlay : UserControl
             {
                 if (e.Key != Windows.System.VirtualKey.Enter) return;
                 CommitUrlField(captured);
+                DropTextFocus();
                 e.Handled = true;
             };
 
@@ -678,11 +751,41 @@ public sealed partial class SettingsOverlay : UserControl
         }
     }
 
+    /// <summary>
+    /// Takes focus off whatever text box has it, which is what makes committing visible: until
+    /// the caret leaves, nothing has told the user whether what they typed was taken. Tapping
+    /// anywhere in the panel that isn't itself an input lands here.
+    ///
+    /// <para>Focus goes to the close button with <see cref="FocusState.Pointer"/> rather than
+    /// Programmatic - Pointer draws no keyboard focus ring, so the panel ends up with nothing
+    /// visibly focused, which is the state a click on empty space should produce.</para>
+    /// </summary>
+    private void DropTextFocus()
+    {
+        if (FocusManager.GetFocusedElement(XamlRoot) is TextBox or NumberBox)
+            CloseButton.Focus(FocusState.Pointer);
+    }
+
+    private void PanelBody_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        // A tap that started inside a text box is the user placing a caret, not leaving one.
+        if (e.OriginalSource is DependencyObject source && IsWithinTextInput(source)) return;
+        DropTextFocus();
+    }
+
+    private static bool IsWithinTextInput(DependencyObject element)
+    {
+        for (var node = element; node is not null; node = VisualTreeHelper.GetParent(node))
+            if (node is TextBox or NumberBox) return true;
+
+        return false;
+    }
+
     private void RefreshUrlFields()
     {
         foreach (var field in _urlFields)
         {
-            field.Box.Text = ProviderLinks.Resolve(field.Read(), field.Fallback, field.Kind);
+            field.Box.Text = ResolveLink(field.Read(), field.Fallback, field.Kind);
             ShowUrlFieldHint(field, accepted: true);
         }
     }
@@ -717,7 +820,7 @@ public sealed partial class SettingsOverlay : UserControl
             return;
         }
 
-        var accepted = ProviderLinks.IsValid(typed, field.Kind);
+        var accepted = IsValidLink(typed, field.Kind);
         if (accepted) field.Write(typed);
 
         ShowUrlFieldHint(field, accepted);
@@ -725,7 +828,7 @@ public sealed partial class SettingsOverlay : UserControl
 
     private void ShowUrlFieldHint(UrlField field, bool accepted)
     {
-        field.Hint.Text = accepted ? field.Description : ProviderLinks.RejectionReason(field.Kind);
+        field.Hint.Text = accepted ? field.Description : LinkRejectionReason(field.Kind);
         field.Hint.Opacity = accepted ? 0.55 : 1.0;
         field.Hint.Foreground = accepted
             ? (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
@@ -734,6 +837,11 @@ public sealed partial class SettingsOverlay : UserControl
 
     // =========================================================================
     //  Maintenance
+    //
+    //  Both of these used to live on MainWindow and be called across from here. They are the
+    //  settings panel's own work - nothing else in the app offers either - so they sit with the
+    //  panel that offers them. What they still reach into MainWindow for is only what genuinely
+    //  belongs to that window: its progress bar, its control lock, its log and its lamp.
     // =========================================================================
 
     private void HardResetButton_Click(object sender, RoutedEventArgs e)
@@ -744,23 +852,447 @@ public sealed partial class SettingsOverlay : UserControl
         // leads to both belong to the window behind this, and a modal scrim over them would
         // leave the user looking at a dimmed app they can't see the progress of.
         Hide();
-        _ = _host?.RequestHardResetAsync();
+        _ = RequestHardResetAsync();
     }
 
-    private void CopyLogsButton_Click(object sender, RoutedEventArgs e) => _host?.CopyDebugReportToClipboard();
+    /// <summary>
+    /// The settings panel's Hard reset. Confirms, locks the window down and hands off to
+    /// <see cref="WipeAllStorageData"/>, which takes it from there (including re-enabling the
+    /// window when it's done).
+    ///
+    /// <para>The confirmation is not a formality: this deletes the Default RTX and LUT backups
+    /// taken out of the user's own game files, so it may have to hand those back through
+    /// several elevation prompts before they're gone. Declining leaves everything untouched.</para>
+    /// </summary>
+    private async Task RequestHardResetAsync()
+    {
+        try
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "You're about to completely wipe all of app's data.",
+                Content = $"This will delete all of application's data across your device, including Default RTX & LUT files which the app obtained from your actual game files!" +
+                $"\nAs such, you may be prompted to accept multiple admin privilege requests in order to let the app restore your game's default files before they're gone from app's data.",
+                PrimaryButtonText = "Confirm",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = _host!.Content.XamlRoot,
+                RequestedTheme = ((FrameworkElement)_host!.Content).ActualTheme
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary)
+            {
+                MainWindow.Log("Wiping app's data was cancelled by user.", MainWindow.LogLevel.Warning);
+                return;
+            }
+
+            WindowControlsManagerExtensions.DisableAllControls(_host);
+            _host!._progressManager.ShowProgress();
+            _ = _host!.BlinkingLamp(true);
+
+            _ = WipeAllStorageData();
+        }
+        catch (Exception ex)
+        {
+            MainWindow.Log($"Hard Reset Error: {ex.Message}", MainWindow.LogLevel.Error);
+            WindowControlsManagerExtensions.RestoreAllControls(_host!);
+            _ = _host!.BlinkingLamp(false);
+            _host!._progressManager.HideProgress();
+        }
+    }
+
+    private async Task WipeAllStorageData()
+    {
+        try
+        {
+            MainWindow.Log("Starting hard reset, this will wipe all of app's storage and temporary files...", MainWindow.LogLevel.Warning);
+            await Task.Delay(250);
+
+            await GuardActivePresetsBeforeWipeAsync();
+
+            // ── 1. Local Settings (recursive containers) ─────────────────────────
+            var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
+            var roamingSettings = Windows.Storage.ApplicationData.Current.RoamingSettings;
+            int totalKeysWiped = 0;
+
+            foreach (var (root, rootName) in new[] { (localSettings, "LocalSettings"), (roamingSettings, "RoamingSettings") })
+            {
+                foreach (var key in root.Values.Keys.ToList())
+                {
+                    root.Values.Remove(key);
+                    MainWindow.Log($"Deleted key: {rootName}/{key}", MainWindow.LogLevel.Cache);
+                    totalKeysWiped++;
+                }
+
+                foreach (var containerKey in root.Containers.Keys.ToList())
+                {
+                    root.DeleteContainer(containerKey);
+                    MainWindow.Log($"Deleted container: {rootName}/{containerKey}", MainWindow.LogLevel.Cache);
+                }
+            }
+
+            MainWindow.Log($"Wiped {totalKeysWiped} setting key(s) across all containers.", MainWindow.LogLevel.Cache);
+            await Task.Delay(100);
+
+            // ── 2. Wipe all storage folders ───────────────────────────────────────
+            var foldersToWipe = new[]
+            {
+            (path: Windows.Storage.ApplicationData.Current.LocalFolder.Path,      label: "LocalFolder (LocalState)"),
+            (path: Windows.Storage.ApplicationData.Current.LocalCacheFolder.Path, label: "LocalCacheFolder"),
+            (path: Windows.Storage.ApplicationData.Current.TemporaryFolder.Path,  label: "TemporaryFolder"),
+            };
+
+            int totalItemsDeleted = 0;
+
+            foreach (var (path, label) in foldersToWipe)
+            {
+                MainWindow.Log($"Wiping {label}: {path}", MainWindow.LogLevel.Cache);
+                int deletedInFolder = 0;
+
+                if (!Directory.Exists(path))
+                {
+                    MainWindow.Log($"{label} not found, skipping.", MainWindow.LogLevel.Cache);
+                    continue;
+                }
+
+                foreach (var file in Directory.GetFiles(path))
+                {
+                    try
+                    {
+                        File.Delete(file);
+                        MainWindow.Log($"Deleted file: {Path.GetFileName(file)}", MainWindow.LogLevel.Cache);
+                        deletedInFolder++;
+                        await Task.Delay(10);
+                    }
+                    catch (Exception ex)
+                    {
+                        MainWindow.Log($"Could not delete file {Path.GetFileName(file)}: {ex.Message}", MainWindow.LogLevel.Warning);
+                    }
+                }
+
+                foreach (var dir in Directory.GetDirectories(path))
+                {
+                    try
+                    {
+                        Directory.Delete(dir, recursive: true);
+                        MainWindow.Log($"Deleted folder: {Path.GetFileName(dir)}", MainWindow.LogLevel.Cache);
+                        deletedInFolder++;
+                        await Task.Delay(15);
+                    }
+                    catch (Exception ex)
+                    {
+                        MainWindow.Log($"Could not delete folder {Path.GetFileName(dir)}: {ex.Message}", MainWindow.LogLevel.Warning);
+                    }
+                }
+
+                MainWindow.Log($"{label} wiped ({deletedInFolder} item(s)).", MainWindow.LogLevel.Cache);
+                totalItemsDeleted += deletedInFolder;
+            }
+
+            MainWindow.Log($"Deleted {totalItemsDeleted} file/folder item(s) total.", MainWindow.LogLevel.Cache);
+            await Task.Delay(500);
+            MainWindow.Log("Hard reset complete! The app will restart in a moment...", MainWindow.LogLevel.Lengthy);
+            await Task.Delay(4444);
+
+            Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+        }
+        catch (Exception ex)
+        {
+            MainWindow.Log($"Error during hard reset: {ex.Message}", MainWindow.LogLevel.Error);
+        }
+
+        // ── local helpers, only meaningful when trying to wipe and user doesn't have their default presets installed if any ───────────
+
+        async Task GuardActivePresetsBeforeWipeAsync()
+        {
+            MainWindow.Log("Checking for active custom presets that need to be reverted first...", MainWindow.LogLevel.BetterRTX);
+
+            await RunGuard("BetterRTX",
+                DefaultsGuard.RestoreBetterRTXDefaultIfNeededAsync(
+                    msg => MainWindow.Log(msg, MainWindow.LogLevel.Informational)));
+
+            await RunGuard("RTX LUT (Release)",
+                DefaultsGuard.RestoreLutDefaultIfNeededAsync(
+                    targetPreview: false, log: msg => MainWindow.Log(msg, MainWindow.LogLevel.Informational)));
+
+            await RunGuard("RTX LUT (Preview)",
+                DefaultsGuard.RestoreLutDefaultIfNeededAsync(
+                    targetPreview: true, log: msg => MainWindow.Log(msg, MainWindow.LogLevel.Informational)));
+
+            await Task.Delay(150);
+        }
+
+        async Task RunGuard(string featureName, Task<RTXDefaultsGuard> guardTask)
+        {
+            var result = await guardTask;
+            switch (result)
+            {
+                case RTXDefaultsGuard.Restored:
+                    MainWindow.Log($"{featureName}: reverted to Default before wipe.", MainWindow.LogLevel.Success);
+                    break;
+                case RTXDefaultsGuard.RestoreFailed:
+                    MainWindow.Log($"{featureName}: tried to revert to Default but it failed - the game may still be on a modified preset.", MainWindow.LogLevel.Warning);
+                    break;
+                case RTXDefaultsGuard.Skipped:
+                    MainWindow.Log($"{featureName}: couldn't safely verify preset state - left untouched.", MainWindow.LogLevel.Warning);
+                    break;
+                case RTXDefaultsGuard.NoActionNeeded:
+                    MainWindow.Log($"{featureName}: already on Default or nothing to protect.", MainWindow.LogLevel.Informational);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Puts the report on the clipboard and says so on the button itself for a moment. The
+    /// transient label is the only feedback there is - the clipboard gives none of its own, and
+    /// the log line scrolls away in a sidebar the user may not be looking at.
+    /// </summary>
+    private async void CopyLogsButton_Click(object sender, RoutedEventArgs e)
+    {
+        CopyDebugReportToClipboard();
+
+        // Re-entrant by design: a second click restarts the countdown rather than letting the
+        // first one's timer put the original label back while the second is still showing it.
+        var token = ++_copyFeedbackToken;
+        CopyLogsButtonText.Text = "Copied to clipboard!";
+
+        await Task.Delay(CopyFeedbackMs);
+
+        if (token == _copyFeedbackToken)
+            CopyLogsButtonText.Text = CopyLogsDefaultLabel;
+    }
+
+    /// <summary>
+    /// Builds the whole diagnostic snapshot - system info, the sidebar log, every tuner and
+    /// persistent variable, the trace buffer and the live state of every supported control in
+    /// this window - and puts it on the clipboard. The "Copy debug logs" button is its only caller.
+    ///
+    /// <para>It reflects over <c>this</c> to enumerate controls, which is what lets a control
+    /// added to MainWindow.xaml years from now show up in a report without anyone remembering
+    /// to list it. Nothing here throws outward: a report that can't be built is worth a log
+    /// line, never a crash in the middle of someone trying to report a bug.</para>
+    /// </summary>
+    private void CopyDebugReportToClipboard()
+    {
+        try
+        {
+            var sb = new StringBuilder();
+            AppendSystemInfo(sb);
+            sb.AppendLine($"===== Sidebar Log (Last {MainWindow.MaxLogChars.ToString()} Chars)");
+            string logSnapshot;
+            lock (MainWindow._logGate) logSnapshot = MainWindow.LogText;
+            sb.AppendLine(logSnapshot.Replace(MainWindow.EntrySentinel, Environment.NewLine));
+            sb.AppendLine();
+            sb.AppendLine("===== Tuner Variables");
+            var fields = typeof(EnvironmentVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+
+            foreach (var field in fields)
+            {
+                var value = field.GetValue(null);
+
+                // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
+                if (field.Name == nameof(EnvironmentVariables.SelectedPacks) &&
+                    value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
+                {
+                    if (selectedPacks.Count == 0)
+                    {
+                        sb.AppendLine("SelectedPacks: (empty)");
+                    }
+                    else
+                    {
+                        sb.AppendLine("SelectedPacks:");
+                        foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
+                            sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
+                    }
+                    continue;
+                }
+                else if (value is System.Collections.IEnumerable enumerable && value is not string)
+                {
+                    var items = enumerable.Cast<object>().ToList();
+                    sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
+                    foreach (var item in items)
+                        sb.AppendLine($"  {FormatValue(item)}");
+                    continue;
+                }
+
+                sb.AppendLine($"{field.Name}: {value ?? "null"}");
+            }
+            static string FormatValue(object? value)
+            {
+                if (value is null) return "null";
+                if (value is System.Runtime.CompilerServices.ITuple tuple)
+                {
+                    var items = new object?[tuple.Length];
+                    for (int i = 0; i < tuple.Length; i++)
+                        items[i] = tuple[i]?.ToString() ?? "null";
+                    return string.Join(", ", items);
+                }
+                return value.ToString() ?? "null";
+            }
+
+            sb.AppendLine();
+            // Persistent variables
+            sb.AppendLine("===== Persistent Tuner Variables");
+            var persistentFields = typeof(EnvironmentVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+            foreach (var field in persistentFields)
+            {
+                var value = field.GetValue(null);
+                sb.AppendLine($"{field.Name}: {value ?? "null"}");
+            }
+            sb.AppendLine();
+            // Trace logs
+            sb.AppendLine(TraceManager.GetAllTraceLogs());
+
+            // UI Controls State
+            sb.AppendLine();
+            sb.AppendLine("===== UI Controls State");
+            CollectUIControlsState(sb);
+
+            // TODO: Stack trace
+            // Append later, could be useful
+
+            var dataPackage = new DataPackage();
+            dataPackage.SetText(sb.ToString());
+            Clipboard.SetContent(dataPackage);
+            MainWindow.Log("Copied app logs to clipboard.", MainWindow.LogLevel.Success);
+            _ = _host!.BlinkingLamp(true, true, 0.0, 1.0);
+
+            // ============================================
+            void CollectUIControlsState(StringBuilder sb)
+            {
+                var fields = _host!.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+
+                foreach (var field in fields)
+                {
+                    var value = field.GetValue(_host);
+                    if (value == null) continue;
+
+                    var type = value.GetType();
+                    var name = field.Name;
+
+                    // Toggle-type controls
+                    if (value is ToggleButton toggleBtn)
+                    {
+                        sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
+                    }
+                    else if (value is CheckBox checkBox)
+                    {
+                        sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
+                    }
+                    else if (value is ToggleSwitch toggleSwitch)
+                    {
+                        sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
+                    }
+                    else if (value is RadioButton radioBtn)
+                    {
+                        sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
+                    }
+                    // Value controls
+                    else if (value is Slider slider)
+                    {
+                        sb.AppendLine($"{name} (Slider): {slider.Value}");
+                    }
+                    else if (value is NumberBox numberBox)
+                    {
+                        sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
+                    }
+                    else if (value is ComboBox comboBox)
+                    {
+                        sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
+                    }
+                    else if (value is TextBox textBox)
+                    {
+                        var text = textBox.Text;
+                        if (!string.IsNullOrEmpty(text) && text.Length > 50)
+                            text = text.Substring(0, 50) + "...";
+                        sb.AppendLine($"{name} (TextBox): \"{text}\"");
+                    }
+                    else if (value is RatingControl rating)
+                    {
+                        sb.AppendLine($"{name} (RatingControl): {rating.Value}");
+                    }
+                    else if (value is ColorPicker colorPicker)
+                    {
+                        sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
+                    }
+                    else if (value is DatePicker datePicker)
+                    {
+                        sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
+                    }
+                    else if (value is TimePicker timePicker)
+                    {
+                        sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
+                    }
+                }
+            }
+            void AppendSystemInfo(StringBuilder sb)
+            {
+                sb.AppendLine("===== System Info");
+
+                // Process architecture = what's actually executing right now
+                sb.AppendLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
+                // OS architecture = the machine's native architecture (differs from above if running under emulation)
+                sb.AppendLine($"OS Architecture: {RuntimeInformation.OSArchitecture}");
+                sb.AppendLine($"Is Emulated (x64-on-ARM64): {(RuntimeInformation.ProcessArchitecture != RuntimeInformation.OSArchitecture)}");
+
+                sb.AppendLine($"OS Version: {RuntimeInformation.OSDescription}");
+                sb.AppendLine($".NET Runtime: {RuntimeInformation.FrameworkDescription}");
+
+                sb.AppendLine($"Processor Count: {Environment.ProcessorCount}");
+                sb.AppendLine($"Working Set: {Environment.WorkingSet / 1024 / 1024} MB");
+                sb.AppendLine($"64-bit OS: {Environment.Is64BitOperatingSystem}");
+                sb.AppendLine($"64-bit Process: {Environment.Is64BitProcess}");
+
+                try
+                {
+                    var package = Windows.ApplicationModel.Package.Current;
+                    var v = package.Id.Version;
+                    sb.AppendLine($"Package Version: {v.Major}.{v.Minor}.{v.Build}.{v.Revision}");
+                    sb.AppendLine($"Package Architecture: {package.Id.Architecture}");
+                    sb.AppendLine($"Package Full Name: {package.Id.FullName}");
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine($"Package Info: unavailable ({ex.Message})");
+                }
+
+                try
+                {
+                    var culture = System.Globalization.CultureInfo.CurrentUICulture;
+                    sb.AppendLine($"UI Culture: {culture.Name}");
+                }
+                catch { /* non-critical */ }
+
+                sb.AppendLine();
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[MainWindow] Error building the debug report: {ex}");
+            MainWindow.Log("Something went wrong while building the debug report.", MainWindow.LogLevel.Error);
+        }
+    }
 
     // =========================================================================
     //  Links
     // =========================================================================
+
+    /// <summary>
+    /// Opens whatever repository the box beside it currently names, not the built-in one -
+    /// a link that always went to Cubeir/Vanilla-RTX would stop being "see the original" the
+    /// moment somebody pointed the setting at a fork of their own.
+    /// </summary>
+    private void VanillaRtxRepoLink_Click(object sender, RoutedEventArgs e)
+        => _ = MainWindow.OpenUrl(Links.VanillaRtxRepositoryPage);
 
     private void GitHubLink_Click(object sender, RoutedEventArgs e)
         => _ = MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App");
 
     private void KoFiLink_Click(object sender, RoutedEventArgs e)
     {
-        // Same gesture the titlebar's Donate button used to make - the credits go into the log
-        // on the way out, so they're still there after the browser takes focus.
-        _host?.RollCredits();
+        RollCredits();
         _ = MainWindow.OpenUrl("https://ko-fi.com/cubeir");
     }
 
@@ -768,5 +1300,18 @@ public sealed partial class SettingsOverlay : UserControl
     {
         MainWindow.Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", MainWindow.LogLevel.VanillaRTX);
         _ = MainWindow.OpenUrl("https://discord.gg/A4wv4wwYud");
+    }
+
+    /// <summary>
+    /// Writes the supporter/credits text into the log, once per session. The settings panel
+    /// shows the same text inline; this is what keeps the log's version of the gesture - the
+    /// Ko-fi link there calls it on the way out to the browser, exactly as the old titlebar
+    /// Donate button did.
+    /// </summary>
+    private void RollCredits()
+    {
+        var credits = OnlineTextsContent.Credits?.FirstOrDefault()?.Text;
+        if (!string.IsNullOrEmpty(credits) && Helpers.RuntimeFlags.Set("Has_Rolled_Credits"))
+            MainWindow.Log(credits);
     }
 }

@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
 using WinRT.Interop;
 using WinUIEx;
-using static Vanilla_RTX_App.EnvironmentVariables;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.LUT;
 

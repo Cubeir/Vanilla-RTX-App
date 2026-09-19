@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Vanilla_RTX_App.Modules;
 using Windows.Storage;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 
@@ -16,7 +17,16 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Core;
 /// Both paths are stated outright rather than derived, so a future asset can come from
 /// anywhere without the manifest growing a special case.
 /// </summary>
-public sealed record ManagedAsset(string PackagedPath, string RemoteUrl, TimeSpan Cooldown)
+/// <summary>
+/// One shipped file that can be refreshed from the network.
+///
+/// <para><b><paramref name="RemoteUrl"/> is a function, not a string.</b> Every one of these
+/// addresses is now a setting the user can repoint (EnvironmentVariables.Links), and the
+/// manifest below is a set of <c>static readonly</c> fields - a string captured there would
+/// freeze whatever was stored the first time this class was touched and keep using it for the
+/// rest of the session, including after the settings panel changed it.</para>
+/// </summary>
+public sealed record ManagedAsset(string PackagedPath, Func<string> RemoteUrl, TimeSpan Cooldown)
 {
     public string FileName => Path.GetFileName(PackagedPath);
 }
@@ -60,22 +70,22 @@ public static class AssetUpdater
 
     public static readonly ManagedAsset MaterialsJson = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "materials.json"),
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/materials.json",
+        () => Links.AlchitexMaterials,
         TimeSpan.FromDays(2));
 
     public static readonly ManagedAsset PbrBlacklistJson = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "pbr_blacklist.json"),
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/pbr_blacklist.json",
+        () => Links.AlchitexBlacklist,
         TimeSpan.FromDays(4));
 
     public static readonly ManagedAsset FogZip = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "vanilla-rtx-fog.zip"),
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/vanilla-rtx-fog.zip",
+        () => Links.AlchitexFog,
         TimeSpan.FromDays(6));
 
     public static readonly ManagedAsset WaterFallbackZip = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "water-fallback.zip"),
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/water-fallback.zip",
+        () => Links.AlchitexWater,
         TimeSpan.FromDays(8));
 
     private static readonly ManagedAsset[] Managed =
@@ -206,7 +216,7 @@ public static class AssetUpdater
         try
         {
             (var succeeded, downloaded) = await Helpers.Download(
-                asset.RemoteUrl,
+                asset.RemoteUrl(),
                 cancellationToken,
                 Helpers.UpdaterHttpClient,
                 RequestTimeout,

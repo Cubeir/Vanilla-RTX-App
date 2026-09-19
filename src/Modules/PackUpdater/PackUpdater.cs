@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using Vanilla_RTX_App.Modules.Json;
 using Windows.Storage;
 using static Vanilla_RTX_App.Modules.PackLocator; // For static UUIDs, they are stored there for locating packs
+using Vanilla_RTX_App.Core;
+using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.PackUpdater;
 
@@ -50,10 +52,17 @@ public enum PackUpdateNotice
 
 public class PackUpdater
 {
-    private const string VANILLA_RTX_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX/manifest.json";
-    private const string VANILLA_RTX_NORMALS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Normals/manifest.json";
-    private const string VANILLA_RTX_OPUS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Opus/manifest.json";
-    private const string VANILLA_RTX_REPO_ZIPBALL_URL = "https://github.com/Cubeir/Vanilla-RTX/archive/refs/heads/master.zip";
+    // All four addresses are built from one owner/repo pair, which is the only part of them a
+    // user can meaningfully change (EnvironmentVariables.Links.VanillaRtxRepository, exposed in
+    // the settings panel). Everything else here - the branch, the three pack folder names, the
+    // manifest filename, the zipball path - is this module's own contract with that repo's
+    // layout: a repo that differs in any of them has nothing for this window to find, which is
+    // exactly what the setting's hint says.
+    private static string ManifestUrl(string packFolder) => Links.VanillaRtxRawFile($"{packFolder}/manifest.json");
+
+    private const string VANILLA_RTX_FOLDER = "Vanilla-RTX";
+    private const string VANILLA_RTX_NORMALS_FOLDER = "Vanilla-RTX-Normals";
+    private const string VANILLA_RTX_OPUS_FOLDER = "Vanilla-RTX-Opus";
 
     // Remote version cache // how frequently to check the remote again for manifest's versions
     //
@@ -925,9 +934,9 @@ public class PackUpdater
             }
         }
 
-        var rtxTask = TryFetchManifest(VANILLA_RTX_MANIFEST_URL);
-        var normalsTask = TryFetchManifest(VANILLA_RTX_NORMALS_MANIFEST_URL);
-        var opusTask = TryFetchManifest(VANILLA_RTX_OPUS_MANIFEST_URL);
+        var rtxTask = TryFetchManifest(ManifestUrl(VANILLA_RTX_FOLDER));
+        var normalsTask = TryFetchManifest(ManifestUrl(VANILLA_RTX_NORMALS_FOLDER));
+        var opusTask = TryFetchManifest(ManifestUrl(VANILLA_RTX_OPUS_FOLDER));
 
         await Task.WhenAll(rtxTask, normalsTask, opusTask);
 
@@ -948,7 +957,7 @@ public class PackUpdater
         try
         {
             Trace.WriteLine("📦 Downloading latest zipball from GitHub...");
-            return await Helpers.Download(VANILLA_RTX_REPO_ZIPBALL_URL);
+            return await Helpers.Download(Links.VanillaRtxZipball);
         }
         catch (Exception ex)
         {

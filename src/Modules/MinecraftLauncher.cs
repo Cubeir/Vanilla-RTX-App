@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Vanilla_RTX_App.Core;
 
 namespace Vanilla_RTX_App.Modules;
 
