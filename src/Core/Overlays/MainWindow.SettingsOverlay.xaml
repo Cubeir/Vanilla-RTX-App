@@ -7,7 +7,6 @@
              xmlns:local="using:Vanilla_RTX_App.Core.Overlays"
              mc:Ignorable="d"
              Visibility="Collapsed"
-             Opacity="0"
              IsHitTestVisible="False"
              IsTextScaleFactorEnabled="False">
 
@@ -132,7 +131,14 @@
 
          The two columns ARE the split. The blocker spans both and sits behind the panel, so a
          click anywhere the panel isn't - including the strip underneath it, which the panel's
-         own background absorbs first - dismisses. -->
+         own background absorbs first - dismisses.
+
+         They are two layers rather than one surface, and that is what lets them move
+         differently: the scrim only ever fades, while the panel fades and slides in over its
+         own width. The right half of the panel's layer is nothing at all - no element, so no
+         hit testing and nothing to dim - which is why the two read as one surface at rest.
+         The opacities start at 0 here rather than on the UserControl, because the root's job
+         is now only to be Collapsed and unreachable between opens. -->
     <Grid x:Name="Root"
           Margin="0,36,0,0">
         <Grid.ColumnDefinitions>
@@ -146,12 +152,21 @@
         <Border x:Name="ModalBlocker"
                 Grid.ColumnSpan="2"
                 Background="#66000000"
+                Opacity="0"
                 Tapped="ModalBlocker_Tapped" />
 
-        <Border x:Name="Panel"
+        <Border x:Name="PanelSurface"
                 Grid.Column="0"
                 HorizontalAlignment="Stretch"
+                Opacity="0"
                 Translation="0,0,64">
+            <!-- A RenderTransform rather than the composition Translation this Border
+                 already carries: that property is spoken for by the Z offset the ThemeShadow
+                 below needs, and the two compose without either having to know about the
+                 other. -->
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="PanelSlide" />
+            </Border.RenderTransform>
             <Border.Background>
                 <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                               TintOpacity="0.9"
@@ -170,7 +185,7 @@
                                 Tapped="PanelBody_Tapped">
 
                         <!-- ═══ Appearance ═══════════════════════════════════════════════
-                             Shares its row with Save & close. That button is deliberately part
+                             Shares its row with the close button, which is deliberately part
                              of the scrolling content rather than pinned over it: every fixed
                              position sat on top of something at some scroll offset, and out on
                              the scrim it read as belonging to the window behind rather than to
@@ -188,20 +203,23 @@
                                        VerticalAlignment="Center"
                                        Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                            <!-- Accent text with no background: at this size a filled button
-                                 out-weighs the section headings it sits level with, and the
-                                 accent is enough to separate it from them. -->
+                            <!-- Back-to-window rather than a Cancel cross: this panel replaces
+                                 the window's body and leaving it returns you to what was there,
+                                 where a cross says the thing you were doing is being discarded.
+                                 A FontIcon for the same reason - SymbolIcon only reaches the
+                                 Segoe MDL2 subset, and this glyph isn't in it. No background,
+                                 because at this size a filled button out-weighs the section
+                                 headings it sits level with. -->
                             <Button x:Name="CloseButton"
-                                             Grid.Column="1"
-                                             Width="24"
-                                             Height="24"
-                                             Padding="0"
-                                             Margin="0,0,0,0"
-                                             VerticalAlignment="Center"
-                                             Click="CloseButton_Click"
-                                             Style="{ThemeResource SubtleButtonStyle}"
-                                             ToolTipService.ToolTip="Close the settings overlay.">
-                                <SymbolIcon Symbol="Cancel" />
+                                    Grid.Column="1"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    Click="CloseButton_Click"
+                                    Style="{ThemeResource SubtleButtonStyle}"
+                                    ToolTipService.ToolTip="Save your settings and return to main window.">
+                                <FontIcon Glyph="&#xE944;" FontSize="16"/>
                             </Button>
                         </Grid>
 

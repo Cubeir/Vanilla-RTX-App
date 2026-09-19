@@ -54,16 +54,24 @@ namespace Vanilla_RTX_App.Core.Overlays;
 public sealed partial class SettingsOverlay : UserControl
 {
     /// <summary>
-    /// Matches <see cref="MarkdownOverlay"/>'s fade so the two overlays feel like one surface
-    /// being swapped rather than two different panels.
+    /// The scrim's fade. Matches <see cref="MarkdownOverlay"/>'s so the two overlays feel
+    /// like one surface being swapped rather than two different panels.
     /// </summary>
     private const double FADE_MS = 100;
+
+    /// <summary>
+    /// How long the panel takes to cross its own width, fading as it goes. Longer than the
+    /// scrim's fade because this is travel rather than a level change - over that distance
+    /// 100ms reads as a jump - and short enough to stay ahead of a second click on the gear.
+    /// </summary>
+    private const double SLIDE_MS = 120;
 
     private static bool AnimationsSuspended => Persistent.SuspendUIAnimations;
 
     private MainWindow? _host;
     private bool _isOpen;
-    private Storyboard? _fadeStoryboard;
+    private Storyboard? _scrimStoryboard;
+    private Storyboard? _panelStoryboard;
 
     /// <summary>
     /// Guards the handlers that write a setting while <see cref="Refresh"/> is painting the
@@ -145,7 +153,7 @@ public sealed partial class SettingsOverlay : UserControl
 
         Visibility = Visibility.Visible;
         IsHitTestVisible = true;
-        AnimateOpacity(1.0, null);
+        Animate(opening: true, onCompleted: null);
     }
 
     /// <summary>
@@ -166,41 +174,106 @@ public sealed partial class SettingsOverlay : UserControl
         SaveSettings();
 
         IsHitTestVisible = false;
-        AnimateOpacity(0.0, () => Visibility = Visibility.Collapsed);
+        Animate(opening: false, onCompleted: () => Visibility = Visibility.Collapsed);
     }
 
     private void ModalBlocker_Tapped(object sender, TappedRoutedEventArgs e) => Hide();
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Hide();
 
-    private void AnimateOpacity(double to, Action? onCompleted)
+    /// <summary>
+    /// Runs the open or close transition over the two layers independently: the scrim only
+    /// fades, while the panel fades and slides across its own width from the window's left
+    /// edge. Both directions are the same call - closing is opening with the ends swapped.
+    ///
+    /// <para><b>The travel distance is measured rather than assumed</b>, so the panel comes to
+    /// rest exactly off screen at whatever width the window currently is. It needs the
+    /// <see cref="UIElement.UpdateLayout"/>: the control has been Collapsed since the last
+    /// close, so until a layout pass runs the panel's <c>ActualWidth</c> is still zero.</para>
+    ///
+    /// <para><b><paramref name="onCompleted"/> hangs off the panel's storyboard</b>, which is
+    /// the longer of the two - on the scrim's it would collapse the control while the panel was
+    /// still visibly moving.</para>
+    /// </summary>
+    private void Animate(bool opening, Action? onCompleted)
     {
-        _fadeStoryboard?.Stop();
-        _fadeStoryboard = null;
+        _scrimStoryboard?.Stop();
+        _panelStoryboard?.Stop();
+        _scrimStoryboard = null;
+        _panelStoryboard = null;
+
+        UpdateLayout();
+        var offScreen = -(PanelSurface.ActualWidth > 0 ? PanelSurface.ActualWidth : ActualWidth / 2);
+
+        var scrimTo = opening ? 1.0 : 0.0;
+        var panelTo = opening ? 1.0 : 0.0;
+        var slideTo = opening ? 0.0 : offScreen;
 
         if (AnimationsSuspended)
         {
-            Opacity = to;
+            ModalBlocker.Opacity = scrimTo;
+            PanelSurface.Opacity = panelTo;
+            PanelSlide.X = slideTo;
             onCompleted?.Invoke();
             return;
         }
 
-        var animation = new DoubleAnimation
-        {
-            To = to,
-            Duration = new Duration(TimeSpan.FromMilliseconds(FADE_MS)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-            EnableDependentAnimation = true
-        };
+        // Park the panel off screen before an open. A close already left it there, but the
+        // first open of the session - and any open following a close that snapped because
+        // animations were suspended - starts from a panel that has never been moved.
+        if (opening) PanelSlide.X = offScreen;
 
+        _scrimStoryboard = Run(FADE_MS,
+            () => ModalBlocker.Opacity = scrimTo,
+            Leg(ModalBlocker, "Opacity", scrimTo));
+
+        _panelStoryboard = Run(SLIDE_MS,
+            () =>
+            {
+                PanelSurface.Opacity = panelTo;
+                PanelSlide.X = slideTo;
+                onCompleted?.Invoke();
+            },
+            Leg(PanelSurface, "Opacity", panelTo),
+            Leg(PanelSlide, "X", slideTo));
+    }
+
+    /// <summary>
+    /// Starts every leg of one layer's transition together over <paramref name="durationMs"/>.
+    ///
+    /// <para><b><paramref name="onCompleted"/> has to write the values the transition ended on
+    /// back as its targets' base values.</b> A storyboard holds its end value but never assigns
+    /// it, and <c>Stop</c> - the first thing the next transition does - reverts every target to
+    /// whatever base it still has. Without the write-back, closing would snap the panel to
+    /// where opening started it and then animate from there to the same place.</para>
+    /// </summary>
+    private static Storyboard Run(double durationMs, Action onCompleted, params DoubleAnimation[] legs)
+    {
         var storyboard = new Storyboard();
-        Storyboard.SetTarget(animation, this);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-        storyboard.Children.Add(animation);
-        storyboard.Completed += (_, _) => onCompleted?.Invoke();
 
-        _fadeStoryboard = storyboard;
+        foreach (var leg in legs)
+        {
+            leg.Duration = new Duration(TimeSpan.FromMilliseconds(durationMs));
+            leg.EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut };
+            storyboard.Children.Add(leg);
+        }
+
+        storyboard.Completed += (_, _) => onCompleted();
         storyboard.Begin();
+        return storyboard;
+    }
+
+    /// <summary>
+    /// One property's leg of a transition. No <c>From</c>, so an interrupted transition picks
+    /// up from wherever its target currently sits; no <c>EnableDependentAnimation</c>, because
+    /// an opacity and a translate transform are both animated off the UI thread already.
+    /// </summary>
+    private static DoubleAnimation Leg(DependencyObject target, string property, double to)
+    {
+        var leg = new DoubleAnimation { To = to };
+        Storyboard.SetTarget(leg, target);
+        Storyboard.SetTargetProperty(leg, property);
+        return leg;
     }
 
     // =========================================================================
