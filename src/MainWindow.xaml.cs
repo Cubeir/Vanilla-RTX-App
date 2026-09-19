@@ -2991,24 +2991,6 @@ public sealed partial class MainWindow : Window
 
 - Do the TODOs scattered in the code
 
-- The settings menu exists now (titlebar is down to Settings/Help/Bugs, and it hosts the theme,
-animation suspension, both editions' install + user data locations, the launch options and the
-two maintenance buttons). What it still does NOT host, and was meant to:
-
-expose every single hardcoded URL, what goes where
-DLSS PROVIDER, must be a page u can download dlss dlls etc.. from
-betterrtx preset creator provider -- must return or allow download of an .rtpack, these are just ui guide texts, but gives a good
-clue of what we'll be gunning for.
-
-so. many. other urls can be exposed for what goes where.
-all for user to edit
-all stored locally.
-internals are the defaults
-resetting cache shows internals in there.
-so nothing gets touched internally
-
-all additions
-
 - restructuring the whole thing, no more module-in-Windows, all in main window, changes the whole page.
 
 - Should ditch the module-in-window structure
@@ -3025,11 +3007,7 @@ it sort of.. Holds the user in the windiw by their choice and if they leave its 
 but
 figure a better design honestly... something cleaner to work with.
 
-- IDEA:
-Update the documentation, be more through, make ### sections for each button/feature name
-make alt-clicking a feature in the app, take the user to the readme.md in THAT section! aka a quick way to read on features
-with detailed tooltips in the app, this is so unneeded, but y'know? ideas are ideas
-And if you do it, getting rid of documentation button might be an idea to consider.
+- Update the documentation, make it more useful for users who use the app to see.
 
 - Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
 apparently some third party launchers use them for other things, like userdata, as well..

@@ -625,7 +625,7 @@
                                        VerticalAlignment="Center"
                                        IsTextScaleFactorEnabled="False" />
                             <HyperlinkButton x:Name="KoFiLink"
-                                             Content="Ko-fi"
+                                             Content="Support the developer (Ko-Fi)"
                                              Padding="6,2,6,2"
                                              Click="KoFiLink_Click"
                                              IsTextScaleFactorEnabled="False"
