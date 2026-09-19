@@ -112,7 +112,7 @@
              TitleBarActions' own -2 left margin - so it has to come down whenever a button is
              added or removed, or the window grows a band near the top that can't be dragged. -->
         <Border x:Name="TitleBarDragArea"
-                Margin="148,-1,0,0"
+                Margin="132,-1,0,0"
                 Height="32"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"
