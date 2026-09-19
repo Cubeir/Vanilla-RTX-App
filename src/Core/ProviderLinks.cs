@@ -24,16 +24,16 @@ namespace Vanilla_RTX_App.Core;
 public static class ProviderLinks
 {
     /// <summary>Where the DLSS swapper's in-app browser goes to download runtimes.</summary>
-    public const string DefaultDlssProvider = "https://www.techpowerup.com/download/nvidia-dlss-dll/";
+    public const string DefaultDlssProvider = "https://www.techpowerup.com/download/nvidia-dlss-dll";
 
     /// <summary>Where the BetterRTX manager's in-app browser goes to build a custom preset.</summary>
     public const string DefaultBetterRtxProvider = "https://bedrock.graphics/creator";
 
     /// <summary>The markdown the Help button renders.</summary>
-    public const string DefaultDocumentation = "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation";
+    public const string DefaultDocumentation = "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md";
 
     /// <summary>The markdown the Bug button renders.</summary>
-    public const string DefaultBugTracker = "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md#-unresolved";
+    public const string DefaultBugTracker = "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md";
 
     /// <summary>What a given link has to look like to be accepted. See <see cref="IsValid"/>.</summary>
     public enum LinkKind
