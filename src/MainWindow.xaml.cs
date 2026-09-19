@@ -1,16 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +22,6 @@ using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Modules;
 using Vanilla_RTX_App.Modules.PackBrowser;
 using Vanilla_RTX_App.Modules.PackUpdater;
-using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.System;
 using WinRT.Interop;
@@ -1393,7 +1389,7 @@ public sealed partial class MainWindow : Window
         IsTargetingPreview = false;
         _ = BlinkingLamp(true, true, 0.0);
 
-        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme); 
+        ApplyTargetPreviewBevelColors(LeftEdgeOfTargetPreviewButton.ActualTheme);
 
         if (_isInitializing) return; // same as Checked
 
