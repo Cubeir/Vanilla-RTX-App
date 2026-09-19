@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Modules.Json;
 using Windows.Storage;
-using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.BetterRTX;
 
@@ -604,7 +603,7 @@ internal sealed class BetterRTXManager
         try
         {
             var client = Helpers.SharedHttpClient;
-            var response = await client.GetAsync(Links.BetterRtxApi);
+            var response = await client.GetAsync("https://bedrock.graphics/api");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -969,10 +968,7 @@ internal sealed class BetterRTXManager
     {
         try
         {
-            // Derived from the API's own origin rather than spelled out - a repointed index
-            // whose downloads still went to bedrock.graphics would hand out uuids that host
-            // has never heard of. See EnvironmentVariables.Links.BetterRtxPackDownload.
-            var url = Links.BetterRtxPackDownload(uuid);
+            var url = $"https://bedrock.graphics/pack/{uuid}/release";
             Trace.WriteLine($"[BetterRTX] Downloading from: {url}");
 
             var (success, downloadedPath) = await Helpers.Download(url, cancellationToken: cancellationToken, timeout: TimeSpan.FromMinutes(3));

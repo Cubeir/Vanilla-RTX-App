@@ -97,14 +97,12 @@ public sealed partial class MarkdownOverlay : UserControl
 
         Header.SetNavButtonsVisible(false);
 
-        // Opens the address this overlay was pointed at, not the raw URL derived from it.
-        // Those two differ for a github blob link (see ResolveGithubUrls), and the one the
-        // user can reason about is the one they gave us - it is the value of the Documentation
-        // or Bug list setting, and a link that opened a raw.githubusercontent URL instead
-        // didn't match anything they could look up.
+        // Opens whatever we actually fetched, not the human-readable blob page - the title link
+        // is supposed to reflect the real request this overlay made, and that request is always
+        // to raw.githubusercontent.com. See ResolveGithubUrls.
         Header.TitleClick += (_, _) =>
         {
-            if (Uri.TryCreate(_pageUrl, UriKind.Absolute, out var uri))
+            if (Uri.TryCreate(_rawUrl, UriKind.Absolute, out var uri))
                 _ = Launcher.LaunchUriAsync(uri);
         };
 

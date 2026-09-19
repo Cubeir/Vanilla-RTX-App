@@ -663,13 +663,6 @@ public sealed partial class SettingsOverlay : UserControl
             },
             new UrlField
             {
-                Box = AnnouncementsBox, ResetButton = AnnouncementsResetButton, Hint = AnnouncementsHint,
-                Description = "The markdown every in-app announcement and the supporter list are parsed out of.",
-                Fallback = Defaults.AnnouncementsUrl, Kind = LinkKind.Markdown,
-                Read = () => Persistent.AnnouncementsUrl, Write = v => Persistent.AnnouncementsUrl = v
-            },
-            new UrlField
-            {
                 Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
                 Description = "The page the DLSS swapper's \"Download DLLs\" button browses to.",
                 Fallback = Defaults.DlssProviderUrl, Kind = LinkKind.WebPage,
@@ -681,48 +674,6 @@ public sealed partial class SettingsOverlay : UserControl
                 Description = "The page the BetterRTX manager's \"Create preset\" button browses to.",
                 Fallback = Defaults.BetterRtxCreatorUrl, Kind = LinkKind.WebPage,
                 Read = () => Persistent.BetterRtxCreatorUrl, Write = v => Persistent.BetterRtxCreatorUrl = v
-            },
-            new UrlField
-            {
-                Box = BetterRtxApiBox, ResetButton = BetterRtxApiResetButton, Hint = BetterRtxApiHint,
-                Description = "The preset index the BetterRTX manager lists. Presets download from this same host.",
-                Fallback = Defaults.BetterRtxApiUrl, Kind = LinkKind.WebPage,
-                Read = () => Persistent.BetterRtxApiUrl, Write = v => Persistent.BetterRtxApiUrl = v
-            },
-            new UrlField
-            {
-                Box = VanillaRtxRepoBox, ResetButton = VanillaRtxRepoResetButton, Hint = VanillaRtxRepoHint,
-                Description = "The GitHub owner/repo \"Get latest RTX packs\" downloads from. It has to be laid out exactly like the original repository - linked above - or that window will find nothing.",
-                Fallback = Defaults.VanillaRtxRepository, Kind = LinkKind.GitHubRepository,
-                Read = () => Persistent.VanillaRtxRepository, Write = v => Persistent.VanillaRtxRepository = v
-            },
-            new UrlField
-            {
-                Box = AlchitexMaterialsBox, ResetButton = AlchitexMaterialsResetButton, Hint = AlchitexMaterialsHint,
-                Description = "RTX Reactor's per-block PBR configuration. The packaged copy is used until this one downloads.",
-                Fallback = Defaults.AlchitexMaterialsUrl, Kind = LinkKind.Json,
-                Read = () => Persistent.AlchitexMaterialsUrl, Write = v => Persistent.AlchitexMaterialsUrl = v
-            },
-            new UrlField
-            {
-                Box = AlchitexBlacklistBox, ResetButton = AlchitexBlacklistResetButton, Hint = AlchitexBlacklistHint,
-                Description = "The texture names RTX Reactor gives a colour-only texture set instead of PBR.",
-                Fallback = Defaults.AlchitexBlacklistUrl, Kind = LinkKind.Json,
-                Read = () => Persistent.AlchitexBlacklistUrl, Write = v => Persistent.AlchitexBlacklistUrl = v
-            },
-            new UrlField
-            {
-                Box = AlchitexFogBox, ResetButton = AlchitexFogResetButton, Hint = AlchitexFogHint,
-                Description = "The fog files RTX Reactor deploys when its fog option is on.",
-                Fallback = Defaults.AlchitexFogUrl, Kind = LinkKind.Zip,
-                Read = () => Persistent.AlchitexFogUrl, Write = v => Persistent.AlchitexFogUrl = v
-            },
-            new UrlField
-            {
-                Box = AlchitexWaterBox, ResetButton = AlchitexWaterResetButton, Hint = AlchitexWaterHint,
-                Description = "The placeholder water RTX Reactor falls back to when a pack ships none of its own.",
-                Fallback = Defaults.AlchitexWaterUrl, Kind = LinkKind.Zip,
-                Read = () => Persistent.AlchitexWaterUrl, Write = v => Persistent.AlchitexWaterUrl = v
             },
         ]);
 
@@ -1278,14 +1229,6 @@ public sealed partial class SettingsOverlay : UserControl
     // =========================================================================
     //  Links
     // =========================================================================
-
-    /// <summary>
-    /// Opens whatever repository the box beside it currently names, not the built-in one -
-    /// a link that always went to Cubeir/Vanilla-RTX would stop being "see the original" the
-    /// moment somebody pointed the setting at a fork of their own.
-    /// </summary>
-    private void VanillaRtxRepoLink_Click(object sender, RoutedEventArgs e)
-        => _ = MainWindow.OpenUrl(Links.VanillaRtxRepositoryPage);
 
     private void GitHubLink_Click(object sender, RoutedEventArgs e)
         => _ = MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App");

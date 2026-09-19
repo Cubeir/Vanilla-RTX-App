@@ -294,19 +294,12 @@ public sealed partial class WebImportOverlay : UserControl
         Close();
     }
 
-    /// <summary>
-    /// Opens the address this overlay was pointed at, in the user's real browser.
-    ///
-    /// <para><b>The entry URL, not wherever the embedded browser has since navigated to.</b>
-    /// The title beside it names that entry point, and that entry point is now a setting the
-    /// user can change - so the link has to lead to the same place the title claims, and to the
-    /// same place the settings panel says this feature goes. It matches the error state's
-    /// Open-in-browser button, which has always used the entry URL.</para>
-    /// </summary>
+    /// <summary>Opens wherever the embedded browser currently is - not necessarily the entry URL - in the user's real browser.</summary>
     private void HeaderTitleLink_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(_lastUrl))
-            _ = Launcher.LaunchUriAsync(new Uri(_lastUrl));
+        var url = _webViewReady ? ImportWebView.CoreWebView2.Source : _lastUrl;
+        if (!string.IsNullOrEmpty(url))
+            _ = Launcher.LaunchUriAsync(new Uri(url));
     }
 
     // =========================================================================

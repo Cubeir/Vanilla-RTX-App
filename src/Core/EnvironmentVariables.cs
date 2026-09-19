@@ -1,7 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using Windows.Storage;
 
@@ -79,15 +78,8 @@ public static class EnvironmentVariables
         // directly - that is what falls back to the built-in address when one has gone stale.
         public static string DocumentationUrl = Defaults.DocumentationUrl;
         public static string BugTrackerUrl = Defaults.BugTrackerUrl;
-        public static string AnnouncementsUrl = Defaults.AnnouncementsUrl;
         public static string DlssProviderUrl = Defaults.DlssProviderUrl;
         public static string BetterRtxCreatorUrl = Defaults.BetterRtxCreatorUrl;
-        public static string BetterRtxApiUrl = Defaults.BetterRtxApiUrl;
-        public static string VanillaRtxRepository = Defaults.VanillaRtxRepository;
-        public static string AlchitexMaterialsUrl = Defaults.AlchitexMaterialsUrl;
-        public static string AlchitexBlacklistUrl = Defaults.AlchitexBlacklistUrl;
-        public static string AlchitexFogUrl = Defaults.AlchitexFogUrl;
-        public static string AlchitexWaterUrl = Defaults.AlchitexWaterUrl;
     }
 
     public static class Defaults // These are backed up to be used as a compass by other classes
@@ -105,9 +97,12 @@ public static class EnvironmentVariables
         public static readonly string LaunchOptions = Modules.MinecraftLauncher.SerializeOptions(Modules.MinecraftLauncher.DefaultOptions);
 
         // ── Addresses ────────────────────────────────────────────────────────
-        // Each is spelled out in full rather than composed from a shared base, for the reason
-        // AssetUpdater's own manifest states (CLAUDE.md 4.17): a base assumes every one of
-        // these lives in the same place now and forever, and it reads worse.
+        // The four things the app fetches from somewhere the user might reasonably want
+        // pointed elsewhere. Everything else the app downloads - the announcements feed, the
+        // BetterRTX preset index, the Vanilla RTX repository, Alchitex's data assets - stays
+        // written at its call site on purpose: those systems were built for each other, there
+        // is no second provider of any of them, and a field offering to repoint one would only
+        // suggest an alternative that doesn't exist.
 
         /// <summary>The markdown the titlebar's Help button renders.</summary>
         public const string DocumentationUrl = "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md";
@@ -115,32 +110,11 @@ public static class EnvironmentVariables
         /// <summary>The markdown the titlebar's Bugs button renders.</summary>
         public const string BugTrackerUrl = "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md";
 
-        /// <summary>The markdown OnlineTexts parses into every in-app announcement.</summary>
-        public const string AnnouncementsUrl = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/IN-APP-ANNOUNCEMENTS.md";
-
         /// <summary>Where the DLSS swapper's in-app browser goes to download runtimes.</summary>
         public const string DlssProviderUrl = "https://www.techpowerup.com/download/nvidia-dlss-dll";
 
         /// <summary>Where the BetterRTX manager's in-app browser goes to build a custom preset.</summary>
         public const string BetterRtxCreatorUrl = "https://bedrock.graphics/creator";
-
-        /// <summary>The BetterRTX preset index. Its origin is also where individual presets are downloaded from - see <see cref="Links.BetterRtxPackDownload"/>.</summary>
-        public const string BetterRtxApiUrl = "https://bedrock.graphics/api";
-
-        /// <summary>
-        /// The GitHub <c>owner/repo</c> the pack updater reads Vanilla RTX from - not a URL,
-        /// because PackUpdater builds four different addresses out of it and only the repo
-        /// itself is a meaningful choice. A repo pointed at here has to be laid out exactly
-        /// like the original or the updater has nothing to find.
-        /// </summary>
-        public const string VanillaRtxRepository = "Cubeir/Vanilla-RTX";
-
-        // Alchitex's online-updatable data assets (CLAUDE.md 4.17). The packaged copies are
-        // always there; these are only ever a newer version of the same file.
-        public const string AlchitexMaterialsUrl = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/materials.json";
-        public const string AlchitexBlacklistUrl = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/pbr_blacklist.json";
-        public const string AlchitexFogUrl = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/vanilla-rtx-fog.zip";
-        public const string AlchitexWaterUrl = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/water-fallback.zip";
     }
 
     // =========================================================================
@@ -154,16 +128,7 @@ public static class EnvironmentVariables
         WebPage,
 
         /// <summary>http(s) naming a <c>.md</c> file, because it is fetched and parsed rather than displayed.</summary>
-        Markdown,
-
-        /// <summary>http(s) naming a <c>.json</c> file.</summary>
-        Json,
-
-        /// <summary>http(s) naming a <c>.zip</c> file.</summary>
-        Zip,
-
-        /// <summary>A GitHub <c>owner/repo</c> pair, not an address.</summary>
-        GitHubRepository
+        Markdown
     }
 
     /// <summary>
@@ -180,30 +145,11 @@ public static class EnvironmentVariables
     public static bool IsValidLink(string? value, LinkKind kind)
     {
         if (string.IsNullOrWhiteSpace(value)) return false;
-        var trimmed = value.Trim();
-
-        if (kind == LinkKind.GitHubRepository)
-        {
-            // owner/repo, nothing else. Rejecting a full URL here is deliberate: PackUpdater
-            // builds raw.githubusercontent and codeload addresses out of these two segments,
-            // and a pasted browser URL would silently produce four broken ones.
-            var parts = trimmed.Split('/');
-            return parts.Length == 2
-                && parts.All(p => p.Length > 0 && p.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.'));
-        }
-
-        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)) return false;
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)) return false;
         if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return false;
 
-        var extension = kind switch
-        {
-            LinkKind.Markdown => ".md",
-            LinkKind.Json => ".json",
-            LinkKind.Zip => ".zip",
-            _ => null
-        };
-
-        return extension is null || uri.AbsolutePath.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
+        return kind != LinkKind.Markdown
+            || uri.AbsolutePath.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -217,9 +163,6 @@ public static class EnvironmentVariables
     public static string LinkRejectionReason(LinkKind kind) => kind switch
     {
         LinkKind.Markdown => "Needs to be a full http:// or https:// address ending in .md",
-        LinkKind.Json => "Needs to be a full http:// or https:// address ending in .json",
-        LinkKind.Zip => "Needs to be a full http:// or https:// address ending in .zip",
-        LinkKind.GitHubRepository => "Needs to be a GitHub owner/repo pair, e.g. Cubeir/Vanilla-RTX",
         _ => "Needs to be a full http:// or https:// address"
     };
 
@@ -237,43 +180,8 @@ public static class EnvironmentVariables
     {
         public static string Documentation => ResolveLink(Persistent.DocumentationUrl, Defaults.DocumentationUrl, LinkKind.Markdown);
         public static string BugTracker => ResolveLink(Persistent.BugTrackerUrl, Defaults.BugTrackerUrl, LinkKind.Markdown);
-        public static string Announcements => ResolveLink(Persistent.AnnouncementsUrl, Defaults.AnnouncementsUrl, LinkKind.Markdown);
         public static string DlssProvider => ResolveLink(Persistent.DlssProviderUrl, Defaults.DlssProviderUrl, LinkKind.WebPage);
         public static string BetterRtxCreator => ResolveLink(Persistent.BetterRtxCreatorUrl, Defaults.BetterRtxCreatorUrl, LinkKind.WebPage);
-        public static string BetterRtxApi => ResolveLink(Persistent.BetterRtxApiUrl, Defaults.BetterRtxApiUrl, LinkKind.WebPage);
-        public static string VanillaRtxRepository => ResolveLink(Persistent.VanillaRtxRepository, Defaults.VanillaRtxRepository, LinkKind.GitHubRepository);
-        public static string AlchitexMaterials => ResolveLink(Persistent.AlchitexMaterialsUrl, Defaults.AlchitexMaterialsUrl, LinkKind.Json);
-        public static string AlchitexBlacklist => ResolveLink(Persistent.AlchitexBlacklistUrl, Defaults.AlchitexBlacklistUrl, LinkKind.Json);
-        public static string AlchitexFog => ResolveLink(Persistent.AlchitexFogUrl, Defaults.AlchitexFogUrl, LinkKind.Zip);
-        public static string AlchitexWater => ResolveLink(Persistent.AlchitexWaterUrl, Defaults.AlchitexWaterUrl, LinkKind.Zip);
-
-        /// <summary>
-        /// Where one BetterRTX preset's files are downloaded from, derived from
-        /// <see cref="BetterRtxApi"/>'s own origin rather than spelled out separately.
-        /// <b>The index and the downloads it lists have to come from the same host</b> - a
-        /// repointed API whose downloads still went to bedrock.graphics would hand out uuids
-        /// that host has never heard of.
-        /// </summary>
-        public static string BetterRtxPackDownload(string uuid)
-        {
-            var origin = Uri.TryCreate(BetterRtxApi, UriKind.Absolute, out var uri)
-                ? uri.GetLeftPart(UriPartial.Authority)
-                : "https://bedrock.graphics";
-
-            return $"{origin}/pack/{uuid}/release";
-        }
-
-        /// <summary>The raw file URL for a path inside <see cref="VanillaRtxRepository"/>'s master branch.</summary>
-        public static string VanillaRtxRawFile(string pathInRepo)
-            => $"https://raw.githubusercontent.com/{VanillaRtxRepository}/master/{pathInRepo}";
-
-        /// <summary>The master-branch zipball of <see cref="VanillaRtxRepository"/>.</summary>
-        public static string VanillaRtxZipball
-            => $"https://github.com/{VanillaRtxRepository}/archive/refs/heads/master.zip";
-
-        /// <summary>The human-facing page for <see cref="VanillaRtxRepository"/>, for a hint that links to it.</summary>
-        public static string VanillaRtxRepositoryPage
-            => $"https://github.com/{VanillaRtxRepository}";
     }
 
     // Window size defaults for all windows
