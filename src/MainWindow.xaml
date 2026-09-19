@@ -106,9 +106,13 @@
             </Border.Shadow>
         </Border>
 
-        <!-- Transparent drag area: covers whole titlebar except left 200px so your buttons keep receiving clicks -->
+        <!-- Transparent drag area: starts just past the titlebar buttons so they keep receiving
+             clicks, and covers everything to the right of them. The left inset is measured off
+             the button strip - three 40px buttons, two 1px separators with 2px either side, and
+             TitleBarActions' own -2 left margin - so it has to come down whenever a button is
+             added or removed, or the window grows a band near the top that can't be dragged. -->
         <Border x:Name="TitleBarDragArea"
-                Margin="266,-1,0,0"
+                Margin="148,-1,0,0"
                 Height="32"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"
@@ -179,7 +183,7 @@
                         Width="24"
                         Canvas.ZIndex="5"
                         CornerRadius="0"
-                        ToolTipService.ToolTip="Hold shift and click the lamp to copy app's logs for debugging."
+                        ToolTipService.ToolTip="This lamp mirrors whatever the app is busy with - it blinks, dims and changes with the seasons. Debug logs moved to the Settings menu."
                         Click="LampInteraction_Click" />
             </Canvas>
 
@@ -200,6 +204,13 @@
              Named so TitleBarFocus can fade the whole group with the window rather
              than each button being listed by hand in the Activated handler. A new
              titlebar button dropped in here inherits that automatically.
+
+             All three open an overlay that starts 36px down - flush under this bar's
+             bevelled bottom edge - so the body of the window is what gets replaced and
+             the titlebar keeps reading as the app's frame. That is the whole reason
+             these three are here and Discord/Ko-fi/theme/animations are not: those four
+             change something, they don't open anything, and they live in the settings
+             panel now.
              ═══════════════════════════════════════════════════════════════════ -->
         <Border x:Name="TitleBarActions"
                 Margin="-2,-2,16,0"
@@ -221,35 +232,24 @@
                     <!-- Separator -->
                     <ColumnDefinition Width="Auto" />
                     <!-- Button -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Separator -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Button -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Separator -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Button -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Separator -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Button -->
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Chat Button -->
-                <Button x:Name="ChatButton"
+                <!-- Settings Button -->
+                <Button x:Name="SettingsButton"
                         Grid.Column="0"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xE8BD;"
+                        Content="&#xE713;"
                         Width="40"
                         Height="35"
                         CornerRadius="0"
-                        FontSize="14"
+                        FontSize="16"
                         Background="Transparent"
                         BorderBrush="Transparent"
-                        Click="ChatButton_Click"
-                        ToolTipService.ToolTip="Invitation to the Vanilla RTX Discord server."
+                        Click="SettingsButton_Click"
+                        PointerEntered="SettingsButton_PointerEntered"
+                        PointerExited="SettingsButton_PointerExited"
+                        ToolTipService.ToolTip="App settings - theme, animations, Minecraft folder locations, what the Launch button does, and app maintenance."
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
@@ -258,35 +258,9 @@
                         Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-
-
-                <!-- Donate Button -->
-                <Button x:Name="DonateButton"
-                        Grid.Column="2"
-                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xEB51;"
-                        Width="40"
-                        Height="35"
-                        CornerRadius="0"
-                        FontSize="14"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
-                        Click="DonateButton_Click"
-                        PointerEntered="DonateButton_PointerEntered"
-                        PointerExited="DonateButton_PointerExited"
-                        ToolTipService.ToolTip="Buy the developer some coffee, Vanilla RTX is free and continued, help keep it that way!"
-                        IsTextScaleFactorEnabled="False" />
-
-                <!-- Separator -->
-                <Border Grid.Column="3"
-                        Width="1"
-                        Margin="2,6,2,6"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
                 <!-- Info/Help Button -->
                 <Button x:Name="HelpButton"
-                        Grid.Column="4"
+                        Grid.Column="2"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xE946;"
@@ -301,14 +275,14 @@
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
-                <Border Grid.Column="5"
+                <Border Grid.Column="3"
                         Width="1"
                         Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- Bug Button -->
                 <Button x:Name="BugButton"
-                        Grid.Column="6"
+                        Grid.Column="4"
                         FontFamily="{ThemeResource SymbolThemeFontFamily}"
                         Style="{ThemeResource SubtleButtonStyle}"
                         Content="&#xEBE8;"
@@ -320,51 +294,6 @@
                         PointerEntered="BugButton_PointerEntered"
                         PointerExited="BugButton_PointerExited"
                         ToolTipService.ToolTip="View a list of all known and reported Minecraft RTX bugs and issues, and their status."
-                        IsTextScaleFactorEnabled="False" />
-
-                <!-- Separator -->
-                <Border Grid.Column="7"
-                        Width="1"
-                        Margin="2,6,2,6"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-
-                <!-- Theme Button -->
-                <Button x:Name="CycleThemeButton"
-                        Grid.Column="8"
-                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xEC46;"
-                        Width="40"
-                        Height="35"
-                        CornerRadius="0"
-                        FontSize="16"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
-                        Click="CycleThemeButton_Click"
-                        ToolTipService.ToolTip="Theme: Unknown"
-                        IsTextScaleFactorEnabled="False" />
-
-                <!-- Separator -->
-                <Border Grid.Column="9"
-                        Width="1"
-                        Margin="2,6,2,6"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                <!-- Suspend UI Animations Button -->
-                <Button x:Name="SuspendUIAnimationsToggle"
-                        Grid.Column="10"
-                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xEC12;"
-                        Width="40"
-                        Height="35"
-                        CornerRadius="0"
-                        FontSize="16"
-                        Background="Transparent"
-                        BorderBrush="Transparent"
-                        Click="SuspendUIAnimationsToggle_Click"
-                        ToolTipService.ToolTip="Disables unique UI animations throughout the app while active, could save some battery life on laptops."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
         </Border>
@@ -735,18 +664,15 @@
                                 CornerRadius="0,6,6,0"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Default Function: Resets tuning options back to their default values.
-                                &#x0a;&#x0a;FOR ADVANCED USERS: Hold shift while pressing to perform a hard reset that wipes all of app's data everywhere, making it as if it was freshly installed.
-                                Might also prompt you for reverting back to Default RTX/Default LUT files if needed, so your defaults aren't lost the next time you use the app.">
+                                ToolTipService.ToolTip="Resets tuning options back to their default values.
+                                &#x0a;&#x0a;Looking to wipe all of the app's data instead? That lives in the Settings menu, under Maintenance.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xE777;"
-                                          x:Name="ResetButton_FontIcon"
                                           FontSize="16"
                                           Margin="0,0,8,0"
                                           VerticalAlignment="Center" />
                                 <TextBlock Text="Reset"
-                                           x:Name="ResetButton_TextBlock"
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center" />
                             </StackPanel>
@@ -1363,14 +1289,13 @@
                             CornerRadius="0,0,0,6"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Launches Minecraft or Minecraft Preview with ray tracing pre-enabled to avoid issues. Additionally disables VSync for better performance and enables in-game graphics mode switching.
-                            &#x0a;&#x0a;FOR ADVANCED USERS: Holding shift while pressing this button enables game's VSync instead.">
+                            &#x0a;&#x0a;Which game settings this writes is yours to change - see Launch options in the Settings menu.">
                         <StackPanel Orientation="Horizontal"
                                     HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE78B;"
                                       FontSize="18"
                                       Margin="0,0,8,0"
-                                      VerticalAlignment="Center"
-                                      x:Name="LaunchButtonFontIcon"/>
+                                      VerticalAlignment="Center" />
                             <TextBlock Text="Launch Minecraft RTX"
                                        VerticalAlignment="Center"
                                        x:Name="LaunchButtonText" />
@@ -1515,6 +1440,16 @@
         <core:MarkdownOverlay x:Name="DocsOverlay"
                                Grid.ColumnSpan="2"
                                Canvas.ZIndex="998" />
+
+        <!-- The settings panel - same placement rules as the markdown overlay above (starts
+             36px down so it sits flush under the titlebar, below it in z so the titlebar's
+             shadow falls on it), but it only claims the left 40% and the rest of the window
+             becomes a click-to-dismiss scrim. Declared after DocsOverlay so that if both are
+             ever visible at once - only possible for the length of one cross-fade - the panel
+             is the one on top. -->
+        <core:SettingsOverlay x:Name="SettingsPanel"
+                              Grid.ColumnSpan="2"
+                              Canvas.ZIndex="998" />
 
     </Grid>
 </Window>

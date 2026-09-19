@@ -83,6 +83,13 @@ public static class EnvironmentVariables
 
         public static string AppThemeMode = "Dark";
         public static bool SuspendUIAnimations = false;
+
+        // The Launch button's options.txt edits, as MinecraftLauncher's name=value;name=value
+        // form. A string rather than a collection because SaveSettings/LoadSettings round-trip
+        // every field in here through LocalSettings via Convert.ChangeType, which only handles
+        // primitives - see MinecraftLauncher.ParseOptions for the format and why an explicitly
+        // empty configuration is stored as a marker instead of "".
+        public static string LaunchOptions = Defaults.LaunchOptions;
     }
 
     public static class Defaults // These are backed up to be used as a compass by other classes
@@ -95,6 +102,9 @@ public static class EnvironmentVariables
         public const int RoughnessControlValue = 0;
         public const int LazifyNormalAlpha = 0;
         public const bool AddEmissivityAmbientLight = false;
+
+        /// <summary>Serialized <see cref="Modules.MinecraftLauncher.DefaultOptions"/> - resolved once here so the stored form and the launcher's own defaults can never drift.</summary>
+        public static readonly string LaunchOptions = Modules.MinecraftLauncher.SerializeOptions(Modules.MinecraftLauncher.DefaultOptions);
     }
 
     // Window size defaults for all windows
@@ -356,24 +366,12 @@ public sealed partial class MainWindow : Window
             "ms-appx:///Assets/previews/minecart.launch.png"
         );
 
-        Previewer.Instance.InitializeButton(CycleThemeButton,
-            "ms-appx:///Assets/previews/theme.png"
-        );
-
-        Previewer.Instance.InitializeButton(SuspendUIAnimationsToggle,
-             "ms-appx:///Assets/previews/suspended.png"
-        );
-
-        Previewer.Instance.InitializeButton(DonateButton,
-            "ms-appx:///Assets/previews/cubeir.thankyou.png"
-        );
-
         Previewer.Instance.InitializeButton(HelpButton,
             "ms-appx:///Assets/previews/cubeir.help.png"
         );
 
-        Previewer.Instance.InitializeButton(ChatButton,
-            "ms-appx:///Assets/previews/bonfire.png"
+        Previewer.Instance.InitializeButton(SettingsButton,
+            "ms-appx:///Assets/previews/theme.png"
         );
 
         Previewer.Instance.InitializeButton(BugButton,
@@ -410,11 +408,6 @@ public sealed partial class MainWindow : Window
         _ = Previewer.Instance.PreloadAllRegisteredImagesAsync();
     }
 
-    /// For buttons hidden under shiftkey
-    private readonly Dictionary<FrameworkElement, string> _originalTexts = new();
-    private readonly Dictionary<FontIcon, string> _originalGlyphs = new();
-    private bool _shiftPressed = false;
-
     #endregion
 
     public MainWindow()
@@ -448,27 +441,6 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        // For dynamiclly changing text with Shift key
-        Content.KeyDown += (s, e) =>
-        {
-            if (e.Key == VirtualKey.Shift && !_shiftPressed)
-            {
-                _shiftPressed = true;
-                SetShiftText(ResetButton_TextBlock, "Wipe", ResetButton_FontIcon, "\uE7BA");
-                SetShiftText(LaunchButtonText, "Launch Minecraft RTX (w/ VSync)", LaunchButtonFontIcon, "\uEC74");
-                // Add more as needed...
-            }
-        };
-        Content.KeyUp += (s, e) =>
-        {
-            if (e.Key == VirtualKey.Shift)
-            {
-                _shiftPressed = false;
-                RestoreShiftText(ResetButton_TextBlock, ResetButton_FontIcon);
-                RestoreShiftText(LaunchButtonText, LaunchButtonFontIcon);
-                // Mirror every SetShiftText call above...
-            }
-        };
         // Our own titlebar buttons dim with the window, matching the system's caption
         // buttons beside them. The whole group goes over as one container - see
         // TitleBarFocus for why that beats naming each button here. The centered
@@ -476,16 +448,6 @@ public sealed partial class MainWindow : Window
         // and it stays at full strength whether the window is focused or not.
         TitleBarFocus.Attach(this, TitleBarActions);
 
-        this.Activated += (s, e) =>
-        {
-            if (e.WindowActivationState == WindowActivationState.Deactivated && _shiftPressed)
-            {
-                _shiftPressed = false;
-                RestoreShiftText(ResetButton_TextBlock, ResetButton_FontIcon);
-                RestoreShiftText(LaunchButtonText, LaunchButtonFontIcon);
-                // Mirror KeyUp, copy paste here, so buttons go back to normal if window is unfocused but shift is still held.
-            }
-        };
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)
             root.Loaded += MainWindow_Loaded;
@@ -503,8 +465,8 @@ public sealed partial class MainWindow : Window
             // Load variables back in from previous session
             LoadSettings();
 
-            // APPLY THEME, passing nulls means it isn't a button, instead of cycling, it applies the loaded setting
-            CycleThemeButton_Click(null, null);
+            // APPLY THEME - the loaded AppThemeMode, not a change to it
+            ApplyThemeMode();
 
             double speedMultiplier = Persistent.SuspendUIAnimations ? 0.64 : 1.0;
 
@@ -571,8 +533,8 @@ public sealed partial class MainWindow : Window
             await Task.Delay((int)(700 * speedMultiplier));
             // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
 
-            // Apply Suspend Previewr, but won't toggle it (only button invokes can)
-            SuspendUIAnimationsToggle_Click(null, null);
+            // Apply Suspend Previewer, but won't toggle it (only the settings panel can)
+            ApplySuspendUIAnimations(invokedByUser: false);
 
             // Startup log
             string startupAppendLog = string.Empty;
@@ -595,6 +557,7 @@ public sealed partial class MainWindow : Window
             MinecraftUserDataLocator.ValidateAndUpdateCachedLocations(); // Similar to GDKLocator but faster since it deals with fewer passes, and we want its warning messages
             _initializedTcs.TrySetResult(); // The data-location cache is now trustworthy - see WaitUntilInitializedAsync
             UpdateUserDataDependentUI(IsTargetingPreview); // Updates UI based on location cache status
+            SettingsPanel.Initialize(this); // Paint the settings panel now both locators have settled
             Bindings.Update(); // Update bindings cause of a x:Bind gotcha where values come alive after some unrelated property change
 
             _ = LocatePacksTask(); // Trigger finding packs
@@ -923,342 +886,363 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private void SetShiftText(FrameworkElement control, string shiftText, FontIcon? icon = null, string? shiftGlyph = null)
-    {
-        // Save + apply text
-        if (!_originalTexts.ContainsKey(control))
-        {
-            if (control is Button btn) _originalTexts[control] = btn.Content?.ToString() ?? "";
-            else if (control is TextBlock tb) _originalTexts[control] = tb.Text;
-        }
-
-        if (control is Button button) button.Content = shiftText;
-        else if (control is TextBlock textBlock) textBlock.Text = shiftText;
-
-        // Save + apply glyph (optional)
-        if (icon != null && shiftGlyph != null)
-        {
-            if (!_originalGlyphs.ContainsKey(icon))
-                _originalGlyphs[icon] = icon.Glyph;
-
-            icon.Glyph = shiftGlyph;
-        }
-    }
-    private void RestoreShiftText(FrameworkElement control, FontIcon? icon = null)
-    {
-        if (_originalTexts.TryGetValue(control, out var originalText))
-        {
-            if (control is Button button) button.Content = originalText;
-            else if (control is TextBlock textBlock) textBlock.Text = originalText;
-        }
-
-        if (icon != null && _originalGlyphs.TryGetValue(icon, out var originalGlyph))
-            icon.Glyph = originalGlyph;
-    }
     #endregion -------------------------------
 
 
     #region Titlebar Features -------------------------------
     private static int lampSecretMessageCounter = 0;
-    private void LampInteraction_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Builds the whole diagnostic snapshot - system info, the sidebar log, every tuner and
+    /// persistent variable, the trace buffer and the live state of every supported control in
+    /// this window - and puts it on the clipboard. The settings panel's "Copy debug logs" is
+    /// the only caller.
+    ///
+    /// <para>It reflects over <c>this</c> to enumerate controls, which is what lets a control
+    /// added to MainWindow.xaml years from now show up in a report without anyone remembering
+    /// to list it. Nothing here throws outward: a report that can't be built is worth a log
+    /// line, never a crash in the middle of someone trying to report a bug.</para>
+    /// </summary>
+    public void CopyDebugReportToClipboard()
     {
-        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+        try
         {
-            try
+            var sb = new StringBuilder();
+            AppendSystemInfo(sb);
+            sb.AppendLine($"===== Sidebar Log (Last {MaxLogChars.ToString()} Chars)");
+            string logSnapshot;
+            lock (_logGate) logSnapshot = LogText;
+            sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
+            sb.AppendLine();
+            sb.AppendLine("===== Tuner Variables");
+            var fields = typeof(EnvironmentVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+
+            foreach (var field in fields)
             {
-                var sb = new StringBuilder();
-                AppendSystemInfo(sb);
-                sb.AppendLine($"===== Sidebar Log (Last {MaxLogChars.ToString()} Chars)");
-                string logSnapshot;
-                lock (_logGate) logSnapshot = LogText;
-                sb.AppendLine(logSnapshot.Replace(EntrySentinel, Environment.NewLine));
-                sb.AppendLine();
-                sb.AppendLine("===== Tuner Variables");
-                var fields = typeof(EnvironmentVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
+                var value = field.GetValue(null);
+
+                // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
+                if (field.Name == nameof(EnvironmentVariables.SelectedPacks) &&
+                    value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
+                {
+                    if (selectedPacks.Count == 0)
+                    {
+                        sb.AppendLine("SelectedPacks: (empty)");
+                    }
+                    else
+                    {
+                        sb.AppendLine("SelectedPacks:");
+                        foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
+                            sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
+                    }
+                    continue;
+                }
+                else if (value is System.Collections.IEnumerable enumerable && value is not string)
+                {
+                    var items = enumerable.Cast<object>().ToList();
+                    sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
+                    foreach (var item in items)
+                        sb.AppendLine($"  {FormatValue(item)}");
+                    continue;
+                }
+
+                sb.AppendLine($"{field.Name}: {value ?? "null"}");
+            }
+            static string FormatValue(object? value)
+            {
+                if (value is null) return "null";
+                if (value is System.Runtime.CompilerServices.ITuple tuple)
+                {
+                    var items = new object?[tuple.Length];
+                    for (int i = 0; i < tuple.Length; i++)
+                        items[i] = tuple[i]?.ToString() ?? "null";
+                    return string.Join(", ", items);
+                }
+                return value.ToString() ?? "null";
+            }
+
+            sb.AppendLine();
+            // Persistent variables
+            sb.AppendLine("===== Persistent Tuner Variables");
+            var persistentFields = typeof(EnvironmentVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
+            foreach (var field in persistentFields)
+            {
+                var value = field.GetValue(null);
+                sb.AppendLine($"{field.Name}: {value ?? "null"}");
+            }
+            sb.AppendLine();
+            // Trace logs
+            sb.AppendLine(TraceManager.GetAllTraceLogs());
+
+            // UI Controls State
+            sb.AppendLine();
+            sb.AppendLine("===== UI Controls State");
+            CollectUIControlsState(sb);
+
+            // TODO: Stack trace
+            // Append later, could be useful
+
+            var dataPackage = new DataPackage();
+            dataPackage.SetText(sb.ToString());
+            Clipboard.SetContent(dataPackage);
+            Log("Copied app logs to clipboard.", LogLevel.Success);
+            _ = BlinkingLamp(true, true, 0.0, 1.0);
+
+            // ============================================
+            void CollectUIControlsState(StringBuilder sb)
+            {
+                var fields = this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 
                 foreach (var field in fields)
                 {
-                    var value = field.GetValue(null);
+                    var value = field.GetValue(this);
+                    if (value == null) continue;
 
-                    // Special-case SelectedPacks - the tuple list won't print usefully via ToString()
-                    if (field.Name == nameof(EnvironmentVariables.SelectedPacks) &&
-                        value is ObservableCollection<(string Location, string Name, string Type, bool IsAlchitexCandidate)> selectedPacks)
+                    var type = value.GetType();
+                    var name = field.Name;
+
+                    // Toggle-type controls
+                    if (value is ToggleButton toggleBtn)
                     {
-                        if (selectedPacks.Count == 0)
-                        {
-                            sb.AppendLine("SelectedPacks: (empty)");
-                        }
-                        else
-                        {
-                            sb.AppendLine("SelectedPacks:");
-                            foreach (var (location, name, type, isAlchitexCandidate) in selectedPacks)
-                                sb.AppendLine($"  [{type}] {name} → {location}{(isAlchitexCandidate ? " (Alchitex candidate)" : "")}");
-                        }
-                        continue;
+                        sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
                     }
-                    else if (value is System.Collections.IEnumerable enumerable && value is not string)
+                    else if (value is CheckBox checkBox)
                     {
-                        var items = enumerable.Cast<object>().ToList();
-                        sb.AppendLine(items.Count == 0 ? $"{field.Name}: (empty)" : $"{field.Name}:");
-                        foreach (var item in items)
-                            sb.AppendLine($"  {FormatValue(item)}");
-                        continue;
+                        sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
                     }
-
-                    sb.AppendLine($"{field.Name}: {value ?? "null"}");
-                }
-                static string FormatValue(object? value)
-                {
-                    if (value is null) return "null";
-                    if (value is System.Runtime.CompilerServices.ITuple tuple)
+                    else if (value is ToggleSwitch toggleSwitch)
                     {
-                        var items = new object?[tuple.Length];
-                        for (int i = 0; i < tuple.Length; i++)
-                            items[i] = tuple[i]?.ToString() ?? "null";
-                        return string.Join(", ", items);
+                        sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
                     }
-                    return value.ToString() ?? "null";
-                }
-
-                sb.AppendLine();
-                // Persistent variables
-                sb.AppendLine("===== Persistent Tuner Variables");
-                var persistentFields = typeof(EnvironmentVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
-                foreach (var field in persistentFields)
-                {
-                    var value = field.GetValue(null);
-                    sb.AppendLine($"{field.Name}: {value ?? "null"}");
-                }
-                sb.AppendLine();
-                // Trace logs
-                sb.AppendLine(TraceManager.GetAllTraceLogs());
-
-                // UI Controls State
-                sb.AppendLine();
-                sb.AppendLine("===== UI Controls State");
-                CollectUIControlsState(sb);
-
-                // TODO: Stack trace
-                // Append later, could be useful
-
-                var dataPackage = new DataPackage();
-                dataPackage.SetText(sb.ToString());
-                Clipboard.SetContent(dataPackage);
-                Log("Copied app logs to clipboard.", LogLevel.Success);
-                _ = BlinkingLamp(true, true, 0.0, 1.0);
-
-                // ============================================
-                void CollectUIControlsState(StringBuilder sb)
-                {
-                    var fields = this.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
-
-                    foreach (var field in fields)
+                    else if (value is RadioButton radioBtn)
                     {
-                        var value = field.GetValue(this);
-                        if (value == null) continue;
-
-                        var type = value.GetType();
-                        var name = field.Name;
-
-                        // Toggle-type controls
-                        if (value is ToggleButton toggleBtn)
-                        {
-                            sb.AppendLine($"{name} (ToggleButton): {toggleBtn.IsChecked?.ToString() ?? "null"}");
-                        }
-                        else if (value is CheckBox checkBox)
-                        {
-                            sb.AppendLine($"{name} (CheckBox): {checkBox.IsChecked?.ToString() ?? "null"}");
-                        }
-                        else if (value is ToggleSwitch toggleSwitch)
-                        {
-                            sb.AppendLine($"{name} (ToggleSwitch): {toggleSwitch.IsOn}");
-                        }
-                        else if (value is RadioButton radioBtn)
-                        {
-                            sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
-                        }
-                        // Value controls
-                        else if (value is Slider slider)
-                        {
-                            sb.AppendLine($"{name} (Slider): {slider.Value}");
-                        }
-                        else if (value is NumberBox numberBox)
-                        {
-                            sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
-                        }
-                        else if (value is ComboBox comboBox)
-                        {
-                            sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
-                        }
-                        else if (value is TextBox textBox)
-                        {
-                            var text = textBox.Text;
-                            if (!string.IsNullOrEmpty(text) && text.Length > 50)
-                                text = text.Substring(0, 50) + "...";
-                            sb.AppendLine($"{name} (TextBox): \"{text}\"");
-                        }
-                        else if (value is RatingControl rating)
-                        {
-                            sb.AppendLine($"{name} (RatingControl): {rating.Value}");
-                        }
-                        else if (value is ColorPicker colorPicker)
-                        {
-                            sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
-                        }
-                        else if (value is DatePicker datePicker)
-                        {
-                            sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
-                        }
-                        else if (value is TimePicker timePicker)
-                        {
-                            sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
-                        }
+                        sb.AppendLine($"{name} (RadioButton): {radioBtn.IsChecked?.ToString() ?? "null"}");
                     }
-                }
-                void AppendSystemInfo(StringBuilder sb)
-                {
-                    sb.AppendLine("===== System Info");
-
-                    // Process architecture = what's actually executing right now
-                    sb.AppendLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
-                    // OS architecture = the machine's native architecture (differs from above if running under emulation)
-                    sb.AppendLine($"OS Architecture: {RuntimeInformation.OSArchitecture}");
-                    sb.AppendLine($"Is Emulated (x64-on-ARM64): {(RuntimeInformation.ProcessArchitecture != RuntimeInformation.OSArchitecture)}");
-
-                    sb.AppendLine($"OS Version: {RuntimeInformation.OSDescription}");
-                    sb.AppendLine($".NET Runtime: {RuntimeInformation.FrameworkDescription}");
-
-                    sb.AppendLine($"Processor Count: {Environment.ProcessorCount}");
-                    sb.AppendLine($"Working Set: {Environment.WorkingSet / 1024 / 1024} MB");
-                    sb.AppendLine($"64-bit OS: {Environment.Is64BitOperatingSystem}");
-                    sb.AppendLine($"64-bit Process: {Environment.Is64BitProcess}");
-
-                    try
+                    // Value controls
+                    else if (value is Slider slider)
                     {
-                        var package = Windows.ApplicationModel.Package.Current;
-                        var v = package.Id.Version;
-                        sb.AppendLine($"Package Version: {v.Major}.{v.Minor}.{v.Build}.{v.Revision}");
-                        sb.AppendLine($"Package Architecture: {package.Id.Architecture}");
-                        sb.AppendLine($"Package Full Name: {package.Id.FullName}");
+                        sb.AppendLine($"{name} (Slider): {slider.Value}");
                     }
-                    catch (Exception ex)
+                    else if (value is NumberBox numberBox)
                     {
-                        sb.AppendLine($"Package Info: unavailable ({ex.Message})");
+                        sb.AppendLine($"{name} (NumberBox): {numberBox.Value}");
                     }
-
-                    try
+                    else if (value is ComboBox comboBox)
                     {
-                        var culture = System.Globalization.CultureInfo.CurrentUICulture;
-                        sb.AppendLine($"UI Culture: {culture.Name}");
+                        sb.AppendLine($"{name} (ComboBox): SelectedIndex={comboBox.SelectedIndex}, SelectedItem={comboBox.SelectedItem?.ToString() ?? "null"}");
                     }
-                    catch { /* non-critical */ }
-
-                    sb.AppendLine();
+                    else if (value is TextBox textBox)
+                    {
+                        var text = textBox.Text;
+                        if (!string.IsNullOrEmpty(text) && text.Length > 50)
+                            text = text.Substring(0, 50) + "...";
+                        sb.AppendLine($"{name} (TextBox): \"{text}\"");
+                    }
+                    else if (value is RatingControl rating)
+                    {
+                        sb.AppendLine($"{name} (RatingControl): {rating.Value}");
+                    }
+                    else if (value is ColorPicker colorPicker)
+                    {
+                        sb.AppendLine($"{name} (ColorPicker): {colorPicker.Color}");
+                    }
+                    else if (value is DatePicker datePicker)
+                    {
+                        sb.AppendLine($"{name} (DatePicker): {datePicker.Date}");
+                    }
+                    else if (value is TimePicker timePicker)
+                    {
+                        sb.AppendLine($"{name} (TimePicker): {timePicker.Time}");
+                    }
                 }
             }
-            catch (Exception ex)
+            void AppendSystemInfo(StringBuilder sb)
             {
-                Trace.WriteLine($"[MainWindow] Error during lamp interaction debug copy: {ex}");
+                sb.AppendLine("===== System Info");
+
+                // Process architecture = what's actually executing right now
+                sb.AppendLine($"Process Architecture: {RuntimeInformation.ProcessArchitecture}");
+                // OS architecture = the machine's native architecture (differs from above if running under emulation)
+                sb.AppendLine($"OS Architecture: {RuntimeInformation.OSArchitecture}");
+                sb.AppendLine($"Is Emulated (x64-on-ARM64): {(RuntimeInformation.ProcessArchitecture != RuntimeInformation.OSArchitecture)}");
+
+                sb.AppendLine($"OS Version: {RuntimeInformation.OSDescription}");
+                sb.AppendLine($".NET Runtime: {RuntimeInformation.FrameworkDescription}");
+
+                sb.AppendLine($"Processor Count: {Environment.ProcessorCount}");
+                sb.AppendLine($"Working Set: {Environment.WorkingSet / 1024 / 1024} MB");
+                sb.AppendLine($"64-bit OS: {Environment.Is64BitOperatingSystem}");
+                sb.AppendLine($"64-bit Process: {Environment.Is64BitProcess}");
+
+                try
+                {
+                    var package = Windows.ApplicationModel.Package.Current;
+                    var v = package.Id.Version;
+                    sb.AppendLine($"Package Version: {v.Major}.{v.Minor}.{v.Build}.{v.Revision}");
+                    sb.AppendLine($"Package Architecture: {package.Id.Architecture}");
+                    sb.AppendLine($"Package Full Name: {package.Id.FullName}");
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine($"Package Info: unavailable ({ex.Message})");
+                }
+
+                try
+                {
+                    var culture = System.Globalization.CultureInfo.CurrentUICulture;
+                    sb.AppendLine($"UI Culture: {culture.Name}");
+                }
+                catch { /* non-critical */ }
+
+                sb.AppendLine();
             }
         }
-        else // regular non-shift clicks
+        catch (Exception ex)
         {
-            _ = BlinkingLamp(true, true, 1.0, 0.1);
-            if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
+            Trace.WriteLine($"[MainWindow] Error building the debug report: {ex}");
+            Log("Something went wrong while building the debug report.", LogLevel.Error);
+        }
+    }
+
+    private void LampInteraction_Click(object sender, RoutedEventArgs e)
+    {
+        _ = BlinkingLamp(true, true, 1.0, 0.1);
+        if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
+        {
+            Log(ToolTipService.GetToolTip(LampInteractionButton).ToString()!, LogLevel.Debug);
+        }
+        else
+        {
+            lampSecretMessageCounter++;
+            if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, starting in 2026, 21 times
             {
-                Log(ToolTipService.GetToolTip(LampInteractionButton).ToString()!, LogLevel.Debug);
-            }
-            else
-            {
-                lampSecretMessageCounter++;
-                if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, starting in 2026, 21 times
+                if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
                 {
-                    if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
+                    Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.VanillaRTX);
+                    Task.Run(async () =>
                     {
-                        Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.VanillaRTX);
-                        Task.Run(async () =>
+                        await Task.Delay(5000);
+                        Log("But now that you've found this one in particular, I won't leave you empty-handed. Wait a couple of seconds...", LogLevel.Lengthy);
+                        await Task.Delay(4000);
+                        _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
+                        await Task.Delay(3014);
+                        Log("I just love this piece! That's it. Hope you like it too.", LogLevel.Debug);
+                        await Task.Delay(delay: TimeSpan.FromMinutes(10));
+                        Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
+                        await Task.Delay(delay: TimeSpan.FromHours(7));
+                        Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.VanillaRTX);
+                        await Task.Delay(2718);
+                        Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
+                        await Task.Delay(2718);
+                        Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
+
+                        int iteration = 0;
+                        var rng = Random.Shared;
+                        string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
+                                             "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
+                        LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
+                        string[] spookyEmojis = { "👁️" };
+
+                        // Deteriorate the message over time, then make it seem like It's lagging to creep out the user
+                        while (true)
                         {
-                            await Task.Delay(5000);
-                            Log("But now that you've found this one in particular, I won't leave you empty-handed. Wait a couple of seconds...", LogLevel.Lengthy);
-                            await Task.Delay(4000);
-                            _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
-                            await Task.Delay(3014);
-                            Log("I just love this piece! That's it. Hope you like it too.", LogLevel.Debug);
-                            await Task.Delay(delay: TimeSpan.FromMinutes(10));
-                            Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
-                            await Task.Delay(delay: TimeSpan.FromHours(7));
-                            Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.VanillaRTX);
-                            await Task.Delay(2718);
-                            Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
-                            await Task.Delay(2718);
-                            Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
+                            iteration++;
 
-                            int iteration = 0;
-                            var rng = Random.Shared;
-                            string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
-                                                 "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
-                            LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
-                            string[] spookyEmojis = { "👁️" };
+                            string baseMsg = baseMsgs[rng.Next(baseMsgs.Length)];
+                            char[] chars = baseMsg.ToCharArray();
+                            double c = iteration / 50.0;
+                            int corruptCount = (int)(chars.Length * c);
+                            double t = Math.Max(0, (iteration - 15) / 35.0);
+                            int delay = (int)(500 + 9500 * (t * t * t));
 
-                            // Deteriorate the message over time, then make it seem like It's lagging to creep out the user
-                            while (true)
+                            for (int i = 0; i < corruptCount; i++)
                             {
-                                iteration++;
-
-                                string baseMsg = baseMsgs[rng.Next(baseMsgs.Length)];
-                                char[] chars = baseMsg.ToCharArray();
-                                double c = iteration / 50.0;
-                                int corruptCount = (int)(chars.Length * c);
-                                double t = Math.Max(0, (iteration - 15) / 35.0);
-                                int delay = (int)(500 + 9500 * (t * t * t));
-
-                                for (int i = 0; i < corruptCount; i++)
-                                {
-                                    int pos = rng.Next(chars.Length);
-                                    chars[pos] = (char)rng.Next(33, 126);
-                                }
-
-                                // Sprinkle creepy emojis at random positions
-                                string msg = new string(chars);
-                                int emojiCount = rng.Next(1, 4);
-                                for (int i = 0; i < emojiCount; i++)
-                                {
-                                    if (rng.NextDouble() < 0.1)
-                                    {
-                                        int pos = rng.Next(msg.Length);
-                                        msg = msg.Insert(pos, spookyEmojis[rng.Next(spookyEmojis.Length)]);
-                                    }
-                                }
-
-                                await Task.Delay(delay);
-                                Log(msg, levels[rng.Next(levels.Length)]);
+                                int pos = rng.Next(chars.Length);
+                                chars[pos] = (char)rng.Next(33, 126);
                             }
-                        });
-                    }
+
+                            // Sprinkle creepy emojis at random positions
+                            string msg = new string(chars);
+                            int emojiCount = rng.Next(1, 4);
+                            for (int i = 0; i < emojiCount; i++)
+                            {
+                                if (rng.NextDouble() < 0.1)
+                                {
+                                    int pos = rng.Next(msg.Length);
+                                    msg = msg.Insert(pos, spookyEmojis[rng.Next(spookyEmojis.Length)]);
+                                }
+                            }
+
+                            await Task.Delay(delay);
+                            Log(msg, levels[rng.Next(levels.Length)]);
+                        }
+                    });
                 }
             }
         }
     }
+    // ═════════════════════════════════════════════════════════════════════════
+    //  Titlebar buttons
+    //
+    //  Three of them, and the grouping is deliberate: Settings, Help and Bugs are the only
+    //  buttons whose whole job is to put something over the window's main body. All three
+    //  open an overlay that starts 36px down - flush under the titlebar's bevelled edge - so
+    //  the titlebar keeps reading as the app's frame while the body swaps underneath it.
+    //  Discord, Ko-fi, theme and animation suspension used to sit here too; none of them
+    //  opens anything, and they live in the settings panel now.
+    //
+    //  All three are toggles, and they are mutually exclusive: clicking one while another is
+    //  open closes that one first. OpenDocument and SettingsButton_Click below are the two
+    //  halves of that rule.
+    // ═════════════════════════════════════════════════════════════════════════
 
-
-    // TODO: make this place more interesting to interact with
-    // This is the only button that hasn't got much going on with it
-    // iirc winui had a thing to compositing and filling up glyphs, do that here?
-    // explain more what the link leads to, not everyone knows what discord is, or why they'd join
-    private void ChatButton_Click(object sender, RoutedEventArgs e)
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", LogLevel.VanillaRTX);
-        _ = OpenUrl("https://discord.gg/A4wv4wwYud");
+        if (SettingsPanel.IsOpen)
+        {
+            SettingsPanel.Hide();
+            return;
+        }
+
+        // The markdown overlay's own close animation runs to completion before the panel
+        // opens, for the same reason MarkdownOverlay chains its document swaps that way: a
+        // silent swap under a panel that is still visibly there reads as a glitch.
+        if (DocsOverlay.IsOpen)
+            DocsOverlay.Close(onClosed: SettingsPanel.Show);
+        else
+            SettingsPanel.Show();
+
+        _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
 
+    private void SettingsButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        SettingsButton.Content = "\uF8B0";
+    }
+
+    private void SettingsButton_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        SettingsButton.Content = "\uE713";
+    }
+
+    /// <summary>
+    /// Shared by the Help and Bug buttons - the settings panel is closed first if it's open,
+    /// then the document opens. <see cref="MarkdownOverlay.Show"/> already handles the
+    /// document-to-document case (same URL toggles, a different one swaps), so this only owns
+    /// the cross-overlay half of the rule.
+    /// </summary>
+    private void OpenDocument(string url, string title)
+    {
+        if (SettingsPanel.IsOpen)
+            SettingsPanel.Hide();
+
+        DocsOverlay.Show(url: url, title: title, glyph: "");
+    }
 
     private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
-        DocsOverlay.Show(
+        OpenDocument(
             url: "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md#documentation",
-            title: "Vanilla RTX App Documentation",
-            glyph: "");
+            title: "Vanilla RTX App Documentation");
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
     private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -1278,10 +1262,9 @@ public sealed partial class MainWindow : Window
 
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
-        DocsOverlay.Show(
+        OpenDocument(
             url: "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md#-unresolved",
-            title: "Known Minecraft RTX Bugs & Issues",
-            glyph: "");
+            title: "Known Minecraft RTX Bugs & Issues");
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }
     private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -1294,109 +1277,67 @@ public sealed partial class MainWindow : Window
     }
 
 
-
-
-    private void DonateButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Writes the supporter/credits text into the log, once per session. The settings panel
+    /// shows the same text inline; this is what keeps the log's version of the gesture - the
+    /// Ko-fi link there calls it on the way out to the browser, exactly as the old titlebar
+    /// Donate button did.
+    /// </summary>
+    public void RollCredits()
     {
-        DonateButton.Content = "\uEB52";
-        RollCredits();
-        _ = OpenUrl("https://ko-fi.com/cubeir");
-    }
-    private void DonateButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        DonateButton.Content = "\uEB52";
-        RollCredits();
-    }
-    private void DonateButton_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        DonateButton.Content = "\uEB51";
-        RollCredits();
-    }
-    private void RollCredits()
-    {
-        var credits = OnlineTextsContent.Credits?[0].Text;
+        var credits = OnlineTextsContent.Credits?.FirstOrDefault()?.Text;
         if (!string.IsNullOrEmpty(credits) && RuntimeFlags.Set("Has_Rolled_Credits"))
             Log(credits);
     }
 
 
-    public void CycleThemeButton_Click(object? sender, RoutedEventArgs? e)
+    /// <summary>
+    /// Applies <see cref="Persistent.AppThemeMode"/> to the window root. Called once at
+    /// startup and again whenever the settings panel's theme dropdown changes it - the mode
+    /// string is the single source of truth, and this only ever reads it.
+    ///
+    /// <para>Setting <c>RequestedTheme</c> is what eventually fires <c>ActualThemeChanged</c>,
+    /// which is where the titlebar colours, the bevels and <see cref="ThemeService.Broadcast"/>
+    /// hang - so nothing else needs doing here.</para>
+    /// </summary>
+    public void ApplyThemeMode()
     {
-        bool invokedByClick = sender is Button;
-        string mode = Persistent.AppThemeMode;
+        var root = Content as FrameworkElement;
+        if (root == null) return;
 
-        if (invokedByClick)
-        {
-            mode = mode switch
-            {
-                "System" => "Light",
-                "Light" => "Dark",
-                _ => "System"
-            };
-            Persistent.AppThemeMode = mode;
-        }
-
-        var root = Instance!.Content as FrameworkElement;
-
-        ElementTheme targetTheme = mode switch
+        var targetTheme = Persistent.AppThemeMode switch
         {
             "Light" => ElementTheme.Light,
             "Dark" => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
 
-        if (root!.RequestedTheme != targetTheme)
+        if (root.RequestedTheme != targetTheme)
             root.RequestedTheme = targetTheme;
-
-        Button btn = (sender as Button) ?? CycleThemeButton;
-
-        // Visual Feedback
-        btn.Content = mode == "System"
-            ? new TextBlock
-            {
-                Text = "A",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 15
-            }
-            : mode switch
-            {
-                "Light" => "\uE706",
-                "Dark" => "\uEC46",
-                _ => "A",
-            };
-
-        ToolTipService.SetToolTip(btn, "Theme: " + mode);
     }
 
 
-    private void SuspendUIAnimationsToggle_Click(object? sender, RoutedEventArgs? e)
+    /// <summary>
+    /// Brings the window in line with <see cref="Persistent.SuspendUIAnimations"/>. The
+    /// settings panel flips the flag and calls this; startup calls it with
+    /// <paramref name="invokedByUser"/> false.
+    ///
+    /// <para><b>The false branch is deliberately gated on <paramref name="invokedByUser"/>.</b>
+    /// At startup the vessels are already visible and the Previewer has never been frozen, so
+    /// "unfreezing" there is not a no-op - it unfreezes something mid-initialization that was
+    /// never frozen, which is how the Previewer ends up running before its images exist.</para>
+    /// </summary>
+    public void ApplySuspendUIAnimations(bool invokedByUser)
     {
-        bool invokedByClick = sender is Button;
-
-        // Flip the book only if user click, don't flip on startup
-        if (invokedByClick)
+        if (SuspendUIAnimations)
         {
-            SuspendUIAnimations = !SuspendUIAnimations; // This bool is accessed throughout many modules to decide what to do with animations
-        }
-        // Then do whatever depending on the state of the bool
-        if (SuspendUIAnimations == true)
-        {
-            SuspendUIAnimationsToggle.Content = "\uEC11";
-            ToolTipService.SetToolTip(SuspendUIAnimationsToggle, "All unique UI animations are currently suspended, click again to enable them.");
             PreviewVesselBackground.Visibility = Visibility.Collapsed;
             PreviewVesselBottom.Visibility = Visibility.Collapsed;
             PreviewVesselTop.Visibility = Visibility.Collapsed;
             Previewer.Instance.Freeze();
         }
-        // Continue with the defaults and avoid redundant opertions if not a button click
-        // (aka on startup, defaults already apply, no need to re-apply here)
-        // No need to perform everything again, it CAN cause issues (especially with premature Previewer Unfreeze)
-        else if (SuspendUIAnimations == false && invokedByClick)
+        else if (invokedByUser)
         {
-
-            SuspendUIAnimationsToggle.Content = "\uEC12";
-            ToolTipService.SetToolTip(SuspendUIAnimationsToggle, "Disables unique UI animations throughout the app while active.");
             PreviewVesselBackground.Visibility = Visibility.Visible;
             PreviewVesselBottom.Visibility = Visibility.Visible;
             PreviewVesselTop.Visibility = Visibility.Visible;
@@ -1585,7 +1526,7 @@ public sealed partial class MainWindow : Window
         if (!MinecraftUserDataLocator.IsDataValid(IsTargetingPreview))
         {
             WindowControlsManager.ToggleSpecificControls(this, false, ToDisable);
-            await HandleManualDataLocationAsync();
+            await HandleManualDataLocationAsync(IsTargetingPreview);
             WindowControlsManager.ToggleSpecificControls(this, true, ToDisable);
             return;
         }
@@ -1630,12 +1571,27 @@ public sealed partial class MainWindow : Window
 
 
 
-    public async Task HandleManualDataLocationAsync()
+    /// <summary>
+    /// Folder-picks a Minecraft user data root for one edition, validates it through
+    /// <see cref="MinecraftUserDataLocator.TrySetCustomDataRoot"/> and caches it on success.
+    /// Returns true if a path was accepted.
+    ///
+    /// <para><b>The edition is a parameter rather than <c>IsTargetingPreview</c>.</b> The
+    /// Browse-packs button only ever locates the edition the app is pointed at, but the
+    /// settings panel lists both and lets either be set without switching targets first.</para>
+    ///
+    /// <para>The parent folder is accepted as a fallback because the picker makes it very easy
+    /// to navigate one level too deep - selecting "Users" instead of the folder holding it.
+    /// Nothing is cached unless the locator validates it, which is the same check that runs at
+    /// every startup: accepting a path here that startup would reject is how a setting appears
+    /// to silently revert itself.</para>
+    /// </summary>
+    public async Task<bool> HandleManualDataLocationAsync(bool isPreview)
     {
         _ = BlinkingLamp(false, true, 0.5, 1.0);
 
-        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(IsTargetingPreview);
-        var expectedName = IsTargetingPreview
+        var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isPreview);
+        var expectedName = isPreview
             ? MinecraftUserDataLocator.PreviewRootFolderName
             : MinecraftUserDataLocator.StableRootFolderName;
 
@@ -1648,20 +1604,18 @@ public sealed partial class MainWindow : Window
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
 
         var folder = await picker.PickSingleFolderAsync();
-        if (folder == null) return;
+        if (folder == null) return false;
 
-        // Accept the selected folder directly, or its parent if the user navigated
-        // one level too deep (e.g. selected "Users" instead of "Minecraft Bedrock")
         string? acceptedPath = null;
 
-        if (MinecraftUserDataLocator.TrySetCustomDataRoot(IsTargetingPreview, folder.Path))
+        if (MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, folder.Path))
         {
             acceptedPath = folder.Path;
         }
         else
         {
             var parent = Directory.GetParent(folder.Path)?.FullName;
-            if (parent != null && MinecraftUserDataLocator.TrySetCustomDataRoot(IsTargetingPreview, parent))
+            if (parent != null && MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, parent))
                 acceptedPath = parent;
         }
 
@@ -1670,17 +1624,24 @@ public sealed partial class MainWindow : Window
             Log($"That doesn't look like a valid {versionName} data folder. " +
                 $"Please select the folder named \"{expectedName}\", it should be the one that contains a \"Users\" subfolder.",
                 LogLevel.Error);
-            return;
+            return false;
         }
 
         Log($"{versionName} data folder set: {acceptedPath}\n\n" +
             $"💾 The app is going to remember this location, you can now continue to use features that relied on user data.\n" +
-            $"But if you've selected a wrong location, features might not work properly, to reselect another path, you will need to Wipe app's data by holding shift, which changes Reset button to Wipe, click it and try again.", LogLevel.Success);
+            $"If you picked the wrong folder, you can change it again from Settings at any time.", LogLevel.Success);
 
-        // Update button state and kick off pack detection now that the path is known
-        UpdateUserDataDependentUI(IsTargetingPreview);
-        _ = LocatePacksTask();
+        // Only the targeted edition drives this window's pack list and button states; setting
+        // the other one is a valid thing to do and must not disturb what's on screen.
+        if (isPreview == IsTargetingPreview)
+        {
+            UpdateUserDataDependentUI(IsTargetingPreview);
+            _ = LocatePacksTask();
+        }
+
+        return true;
     }
+
     private void UpdateUserDataDependentUI(bool isTargetingPreview)
     {
         var isValid = MinecraftUserDataLocator.IsDataValid(isTargetingPreview);
@@ -1715,7 +1676,7 @@ public sealed partial class MainWindow : Window
                 $"Click \"Locate {editionLabel} user data\" button above, find and select the folder named \"{expectedFolderName}\" " +
                 $"- It's the one with a \"Users\" subfolder inside it.\n" +
                 $"If you don't have {versionName} installed, you can ignore this warning. Also make sure you've played the game at least once if you've installed or reinstalled recently.\n" +
-                $"If you select a wrong location, you will need to wipe app's data to be able to select any other location. To do that, hold shift while in app's main window and press the Wipe button.",
+                $"If you select a wrong location, you can change it again at any time from the Settings menu.",
                 LogLevel.Error);
         }
     }
@@ -1810,53 +1771,55 @@ public sealed partial class MainWindow : Window
 
 
 
-    private async void ResetButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// The settings panel's Hard reset. Confirms, locks the window down and hands off to
+    /// <see cref="WipeAllStorageData"/>, which takes it from there (including re-enabling the
+    /// window when it's done).
+    ///
+    /// <para>The confirmation is not a formality: this deletes the Default RTX and LUT backups
+    /// taken out of the user's own game files, so it may have to hand those back through
+    /// several elevation prompts before they're gone. Declining leaves everything untouched.</para>
+    /// </summary>
+    public async Task RequestHardResetAsync()
     {
-        // ----- HARD RESET 
-        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
         try
         {
-            if (shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+            var dialog = new ContentDialog
             {
-                // Confirm with the user before nuking anything from disk.
-                var dialog = new ContentDialog
-                {
-                    Title = "You're about to completely wipe all of app's data.",
-                    Content = $"This will delete all of application's data across your device, including Default RTX & LUT files which the app obtained from your actual game files!" +
-                    $"\nAs such, you may be prompted to accept multiple admin privilege requests in order to let the app restore your game's default files before they're gone from app's data.",
-                    PrimaryButtonText = "Confirm",
-                    CloseButtonText = "Cancel",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.Content.XamlRoot,
-                    RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
-                };
-                var result = await dialog.ShowAsync();
-                if (result != ContentDialogResult.Primary)
-                {
-                    Log("Wiping app's data (Shift + Reset) was cancelled by user.", LogLevel.Warning);
-                    return;
-                }
+                Title = "You're about to completely wipe all of app's data.",
+                Content = $"This will delete all of application's data across your device, including Default RTX & LUT files which the app obtained from your actual game files!" +
+                $"\nAs such, you may be prompted to accept multiple admin privilege requests in order to let the app restore your game's default files before they're gone from app's data.",
+                PrimaryButtonText = "Confirm",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot,
+                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+            };
 
-                WindowControlsManagerExtensions.DisableAllControls(this);
-                _progressManager.ShowProgress();
-                _ = BlinkingLamp(true);
-
-                _ = WipeAllStorageData();
-
+            var result = await dialog.ShowAsync();
+            if (result != ContentDialogResult.Primary)
+            {
+                Log("Wiping app's data was cancelled by user.", LogLevel.Warning);
                 return;
             }
+
+            WindowControlsManagerExtensions.DisableAllControls(this);
+            _progressManager.ShowProgress();
+            _ = BlinkingLamp(true);
+
+            _ = WipeAllStorageData();
         }
         catch (Exception ex)
         {
-            Log($"Hard Reset Error: {ex.ToString}", LogLevel.Error);
+            Log($"Hard Reset Error: {ex.Message}", LogLevel.Error);
             WindowControlsManagerExtensions.RestoreAllControls(this);
             _ = BlinkingLamp(false);
             _progressManager.HideProgress();
-
-            return;
         }
-        // ----- HARD RESET 
+    }
 
+    private void ResetButton_Click(object sender, RoutedEventArgs e)
+    {
         // Defaults
         FogMultiplier = Defaults.FogMultiplier;
         EmissivityMultiplier = Defaults.EmissivityMultiplier;
@@ -2133,7 +2096,7 @@ public sealed partial class MainWindow : Window
                 }
                 else
                 {
-                    Log($"Could not delete {displayName}.\nsee trace output for details by holding shift while clicking the lamp icon.", LogLevel.Warning);
+                    Log($"Could not delete {displayName}.\nFor details, use \"Copy debug logs\" in the Settings menu.", LogLevel.Warning);
                 }
             }
         }
@@ -2589,14 +2552,11 @@ public sealed partial class MainWindow : Window
             Log("Minecraft already seems to be open. Please restart the game for options.txt changes to take effect.", LogLevel.Warning);
         }
 
-        var shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
-        var isShiftHeld = shiftState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
-
         try
         {
-            var logs = isShiftHeld
-                ? await MinecraftLauncher.LaunchVSyncMinecraftRTXAsync(IsTargetingPreview)
-                : await MinecraftLauncher.LaunchMinecraftRTXAsync(IsTargetingPreview);
+            // Which options.txt parameters this writes is the settings panel's answer, not
+            // this button's - see MinecraftLauncher.LaunchConfiguredMinecraftRTXAsync.
+            var logs = await MinecraftLauncher.LaunchConfiguredMinecraftRTXAsync(IsTargetingPreview);
 
             Log(logs, (IsTargetingPreview ? LogLevel.MCPreview : LogLevel.MCRelease));
         }
@@ -3006,16 +2966,11 @@ public sealed partial class MainWindow : Window
 
 - Do the TODOs scattered in the code
 
-- Dedicated settings menu in a similar fashion as most other WinUI apps
-and restructuring the whole thing, no more module-in-Windows, all in main window, changes the whole page.
+- The settings menu exists now (titlebar is down to Settings/Help/Bugs, and it hosts the theme,
+animation suspension, both editions' install + user data locations, the launch options and the
+two maintenance buttons). What it still does NOT host, and was meant to:
 
-settings menu could host:
-game data and game install locations
-cache reset button
-export logs button (no more hidden shift+lamp)
-no more hidden shift + any button for that matter, a lot of these messy "creative" code paths must be cleaned up
-a modular way to adjust behavior of launch button
-expose every single hardcoded URL, what goes were
+expose every single hardcoded URL, what goes where
 DLSS PROVIDER, must be a page u can download dlss dlls etc.. from
 betterrtx preset creator provider -- must return or allow download of an .rtpack, these are just ui guide texts, but gives a good
 clue of what we'll be gunning for.
@@ -3029,8 +2984,7 @@ so nothing gets touched internally
 
 all additions
 
->> A dedicated settings menu is due, Clean up all of the titlebar buttons, replace it with a settings button
-In there, allow LOTS OF things
+- restructuring the whole thing, no more module-in-Windows, all in main window, changes the whole page.
 
 - Should ditch the module-in-window structure
 everything must be on main window, like most modern winui apps do

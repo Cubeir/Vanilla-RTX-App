@@ -30,13 +30,20 @@ namespace Vanilla_RTX_App.Core;
 public class WindowControlsManager
 {
     /// <summary>
-    /// Controls that stay live no matter what: help, donate, theme, the log and its progress
-    /// bar. None of them can affect an operation in flight, and locking the user out of help
-    /// or the log during a long run is the opposite of useful.
+    /// Controls that stay live no matter what: the titlebar buttons, the two appearance
+    /// settings, the log and its progress bar. None of them can affect an operation in flight,
+    /// and locking the user out of help, the log or the theme during a long run is the
+    /// opposite of useful.
+    ///
+    /// <para>The settings panel's other controls are deliberately NOT here. Changing a
+    /// Minecraft location, editing launch options or wiping all app data while something is
+    /// mid-run are all things that can affect it, so they lock down with everything else -
+    /// the panel still opens, it just reads as busy.</para>
     /// </summary>
     private static readonly HashSet<string> _globalExclusions = new()
     {
-        "HelpButton", "DonateButton", "ChatButton", "CycleThemeButton",
+        "SettingsButton", "HelpButton", "BugButton",
+        "ThemeModeButton", "SuspendAnimationsSwitch",
         "LampInteractionButton", "SidebarLog", "SidelogProgressBar",
     };
 

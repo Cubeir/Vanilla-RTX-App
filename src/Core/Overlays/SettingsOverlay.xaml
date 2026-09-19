@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Vanilla_RTX_App.Core.Overlays.SettingsOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="using:Vanilla_RTX_App.Core.Overlays"
+             mc:Ignorable="d"
+             Visibility="Collapsed"
+             Opacity="0"
+             IsHitTestVisible="False"
+             IsTextScaleFactorEnabled="False">
+
+    <UserControl.Resources>
+
+        <!-- The faint one-liner under a control saying what it is for. Small and low-contrast
+             on purpose: there are a lot of them, and at full strength they would out-shout the
+             settings they explain. -->
+        <Style x:Key="SettingsHintTextStyle"
+               TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="LineHeight" Value="15" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+        <!-- The horizontal rule between sections. Extra margin above and below because the
+             panel's own StackPanel spacing is tuned for controls sitting next to each other,
+             not for a break between subjects. -->
+        <Style x:Key="SettingsSeparatorStyle"
+               TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="0,6,0,2" />
+            <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+        </Style>
+
+        <!-- Left half of a path selector. Its corner radius is rounded only on the outer edge
+             and square where the bevel and button meet it, which is what makes the three
+             elements read as one rectangle rather than a box with a button parked beside it.
+             Height is never set: the row is as tall as the wrapped path, and the button
+             stretches to match (see SettingsPathButtonStyle). -->
+        <Style x:Key="SettingsPathBoxStyle"
+               TargetType="Border">
+            <Setter Property="CornerRadius" Value="4,0,0,4" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="10,6,10,6" />
+            <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1,1,0,1" />
+            <Setter Property="BorderBrush" Value="{ThemeResource ControlElevationBorderBrush}" />
+        </Style>
+
+        <Style x:Key="SettingsPathTextStyle"
+               TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+        <Style x:Key="SettingsPathButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource AccentButtonStyle}">
+            <Setter Property="CornerRadius" Value="0,4,4,0" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="MinWidth" Value="78" />
+            <Setter Property="IsTextScaleFactorEnabled" Value="False" />
+        </Style>
+
+    </UserControl.Resources>
+
+    <!-- Sibling of MarkdownOverlay - same 36px top inset, so it starts flush under the
+         titlebar's bevelled edge and reads as the window's body being replaced rather than as
+         a panel dropped on top of the whole app. Unlike that one it only claims the left 40%:
+         everything in here is a setting about the app, and the tuning surface staying visible
+         behind it is what keeps that legible.
+
+         The two columns ARE the 40/60 split (2* : 3*). The blocker spans both and sits behind
+         the panel, so a click anywhere the panel isn't - including the strip underneath it,
+         which the panel's own background absorbs first - dismisses. -->
+    <Grid x:Name="Root"
+          Margin="0,36,0,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Click-to-dismiss scrim. Tapped rather than a Button so it stays a surface with no
+             focus, no keyboard reachability and no press visuals - it is the absence of the
+             panel, not a control. -->
+        <Border x:Name="ModalBlocker"
+                Grid.ColumnSpan="2"
+                Background="#66000000"
+                Tapped="ModalBlocker_Tapped" />
+
+        <Border x:Name="Panel"
+                Grid.Column="0"
+                HorizontalAlignment="Stretch"
+                Translation="0,0,64">
+            <Border.Background>
+                <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                              TintOpacity="0.9"
+                              TintLuminosityOpacity="0.9"
+                              FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+            </Border.Background>
+            <Border.Shadow>
+                <ThemeShadow />
+            </Border.Shadow>
+
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="20,18,14,22">
+                <StackPanel Spacing="14">
+
+                    <!-- ═══ Section 1 - Appearance ═══════════════════════════════════════ -->
+                    <TextBlock Text="Appearance"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Opacity="0.6"
+                               IsTextScaleFactorEnabled="False" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0"
+                                   Text="App theme"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,10,0"
+                                   IsTextScaleFactorEnabled="False" />
+
+                        <!-- DropDownButton + MenuFlyout rather than a ComboBox, the same choice
+                             AlchitexWindow and LUTManagerWindow made: a flyout is translucent
+                             out of the box and matches the acrylic around it, where a ComboBox's
+                             open list reads ComboBoxDropDownBackground from a popup outside the
+                             control's tree and cannot be re-keyed from here. -->
+                        <DropDownButton x:Name="ThemeModeButton"
+                                        Grid.Column="1"
+                                        MinWidth="132"
+                                        HorizontalContentAlignment="Left"
+                                        IsTextScaleFactorEnabled="False">
+                            <DropDownButton.Content>
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="8">
+                                    <FontIcon x:Name="ThemeModeGlyph"
+                                              Glyph="&#xEC46;"
+                                              FontSize="15"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock x:Name="ThemeModeLabel"
+                                               Text="Dark"
+                                               VerticalAlignment="Center"
+                                               IsTextScaleFactorEnabled="False" />
+                                </StackPanel>
+                            </DropDownButton.Content>
+                            <DropDownButton.Flyout>
+                                <MenuFlyout Placement="Bottom">
+                                    <RadioMenuFlyoutItem x:Name="ThemeSystemItem"
+                                                         Text="Follow Windows"
+                                                         GroupName="AppThemeMode"
+                                                         Click="ThemeModeItem_Click"
+                                                         Tag="System" />
+                                    <RadioMenuFlyoutItem x:Name="ThemeLightItem"
+                                                         Text="Light"
+                                                         GroupName="AppThemeMode"
+                                                         Click="ThemeModeItem_Click"
+                                                         Tag="Light" />
+                                    <RadioMenuFlyoutItem x:Name="ThemeDarkItem"
+                                                         Text="Dark"
+                                                         GroupName="AppThemeMode"
+                                                         Click="ThemeModeItem_Click"
+                                                         Tag="Dark" />
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="Suspend UI animations"
+                                       TextWrapping="Wrap"
+                                       IsTextScaleFactorEnabled="False" />
+                            <TextBlock Text="Turns off the app's decorative animations. Can save some battery life on laptops."
+                                       Style="{StaticResource SettingsHintTextStyle}" />
+                        </StackPanel>
+
+                        <ToggleSwitch x:Name="SuspendAnimationsSwitch"
+                                      Grid.Column="1"
+                                      OnContent="On"
+                                      OffContent="Off"
+                                      VerticalAlignment="Center"
+                                      MinWidth="0"
+                                      Toggled="SuspendAnimationsSwitch_Toggled"
+                                      IsTextScaleFactorEnabled="False" />
+                    </Grid>
+
+                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                    <!-- ═══ Section 2 - Where the game lives ═════════════════════════════ -->
+                    <TextBlock Text="Minecraft locations"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Opacity="0.6"
+                               IsTextScaleFactorEnabled="False" />
+
+                    <TextBlock Text="The app finds these on its own at every launch and only keeps a location it can verify - if one of them is wrong or missing, point it at the right folder here."
+                               Style="{StaticResource SettingsHintTextStyle}" />
+
+                    <!-- Four selectors, one per (edition × kind). The rows are spelled out
+                         rather than generated so they stay editable in XAML hot reload; the
+                         wiring that fills and drives them is table-driven in code-behind. -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Minecraft (Release) installation"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   IsTextScaleFactorEnabled="False" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="3" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Style="{StaticResource SettingsPathBoxStyle}">
+                                <TextBlock x:Name="ReleaseInstallPathText"
+                                           Style="{StaticResource SettingsPathTextStyle}" />
+                            </Border>
+                            <Rectangle Grid.Column="1"
+                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border x:Name="ReleaseInstallBevel"
+                                    Grid.Column="1"
+                                    BorderThickness="3,0,0,0" />
+                            <Button x:Name="ReleaseInstallButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SettingsPathButtonStyle}"
+                                    Click="ReleaseInstallButton_Click"
+                                    Content="Select" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="Select the folder holding Minecraft.Windows.exe, or the &quot;Minecraft for Windows&quot; folder one level above it." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Minecraft Preview installation"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   IsTextScaleFactorEnabled="False" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="3" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Style="{StaticResource SettingsPathBoxStyle}">
+                                <TextBlock x:Name="PreviewInstallPathText"
+                                           Style="{StaticResource SettingsPathTextStyle}" />
+                            </Border>
+                            <Rectangle Grid.Column="1"
+                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border x:Name="PreviewInstallBevel"
+                                    Grid.Column="1"
+                                    BorderThickness="3,0,0,0" />
+                            <Button x:Name="PreviewInstallButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SettingsPathButtonStyle}"
+                                    Click="PreviewInstallButton_Click"
+                                    Content="Select" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="Same, but under &quot;Minecraft Preview for Windows&quot; - the app checks the game's own config to make sure it isn't the Release copy." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Minecraft (Release) user data"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   IsTextScaleFactorEnabled="False" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="3" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Style="{StaticResource SettingsPathBoxStyle}">
+                                <TextBlock x:Name="ReleaseDataPathText"
+                                           Style="{StaticResource SettingsPathTextStyle}" />
+                            </Border>
+                            <Rectangle Grid.Column="1"
+                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border x:Name="ReleaseDataBevel"
+                                    Grid.Column="1"
+                                    BorderThickness="3,0,0,0" />
+                            <Button x:Name="ReleaseDataButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SettingsPathButtonStyle}"
+                                    Click="ReleaseDataButton_Click"
+                                    Content="Select" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="Select the folder named &quot;Minecraft Bedrock&quot; - the one with a &quot;Users&quot; subfolder inside it. Resource packs and options.txt live under it." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Minecraft Preview user data"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   IsTextScaleFactorEnabled="False" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="3" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0"
+                                    Style="{StaticResource SettingsPathBoxStyle}">
+                                <TextBlock x:Name="PreviewDataPathText"
+                                           Style="{StaticResource SettingsPathTextStyle}" />
+                            </Border>
+                            <Rectangle Grid.Column="1"
+                                       Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
+                            <Border x:Name="PreviewDataBevel"
+                                    Grid.Column="1"
+                                    BorderThickness="3,0,0,0" />
+                            <Button x:Name="PreviewDataButton"
+                                    Grid.Column="2"
+                                    Style="{StaticResource SettingsPathButtonStyle}"
+                                    Click="PreviewDataButton_Click"
+                                    Content="Select" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="Same, but named &quot;Minecraft Bedrock Preview&quot;." />
+                    </StackPanel>
+
+                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                    <!-- ═══ Section 3 - What the Launch button does ══════════════════════ -->
+                    <TextBlock Text="Launch options"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Opacity="0.6"
+                               IsTextScaleFactorEnabled="False" />
+
+                    <TextBlock Text="Settings written into every account's options.txt just before the Launch Minecraft RTX button starts the game. The defaults turn ray tracing on, allow switching graphics modes in-game, and disable VSync."
+                               Style="{StaticResource SettingsHintTextStyle}" />
+
+                    <!-- Rows are built in code - there is no fixed number of them. -->
+                    <StackPanel x:Name="LaunchOptionRows"
+                                Spacing="6" />
+
+                    <TextBlock x:Name="LaunchOptionsEmptyText"
+                               Visibility="Collapsed"
+                               Style="{StaticResource SettingsHintTextStyle}"
+                               Text="No options - the Launch button will start the game without touching any game setting." />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="AddLaunchOptionButton"
+                                Grid.Column="0"
+                                Click="AddLaunchOptionButton_Click"
+                                IsTextScaleFactorEnabled="False"
+                                ToolTipService.ToolTip="Add another options.txt setting to write before launching.">
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="8">
+                                <FontIcon Glyph="&#xE710;"
+                                          FontSize="14"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Add option"
+                                           VerticalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ResetLaunchOptionsButton"
+                                Grid.Column="2"
+                                Style="{ThemeResource SubtleButtonStyle}"
+                                Click="ResetLaunchOptionsButton_Click"
+                                IsTextScaleFactorEnabled="False"
+                                ToolTipService.ToolTip="Put the three default options back.">
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="8">
+                                <FontIcon Glyph="&#xE777;"
+                                          FontSize="14"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Defaults"
+                                           VerticalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                    <!-- ═══ Section 4 - Maintenance ══════════════════════════════════════ -->
+                    <TextBlock Text="Maintenance"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Opacity="0.6"
+                               IsTextScaleFactorEnabled="False" />
+
+                    <StackPanel Spacing="4">
+                        <Button x:Name="HardResetButton"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Click="HardResetButton_Click"
+                                IsTextScaleFactorEnabled="False">
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="10">
+                                <FontIcon Glyph="&#xE7BA;"
+                                          FontSize="15"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Wipe all app data"
+                                           VerticalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone. Asks for confirmation first." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <Button x:Name="CopyLogsButton"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Click="CopyLogsButton_Click"
+                                IsTextScaleFactorEnabled="False">
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="10">
+                                <FontIcon Glyph="&#xE8C8;"
+                                          FontSize="15"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Text="Copy debug logs"
+                                           VerticalAlignment="Center"
+                                           IsTextScaleFactorEnabled="False" />
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                                   Text="Copies a diagnostic report to your clipboard - system info, the app's log, every setting and the state of every control. Paste it into a bug report." />
+                    </StackPanel>
+
+                    <Border Style="{StaticResource SettingsSeparatorStyle}" />
+
+                    <!-- ═══ Section 5 - Links and credits ════════════════════════════════ -->
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="4"
+                                Margin="0,2,0,0">
+                        <HyperlinkButton x:Name="GitHubLink"
+                                         Content="GitHub"
+                                         Padding="6,2,6,2"
+                                         Click="GitHubLink_Click"
+                                         IsTextScaleFactorEnabled="False"
+                                         ToolTipService.ToolTip="Source code, releases and issue tracker." />
+                        <TextBlock Text="•"
+                                   Opacity="0.4"
+                                   VerticalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                        <HyperlinkButton x:Name="KoFiLink"
+                                         Content="Ko-fi"
+                                         Padding="6,2,6,2"
+                                         Click="KoFiLink_Click"
+                                         IsTextScaleFactorEnabled="False"
+                                         ToolTipService.ToolTip="Buy the developer some coffee - Vanilla RTX is free and continued, help keep it that way!" />
+                        <TextBlock Text="•"
+                                   Opacity="0.4"
+                                   VerticalAlignment="Center"
+                                   IsTextScaleFactorEnabled="False" />
+                        <HyperlinkButton x:Name="DiscordLink"
+                                         Content="Discord"
+                                         Padding="6,2,6,2"
+                                         Click="DiscordLink_Click"
+                                         IsTextScaleFactorEnabled="False"
+                                         ToolTipService.ToolTip="An invitation to the Vanilla RTX Discord server." />
+                    </StackPanel>
+
+                    <TextBlock x:Name="CreditsText"
+                               Text=""
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               FontSize="11"
+                               Opacity="0.55"
+                               LineHeight="16"
+                               Margin="4,0,4,4"
+                               IsTextScaleFactorEnabled="False" />
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

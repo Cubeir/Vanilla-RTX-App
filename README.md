@@ -60,7 +60,7 @@ Both your game installations and your user data locations for Minecraft and Mine
   [MCPE-191513](https://bugs.mojang.com/browse/MCPE/issues/MCPE-191513): Ray tracing can no longer be enabled while in the main menu.  
   [MCPE-152158](https://bugs.mojang.com/browse/MCPE/issues/MCPE-152158): PBR textures don't load properly upon enabling ray tracing after the game is freshly launched.  
   [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850): Ray Tracing performance starvation when game's VSync is enabled.
-> Holding shift while pressing this button will enable VSync instead of disabling it (not recommended, you should manually enable VSync from your GPU's Control Panel instead if you don't want screen tearing).
+> Exactly which game settings this writes is yours to change — see `Launch options` in the Settings menu. The three defaults are what's described above; you can edit their values, add any other `options.txt` setting, or remove them all so the button just launches the game without touching anything.
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/fe39284b-4275-4fb6-9339-26dec8057e5b" />
 
@@ -163,7 +163,7 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune �
 - `Reset`
   Resets tuning values and options to their defaults — this does not reset packs back to their default state. To do that, reinstall the packages via `Get latest RTX packs`, or, for a custom pack, manually reimport the original/unmodified pack from the `Select other packs` menu.
 
-- `Wipe / Hard reset (Hold Shift + Reset)`
+- `Wipe all app data` (Settings menu → Maintenance)
   Completely wipes the app's storage and all temporary data — cached timestamps (e.g. update check cooldowns), tuning options, cached pack and game/user data locations, DLSS and BetterRTX caches, PSA messages, and everything else — then restarts the app. This is the most thorough way to remove every trace of the app, effectively returning it to a freshly-installed state.
 
   > This will also attempt to restore your game's files to their defaults (e.g. if you've installed BetterRTX or LUT presets, you'll see several UAC prompts to restore those files). This is a guardrail, since app creates "Default" RTX/LUT presets from *your* game files the first time it attempts to replace those files. If you wipe the app's cache while your game no longer has its own defaults intact, those defaults are gone for good. **Press Yes on every UAC prompt.** If you don't, you risk losing your game's defaults — recovering from that means reinstalling the game and wiping app's cache again, since otherwise the app may mistake your non-default files for defaults and carry that mistake forward.
@@ -194,22 +194,29 @@ To tune a resource pack, select it, set the parameters you want, and hit Tune �
 
 ## Miscellaneous
 
-- Holding shift while clicking the lamp icon next to the app's title will copy app's logs to your clipboard for debugging. It's helpful to attach this when reporting issues — see [Troubleshooting](#troubleshooting).
-> The lamp is called the Tuner Lamp; it dynamically reacts to the actions you take within the app. It may also occasionally display erratic behavior. All intended! Nothing's bugging out!
+- `Copy debug logs` (Settings menu → Maintenance) puts a full diagnostic report on your clipboard — system info, the app's log, every setting and the state of every control. It's helpful to attach this when reporting issues — see [Troubleshooting](#troubleshooting).
+
+- The lamp icon next to the app's title is called the Tuner Lamp; it dynamically reacts to the actions you take within the app. It may also occasionally display erratic behavior. All intended! Nothing's bugging out!
 
 - Dynamic PSAs: every feature in the app can display any number of "info" cards, as defined [here](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/IN-APP-ANNOUNCEMENTS.md). These may contain anything, e.g. warnings, announcements, tutorials, or even a briefing on Vanilla RTX's changelogs in its install menu. PSAs are cached and can update themselves once every few hours. You may also dismiss some of them for varying time periods, as decided by the app.
 
 - Hovering any control in the app displays a unique pixel art piece in the bottom-left of the app, communicating its function — for instance, sliders show how they'll impact the visuals seen in-game as you change them, toggles show a before/after, and buttons/other controls display a mildly artistic interpretation of what they do!
 > Combined with descriptive tooltips and non-static PSAs, this is meant to make the app feel less intimidating and more beginner-friendly, by putting every resource you might need directly in front of you.
 
-- Other titlebar buttons:
-  - Suspend UI Animations: disables all custom UI animations — e.g. the Tuner Lamp's reactivity (including its startup blink), the typewriter and pixel-art animations in the log area, fade effects, and more.
-     > Recommended if you're sensitive to flashing images; bonus: it also makes the app open faster.
-  - Cycle themes: change between dark, light, or system theme.
+- Titlebar buttons — the three of them each open a page over the app's main body:
+  - Settings: everything below.
   - Help: opens this page, which holds up-to-date information about the app.
-  - Donate: opens the developer's Ko-Fi page.
-    > When this button is hovered, an up-to-date list of Vanilla RTX Insiders is displayed. I'm able to maintain Vanilla RTX and other projects thanks to them. Consider becoming a supporter and having your name up there?!
-  - Invitation to the Vanilla RTX Discord server.
+  - Bugs: an up-to-date list of known Minecraft RTX bugs and their status on Mojang's issue tracker.
+
+- The Settings menu, section by section:
+  - `App theme`: dark, light, or follow Windows.
+  - `Suspend UI animations`: disables all custom UI animations — e.g. the Tuner Lamp's reactivity (including its startup blink), the typewriter and pixel-art animations in the log area, fade effects, and more.
+     > Recommended if you're sensitive to flashing images; bonus: it also makes the app open faster.
+  - `Minecraft locations`: the game installation and user data folder for both Release and Preview, with a button to point the app somewhere else if its own detection got one wrong. A folder you pick is only kept if it passes the same validation the app runs at every startup, so it can't silently revert on you later.
+  - `Launch options`: the `options.txt` settings the `Launch Minecraft RTX` button writes before starting the game. Add, remove or edit any of them; `Defaults` puts the original three back.
+  - `Maintenance`: `Wipe all app data` and `Copy debug logs`, both described above.
+  - Links to GitHub, Ko-fi and the Vanilla RTX Discord server, with an up-to-date list of Vanilla RTX Insiders underneath.
+    > I'm able to maintain Vanilla RTX and other projects thanks to them. Consider becoming a supporter and having your name up there?!
 
 - `RTX Reactor`  
   [RTX Reactor](http://minecraftrtx.net/reactor) is joining the Vanilla RTX App down the road; the window currently hosts its development news.
@@ -223,9 +230,9 @@ The right-hand tools (`RTX LUT manager`, `BetterRTX manager`, `DLSS swapper`) wo
 
 The app locates both automatically: your Minecraft installation (game files) and your Minecraft user data folder (where resource packs live). These are handled by two independent systems, and for the vast majority of users, they succeed silently.
 
-**Finding your game:** the app queries the Windows Package Manager directly for your install path and resolves it down to the physical location of your game files, regardless of where you've installed Minecraft. If that doesn't work, it falls back to searching common install paths across all your drives, followed up by a system-wide search — this usually resolves within a few seconds. If the app is ever unable to find your game automatically, it will ask you to manually locate it — when prompted, find and select `Minecraft.Windows.exe` directly, not its folder (select the right executable for the right version of the game, i.e. if you try to select Minecraft Preview's exe for Minecraft, the app will not accept!)
+**Finding your game:** the app queries the Windows Package Manager directly for your install path and resolves it down to the physical location of your game files, regardless of where you've installed Minecraft. If that doesn't work, it falls back to searching common install paths across all your drives, followed up by a system-wide search — this usually resolves within a few seconds. If the app is ever unable to find your game automatically, it will ask you to manually locate it — when prompted, select the folder holding `Minecraft.Windows.exe`, or the install folder one level above it. The app reads the game's own `MicrosoftGame.Config` to confirm the edition, so pointing it at Minecraft Preview when it asked for Minecraft will not be accepted. You can also set (and re-set) either edition's location at any time from the Settings menu, under `Minecraft locations`.
 
-**Finding your user data:** the app looks for a valid Minecraft user data folder structure on your system. This requires that you've launched Minecraft at least once, so the folder actually exists to be found. If automatic detection fails, the `Select other packs` button in the main menu turns into a `Locate (Stable/Preview) User Data` button and stays highlighted until Minecraft's path resolved. Click to open folder picket, and select your user data folders, they're usually named `Minecraft Bedrock` or `Minecraft Bedrock Preview`, if you have trouble finding these locations (usually in `%appdata%`) you may be using an unofficial Minecraft Bedrock launcher, and you may be on your own for figuring out where it may store your user data.
+**Finding your user data:** the app looks for a valid Minecraft user data folder structure on your system. This requires that you've launched Minecraft at least once, so the folder actually exists to be found. If automatic detection fails, the `Select other packs` button in the main menu turns into a `Locate (Stable/Preview) User Data` button and stays highlighted until Minecraft's path resolved. Click to open a folder picker, and select your user data folder — they're usually named `Minecraft Bedrock` or `Minecraft Bedrock Preview`. If you have trouble finding these locations (usually in `%appdata%`) you may be using an unofficial Minecraft Bedrock launcher, and you may be on your own for figuring out where it stores your user data. Either edition's folder can also be set at any time from the Settings menu, under `Minecraft locations`.
 
 ### Game Doesn't Launch After Clicking "Launch Minecraft RTX"?
 That's okay — this can happen if the protocol used to launch Minecraft isn't assigned on your computer. Just launch the game manually from here on; the app has likely already done its main job of correcting your options for ray tracing. (Unless it has failed to find your User Data, in which case, refer to the paragraph above.)

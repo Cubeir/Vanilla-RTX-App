@@ -1992,7 +1992,7 @@ public static class MinecraftUserDataLocator
 
         MainWindow.Log($"You can't use this feature without first telling the app where your {versionName} user data folder is located. " +
                        $"Click \"Locate {editionLabel} user data\" above, find and select the folder named \"{expectedFolderName}\" " +
-                       $"- It's the one with a \"Users\" subfolder inside it.", LogLevel.Warning);
+                       $"- It's the one with a \"Users\" subfolder inside it. You can also set it from the Settings menu.", LogLevel.Warning);
 
         return false;
     }

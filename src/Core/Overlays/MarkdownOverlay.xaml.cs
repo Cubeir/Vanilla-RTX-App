@@ -185,7 +185,20 @@ public sealed partial class MarkdownOverlay : UserControl
         _ = LoadAsync(bypassCache: false);
     }
 
-    private void Close() => CloseInternal(null);
+    /// <summary>
+    /// True while a document is showing. MainWindow reads it to decide whether the settings
+    /// panel has to wait for this to close first - the two overlays occupy the same space and
+    /// are mutually exclusive.
+    /// </summary>
+    public bool IsOpen => _isOpen;
+
+    /// <summary>
+    /// Closes the overlay, optionally continuing into <paramref name="onClosed"/> once the
+    /// fade-out has actually finished. Callers that open something else in that continuation
+    /// get the same real animation a Close click gets, rather than a swap under a panel that
+    /// is still visibly there.
+    /// </summary>
+    public void Close(Action? onClosed = null) => CloseInternal(onClosed);
 
     /// <summary>The guts of closing - optionally continues into <paramref name="onClosed"/> once the fade-out finishes, which is how <see cref="Show"/> chains "close this document, then open the next one" through the same real animation a Close click gets.</summary>
     private void CloseInternal(Action? onClosed)
