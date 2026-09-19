@@ -196,11 +196,12 @@
                                              Content="Save &amp; close"
                                              FontSize="12"
                                              FontWeight="SemiBold"
-                                             Padding="6,0,0,0"
+                                             Padding="5,5,5,5"
+                                             Margin="0,0,0,0"
                                              VerticalAlignment="Center"
                                              Click="CloseButton_Click"
                                              IsTextScaleFactorEnabled="False"
-                                             ToolTipService.ToolTip="Writes your settings to disk and closes the panel." />
+                                             ToolTipService.ToolTip="Close the settings overlay." />
                         </Grid>
 
                         <Grid>
@@ -300,7 +301,8 @@
                         <TextBlock Text="Game installations"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                        <TextBlock Text="Where Minecraft itself is installed. The RTX LUT manager, BetterRTX manager and DLSS swapper write into these folders. The app finds them at every launch and only keeps a location it can verify."
+                        <TextBlock Text="Where Minecraft itself is installed. The RTX LUT manager, BetterRTX manager and DLSS swapper write into these folders. The app may have found the default locations automatically.
+                                   &#x0a;The app automatically verifies the path you select and rejects it if it is not a real Minecraft installation directory. Only change if you know what you're doing."
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <!-- The rows are spelled out rather than generated so they stay editable
@@ -373,7 +375,7 @@
                                         Content="Select" />
                             </Grid>
                             <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                       Text="Same, under &quot;Minecraft Preview for Windows&quot;. The app reads the game's own config to make sure it isn't the Release copy." />
+                                       Text="Same, under &quot;Minecraft Preview for Windows&quot;. The app reads the game's own config file and makes sure it isn't the regular Release version by mistake." />
                         </StackPanel>
 
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
@@ -452,7 +454,7 @@
                                         Content="Select" />
                             </Grid>
                             <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                       Text="Same, named &quot;Minecraft Bedrock Preview&quot;." />
+                                       Text="Same, but named &quot;Minecraft Bedrock Preview&quot; instead." />
                         </StackPanel>
 
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
@@ -524,7 +526,7 @@
                         <TextBlock Text="Content sources"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                        <TextBlock Text="Where the app goes for things it doesn't ship itself. Change one and that feature goes to your address instead; the built-in one comes back on its own if what's here ever stops being usable. Empty a box to go straight back to the built-in."
+                        <TextBlock Text="Where the app gets some of the things it doesn't ship by itself. Change one and that feature goes to your address instead; the defaults will be used i what's here ever stops being usable."
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <TextBlock Text="Documentation page"
@@ -636,7 +638,7 @@
                                 </StackPanel>
                             </Button>
                             <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                       Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone. Asks for confirmation first." />
+                                       Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone." />
                         </StackPanel>
 
                         <StackPanel Spacing="4">
@@ -655,7 +657,7 @@
                                 </StackPanel>
                             </Button>
                             <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                       Text="Copies a diagnostic report to your clipboard - system info, the app's log, every setting and the state of every control. Paste it into a bug report." />
+                                       Text="Copies a full diagnostic report to your clipboard - system info, the app's log, every setting and the state of every control. Paste it into a bug report." />
                         </StackPanel>
 
                         <Border Style="{StaticResource SettingsSeparatorStyle}" />
@@ -665,6 +667,7 @@
                                     HorizontalAlignment="Center"
                                     Spacing="4"
                                     Margin="0,2,0,0">
+                            
                             <HyperlinkButton x:Name="GitHubLink"
                                              Content="GitHub"
                                              Padding="6,2,6,2"
@@ -694,13 +697,22 @@
                         </StackPanel>
 
                         <TextBlock x:Name="CreditsText"
-                                   Text=""
+                                   Text="With ❤️‍🔥 – By Cubeir (R. Sol)"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   FontSize="11"
+                                   Opacity="0.75"
+                                   LineHeight="20"
+                                   Margin="0,0,0,0"
+                                   IsTextScaleFactorEnabled="False" />
+
+                        <TextBlock x:Name="VersionText"
+                                   Text="App Version Unknown"
                                    TextWrapping="Wrap"
                                    TextAlignment="Center"
                                    FontSize="11"
                                    Opacity="0.55"
-                                   LineHeight="16"
-                                   Margin="4,0,4,4"
+                                   Margin="0,-16,0,0"
                                    IsTextScaleFactorEnabled="False" />
 
                     </StackPanel>

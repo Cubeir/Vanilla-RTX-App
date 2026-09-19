@@ -110,6 +110,8 @@ public sealed partial class SettingsOverlay : UserControl
         ApplyBevelColors(ThemeService.ResolveInitialTheme());
         ThemeService.ThemeChanged += ApplyBevelColors;
         Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyBevelColors;
+
+        VersionText.Text = $"\nApp Version: {appVersion} – Copyright (c) {DateTime.Today.Year} Cubeir";
     }
 
     /// <summary>True while the panel is showing. MainWindow reads it to toggle and to decide which overlay has to close first.</summary>
@@ -650,28 +652,28 @@ public sealed partial class SettingsOverlay : UserControl
             new UrlField
             {
                 Box = DocumentationBox, ResetButton = DocumentationResetButton, Hint = DocumentationHint,
-                Description = "The markdown the titlebar's Help button renders. A #heading at the end is honoured.",
+                Description = $"The markdown the Documentation button renders.",
                 Fallback = Defaults.DocumentationUrl, Kind = LinkKind.Markdown,
                 Read = () => Persistent.DocumentationUrl, Write = v => Persistent.DocumentationUrl = v
             },
             new UrlField
             {
                 Box = BugTrackerBox, ResetButton = BugTrackerResetButton, Hint = BugTrackerHint,
-                Description = "The markdown the titlebar's Bugs button renders. A #heading at the end is honoured.",
+                Description = "The markdown Bug/Issues list button renders.",
                 Fallback = Defaults.BugTrackerUrl, Kind = LinkKind.Markdown,
                 Read = () => Persistent.BugTrackerUrl, Write = v => Persistent.BugTrackerUrl = v
             },
             new UrlField
             {
                 Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
-                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to.",
+                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to. Can change to any other website you can get the dll files from.",
                 Fallback = Defaults.DlssProviderUrl, Kind = LinkKind.WebPage,
                 Read = () => Persistent.DlssProviderUrl, Write = v => Persistent.DlssProviderUrl = v
             },
             new UrlField
             {
                 Box = BetterRtxCreatorBox, ResetButton = BetterRtxCreatorResetButton, Hint = BetterRtxCreatorHint,
-                Description = "The page the BetterRTX manager's \"Create preset\" button browses to.",
+                Description = "The page the BetterRTX manager's \"Create preset\" button browses to. Can change to any other website you can download .rtpack files from.",
                 Fallback = Defaults.BetterRtxCreatorUrl, Kind = LinkKind.WebPage,
                 Read = () => Persistent.BetterRtxCreatorUrl, Write = v => Persistent.BetterRtxCreatorUrl = v
             },

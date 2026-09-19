@@ -183,7 +183,7 @@
                         Width="24"
                         Canvas.ZIndex="5"
                         CornerRadius="0"
-                        ToolTipService.ToolTip="This lamp mirrors whatever the app is busy with - it blinks, dims and changes with the seasons. Debug logs moved to the Settings menu."
+                        ToolTipService.ToolTip="Vanilla RTX App"
                         Click="LampInteraction_Click" />
             </Canvas>
 

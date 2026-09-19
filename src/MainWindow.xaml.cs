@@ -800,77 +800,71 @@ public sealed partial class MainWindow : Window
     private void LampInteraction_Click(object sender, RoutedEventArgs e)
     {
         _ = BlinkingLamp(true, true, 1.0, 0.1);
-        if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something"))
+
+        lampSecretMessageCounter++;
+        if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, starting in 2026, 21 times
         {
-            Log(ToolTipService.GetToolTip(LampInteractionButton).ToString()!, LogLevel.Debug);
-        }
-        else
-        {
-            lampSecretMessageCounter++;
-            if (lampSecretMessageCounter > (DateTime.Now.Year - 2005)) // it amounts to having to click 1 more time every year, starting in 2026, 21 times
+            if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
             {
-                if (RuntimeFlags.Set("Has_said_the_Thing_about_Debug_Logs_something_2"))
+                Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.VanillaRTX);
+                Task.Run(async () =>
                 {
-                    Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.VanillaRTX);
-                    Task.Run(async () =>
-                    {
-                        await Task.Delay(5000);
-                        Log("But now that you've found this one in particular, I won't leave you empty-handed. Wait a couple of seconds...", LogLevel.Lengthy);
-                        await Task.Delay(4000);
-                        _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
-                        await Task.Delay(3014);
-                        Log("I just love this piece! That's it. Hope you like it too.", LogLevel.Debug);
-                        await Task.Delay(delay: TimeSpan.FromMinutes(10));
-                        Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
-                        await Task.Delay(delay: TimeSpan.FromHours(7));
-                        Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.VanillaRTX);
-                        await Task.Delay(2718);
-                        Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
-                        await Task.Delay(2718);
-                        Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
+                    await Task.Delay(5000);
+                    Log("But now that you've found this one in particular, I won't leave you empty-handed. Wait a couple of seconds...", LogLevel.Lengthy);
+                    await Task.Delay(4000);
+                    _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
+                    await Task.Delay(3014);
+                    Log("I just love this piece! That's it. Hope you like it too.", LogLevel.Misc);
+                    await Task.Delay(delay: TimeSpan.FromMinutes(10));
+                    Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
+                    await Task.Delay(delay: TimeSpan.FromHours(7));
+                    Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.VanillaRTX);
+                    await Task.Delay(2718);
+                    Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
+                    await Task.Delay(2718);
+                    Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
 
-                        int iteration = 0;
-                        var rng = Random.Shared;
-                        string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
+                    int iteration = 0;
+                    var rng = Random.Shared;
+                    string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
                                              "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
-                        LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
-                        string[] spookyEmojis = { "👁️" };
+                    LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
+                    string[] spookyEmojis = { "👁️" };
 
-                        // Deteriorate the message over time, then make it seem like It's lagging to creep out the user
-                        while (true)
+                    // Deteriorate the message over time, then make it seem like It's lagging to creep out the user
+                    while (true)
+                    {
+                        iteration++;
+
+                        string baseMsg = baseMsgs[rng.Next(baseMsgs.Length)];
+                        char[] chars = baseMsg.ToCharArray();
+                        double c = iteration / 50.0;
+                        int corruptCount = (int)(chars.Length * c);
+                        double t = Math.Max(0, (iteration - 15) / 35.0);
+                        int delay = (int)(500 + 9500 * (t * t * t));
+
+                        for (int i = 0; i < corruptCount; i++)
                         {
-                            iteration++;
-
-                            string baseMsg = baseMsgs[rng.Next(baseMsgs.Length)];
-                            char[] chars = baseMsg.ToCharArray();
-                            double c = iteration / 50.0;
-                            int corruptCount = (int)(chars.Length * c);
-                            double t = Math.Max(0, (iteration - 15) / 35.0);
-                            int delay = (int)(500 + 9500 * (t * t * t));
-
-                            for (int i = 0; i < corruptCount; i++)
-                            {
-                                int pos = rng.Next(chars.Length);
-                                chars[pos] = (char)rng.Next(33, 126);
-                            }
-
-                            // Sprinkle creepy emojis at random positions
-                            string msg = new string(chars);
-                            int emojiCount = rng.Next(1, 4);
-                            for (int i = 0; i < emojiCount; i++)
-                            {
-                                if (rng.NextDouble() < 0.1)
-                                {
-                                    int pos = rng.Next(msg.Length);
-                                    msg = msg.Insert(pos, spookyEmojis[rng.Next(spookyEmojis.Length)]);
-                                }
-                            }
-
-                            await Task.Delay(delay);
-                            Log(msg, levels[rng.Next(levels.Length)]);
+                            int pos = rng.Next(chars.Length);
+                            chars[pos] = (char)rng.Next(33, 126);
                         }
-                    });
-                }
+
+                        // Sprinkle creepy emojis at random positions
+                        string msg = new string(chars);
+                        int emojiCount = rng.Next(1, 4);
+                        for (int i = 0; i < emojiCount; i++)
+                        {
+                            if (rng.NextDouble() < 0.1)
+                            {
+                                int pos = rng.Next(msg.Length);
+                                msg = msg.Insert(pos, spookyEmojis[rng.Next(spookyEmojis.Length)]);
+                            }
+                        }
+
+                        await Task.Delay(delay);
+                        Log(msg, levels[rng.Next(levels.Length)]);
+                    }
+                });
             }
         }
     }
@@ -2185,7 +2179,7 @@ public sealed partial class MainWindow : Window
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Debug, PSA, Alchitex, Cache,
+        Success, Informational, Warning, Error, Network, Lengthy, Misc, PSA, Alchitex, Cache,
         DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset, Import
     }
 
@@ -2253,7 +2247,7 @@ public sealed partial class MainWindow : Window
             LogLevel.Lengthy => "⏳ ",
             LogLevel.PSA => "📢 ",
             LogLevel.Network => "🛜 ",
-            LogLevel.Debug => "🛸 ",
+            LogLevel.Misc => "🛸 ",
             LogLevel.Alchitex => "🟦 ",
             LogLevel.Cache => "💾 ",
             LogLevel.DLSS => "🫧 ",
