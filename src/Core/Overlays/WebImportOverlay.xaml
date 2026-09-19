@@ -24,7 +24,7 @@
          content bleed straight through and rendered as garbled overlapping text. -->
     <Border x:Name="Panel"
             Background="{ThemeResource SolidBackgroundFillColorBase}"
-            Margin="0,37,0,0"
+            Margin="0,36,0,0"
             Translation="0,0,64">
         <Border.Shadow>
             <ThemeShadow />

@@ -20,7 +20,7 @@
          one only ever has static content behind it, so translucency costs nothing and matches
          every other in-app overlay (AlchitexWindow, PackUpdaterWindow) -->
     <Border x:Name="Panel"
-            Margin="0,37,0,0"
+            Margin="0,36,0,0"
             HorizontalAlignment="Stretch"
             Translation="0,0,64">
         <Border.Background>
