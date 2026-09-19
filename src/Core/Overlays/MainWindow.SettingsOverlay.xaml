@@ -191,17 +191,18 @@
                             <!-- Accent text with no background: at this size a filled button
                                  out-weighs the section headings it sits level with, and the
                                  accent is enough to separate it from them. -->
-                            <HyperlinkButton x:Name="CloseButton"
+                            <Button x:Name="CloseButton"
                                              Grid.Column="1"
-                                             Content="Save &amp; close"
-                                             FontSize="12"
-                                             FontWeight="SemiBold"
-                                             Padding="5,5,5,5"
+                                             Width="24"
+                                             Height="24"
+                                             Padding="0"
                                              Margin="0,0,0,0"
                                              VerticalAlignment="Center"
                                              Click="CloseButton_Click"
-                                             IsTextScaleFactorEnabled="False"
-                                             ToolTipService.ToolTip="Close the settings overlay." />
+                                             Style="{ThemeResource SubtleButtonStyle}"
+                                             ToolTipService.ToolTip="Close the settings overlay.">
+                                <SymbolIcon Symbol="Cancel" />
+                            </Button>
                         </Grid>
 
                         <Grid>
