@@ -338,6 +338,7 @@
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="ReleaseInstallPathButton"
                                         Grid.Column="0"
+                                        MinHeight="32"
                                         Style="{ThemeResource DefaultButtonStyle}"
                                         BorderBrush="Transparent"
                                         BorderThickness="0"
@@ -375,6 +376,7 @@
                                         Grid.Column="0"
                                         Style="{ThemeResource DefaultButtonStyle}"
                                         BorderBrush="Transparent"
+                                        MinHeight="32"
                                         BorderThickness="0"
                                         CornerRadius="6,0,0,6"
                                         HorizontalAlignment="Stretch"
@@ -420,6 +422,7 @@
                                         Style="{ThemeResource DefaultButtonStyle}"
                                         BorderBrush="Transparent"
                                         BorderThickness="0"
+                                        MinHeight="32"
                                         CornerRadius="6,0,0,6"
                                         HorizontalAlignment="Stretch"
                                         Click="ReleaseDataPathButton_Click">
@@ -455,6 +458,7 @@
                                         Style="{ThemeResource DefaultButtonStyle}"
                                         BorderBrush="Transparent"
                                         BorderThickness="0"
+                                        MinHeight="32"
                                         CornerRadius="6,0,0,6"
                                         HorizontalAlignment="Stretch"
                                         Click="PreviewDataPathButton_Click">
