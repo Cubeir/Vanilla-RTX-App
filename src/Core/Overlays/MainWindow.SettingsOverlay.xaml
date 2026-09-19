@@ -294,7 +294,7 @@
                                 <TextBlock Text="Suspend User Interface animations"
                                            TextWrapping="Wrap"
                                            IsTextScaleFactorEnabled="False" />
-                                <TextBlock Text="Turns off the app's decorative animations."
+                                <TextBlock Text="Turns off decorative animations. Enable if they bother you."
                                            Style="{StaticResource SettingsHintTextStyle}" />
                             </StackPanel>
 
