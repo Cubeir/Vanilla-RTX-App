@@ -169,7 +169,7 @@ public sealed partial class SettingsOverlay : UserControl
             {
                 "Light" => "Light",
                 "Dark" => "Dark",
-                _ => "Follow Windows"
+                _ => "Auto"
             };
             ThemeModeGlyph.Glyph = mode switch
             {

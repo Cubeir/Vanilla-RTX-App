@@ -55,7 +55,8 @@
                               VerticalScrollBarVisibility="Auto">
                     <ContentControl x:Name="MarkdownHost"
                                     HorizontalContentAlignment="Stretch"
-                                    MaxWidth="860"
+                                    Margin="0,16,0,0"
+                                    MaxWidth="1280"
                                     HorizontalAlignment="Left" />
                 </ScrollViewer>
 
