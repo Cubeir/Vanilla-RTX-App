@@ -322,7 +322,8 @@
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="ReleaseInstallPathButton"
                                         Grid.Column="0"
-                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Style="{ThemeResource DefaultButtonStyle}"
+                                        HorizontalAlignment="Stretch"
                                         Click="ReleaseInstallPathButton_Click">
                                     <TextBlock x:Name="ReleaseInstallPathText"
                                                Style="{StaticResource SettingsPathTextStyle}" />
@@ -353,7 +354,8 @@
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="PreviewInstallPathButton"
                                         Grid.Column="0"
-                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Style="{ThemeResource DefaultButtonStyle}"
+                                        HorizontalAlignment="Stretch"
                                         Click="PreviewInstallPathButton_Click">
                                     <TextBlock x:Name="PreviewInstallPathText"
                                                Style="{StaticResource SettingsPathTextStyle}" />
@@ -393,7 +395,8 @@
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="ReleaseDataPathButton"
                                         Grid.Column="0"
-                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Style="{ThemeResource DefaultButtonStyle}"
+                                        HorizontalAlignment="Stretch"
                                         Click="ReleaseDataPathButton_Click">
                                     <TextBlock x:Name="ReleaseDataPathText"
                                                Style="{StaticResource SettingsPathTextStyle}" />
@@ -424,7 +427,8 @@
                                 </Grid.ColumnDefinitions>
                                 <Button x:Name="PreviewDataPathButton"
                                         Grid.Column="0"
-                                        Style="{StaticResource SettingsPathBoxStyle}"
+                                        Style="{ThemeResource DefaultButtonStyle}"
+                                        HorizontalAlignment="Stretch"
                                         Click="PreviewDataPathButton_Click">
                                     <TextBlock x:Name="PreviewDataPathText"
                                                Style="{StaticResource SettingsPathTextStyle}" />
