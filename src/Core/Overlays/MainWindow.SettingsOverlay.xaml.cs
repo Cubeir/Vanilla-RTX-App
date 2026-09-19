@@ -666,7 +666,7 @@ public sealed partial class SettingsOverlay : UserControl
             new UrlField
             {
                 Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
-                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to. Can change to any other website you can get the dll files from.",
+                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to. Can change to any other website you can get the .dll files from.",
                 Fallback = Defaults.DlssProviderUrl, Kind = LinkKind.WebPage,
                 Read = () => Persistent.DlssProviderUrl, Write = v => Persistent.DlssProviderUrl = v
             },
