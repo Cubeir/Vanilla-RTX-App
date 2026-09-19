@@ -258,7 +258,7 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(SettingsButton,
-            "ms-appx:///Assets/previews/theme.png"
+            "ms-appx:///Assets/previews/vrtx.settings.png"
         );
 
         Previewer.Instance.InitializeButton(BugButton,
