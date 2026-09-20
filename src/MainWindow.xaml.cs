@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -15,7 +14,6 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
@@ -151,7 +149,7 @@ public sealed partial class MainWindow : Window
 
 
         // Up to 44 only, and no special variants
-        var PreviewArtLampOnly = Enumerable.Range(1, 44) 
+        var PreviewArtLampOnly = Enumerable.Range(1, 44)
             .Select(i => $"ms-appx:///Assets/previews/vrtx.app.{i}.png").ToArray();
         Previewer.Instance.InitializeButton(SettingsButton, PreviewArtLampOnly);
 
@@ -898,6 +896,7 @@ public sealed partial class MainWindow : Window
             }
         }
     }
+
     // ═════════════════════════════════════════════════════════════════════════
     //  Titlebar buttons
     //
@@ -932,67 +931,31 @@ public sealed partial class MainWindow : Window
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
 
-    private void SettingsButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        SettingsButton.Content = "\uF8B0";
-    }
-
-    private void SettingsButton_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        SettingsButton.Content = "\uE713";
-    }
-
     /// <summary>
-    /// Shared by the Help and Bug buttons - the settings panel is closed first if it's open,
+    /// The settings panel is closed first if it's open,
     /// then the document opens. <see cref="MarkdownOverlay.Show"/> already handles the
     /// document-to-document case (same URL toggles, a different one swaps), so this only owns
     /// the cross-overlay half of the rule.
     /// </summary>
-    private void OpenDocument(string url, string title)
+    private void HelpButton_Click(object sender, RoutedEventArgs e)
     {
         if (SettingsPanel.IsOpen)
             SettingsPanel.Hide();
 
-        DocsOverlay.Show(url: url, title: title, glyph: "");
-    }
+        DocsOverlay.Show(url: Links.Documentation, title: "Vanilla RTX App Documentation", glyph: "");
 
-    private void HelpButton_Click(object sender, RoutedEventArgs e)
-    {
-        OpenDocument(
-            url: Links.Documentation,
-            title: "Vanilla RTX App Documentation");
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
-    private void HelpButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        HelpButton.Content = "\uF167";
-        if (RuntimeFlags.Set("Wrote_Info_Thingy"))
-        {
-            Log("Open a page with full documentation of the app and a how-to guide.", LogLevel.Informational);
-        }
-    }
-    private void HelpButton_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        HelpButton.Content = "\uE946";
-    }
-
-
-
     private void BugButton_Click(object sender, RoutedEventArgs e)
     {
-        OpenDocument(
-            url: Links.BugTracker,
-            title: "Known Minecraft RTX Bugs & Issues");
+        if (SettingsPanel.IsOpen)
+            SettingsPanel.Hide();
+
+        DocsOverlay.Show(url: Links.BugTracker, title: "Known Minecraft RTX Bugs & Issues", glyph: "");
+
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }
-    private void BugButton_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        if (RuntimeFlags.Set("Has_Said_BugButtonTtext"))
-            Log("View a complete, up-to-date list of Minecraft RTX bugs.", LogLevel.Informational);
-    }
-    private void BugButton_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-    }
+
 
 
     /// <summary>

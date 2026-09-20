@@ -250,9 +250,7 @@
                         Background="Transparent"
                         BorderBrush="Transparent"
                         Click="SettingsButton_Click"
-                        PointerEntered="SettingsButton_PointerEntered"
-                        PointerExited="SettingsButton_PointerExited"
-                        ToolTipService.ToolTip="App settings - theme, animations, Minecraft folder locations, what the Launch button does, and app maintenance."
+                        ToolTipService.ToolTip="General app settings and relevant internal configurations."
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
@@ -272,9 +270,7 @@
                         CornerRadius="0"
                         FontSize="16"
                         Click="HelpButton_Click"
-                        PointerEntered="HelpButton_PointerEntered"
-                        PointerExited="HelpButton_PointerExited"
-                        ToolTipService.ToolTip="Open documentation"
+                        ToolTipService.ToolTip="Open app's documentation and guide."
                         IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
@@ -294,8 +290,6 @@
                         CornerRadius="0"
                         FontSize="15"
                         Click="BugButton_Click"
-                        PointerEntered="BugButton_PointerEntered"
-                        PointerExited="BugButton_PointerExited"
                         ToolTipService.ToolTip="View a list of all known and reported Minecraft RTX bugs and issues, and their status."
                         IsTextScaleFactorEnabled="False" />
             </Grid>
