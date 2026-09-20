@@ -7,22 +7,20 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Text;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Core.Overlays;
 using Vanilla_RTX_App.Modules.Json;
 using WinRT.Interop;
-using WinUIEx;
 using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.PackBrowser;
 
-public sealed partial class PackBrowserWindow : Window, Core.FileActivation.IFileActivationTarget
+public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivation.IFileActivationTarget
 {
-    private readonly AppWindow _appWindow;
     private bool _isClosing;
 
     private readonly Dictionary<string, Button> _packButtonMap = new();
@@ -69,62 +67,30 @@ public sealed partial class PackBrowserWindow : Window, Core.FileActivation.IFil
     public PackBrowserWindow()
     {
         this.InitializeComponent();
-
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
-
-        _appWindow = this.AppWindow;
-
-        if (_appWindow.TitleBar != null)
-        {
-            _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        }
-
-        ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ThemeService.ResolveInitialTheme());
-
-        // The centered title dims with the window, same as the system's caption buttons
-        // beside it - this window has no titlebar controls of its own to include.
-        TitleBarFocus.Attach(this, WindowTitle);
-
-        this.Closed += PackBrowserWindow_Closed;
-
-        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.browse.ico"));
+        AttachChrome();
 
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(this, packName, existingPath);
         ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(this, packName);
 
-        if (Content is FrameworkElement root)
-            root.Loaded += PackBrowserWindow_Loaded;
+        this.Loaded += PackBrowserWindow_Loaded;
     }
     private async void PackBrowserWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (Content is FrameworkElement root)
-                root.Loaded -= PackBrowserWindow_Loaded;
+            this.Loaded -= PackBrowserWindow_Loaded;
 
             if (_isClosing) return;
 
-            SetTitleBar(TitleBarDragArea);
-
-            WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
             AddPackDescriptionText.Text =
                 $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip)";
 
             PsaCard.Populate(PackBrowserAnnouncementsPanel, OnlineTextsContent.ResourcePackSelectionAnnouncements);
 
-            if (this.Content is UIElement contentRoot)
-            {
-                contentRoot.AllowDrop = true;
-                contentRoot.DragOver += ContentRoot_DragOver;
-                contentRoot.Drop += ContentRoot_Drop;
-            }
+            AllowDrop = true;
+            DragOver += ContentRoot_DragOver;
+            Drop += ContentRoot_Drop;
 
             await LoadPacksAsync();
             if (_isClosing) return;
@@ -136,25 +102,14 @@ public sealed partial class PackBrowserWindow : Window, Core.FileActivation.IFil
         }
     }
 
-    private void PackBrowserWindow_Closed(object sender, WindowEventArgs e)
+    protected override void OnClosing()
     {
         if (_isClosing) return;
         _isClosing = true;
 
-        if (Content is FrameworkElement root)
-            root.Loaded -= PackBrowserWindow_Loaded;
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= PackBrowserWindow_Closed;
+        this.Loaded -= PackBrowserWindow_Loaded;
 
         ExpImpDel.ImportStatusChanged -= OnImportStatusChanged;
-    }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -700,8 +655,7 @@ public sealed partial class PackBrowserWindow : Window, Core.FileActivation.IFil
 
     private async void AddPackButton_Click(object sender, RoutedEventArgs e)
     {
-        var hwnd = WindowNative.GetWindowHandle(this);
-        await RunImportAsync(() => ExpImpDel.ImportPackAsync(hwnd));
+        await RunImportAsync(() => ExpImpDel.ImportPackAsync(WindowHandle));
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -722,27 +676,40 @@ public sealed partial class PackBrowserWindow : Window, Core.FileActivation.IFil
     private async Task RunImportAsync(Func<Task<bool>> importWork)
     {
         AddPackButton.IsEnabled = false;
+        var imported = false;
 
         try
         {
-            await importWork();
+            imported = await importWork();
         }
         finally
         {
+            Blink(imported);
+
             LoadingPanel.Visibility = Visibility.Visible;
             PackSelectionPanel.Visibility = Visibility.Collapsed;
             await LoadPacksAsync();
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
             AddPackButton.IsEnabled = true;
-            WindowTitle.Text = $"Select from your {gameTitleText} resource packs";
+            SetImportBusy(false);
         }
     }
 
+    /// <summary>
+    /// ExpImpDel narrates each file as it extracts. The message itself is dropped - the
+    /// titlebar it used to be written into belongs to MainWindow now - and what is kept is the
+    /// one bit of it the user was actually reading at that speed: that an import is running.
+    /// It is also written to Trace, so the detail is still there when something goes wrong.
+    /// </summary>
     private void OnImportStatusChanged(string message)
     {
-        DispatcherQueue.TryEnqueue(() => WindowTitle.Text = message);
+        Trace.WriteLine($"[PackBrowser] {message}");
+        DispatcherQueue.TryEnqueue(() => SetImportBusy(true));
     }
+
+    private void SetImportBusy(bool busy) =>
+        ImportProgressBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
 
     // ════════════════════════════════════════════════════════════════════════
     //  Pack scanning

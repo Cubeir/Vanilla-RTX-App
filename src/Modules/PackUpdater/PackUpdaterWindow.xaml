@@ -1,33 +1,16 @@
-<Window x:Class="Vanilla_RTX_App.Modules.PackUpdater.PackUpdaterWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Get Vanilla RTX">
-
-    <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
-    </Window.SystemBackdrop>
-
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackUpdater.PackUpdaterWindow"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
+                        IsTextScaleFactorEnabled="False">
 
     <Grid>
-        <!-- Light Theme Overlay -->
-        <Border x:Name="LightThemeOverlay"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                IsHitTestVisible="False"
-                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-999">
-            <Border.Background>
-                <SolidColorBrush Color="#24000000" />
-            </Border.Background>
-        </Border>
-
-        <!-- Main Layout - one flat scrollable area; the titlebar is a floating overlay
-             (TitleBarHost below) rather than a row this excludes, so content can scroll all
-             the way up underneath it. -->
+        <!-- Main Layout - one flat scrollable area. There is no titlebar or light-theme tint
+             here any more: this is a ModuleOverlay, so MainWindow's own titlebar sits above it
+             and MainWindow's tint covers it. -->
         <Grid>
             <!-- Scrollable Content Area -->
             <ScrollViewer x:Name="ContentScrollViewer"
-                          Margin="0,36,0,0"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="12"
@@ -776,46 +759,6 @@
 
         </Grid>
 
-        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
-             always sits on top of whatever content has scrolled beneath it ══════════════ -->
-        <Grid x:Name="TitleBarHost"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Canvas.ZIndex="100">
-
-            <Border x:Name="TitleBarBackground"
-                    Height="37"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
-                    BorderThickness="0,0,0,6"
-                    CornerRadius="0"
-                    Translation="0,0,32"
-                    IsHitTestVisible="False">
-                <Border.Shadow>
-                    <ThemeShadow />
-                </Border.Shadow>
-            </Border>
-
-            <Border x:Name="TitleBarDragArea"
-                    Height="32"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="Transparent"
-                    IsHitTestVisible="False" />
-
-            <Grid HorizontalAlignment="Center"
-                  VerticalAlignment="Top"
-                  Margin="0,-2,0,0">
-                <TextBlock x:Name="WindowTitle"
-                           Text="Install or update Vanilla RTX resource packs"
-                           Margin="0,7,0,5"
-                           VerticalAlignment="Center"
-                           IsTextScaleFactorEnabled="False"
-                           IsHitTestVisible="False" />
-            </Grid>
-        </Grid>
 
     </Grid>
-</Window>
+</overlays:ModuleOverlay>

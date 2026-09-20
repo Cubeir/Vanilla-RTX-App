@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Text;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -19,7 +18,6 @@ using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Core.Overlays;
 using Windows.Storage;
 using WinRT.Interop;
-using WinUIEx;
 using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.BetterRTX;
@@ -48,9 +46,8 @@ internal class DownloadQueueItem
 /// downloading, importing, hashing and the elevated install - lives in
 /// <see cref="BetterRTXManager"/>. This holds one and renders it.
 /// </summary>
-public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation.IFileActivationTarget
+public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileActivation.IFileActivationTarget
 {
-    private readonly AppWindow _appWindow;
     private bool _isClosing;
 
     private readonly BetterRTXManager _manager = new();
@@ -94,57 +91,37 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
     /// </summary>
     private bool _applyInProgress;
 
-    public bool OperationSuccessful { get; private set; } = false;
-    public string StatusMessage { get; private set; } = "";
 
     public BetterRTXManagerWindow()
     {
         this.InitializeComponent();
+
         _downloadStatuses = new Dictionary<string, DownloadStatus>();
         _downloadQueue = new Queue<DownloadQueueItem>();
         _isProcessingQueue = false;
         _manager.DownloadTrackingReset = ClearDownloadTracking;
 
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
+        AttachChrome();
 
-        _appWindow = this.AppWindow;
+        ShowBrowseTarget();
 
-        if (_appWindow.TitleBar != null)
-        {
-            _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        }
+        // The page viewer covers this whole module and puts its own Done button in the corner
+        // the frame's close button sits in, so the frame's steps aside for as long as it is up.
+        WebImportOverlay.Dismissed += (_, _) => IsCloseButtonVisible = true;
 
-        ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ThemeService.ResolveInitialTheme());
-
-        // The centered title dims with the window, same as the system's caption buttons
-        // beside it - this window has no titlebar controls of its own to include.
-        TitleBarFocus.Attach(this, WindowTitle, TitleBarActions);
-
-        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.brtx.ico"));
-
-        this.Closed += BetterRTXManagerWindow_Closed;
-
-        if (Content is FrameworkElement root)
-            root.Loaded += BetterRTXManagerWindow_Loaded;
+        this.Loaded += BetterRTXManagerWindow_Loaded;
     }
+
+    /// <summary>The cache-refresh button, which lives in MainWindow's titlebar while this is open.</summary>
+    protected internal override FrameworkElement? TitleBarStrip => TitleBarActions;
+
     private async void BetterRTXManagerWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (Content is FrameworkElement root)
-                root.Loaded -= BetterRTXManagerWindow_Loaded;
+            this.Loaded -= BetterRTXManagerWindow_Loaded;
 
             if (_isClosing) return;
-
-            SetTitleBar(TitleBarDragArea);
-
-            WindowTitle.Text = $"BetterRTX Preset Manager - Minecraft {(_isPreview ? "Preview" : "Release")}";
 
             // bedrock.graphics builds against stable Minecraft, so on Preview the notice at
             // the top of the list is the whole of what makes the feature supported there
@@ -163,13 +140,12 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
         }
     }
 
-    private void BetterRTXManagerWindow_Closed(object sender, WindowEventArgs e)
+    protected override void OnClosing()
     {
         if (_isClosing) return;
         _isClosing = true;
 
-        if (Content is FrameworkElement root)
-            root.Loaded -= BetterRTXManagerWindow_Loaded;
+        this.Loaded -= BetterRTXManagerWindow_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
@@ -183,16 +159,6 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
 
         _cooldownTimer?.Stop();
         _cooldownTimer = null;
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= BetterRTXManagerWindow_Closed;
-    }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
 
     /// <summary>
@@ -315,12 +281,12 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
         {
             Title = "Third-Party API Usage Notice",
             Content = contentPanel,
-            XamlRoot = this.Content.XamlRoot,
+            XamlRoot = this.XamlRoot,
             IsTextScaleFactorEnabled = false,
             MinWidth = 0,
             MaxWidth = double.PositiveInfinity,
-            Width = this.Bounds.Width * 0.55,
-            RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+            Width = this.ActualWidth * 0.55,
+            RequestedTheme = this.ActualTheme
         };
 
         // Block all closes until one of our buttons sets the tcs
@@ -330,12 +296,12 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
                 e.Cancel = true;
         };
 
-        // If the window itself is closed while dialog is open, resolve gracefully
-        void onWindowClosed(object s, WindowEventArgs e)
+        // If this module is closed while the dialog is open, resolve gracefully
+        void onOverlayClosed(object? s, EventArgs e)
         {
             tcs.TrySetResult(false);
         }
-        this.Closed += onWindowClosed;
+        this.Closed += onOverlayClosed;
 
         confirmButton.Click += (s, e) =>
         {
@@ -353,7 +319,7 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
         await dialog.ShowAsync();
         await tcs.Task; // ensure tcs is always resolved before we return
 
-        this.Closed -= onWindowClosed; // clean up listener
+        this.Closed -= onOverlayClosed; // clean up listener
         return tcs.Task.Result;
     }
 
@@ -536,7 +502,7 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
 
         _scanCancellationTokenSource?.Cancel();
 
-        var hWnd = WindowNative.GetWindowHandle(this);
+        var hWnd = WindowHandle;
         var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd);
 
         if (path != null)
@@ -1112,6 +1078,21 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
     #region custom preset handlers
 
     /// <summary>
+    /// <summary>
+    /// Names the address the Create button opens, in its own label and its tooltip. Read once
+    /// at construction from the same <see cref="Links"/> accessor the click uses, so the two
+    /// cannot say different things - which is exactly what they did while the label was a
+    /// literal in XAML and the address was a setting.
+    /// </summary>
+    private void ShowBrowseTarget()
+    {
+        CreatePresetTargetText.Text = $"Browse {EnvironmentVariables.LinkLabel(Links.BetterRtxCreator, includePath: true)}";
+        ToolTipService.SetToolTip(CreatePresetLink,
+            $"Browse {EnvironmentVariables.LinkLabel(Links.BetterRtxCreator, includePath: true)} right here - " +
+            "build a preset and it will be imported automatically when you close it.");
+    }
+
+    /// <summary>
     /// bedrock.graphics/creator has no API worth scraping - it's a build-your-own-preset tool,
     /// not a static file list. Rather than send the user out to their real browser and leave
     /// them to find their way back with a .rtpack in hand, they build it right here; whatever
@@ -1127,6 +1108,8 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
     /// </summary>
     private void CreatePresetButton_Click(object sender, RoutedEventArgs e)
     {
+        IsCloseButtonVisible = false;
+
         WebImportOverlay.Show(
             url: Links.BetterRtxCreator,
             title: "Create your own preset",
@@ -1142,7 +1125,7 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
         try
         {
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
-            var hWnd = WindowNative.GetWindowHandle(this);
+            var hWnd = WindowHandle;
             InitializeWithWindow.Initialize(picker, hWnd);
 
             foreach (var ext in BetterRTXManager.SupportedCustomPresetExtensions)
@@ -1548,6 +1531,7 @@ public sealed partial class BetterRTXManagerWindow : Window, Core.FileActivation
                         {
                             OperationSuccessful = true;
                             StatusMessage = $"Installed {presetToApply.Name} successfully";
+                            BlinkHard();
                             Trace.WriteLine(StatusMessage);
                             await DisplayPresetsAsync();
                         }

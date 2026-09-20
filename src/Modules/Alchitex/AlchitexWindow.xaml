@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Window x:Class="Vanilla_RTX_App.Modules.Alchitex.Alchitex"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.Modules.Alchitex"
-        Title="RTX Reactor">
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.Alchitex.Alchitex"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:local="using:Vanilla_RTX_App.Modules.Alchitex"
+                        xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
+                        IsTextScaleFactorEnabled="False">
 
-    <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
-    </Window.SystemBackdrop>
 
     <Grid>
         <!--  BACKGROUND FIELD
@@ -31,173 +29,82 @@
                 Canvas.ZIndex="-3" />
 
         <!-- TITLEBAR -->
-        <Grid x:Name="TitleBarHost"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Canvas.ZIndex="100">
 
-            <!-- Titlebar Background -->
-            <Border x:Name="TitleBarBackground"
-                    Height="37"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    BorderThickness="0,0,0,5"
-                    CornerRadius="0"
-                    Translation="0,0,256"
-                    IsHitTestVisible="False">
-                <Border.Background>
-                    <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                                  TintOpacity="1.0"
-                                  Opacity="0.9"
-                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
-                </Border.Background>
-                <Border.BorderBrush>
-                    <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
-                                  TintOpacity="0.5"
-                                  Opacity="0.6"
-                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
-                </Border.BorderBrush>
-                <Border.Shadow>
-                    <ThemeShadow />
-                </Border.Shadow>
-            </Border>
+        <!-- ══ TITLEBAR ACTIONS - post-license, and not rendered here ════════════
+             Declared in this class so its buttons' x:Name fields and handlers belong to it,
+             but MainWindow moves the whole Border into its own titlebar for as long as this
+             module is open - where it reads as a continuation of the three buttons already
+             there. See ModuleOverlay.TitleBarStrip.
 
-            <!-- Drag area  -->
-            <Border x:Name="TitleBarDragArea"
-                    HorizontalAlignment="Stretch"
-                    Height="32"
-                    VerticalAlignment="Top"
-                    Margin="0,0,0,0"
-                    Background="Transparent"
-                    IsHitTestVisible="False" />
+             One of the two containers that make up the post-license UI (the other is
+             MainGrid). Everything in here is hidden until the license is accepted, and
+             children inherit that, so a new titlebar control added inside this Border needs
+             NO code in ShowMainContent - just drop it in.
 
-            <!-- ══ TITLEBAR ACTIONS - post-license ═════════════════════════════════
-                 One of the two containers that make up the post-license UI (the other is
-                 MainGrid). Everything in here is hidden until the license is accepted, and
-                 children inherit that, so a new titlebar control added inside this Border
-                 needs NO code in ShowMainContent - just drop it in.
-                 ═══════════════════════════════════════════════════════════════════ -->
-            <Border x:Name="TitleBarActions"
-                    Margin="-1,-1,16,0"
-                    VerticalAlignment="Top"
-                    HorizontalAlignment="Left"
-                    Height="34"
-                    Width="Auto"
-                    Visibility="Collapsed">
-                <Grid Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Always-present buttons -->
-                        <ColumnDefinition Width="Auto" />
-                        <!-- Debug-only group -->
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Info Button -->
-                    <Button x:Name="InfoButton"
-                            Grid.Column="0"
+             There is no Documentation button any more: MainWindow's Help button is right
+             beside this strip now and renders the same document.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="TitleBarActions"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Height="34"
+                Width="Auto"
+                Visibility="Collapsed">
+            <Grid Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="1">
+                <!-- Debug builds only. The single #if DEBUG line in ShowMainContent covers
+                     everything in here, so a new dev-only titlebar control just goes inside. -->
+                <StackPanel x:Name="DevOnlyTitleBarActions"
+                        Orientation="Horizontal"
+                        Visibility="Collapsed">
+                    <!-- materials.json authoring: bootstrap new entries from an
+                         already-PBR'd pack, or collapse the file down to the properties
+                         that actually change what the pipeline produces. Click opens a
+                         menu over the two, the same way the test bench does. -->
+                    <Button x:Name="GenerateMaterialsConfigButton"
                             FontFamily="{ThemeResource SymbolThemeFontFamily}"
                             Style="{ThemeResource SubtleButtonStyle}"
-                            Content="&#xE946;"
+                            Content="&#xEC7A;"
                             Width="40"
                             Height="35"
                             CornerRadius="0"
                             FontSize="16"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Click="InfoButton_Click"
-                            ToolTipService.ToolTip="Learn more..."
+                            Click="GenerateMaterialsConfigButton_Click"
+                            ToolTipService.ToolTip="DEVELOPER TOOL: BOOTSTRAP MATERIALS.JSON ENTRIES FROM AN EXISTING PBR TEXTURE PACK, OR OPTIMIZE AN EXISTING MATERIALS.JSON BY REMOVING EVERY PROPERTY THE PIPELINE WOULD HAVE ARRIVED AT ANYWAY."
                             IsTextScaleFactorEnabled="False" />
+                    
+                    <!-- Separator -->
+                    <Border Width="1"
+                            Margin="4,6,4,6"
+                            Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                    <!-- Debug builds only. Same idea one level down: dev-only titlebar
-                         controls go inside this group and the single #if DEBUG line in
-                         ShowMainContent already covers them. -->
-                    <StackPanel x:Name="DevOnlyTitleBarActions"
-                                Grid.Column="1"
-                                Orientation="Horizontal"
-                                Visibility="Collapsed">
-
-                        <!-- Separator -->
-                        <Border Width="1"
-                                Margin="4,6,4,6"
-                                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <!-- materials.json authoring: bootstrap new entries from an
-                             already-PBR'd pack, or collapse the file down to the properties
-                             that actually change what the pipeline produces. Click opens a
-                             menu over the two, the same way the test bench does. -->
-                        <Button x:Name="GenerateMaterialsConfigButton"
-                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                Style="{ThemeResource SubtleButtonStyle}"
-                                Content="&#xEC7A;"
-                                Width="40"
-                                Height="35"
-                                CornerRadius="0"
-                                FontSize="16"
-                                Click="GenerateMaterialsConfigButton_Click"
-                                ToolTipService.ToolTip="DEVELOPER TOOL: BOOTSTRAP MATERIALS.JSON ENTRIES FROM AN EXISTING PBR TEXTURE PACK, OR OPTIMIZE AN EXISTING MATERIALS.JSON BY REMOVING EVERY PROPERTY THE PIPELINE WOULD HAVE ARRIVED AT ANYWAY."
-                                IsTextScaleFactorEnabled="False" />
-                        
-                        <!-- Separator -->
-                        <Border Width="1"
-                                Margin="4,6,4,6"
-                                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <!-- PBR test bench: run loose textures through the generation path
-                             without building a pack around them. Also a drop target - files
-                             or folders dragged onto it skip the picker entirely. -->
-                        <Button x:Name="PipelinePreviewDevToolButton"
-                                FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                Style="{ThemeResource SubtleButtonStyle}"
-                                Content="&#xED5E;"
-                                Width="40"
-                                Height="35"
-                                CornerRadius="0"
-                                FontSize="16"
-                                Click="PipelinePreviewDevToolButton_Click"
-                                AllowDrop="True"
-                                DragOver="PipelinePreviewDevToolButton_DragOver"
-                                Drop="PipelinePreviewDevToolButton_Drop"
-                                ToolTipService.ToolTip="DEVELOPER TOOL: GENERATE PBR FOR LOOSE TEXTURES OR A WHOLE FOLDER, IN PLACE, WITHOUT BUILDING A PACK. DROP FILES OR FOLDERS HERE, OR CLICK TO PICK. EXISTING PBR IN THE TARGET FOLDERS IS STRIPPED AND REGENERATED."
-                                IsTextScaleFactorEnabled="False" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-            
-            <!-- ══ Titlebar Content ═════════════════════════════════════════════
-                 No logo here on purpose: the Generate button IS the RTX Reactor logo,
-                 at full size, and two of the same mark in one window reads badly.
-
-                 This text doubles as the generation status line - SetStatus() in the
-                 code-behind writes progress here ("[1/3] SomePack: Generating PBR
-                 textures...") and it reverts to "RTX Reactor" once a run is over. That's
-                 why there's no status TextBlock down in the content area any more.
-                 ═══════════════════════════════════════════════════════════════════ -->
-            <Grid x:Name="TitleBarCenterContent"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center"
-                  Margin="48,-7,48,0">
-
-                <TextBlock x:Name="TitleBarText"
-                           Text="License Agreement"
-                           FontSize="14"
-                           Margin="0,7,0,4"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           TextWrapping="NoWrap"
-                           FontWeight="Normal"
-                           IsTextScaleFactorEnabled="False"
-                           IsHitTestVisible="False" />
+                    <!-- PBR test bench: run loose textures through the generation path
+                         without building a pack around them. Also a drop target - files
+                         or folders dragged onto it skip the picker entirely. -->
+                    <Button x:Name="PipelinePreviewDevToolButton"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Content="&#xED5E;"
+                            Width="40"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="16"
+                            Click="PipelinePreviewDevToolButton_Click"
+                            AllowDrop="True"
+                            DragOver="PipelinePreviewDevToolButton_DragOver"
+                            Drop="PipelinePreviewDevToolButton_Drop"
+                            ToolTipService.ToolTip="DEVELOPER TOOL: GENERATE PBR FOR LOOSE TEXTURES OR A WHOLE FOLDER, IN PLACE, WITHOUT BUILDING A PACK. DROP FILES OR FOLDERS HERE, OR CLICK TO PICK. EXISTING PBR IN THE TARGET FOLDERS IS STRIPPED AND REGENERATED."
+                            IsTextScaleFactorEnabled="False" />
+                </StackPanel>
             </Grid>
-        </Grid>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════ -->
         <!--  LOADING PANEL                                          -->
         <!-- ═══════════════════════════════════════════════════════ -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,37,0,0"
               Background="Transparent">
             <ProgressRing IsActive="True"
                           Width="100"
@@ -214,8 +121,7 @@
               Visibility="Collapsed"
               Background="{ThemeResource OverlayBackgroundColor}"
               Padding="16, 0, 16 16"
-              Opacity="1.0"
-              Margin="0,37,0,0">
+              Opacity="1.0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <!-- license text  -->
@@ -320,8 +226,7 @@
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <Grid x:Name="MainGrid"
               Visibility="Collapsed"
-              Background="Transparent"
-              Margin="0,37,0,0">
+              Background="Transparent">
 
             <!-- ══ ONE SCROLLER FOR THE WHOLE WINDOW ════════════════════════════
                  The controls area is a fixed 512px tall and never scales with the
@@ -797,4 +702,4 @@
 
 
     </Grid>
-</Window>
+</overlays:ModuleOverlay>

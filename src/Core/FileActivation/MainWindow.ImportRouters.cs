@@ -34,8 +34,8 @@ public sealed partial class MainWindow
     /// up has to ask here. Used by <see cref="Core.FileActivation.FileActivationRouter"/> to
     /// hand a file activation to the window that owns that file type.</para>
     /// </summary>
-    internal Window? FindChildWindow(Type windowType) =>
-        _childWindows.FirstOrDefault(w => w.GetType() == windowType);
+    internal object? FindChildWindow(Type windowType) =>
+        _openModules.FirstOrDefault(m => m.GetType() == windowType);
 
     /// <summary>
     /// Serializes .mcpack imports specifically - see ImportBetterRTXPresetFilesAsync's own
@@ -113,8 +113,8 @@ public sealed partial class MainWindow
             // clobbering it for the duration of this import.
             var previousConfirmOverwrite = ExpImpDel.ConfirmOverwrite;
             var previousConfirmNonResourceImport = ExpImpDel.ConfirmNonResourceImport;
-            ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(this, packName, existingPath);
-            ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(this, packName);
+            ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(RootElement, packName, existingPath);
+            ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(RootElement, packName);
 
             var succeeded = 0;
             try
@@ -140,7 +140,7 @@ public sealed partial class MainWindow
             // If the user already has PackBrowserWindow open, its list was built before this
             // import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var packBrowser in _childWindows.OfType<Modules.PackBrowser.PackBrowserWindow>())
+                foreach (var packBrowser in _openModules.OfType<Modules.PackBrowser.PackBrowserWindow>())
                     await packBrowser.LoadPacksAsync();
         }
         finally
@@ -207,7 +207,7 @@ public sealed partial class MainWindow
             // If the user already has BetterRTXManagerWindow open, its list was built before
             // this import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var managerWindow in _childWindows.OfType<Modules.BetterRTX.BetterRTXManagerWindow>())
+                foreach (var managerWindow in _openModules.OfType<Modules.BetterRTX.BetterRTXManagerWindow>())
                     await managerWindow.RefreshLocalPresetsAsync();
         }
         finally

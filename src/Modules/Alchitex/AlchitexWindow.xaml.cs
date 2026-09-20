@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -18,6 +17,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Core.Overlays;
 using Vanilla_RTX_App.Modules.Alchitex.Core;
 using Vanilla_RTX_App.Modules.Alchitex.Tools;
 using Vanilla_RTX_App.Modules.PackBrowser;
@@ -25,7 +25,6 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-using WinUIEx;
 
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
@@ -92,9 +91,8 @@ public static class AlchitexVariables
     }
 }
 
-public sealed partial class Alchitex : Window
+public sealed partial class Alchitex : ModuleOverlay
 {
-    private readonly AppWindow _appWindow;
     private bool _isClosing; // just a secondary guard in case a future code ends up closing a window while already closing
     private CancellationTokenSource? _generateCts;
 
@@ -104,10 +102,10 @@ public sealed partial class Alchitex : Window
     /// Snapshotted at construction rather than read live, because it has to match the
     /// edition the queued packs were selected under - a temp folder left behind by this
     /// session is in that edition's tree, wherever the toggle points later. MainWindow
-    /// disables the Preview toggle for as long as this window is open, so today the two can
+    /// disables the Preview toggle for as long as this module is open, so today the two can
     /// never diverge; the snapshot is what keeps that from being load-bearing.
     ///
-    /// It defaults to the current target instead of to false, so opening the window is
+    /// It defaults to the current target instead of to false, so opening the module is
     /// enough - this used to require MainWindow to remember to assign it, and it never did,
     /// which left every Preview user's sweep looking in the stable folders.
     /// </summary>
@@ -115,14 +113,12 @@ public sealed partial class Alchitex : Window
 
     /// <summary>
     /// Mirrors the sibling modules' report-on-close convention (BetterRTX/DLSS/LUT
-    /// managers): MainWindow's Closed handler for this window reads these once it closes
-    /// and logs accordingly. True only if at least one pack succeeded across the whole
-    /// window session (every Generate click, not just the last one) - a mix of some
-    /// successes and some failures still reports as successful, since StatusMessage
-    /// itself already separates the two lists clearly.
+    /// managers): MainWindow reads <see cref="ModuleOverlay.OperationSuccessful"/> and
+    /// <see cref="ModuleOverlay.StatusMessage"/> once this closes and logs accordingly. True
+    /// only if at least one pack succeeded across the whole session (every Generate click,
+    /// not just the last one) - a mix of some successes and some failures still reports as
+    /// successful, since the message itself already separates the two lists clearly.
     /// </summary>
-    public bool OperationSuccessful { get; private set; }
-    public string StatusMessage { get; private set; } = "";
 
     // Accumulated across every Generate click in this window's lifetime, not just the
     // most recent one - the user can click Generate more than once before closing.
@@ -155,50 +151,24 @@ public sealed partial class Alchitex : Window
     public Alchitex()
     {
         this.InitializeComponent();
+        AttachChrome();
 
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = EnvironmentVariables.WindowMinSizeX;
-        manager.MinHeight = EnvironmentVariables.WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
-
-        _appWindow = this.AppWindow;
-
-        if (_appWindow.TitleBar != null)
-        {
-            _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        }
-
-        ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ThemeService.ResolveInitialTheme());
-
-        // Titlebar buttons and the title both dim with the window. Unlike the main
-        // window's, this title isn't an identity label - it's the generation status line -
-        // so it belongs with the rest of the chrome.
-        TitleBarFocus.Attach(this, TitleBarActions, TitleBarText);
-
-        // The queue mirrors the app-wide selection, so it has to hear about edits made
-        // from the main window while this one is open - see SelectedPacks_CollectionChanged.
+        // The queue mirrors the app-wide selection, so it has to hear about edits made from
+        // the main window while this is open - see SelectedPacks_CollectionChanged.
         EnvironmentVariables.SelectedPacks.CollectionChanged += SelectedPacks_CollectionChanged;
 
-        this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "logo.large.ico"));
-
-        this.Closed += Alchitex_Closed;
-
-        if (Content is FrameworkElement root)
-            root.Loaded += Alchitex_Loaded;
+        this.Loaded += Alchitex_Loaded;
     }
+
+    /// <summary>The dev-tool buttons, which live in MainWindow's titlebar while this is open.</summary>
+    protected internal override FrameworkElement? TitleBarStrip => TitleBarActions;
     private async void Alchitex_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (Content is FrameworkElement root)
-                root.Loaded -= Alchitex_Loaded;
+            this.Loaded -= Alchitex_Loaded;
 
             if (_isClosing) return;
-
-            SetTitleBar(TitleBarDragArea);
 
             _backdrop = new ReactorBackdrop(AlchitexBackdropHost);
             _backdrop.Start();
@@ -218,7 +188,7 @@ public sealed partial class Alchitex : Window
         }
     }
 
-    private void Alchitex_Closed(object sender, WindowEventArgs e)
+    protected override void OnClosing()
     {
         // SaveSettings() only ever persists whatever's currently sitting in
         // AlchitexVariables.Persistent's static fields - those used to only get updated
@@ -244,18 +214,7 @@ public sealed partial class Alchitex : Window
 
         EnvironmentVariables.SelectedPacks.CollectionChanged -= SelectedPacks_CollectionChanged;
 
-        if (Content is FrameworkElement root)
-            root.Loaded -= Alchitex_Loaded;
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= Alchitex_Closed;
-    }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
+        this.Loaded -= Alchitex_Loaded;
     }
 
     // ── Init ────────────────────────────────────────────
@@ -365,11 +324,6 @@ public sealed partial class Alchitex : Window
 
 
     // ── Main Content ───────────────────────────────────────────────────────
-
-    private void InfoButton_Click(object sender, RoutedEventArgs e)
-    {
-        _ = MainWindow.OpenUrl("http://minecraftrtx.net/reactor");
-    }
 
     // ── Reveal main content ───────────────────────────────────────────────────
 
@@ -502,45 +456,25 @@ public sealed partial class Alchitex : Window
     private const string DefaultTitleText = "RTX Reactor";
 
     // Cancels a pending "revert the title back to RTX Reactor" when something else wants
-    // to write to the titlebar first (a new run, mostly).
-    private CancellationTokenSource? _titleRevertCts;
 
     /// <summary>
-    /// Writes the generation status into the titlebar, which is where it lives now that
-    /// there's no status TextBlock in the content area. Passing null (or empty) restores
-    /// "RTX Reactor".
+    /// Records where a run has got to. It has no surface of its own: the titlebar it used to
+    /// be written into belongs to MainWindow now and cannot say anything about one module,
+    /// and what a run looks like is already carried by the reactor's own stances and by
+    /// <c>GenerateProgressBar</c> under the button. Trace keeps the detail for diagnosis.
+    ///
+    /// <para>Kept as a method rather than deleted at its thirty-odd call sites because those
+    /// lines are the clearest description of the pipeline's stages there is, and because
+    /// giving this a surface again is then one edit in one place.</para>
     /// </summary>
-    private void SetStatus(string? text)
-    {
-        _titleRevertCts?.Cancel();
-        _titleRevertCts?.Dispose();
-        _titleRevertCts = null;
-
-        TitleBarText.Text = string.IsNullOrEmpty(text) ? DefaultTitleText : text;
-    }
+    private void SetStatus(string? text) => Trace.WriteLine($"[Alchitex] {text ?? DefaultTitleText}");
 
     /// <summary>
-    /// Leaves a run's final line up long enough to actually be read, then puts the title
-    /// back. Any SetStatus call in the meantime cancels the revert, so a second Generate
-    /// click never gets its status stomped by the previous run's timer.
+    /// <see cref="SetStatus"/> for a run's final line. The revert it used to schedule went
+    /// with the titlebar; the delay parameter stays so the call sites keep reading as the
+    /// intent they were written with.
     /// </summary>
-    private void SetStatusThenRevert(string text, int millisecondsBeforeRevert = 8000)
-    {
-        SetStatus(text);
-
-        var cts = new CancellationTokenSource();
-        _titleRevertCts = cts;
-
-        _ = Task.Delay(millisecondsBeforeRevert, cts.Token).ContinueWith(t =>
-        {
-            if (t.IsCanceled || _isClosing) return;
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                if (!cts.IsCancellationRequested && !_isClosing)
-                    TitleBarText.Text = DefaultTitleText;
-            });
-        }, TaskScheduler.Default);
-    }
+    private void SetStatusThenRevert(string text, int millisecondsBeforeRevert = 8000) => SetStatus(text);
 
     // ── Pack queue ───────────────────────────────────────────────────────────
     //
@@ -1242,6 +1176,7 @@ public sealed partial class Alchitex : Window
                 {
                     succeeded++;
                     _succeededPackNames.Add(result.FinalManifestName ?? pack.Name);
+                    Blink();
 
                     // Only ever after a fully successful run for this pack - a failed or
                     // aborted one leaves the user's original exactly where it was.
@@ -1277,6 +1212,7 @@ public sealed partial class Alchitex : Window
                     // visibly, and not the way a finished pack does.
                     failedNames.Add(pack.Name);
                     _failedPackNames.Add(pack.Name);
+                    Blink(good: false);
 
                     await EjectFailedPackAsync(pack.Location, pack.Name);
                 }
@@ -1292,6 +1228,8 @@ public sealed partial class Alchitex : Window
                     ? $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} processed successfully!"
                     : $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} succeeded. Failed: {string.Join(", ", failedNames)}");
 
+                BlinkHard(succeeded > 0);
+
                 // Only on a real, un-aborted finish, and only if something actually came out
                 // of it - a batch that failed outright is not the moment to ask for support.
                 if (succeeded > 0)
@@ -1302,6 +1240,7 @@ public sealed partial class Alchitex : Window
         {
             Trace.WriteLine($"[ALCHITEX] GenerateButton_Click failed: {ex}");
             SetStatusThenRevert($"Something went wrong: {ex.Message}");
+            Blink(good: false);
         }
         finally
         {
@@ -1586,8 +1525,8 @@ public sealed partial class Alchitex : Window
                 PrimaryButtonText = "Remove and regenerate",
                 CloseButtonText = "Skip this pack",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot,
-                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+                XamlRoot = this.XamlRoot,
+                RequestedTheme = this.ActualTheme
             };
 
             return await dialog.ShowAsync() == ContentDialogResult.Primary;
@@ -1619,8 +1558,8 @@ public sealed partial class Alchitex : Window
                 PrimaryButtonText = "Generate anyway",
                 CloseButtonText = "Skip this pack",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot,
-                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+                XamlRoot = this.XamlRoot,
+                RequestedTheme = this.ActualTheme
             };
 
             return await dialog.ShowAsync() == ContentDialogResult.Primary;
@@ -1817,7 +1756,7 @@ public sealed partial class Alchitex : Window
     private async Task<string?> PickFolderAsync(string? commitText = null)
     {
         var picker = new FolderPicker();
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        InitializeWithWindow.Initialize(picker, WindowHandle);
         picker.FileTypeFilter.Add("*");
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
         if (commitText != null) picker.CommitButtonText = commitText;
@@ -1845,7 +1784,7 @@ public sealed partial class Alchitex : Window
         pickFiles.Click += async (_, _) =>
         {
             var picker = new FileOpenPicker();
-            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            InitializeWithWindow.Initialize(picker, WindowHandle);
             picker.SuggestedStartLocation = PickerLocationId.Desktop;
             foreach (var ext in TextureSetOrchestratorOptions.CandidateExtensions)
                 picker.FileTypeFilter.Add(ext);
@@ -2032,8 +1971,8 @@ public sealed partial class Alchitex : Window
                 PrimaryButtonText = "Generate",
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot,
-                RequestedTheme = ((FrameworkElement)this.Content).ActualTheme
+                XamlRoot = this.XamlRoot,
+                RequestedTheme = this.ActualTheme
             };
 
             return await dialog.ShowAsync() == ContentDialogResult.Primary;

@@ -1,29 +1,16 @@
-<Window x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.Modules.LUT"
-        xmlns:core="using:Vanilla_RTX_App.Core"
-        Title="RTX LUT Manager">
-    <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
-    </Window.SystemBackdrop>
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerWindow"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:local="using:Vanilla_RTX_App.Modules.LUT"
+                        xmlns:core="using:Vanilla_RTX_App.Core"
+                        xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
+                        IsTextScaleFactorEnabled="False">
+
     <Grid>
-        <Border x:Name="LightThemeOverlay"
-                Grid.ColumnSpan="2"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                IsHitTestVisible="False"
-                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-1">
-            <Border.Background>
-                <SolidColorBrush Color="#24000000" />
-            </Border.Background>
-        </Border>
 
         <!-- Loading Screen -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,36,0,0"
               Background="Transparent">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -61,13 +48,11 @@
             </StackPanel>
         </Grid>
 
-        <!-- Main UI - one flat content area; the titlebar is a floating overlay (TitleBarHost
-             below) rather than a row this excludes. Nothing here scrolls, so a plain top margin
-             is enough to clear it. -->
+        <!-- Main UI - one flat content area. Nothing here scrolls. -->
         <Grid x:Name="MainPanel"
               Visibility="Collapsed">
             <!-- Content -->
-            <Grid Margin="0,36,0,0">
+            <Grid>
                 <Grid.RowDefinitions>
                     <!-- Row 0: Button pair -->
                     <RowDefinition Height="Auto" />
@@ -85,10 +70,12 @@
                      ROW 0 — Preset dropdown + Install button pair
                      ═══════════════════════════════════════════════ -->
 
+                <!-- The wider right inset clears the frame's close button, which floats in
+                     that corner - see ModuleOverlayChrome. -->
                 <Grid x:Name="ButtonRowGrid"
                       Grid.Row="0"
                       Height="50"
-                      Margin="20,14,20,6"
+                      Margin="20,14,50,6"
                       VerticalAlignment="Top"
                       HorizontalAlignment="Stretch"
                       Translation="0,0,32">
@@ -257,45 +244,5 @@
             </Grid>
         </Grid>
 
-        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
-             always sits on top ══════════════════════════════════════════ -->
-        <Grid x:Name="TitleBarHost"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Canvas.ZIndex="100">
-
-            <Border x:Name="TitleBarBackground"
-                    Height="37"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
-                    BorderThickness="0,0,0,6"
-                    CornerRadius="0"
-                    Translation="0,0,32"
-                    IsHitTestVisible="False">
-                <Border.Shadow>
-                    <ThemeShadow />
-                </Border.Shadow>
-            </Border>
-
-            <Border x:Name="TitleBarDragArea"
-                    Height="32"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="Transparent"
-                    IsHitTestVisible="False" />
-
-            <Grid HorizontalAlignment="Center"
-                  VerticalAlignment="Top"
-                  Margin="0,-2,0,0">
-                <TextBlock x:Name="WindowTitle"
-                           Text="RTX Look-Up Table manager"
-                           Margin="0,7,0,5"
-                           VerticalAlignment="Center"
-                           IsTextScaleFactorEnabled="False"
-                           IsHitTestVisible="False" />
-            </Grid>
-        </Grid>
     </Grid>
-</Window>
+</overlays:ModuleOverlay>

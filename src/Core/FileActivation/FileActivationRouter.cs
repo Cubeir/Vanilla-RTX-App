@@ -175,13 +175,13 @@ internal static class FileActivationRouter
 
             if (matched.Count == 0) continue;
 
-            // A window that owns this file type and is already open takes it, and is raised
-            // in MainWindow's place - the user opened it for this, so that is where they are
-            // looking and where the dialogs belong.
+            // A module that owns this file type and is already open takes it - the user
+            // opened it for this, so that is where they are looking and where the dialogs
+            // belong. It is an overlay over MainWindow, so raising MainWindow raises it.
             if (FindOpenOwner(route) is { } owner)
             {
-                Trace.WriteLine($"[FileActivation] Routing {matched.Count} file(s) to the open {route.Label} window.");
-                BringToFront((Window)owner);
+                Trace.WriteLine($"[FileActivation] Routing {matched.Count} file(s) to the open {route.Label} module.");
+                BringToFront(MainWindow.Instance);
                 await owner.ImportActivatedFilesAsync(matched);
                 continue;
             }
@@ -193,8 +193,8 @@ internal static class FileActivationRouter
     }
 
     /// <summary>
-    /// The open window that owns this route, or null when none is. Null is the ordinary case
-    /// - the user double-clicked a file without the matching window open - and means the
+    /// The open module that owns this route, or null when none is. Null is the ordinary case
+    /// - the user double-clicked a file without the matching module open - and means the
     /// import goes through MainWindow.
     /// </summary>
     private static IFileActivationTarget? FindOpenOwner(Route route) =>

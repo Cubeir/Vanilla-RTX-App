@@ -87,7 +87,6 @@ public sealed partial class MainWindow : Window
     #region MainWindow Boilerplate
     public static MainWindow? Instance { get; private set; }
 
-    private readonly List<Window> _childWindows = new();
     private bool _isClosing = false;
     private bool _isInitializing = true;
 
@@ -321,11 +320,10 @@ public sealed partial class MainWindow : Window
             // Static event, instance handler - it would outlive the window otherwise.
             PackUpdater.DeployableCacheChanged -= OnDeployableCacheChanged;
 
-            // Cascade closure of all windows
-            foreach (var child in _childWindows.ToList())
-            {
-                try { child.Close(); } catch (COMException) { /* already gone */ }
-            }
+            // A module is part of this window now, so it has no native side to tear down -
+            // but its teardown still has to run, or a cancellation token is never tripped and
+            // a temp folder is never swept.
+            CloseAllModules();
         };
 
         // Our own titlebar buttons dim with the window, matching the system's caption
@@ -333,7 +331,7 @@ public sealed partial class MainWindow : Window
         // TitleBarFocus for why that beats naming each button here. The centered
         // "Vanilla RTX App" title is deliberately NOT included: it's the app's identity,
         // and it stays at full strength whether the window is focused or not.
-        TitleBarFocus.Attach(this, TitleBarActions);
+        TitleBarFocus.Attach(this, TitleBarActions, ModuleTitleBarActions);
 
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)
@@ -1207,22 +1205,8 @@ public sealed partial class MainWindow : Window
 
         // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
 
-        LockControls(false, ToDisable);
-
-        var packBrowserWindow = new Modules.PackBrowser.PackBrowserWindow();
-        var mainAppWindow = this.AppWindow;
-
-        packBrowserWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        packBrowserWindow.AppWindow.Move(mainAppWindow.Position);
-
-        packBrowserWindow.Closed += (s, args) =>
+        OpenModule(new Modules.PackBrowser.PackBrowserWindow(), ToDisable, _unused =>
         {
-            _childWindows.Remove(packBrowserWindow);
-
-            LockControls(true, ToDisable);
-
             if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
                 var names = string.Join(Environment.NewLine, EnvironmentVariables.SelectedPacks.Select(p => p.Name));
@@ -1237,10 +1221,7 @@ public sealed partial class MainWindow : Window
             {
                 _ = BlinkingLamp(true, true, 0.0);
             }
-        };
-
-        _childWindows.Add(packBrowserWindow);
-        WindowControlsManager.Activate(packBrowserWindow);
+        });
     }
 
 
@@ -1811,152 +1792,44 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
 
-        LockControls(false, ToDisable);
-
-        var packUpdaterWindow = new Modules.PackUpdater.PackUpdaterWindow(this);
-        var mainAppWindow = this.AppWindow;
-
-        packUpdaterWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        packUpdaterWindow.AppWindow.Move(mainAppWindow.Position);
-
-        // Do on window closure
-        packUpdaterWindow.Closed += (s, args) =>
+        OpenModule(new Modules.PackUpdater.PackUpdaterWindow(this), ToDisable, _unused =>
         {
-            _childWindows.Remove(packUpdaterWindow);
-
-            // Enable main UI buttons again
-            LockControls(true, ToDisable);
-
             // The cache glyph used to be re-derived by hand here, and at startup, and would have
             // owed a third copy at every future cache-touching site. It now follows
             // PackUpdater.DeployableCacheChanged, which already fired for whatever the updater
-            // window did while it was open - see OnDeployableCacheChanged.
+            // did while it was open - see OnDeployableCacheChanged.
             _ = LocatePacksTask(true); // Trigger an auto pack location check after, only time we log statuses for user to see what's installed
-        };
-
-        _childWindows.Add(packUpdaterWindow);
-        WindowControlsManager.Activate(packUpdaterWindow);
+        });
     }
     private void LaunchBetterRTXManagerButton_Click(object sender, RoutedEventArgs e)
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton", "ResetButton"];
 
-        LockControls(false, ToDisable);
-
-        var betterRTXWindow = new Modules.BetterRTX.BetterRTXManagerWindow();
-
-        var mainAppWindow = this.AppWindow;
-        betterRTXWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        betterRTXWindow.AppWindow.Move(mainAppWindow.Position);
-
-        betterRTXWindow.Closed += (s, args) =>
+        OpenModule(new Modules.BetterRTX.BetterRTXManagerWindow(), ToDisable, overlay =>
         {
-            _childWindows.Remove(betterRTXWindow);
-
-            LockControls(true, ToDisable);
-
-            // Log status after window closes
-            if (betterRTXWindow.OperationSuccessful)
-            {
-                Log(betterRTXWindow.StatusMessage, LogLevel.BetterRTX);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(betterRTXWindow.StatusMessage))
-            {
-                Log(betterRTXWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        _childWindows.Add(betterRTXWindow);
-        WindowControlsManager.Activate(betterRTXWindow);
+            LogModuleResult(overlay, LogLevel.BetterRTX);
+            _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
+        });
     }
     private void LaunchDLSSSwapperButton_Click(object sender, RoutedEventArgs e)
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton", "ResetButton"];
 
-        LockControls(false, ToDisable);
-
-        var DLSSSwapperWindow = new Modules.DLSS.DLSSSwapperWindow();
-        var mainAppWindow = this.AppWindow;
-
-        DLSSSwapperWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        DLSSSwapperWindow.AppWindow.Move(mainAppWindow.Position);
-
-        DLSSSwapperWindow.Closed += (s, args) =>
+        OpenModule(new Modules.DLSS.DLSSSwapperWindow(), ToDisable, overlay =>
         {
-            _childWindows.Remove(DLSSSwapperWindow);
-
-            LockControls(true, ToDisable);
-
-            // Log status after window closes
-            if (DLSSSwapperWindow.OperationSuccessful)
-            {
-                Log(DLSSSwapperWindow.StatusMessage, LogLevel.DLSS);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(DLSSSwapperWindow.StatusMessage))
-            {
-                Log(DLSSSwapperWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        _childWindows.Add(DLSSSwapperWindow);
-        WindowControlsManager.Activate(DLSSSwapperWindow);
+            LogModuleResult(overlay, LogLevel.DLSS);
+            _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
+        });
     }
     private void LaunchLUTManagerButton_Click(object sender, RoutedEventArgs e)
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton", "ResetButton"];
 
-        LockControls(false, ToDisable);
-
-        var LutManagerWindow = new Modules.LUT.LUTManagerWindow();
-        var mainAppWindow = this.AppWindow;
-
-        LutManagerWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        LutManagerWindow.AppWindow.Move(mainAppWindow.Position);
-
-        LutManagerWindow.Closed += (s, args) =>
+        OpenModule(new Modules.LUT.LUTManagerWindow(), ToDisable, overlay =>
         {
-            _childWindows.Remove(LutManagerWindow);
-
-            LockControls(true, ToDisable);
-
-            if (LutManagerWindow.OperationSuccessful)
-            {
-                Log(LutManagerWindow.StatusMessage, LogLevel.LUT);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(LutManagerWindow.StatusMessage))
-            {
-                Log(LutManagerWindow.StatusMessage, LogLevel.Error);
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-            else
-            {
-                _ = BlinkingLamp(true, true, 0.0);
-            }
-        };
-
-        _childWindows.Add(LutManagerWindow);
-        WindowControlsManager.Activate(LutManagerWindow);
+            LogModuleResult(overlay, LogLevel.LUT);
+            _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
+        });
     }
     private void LaunchAlchitexButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1995,33 +1868,11 @@ public sealed partial class MainWindow : Window
         "BrowsePacksButton", "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
         ];
 
-        LockControls(false, ToDisable);
-        var alchitexWindow = new Modules.Alchitex.Alchitex();
-        var mainAppWindow = this.AppWindow;
-        alchitexWindow.AppWindow.Resize(new Windows.Graphics.SizeInt32(
-            mainAppWindow.Size.Width,
-            mainAppWindow.Size.Height));
-        alchitexWindow.AppWindow.Move(mainAppWindow.Position);
-        alchitexWindow.Closed += (s, args) =>
+        OpenModule(new Modules.Alchitex.Alchitex(), ToDisable, overlay =>
         {
-            _childWindows.Remove(alchitexWindow);
-            LockControls(true, ToDisable);
-
-            // Log status after window closes
-            if (alchitexWindow.OperationSuccessful)
-            {
-                Log(alchitexWindow.StatusMessage, LogLevel.Alchitex);
-                _ = BlinkingLamp(true, true, 1.0);
-            }
-            else if (!string.IsNullOrEmpty(alchitexWindow.StatusMessage))
-            {
-                Log(alchitexWindow.StatusMessage, LogLevel.Error);
-            }
-            _ = BlinkingLamp(true, true, 0.0);
-        };
-
-        _childWindows.Add(alchitexWindow);
-        WindowControlsManager.Activate(alchitexWindow);
+            LogModuleResult(overlay, LogLevel.Alchitex);
+            _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
+        });
     }
 
 

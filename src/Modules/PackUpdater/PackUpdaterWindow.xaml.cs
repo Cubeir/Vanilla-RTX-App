@@ -1,19 +1,17 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
-using WinUIEx;
+using Vanilla_RTX_App.Core.Overlays;
 using static Vanilla_RTX_App.Core.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
 
 namespace Vanilla_RTX_App.Modules.PackUpdater;
 
-public sealed partial class PackUpdaterWindow : Window
+public sealed partial class PackUpdaterWindow : ModuleOverlay
 {
-    private readonly AppWindow _appWindow;
     private readonly MainWindow _mainWindow;
     private readonly PackUpdater _updater;
     private bool _isClosing;
@@ -47,6 +45,7 @@ public sealed partial class PackUpdaterWindow : Window
     public PackUpdaterWindow(MainWindow mainWindow)
     {
         this.InitializeComponent();
+        AttachChrome();
 
         InitializeHoverEffects();
 
@@ -57,47 +56,15 @@ public sealed partial class PackUpdaterWindow : Window
         _mainWindow = mainWindow;
         _updater = mainWindow._updater ?? new PackUpdater();
 
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
-
-        _appWindow = this.AppWindow;
-
-        if (_appWindow.TitleBar != null)
-        {
-            _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        }
-
-        ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ThemeService.ResolveInitialTheme());
-
-        // The centered title dims with the window, same as the system's caption buttons
-        // beside it - this window has no titlebar controls of its own to include.
-        TitleBarFocus.Attach(this, WindowTitle);
-
-        this.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.update.ico"));
-
-        this.Closed += PackUpdaterWindow_Closed;
-
-        if (Content is FrameworkElement root)
-            root.Loaded += PackUpdaterWindow_Loaded;
+        this.Loaded += PackUpdaterWindow_Loaded;
     }
     private async void PackUpdaterWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (Content is FrameworkElement root)
-                root.Loaded -= PackUpdaterWindow_Loaded;
+            this.Loaded -= PackUpdaterWindow_Loaded;
 
             if (_isClosing) return;
-
-            SetTitleBar(TitleBarDragArea);
-
-            var text = EnvironmentVariables.Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft";
-            WindowTitle.Text = $"Vanilla RTX resource packs for {text}";
 
             await InitializePackInformation();
             if (_isClosing) return;
@@ -112,25 +79,14 @@ public sealed partial class PackUpdaterWindow : Window
         }
     }
 
-    private void PackUpdaterWindow_Closed(object sender, WindowEventArgs e)
+    protected override void OnClosing()
     {
         if (_isClosing) return;
         _isClosing = true;
 
-        if (Content is FrameworkElement root)
-            root.Loaded -= PackUpdaterWindow_Loaded;
+        this.Loaded -= PackUpdaterWindow_Loaded;
 
         StopInstallingAnimation();
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= PackUpdaterWindow_Closed;
-    }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
 
     // INITIALIZATION =================================
@@ -510,15 +466,18 @@ public sealed partial class PackUpdaterWindow : Window
             if (success)
             {
                 Trace.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
+                BlinkHard();
             }
             else
             {
                 Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
+                Blink(good: false);
             }
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
+            Blink(good: false);
         }
         finally
         {

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -40,6 +39,13 @@ public class WindowControlsManager
     /// that operation writing to one folder and the app pointed at another. It is excluded from
     /// nothing, so <see cref="MainWindow.LockControls"/> can take it away for the duration.</para>
     /// </summary>
+    /// <remarks>
+    /// Exclusions are matched by name, and every feature module is now a control inside
+    /// MainWindow rather than a window of its own - so a blanket or targeted toggle started
+    /// from MainWindow walks into an open module's subtree too. Nothing collides today
+    /// (checked name by name), and a module naming a control after one of MainWindow's would
+    /// find itself disabled alongside it.
+    /// </remarks>
     private static readonly HashSet<string> _globalExclusions = new()
     {
         "HelpButton", "BugButton",
@@ -63,12 +69,7 @@ public class WindowControlsManager
         var content = TryGetContent(window);
         if (content == null) return;
 
-        var exclusions = overrideGlobalExclusions ? new HashSet<string>() : new HashSet<string>(_globalExclusions);
-        if (excludeNames != null)
-            foreach (var name in excludeNames)
-                if (!string.IsNullOrEmpty(name)) exclusions.Add(name);
-
-        Apply(enable, GetAllSupportedControls(content, exclusions));
+        ToggleControls(content, enable, overrideGlobalExclusions, excludeNames);
     }
 
     /// <summary>
@@ -77,16 +78,56 @@ public class WindowControlsManager
     /// buttons rather than the whole UI.
     /// </summary>
     public static void ToggleSpecificControls(Window window, bool enable, params string[] controlNames)
+        => ToggleSpecificControls(TryGetContent(window), enable, controlNames);
+
+    /// <summary>
+    /// <see cref="ToggleSpecificControls(Window, bool, string[])"/> scoped to one subtree
+    /// rather than a whole window. A feature module is a control inside MainWindow now, so
+    /// passing itself here reaches its own controls and nothing else - where walking from the
+    /// window would also sweep MainWindow's, and every other overlay's.
+    /// </summary>
+    public static void ToggleSpecificControls(UIElement? root, bool enable, params string[] controlNames)
     {
-        if (window == null || controlNames == null || controlNames.Length == 0) return;
-        var content = TryGetContent(window);
-        if (content == null) return;
+        if (root == null || controlNames == null || controlNames.Length == 0) return;
 
         var wanted = new HashSet<string>(controlNames);
         wanted.ExceptWith(_globalExclusions);
 
-        var controls = GetAllSupportedControls(content, null).Where(c => wanted.Contains(c.Name));
+        var controls = GetAllSupportedControls(root, null).Where(c => wanted.Contains(c.Name));
         Apply(enable, controls);
+    }
+
+    /// <summary>
+    /// <see cref="ToggleControls"/> scoped to one subtree, for the same reason as the
+    /// targeted overload above.
+    /// </summary>
+    public static void ToggleControls(UIElement? root, bool enable, bool overrideGlobalExclusions = false, params string[] excludeNames)
+    {
+        if (root == null) return;
+
+        var exclusions = overrideGlobalExclusions ? new HashSet<string>() : new HashSet<string>(_globalExclusions);
+        if (excludeNames != null)
+            foreach (var name in excludeNames)
+                if (!string.IsNullOrEmpty(name)) exclusions.Add(name);
+
+        Apply(enable, GetAllSupportedControls(root, exclusions));
+    }
+
+    /// <summary>
+    /// Force-releases every lock held on anything inside <paramref name="root"/>, whatever its
+    /// count. The escape hatch for a subtree leaving the visual tree with locks outstanding -
+    /// a control that is gone can still be holding a count, and that count is what would stop
+    /// the next real lock on a same-named control from ever reaching zero.
+    /// </summary>
+    public static void ClearStates(UIElement? root)
+    {
+        if (root == null) return;
+
+        foreach (var control in GetAllSupportedControls(root, null).ToList())
+        {
+            if (_lockCounts.Remove(control) && _preLockState.Remove(control, out var original))
+                control.IsEnabled = original;
+        }
     }
     // Window.Content throws COMException instead of returning null once the native window
     // has been torn down (e.g. MainWindow closed while a child feature window is still open
@@ -116,20 +157,11 @@ public class WindowControlsManager
 
 
     /// <summary>
-    /// Emergency reset — force-clears every lock on every control in the window regardless of
+    /// Emergency reset - force-clears every lock on every control in the window regardless of
     /// count. Not part of normal flow; use only if a window can be torn down without its
     /// Closed handler running (crash, forced termination, etc).
     /// </summary>
-    public static void ClearStates(Window window)
-    {
-        if (window?.Content == null) return;
-
-        foreach (var control in GetAllSupportedControls(window.Content, null).ToList())
-        {
-            if (_lockCounts.Remove(control) && _preLockState.Remove(control, out var original))
-                control.IsEnabled = original;
-        }
-    }
+    public static void ClearStates(Window window) => ClearStates(TryGetContent(window));
 
     /// <summary>
     /// Routes to <see cref="Acquire"/> or <see cref="Release"/>, materialising the sequence
@@ -238,23 +270,6 @@ public class WindowControlsManager
         NumberBox or DatePicker or TimePicker or ToggleSwitch or MenuFlyoutItem or AppBarButton or
         AppBarToggleButton or AutoSuggestBox;
 
-    /// <summary>
-    /// Activates a freshly-launched window, then re-asserts activation ~500ms later
-    /// (Windows' default double-click interval) as a guard: without this, the second
-    /// click of the double-click that launched this window could land back on the
-    /// caller before the new window's HWND fully took over that screen region,
-    /// unintentionally bringing MainWindow back to the foreground.
-    /// </summary>
-    public static void Activate(Window window, int guardDelayMs = 500)
-    {
-        window.Activate();
-
-        _ = window.DispatcherQueue.TryEnqueue(async () =>
-        {
-            await Task.Delay(guardDelayMs);
-            try { window.Activate(); } catch { /* window may already be closed */ }
-        });
-    }
 }
 
 /// <summary>

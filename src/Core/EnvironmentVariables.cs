@@ -159,6 +159,29 @@ public static class EnvironmentVariables
     public static string ResolveLink(string? stored, string fallback, LinkKind kind)
         => IsValidLink(stored, kind) ? stored!.Trim() : fallback;
 
+    /// <summary>
+    /// A stored address as a label - its host, without the <c>www.</c>, and optionally the
+    /// path after it. For telling the user where a button is about to take them.
+    ///
+    /// <para><b>Derived rather than written beside the button.</b> These addresses are a
+    /// setting (see <see cref="Links"/>), so a label spelled out in XAML is a label that goes
+    /// on saying <c>techpowerup.com</c> after the user has pointed that feature somewhere
+    /// else - which is worse than no label, because it is confidently wrong.</para>
+    ///
+    /// <para>Falls back to the address as given if it won't parse. Nothing here validates -
+    /// that already happened before the value was stored.</para>
+    /// </summary>
+    public static string LinkLabel(string? url, bool includePath = false)
+    {
+        if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri)) return url?.Trim() ?? string.Empty;
+
+        var host = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? uri.Host[4..] : uri.Host;
+        if (!includePath) return host;
+
+        var path = uri.AbsolutePath.TrimEnd('/');
+        return path.Length <= 1 ? host : host + path;
+    }
+
     /// <summary>The sentence a settings field shows when what was typed into it isn't accepted.</summary>
     public static string LinkRejectionReason(LinkKind kind) => kind switch
     {

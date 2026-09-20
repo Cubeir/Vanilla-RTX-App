@@ -599,14 +599,19 @@ public static class ExpImpDel
 /// ConfirmNonResourceImport, parameterized on whichever window is doing the importing.
 /// PackBrowserWindow's Add-pack button/drag-and-drop and MainWindow's .mcpack
 /// file-activation path both wire these in as-is.
+///
+/// <para>Each takes the element the dialog should belong to rather than a window: the pack
+/// browser is an overlay inside MainWindow now, and what a ContentDialog actually needs from
+/// its host is a XamlRoot, a dispatcher and a theme - all three of which any FrameworkElement
+/// in the tree has.</para>
 /// </summary>
 public static class ImportDialogs
 {
-    public static Task<bool> ShowOverwriteDialogAsync(Window window, string packName, string existingPath)
+    public static Task<bool> ShowOverwriteDialogAsync(FrameworkElement host, string packName, string existingPath)
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        window.DispatcherQueue.TryEnqueue(async () =>
+        host.DispatcherQueue.TryEnqueue(async () =>
         {
             try
             {
@@ -620,8 +625,8 @@ public static class ImportDialogs
                     PrimaryButtonText = "Replace",
                     CloseButtonText = "Skip",
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = window.Content.XamlRoot,
-                    RequestedTheme = ((FrameworkElement)window.Content).ActualTheme
+                    XamlRoot = host.XamlRoot,
+                    RequestedTheme = host.ActualTheme
                 };
 
                 var result = await dialog.ShowAsync();
@@ -641,11 +646,11 @@ public static class ImportDialogs
     /// Shown when a pack's manifest has no module of type "resources", or when the type
     /// could not be determined. Defaults to Skip (safe).
     /// </summary>
-    public static Task<bool> ShowNonResourceDialogAsync(Window window, string packName)
+    public static Task<bool> ShowNonResourceDialogAsync(FrameworkElement host, string packName)
     {
         var tcs = new TaskCompletionSource<bool>();
 
-        window.DispatcherQueue.TryEnqueue(async () =>
+        host.DispatcherQueue.TryEnqueue(async () =>
         {
             try
             {
@@ -656,8 +661,8 @@ public static class ImportDialogs
                     PrimaryButtonText = "Import anyway",
                     CloseButtonText = "Skip",
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = window.Content.XamlRoot,
-                    RequestedTheme = ((FrameworkElement)window.Content).ActualTheme
+                    XamlRoot = host.XamlRoot,
+                    RequestedTheme = host.ActualTheme
                 };
 
                 var result = await dialog.ShowAsync();

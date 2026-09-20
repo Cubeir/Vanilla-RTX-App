@@ -1,34 +1,20 @@
-<Window x:Class="Vanilla_RTX_App.Modules.PackBrowser.PackBrowserWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.Modules.PackBrowser"
-        Title="Browse Packs">
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackBrowser.PackBrowserWindow"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:local="using:Vanilla_RTX_App.Modules.PackBrowser"
+                        xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
+                        IsTextScaleFactorEnabled="False">
 
-    <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
-    </Window.SystemBackdrop>
 
     <Grid>
 
         <!-- Light-theme tint overlay -->
-        <Border x:Name="LightThemeOverlay"
-                Grid.ColumnSpan="2"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                IsHitTestVisible="False"
-                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-1">
-            <Border.Background>
-                <SolidColorBrush Color="#24000000" />
-            </Border.Background>
-        </Border>
 
         <!-- ═══════════════════════════════════════════════════
              LOADING SCREEN
         ════════════════════════════════════════════════════ -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,36,0,0"
               Background="Transparent">
             <ProgressRing IsActive="True"
                           Width="100"
@@ -69,9 +55,11 @@
                     <StackPanel>
 
                         <!-- PSA / announcement cards -->
+                        <!-- The right inset clears the frame's close button, which floats
+                             in this corner - see ModuleOverlayChrome. -->
                         <StackPanel x:Name="PackBrowserAnnouncementsPanel"
                                     Spacing="12"
-                                    Margin="0,8,0,8" />
+                                    Margin="0,8,30,8" />
 
                         <!-- Pack list -->
                         <StackPanel x:Name="PackListContainer"
@@ -84,7 +72,6 @@
                 <!-- Empty state overlays the scroll area -->
                 <StackPanel x:Name="EmptyStatePanel"
                             Grid.Row="1"
-                            Margin="0,36,0,0"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Visibility="Collapsed"
@@ -117,6 +104,12 @@
                           MinHeight="92"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Bottom">
+                        <!-- Import activity, on the action bar's top edge.
+                             This is what the titlebar's "extracting ... " line became: the
+                             titlebar belongs to MainWindow now and cannot say anything about
+                             one module. Spanning the bar's full width and sitting on its seam
+                             reads as the bar itself being busy, which is exactly what it is -
+                             the two buttons under it are what the import is running from. -->
                         <Grid.ColumnDefinitions>
                             <!-- Select All -->
                             <ColumnDefinition Width="70" />
@@ -129,6 +122,16 @@
                             <!-- Import -->
                             <ColumnDefinition Width="1*" />
                         </Grid.ColumnDefinitions>
+
+                        <ProgressBar x:Name="ImportProgressBar"
+                                     Grid.ColumnSpan="5"
+                                     Height="3"
+                                     Margin="0,-2,0,0"
+                                     VerticalAlignment="Top"
+                                     IsIndeterminate="True"
+                                     Visibility="Collapsed"
+                                     Canvas.ZIndex="10"
+                                     IsHitTestVisible="False" />
 
                         <DropDownButton x:Name="SelectAll_Button"
                                         Grid.Column="0"
@@ -267,45 +270,5 @@
             </Grid>
         </Grid>
 
-        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
-             always sits on top of whatever the list has scrolled beneath it ══════════════ -->
-        <Grid x:Name="TitleBarHost"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Canvas.ZIndex="100">
-
-            <Border x:Name="TitleBarBackground"
-                    Height="37"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
-                    BorderThickness="0,0,0,6"
-                    CornerRadius="0"
-                    Translation="0,0,32"
-                    IsHitTestVisible="False">
-                <Border.Shadow>
-                    <ThemeShadow />
-                </Border.Shadow>
-            </Border>
-
-            <Border x:Name="TitleBarDragArea"
-                    Height="32"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="Transparent"
-                    IsHitTestVisible="False" />
-
-            <Grid HorizontalAlignment="Center"
-                  VerticalAlignment="Top"
-                  Margin="0,-2,0,0">
-                <TextBlock x:Name="WindowTitle"
-                           Text=""
-                           Margin="0,7,0,5"
-                           VerticalAlignment="Center"
-                           IsTextScaleFactorEnabled="False"
-                           IsHitTestVisible="False" />
-            </Grid>
-        </Grid>
     </Grid>
-</Window>
+</overlays:ModuleOverlay>

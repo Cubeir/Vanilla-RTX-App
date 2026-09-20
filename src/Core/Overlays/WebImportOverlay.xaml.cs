@@ -104,6 +104,16 @@ public sealed partial class WebImportOverlay : UserControl
     /// "done" means for this particular site (e.g. when to click Done) - pass an empty string for
     /// a plain page viewer with nothing to guide.
     /// </summary>
+    /// <summary>True while the page is up. Its host reads this to get out of its way.</summary>
+    public bool IsOpen => _isOpen;
+
+    /// <summary>
+    /// Raised whenever this stops being on screen, by either close path. A host that dressed
+    /// itself differently while this was up - the feature modules hide their own close button,
+    /// which would otherwise sit on top of this one's - uses it to put itself back.
+    /// </summary>
+    public event EventHandler? Dismissed;
+
     public void Show(
         string url,
         string title,
@@ -156,6 +166,7 @@ public sealed partial class WebImportOverlay : UserControl
     {
         if (!_isOpen) return;
         _isOpen = false;
+        Dismissed?.Invoke(this, EventArgs.Empty);
 
         IsHitTestVisible = false;
         AnimateOpacity(0.0, () =>
@@ -166,10 +177,9 @@ public sealed partial class WebImportOverlay : UserControl
     }
 
     /// <summary>
-    /// The host window's own Closed handler should call this. The Done button is the normal
-    /// close path, but nothing stops a user from closing the whole window while still mid-browse -
-    /// the system titlebar's close button stays reachable the entire time this overlay is open
-    /// (see the XAML comment on <c>Panel</c>'s margin). Without this, a download that landed
+    /// The host module's own teardown should call this. The Done button is the normal close
+    /// path, but nothing stops a user from closing the app, or the module, while still
+    /// mid-browse. Without this, a download that landed
     /// seconds before that would sit in the staging folder forever, never imported and never
     /// cleaned up - silently losing exactly the file the user just fetched. No fade-out here; the
     /// window is already on its way down.
@@ -178,6 +188,7 @@ public sealed partial class WebImportOverlay : UserControl
     {
         if (!_isOpen) return;
         _isOpen = false;
+        Dismissed?.Invoke(this, EventArgs.Empty);
         _ = FinalizeImportsAsync();
     }
 

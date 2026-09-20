@@ -298,6 +298,25 @@
             </Grid>
         </Border>
 
+        <!-- ══ Module titlebar strip ════════════════════════════════════════
+             Empty, and normally invisible. A feature module that owns titlebar buttons -
+             RTX Reactor's dev tools, the BetterRTX manager's cache refresh - has them moved
+             in here while its overlay is open and moved back out when it closes, so they
+             read as a continuation of the three above rather than as a second cluster.
+
+             The 132px inset is the button strip's own width: TitleBarActions' -2 margin,
+             three 40px buttons and two separators at 1px with 2px either side, which comes
+             to 126, plus the same 6px gap TitleBarDragArea leaves. Those two numbers move
+             together - a titlebar button added or removed changes both.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="ModuleTitleBarActions"
+                Margin="132,-2,16,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Height="34"
+                Width="Auto"
+                Visibility="Collapsed" />
+
         </Grid>
         <!-- /TitleBarLayer -->
 
@@ -1471,6 +1490,21 @@
         <core:MarkdownOverlay x:Name="DocsOverlay"
                                Grid.ColumnSpan="2"
                                Canvas.ZIndex="998" />
+
+        <!-- ══ Feature modules ══════════════════════════════════════════════
+             Where RTX Reactor, the pack browser, the pack updater and the three managers are
+             shown. One at a time, and only while open: the host is empty the rest of the time
+             (see MainWindow.ModuleOverlays.cs for why the lifecycle is a window's lifecycle
+             rather than a hidden-but-alive one).
+
+             Below the two document overlays in z on purpose. Help and Bugs stay live while a
+             module is open - they are the two things WindowControlsManager never disables -
+             and reading a document must not cost the user the module they had open, so those
+             draw over a module instead of replacing it.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Grid x:Name="ModuleOverlayHost"
+              Grid.ColumnSpan="2"
+              Canvas.ZIndex="997" />
 
         <!-- The settings panel - same placement rules as the markdown overlay above (starts
              36px down so it sits flush under the titlebar, below it in z so the titlebar's

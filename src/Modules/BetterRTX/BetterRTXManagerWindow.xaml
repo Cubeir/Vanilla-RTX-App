@@ -1,29 +1,16 @@
-<Window x:Class="Vanilla_RTX_App.Modules.BetterRTX.BetterRTXManagerWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="using:Vanilla_RTX_App.Modules.BetterRTX"
-        xmlns:core="using:Vanilla_RTX_App.Core.Overlays"
-        Title="BetterRTX Manager">
-    <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
-    </Window.SystemBackdrop>
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.BetterRTX.BetterRTXManagerWindow"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:local="using:Vanilla_RTX_App.Modules.BetterRTX"
+                        xmlns:core="using:Vanilla_RTX_App.Core.Overlays"
+                        xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
+                        IsTextScaleFactorEnabled="False">
+
     <Grid>
-        <Border x:Name="LightThemeOverlay"
-                Grid.ColumnSpan="2"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                IsHitTestVisible="False"
-                Visibility="{ThemeResource LightThemeBackgroundVisibility}"
-                Canvas.ZIndex="-1">
-            <Border.Background>
-                <SolidColorBrush Color="#24000000" />
-            </Border.Background>
-        </Border>
 
         <!-- Loading Screen -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
-              Margin="0,36,0,0"
               Background="Transparent">
             <StackPanel VerticalAlignment="Center"
                         HorizontalAlignment="Center"
@@ -122,7 +109,6 @@
             <ScrollViewer x:Name="PresetScrollViewer"
                           Grid.Row="1"
                           Padding="20,0,24,0"
-                          Margin="0,36,0,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
@@ -172,9 +158,11 @@
                     <!-- PSA cards. Horizontal margins are the ScrollViewer's; collapsed until
                          something lands in it, or its own margins would show up as a gap
                          between the notice above and the list below. -->
+                    <!-- The right inset clears the frame's close button, which floats in
+                         this corner - see ModuleOverlayChrome. -->
                     <StackPanel x:Name="BetterRTXAnnouncementsPanel"
                                 Spacing="10"
-                                Margin="0,12,0,0"
+                                Margin="0,12,30,0"
                                 Visibility="Collapsed" />
                     <!-- Preset list -->
                     <StackPanel x:Name="PresetListContainer"
@@ -187,7 +175,6 @@
             <!-- Empty State -->
             <StackPanel x:Name="EmptyStatePanel"
                         Grid.Row="1"
-                        Margin="0,36,0,0"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         Visibility="Collapsed"
@@ -293,7 +280,10 @@
                                Fill="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                IsHitTestVisible="False" />
 
-                    <HyperlinkButton Grid.Column="2"
+                    <!-- Both the label and the tooltip name the address this actually opens,
+                         which is a setting - see BetterRTXManagerWindow's constructor. -->
+                    <HyperlinkButton x:Name="CreatePresetLink"
+                                     Grid.Column="2"
                                      HorizontalAlignment="Stretch"
                                      VerticalAlignment="Stretch"
                                      HorizontalContentAlignment="Center"
@@ -301,8 +291,7 @@
                                      CornerRadius="0"
                                      BorderThickness="0"
                                      IsTextScaleFactorEnabled="False"
-                                     Click="CreatePresetButton_Click"
-                                     ToolTipService.ToolTip="Browse bedrock.graphics/creator right here - build a preset and it will be imported automatically when you close it.">
+                                     Click="CreatePresetButton_Click">
                         <StackPanel HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Spacing="4">
@@ -320,7 +309,7 @@
                                            VerticalAlignment="Center"
                                            IsTextScaleFactorEnabled="False" />
                             </StackPanel>
-                            <TextBlock Text="Browse bedrock.graphics/creator"
+                            <TextBlock x:Name="CreatePresetTargetText"
                                        FontSize="11"
                                        Opacity="0.67"
                                        FontWeight="Medium"
@@ -354,94 +343,52 @@
             </Border>
         </Grid>
 
-        <!-- ══ Titlebar - floating overlay, same structure as MainWindow's, painted last so it
-             always sits on top of whatever the list has scrolled beneath it ══════════════ -->
-        <Grid x:Name="TitleBarHost"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Top"
-              Canvas.ZIndex="100">
-
-            <Border x:Name="TitleBarBackground"
-                    Height="37"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource CardBackgroundFillColorSecondary}"
-                    BorderBrush="{ThemeResource HyperlinkButtonBorderThemeBrush}"
-                    BorderThickness="0,0,0,6"
-                    CornerRadius="0"
-                    Translation="0,0,32"
-                    IsHitTestVisible="False">
-                <Border.Shadow>
-                    <ThemeShadow />
-                </Border.Shadow>
-            </Border>
-
-            <!-- Drag area skips the left ~48px where the refresh button below lives, same
-                 exclusion MainWindow's own drag area makes for its titlebar button cluster. -->
-            <Border x:Name="TitleBarDragArea"
-                    Height="32"
-                    Margin="48,-1,0,0"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Top"
-                    Background="Transparent"
-                    IsHitTestVisible="False" />
-
-            <Grid HorizontalAlignment="Center"
-                  VerticalAlignment="Top"
-                  Margin="0,-2,0,0">
-                <TextBlock x:Name="WindowTitle"
-                           Text=""
-                           Margin="0,7,0,5"
-                           VerticalAlignment="Center"
-                           IsTextScaleFactorEnabled="False"
-                           IsHitTestVisible="False" />
+        <!-- ══ Titlebar Actions ═══════════════════════════════════════════════
+             Declared here so the button's x:Name field and Click handler belong to this
+             class, but it never renders here: MainWindow moves the whole Border into its own
+             titlebar for as long as this module is open, where it reads as a continuation of
+             the three buttons already there. See ModuleOverlay.TitleBarStrip.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="TitleBarActions"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Height="34"
+                Width="Auto">
+            <Grid Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="1">
+                <Button x:Name="RefreshButton"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Width="40"
+                        Height="35"
+                        CornerRadius="0"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="RefreshButton_Click"
+                        IsTextScaleFactorEnabled="False"
+                        ToolTipService.ToolTip="Resets cache, clearing all imported presets and downloaded files from BetterRTX API, forcing a refetch.
+                        &#x0a;&#x0a;Note: This happens automatically whenever Minecraft is updated (always) or periodically whenever changes in the API are detected (possibly, but not guranteed), hence this button exists for you to trigger a manual refresh in case BetterRTX delievers its updates with a delay or the API pretends to remain the same after rolling out updates.
+                        &#x0a;&#x0a;Note 2: This button won't clear your Default RTX preset, which is backed up upon your first attempt at installing a preset. Only game updates can trigger a reset of Default preset, so ultimately the app can pick up the new defaults fresh from the new update of your game.">
+                    <Grid>
+                        <FontIcon x:Name="RefreshIcon"
+                                  Glyph="&#xE72C;"
+                                  FontSize="14"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  IsTextScaleFactorEnabled="False" />
+                        <TextBlock x:Name="RefreshCountdownText"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"
+                                   IsTextScaleFactorEnabled="False" />
+                    </Grid>
+                </Button>
             </Grid>
-
-            <!-- ══ Titlebar Actions - restyled to match MainWindow/Alchitex's titlebar button
-                 convention (SubtleButtonStyle, 40x35, CornerRadius 0). Just the one button here,
-                 so no separator. ══════════════════════════════════════════ -->
-            <Border x:Name="TitleBarActions"
-                    Margin="-2,-2,0,0"
-                    VerticalAlignment="Top"
-                    HorizontalAlignment="Left"
-                    Height="34"
-                    Width="Auto">
-                <Grid Background="Transparent"
-                      BorderBrush="Transparent"
-                      BorderThickness="1">
-                    <Button x:Name="RefreshButton"
-                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                            Style="{ThemeResource SubtleButtonStyle}"
-                            Width="40"
-                            Height="35"
-                            CornerRadius="0"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
-                            Click="RefreshButton_Click"
-                            IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Resets cache, clearing all imported presets and downloaded files from BetterRTX API, forcing a refetch.
-                            &#x0a;&#x0a;Note: This happens automatically whenever Minecraft is updated (always) or periodically whenever changes in the API are detected (possibly, but not guranteed), hence this button exists for you to trigger a manual refresh in case BetterRTX delievers its updates with a delay or the API pretends to remain the same after rolling out updates.
-                            &#x0a;&#x0a;Note 2: This button won't clear your Default RTX preset, which is backed up upon your first attempt at installing a preset. Only game updates can trigger a reset of Default preset, so ultimately the app can pick up the new defaults fresh from the new update of your game.">
-                        <Grid>
-                            <FontIcon x:Name="RefreshIcon"
-                                      Glyph="&#xE72C;"
-                                      FontSize="14"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      IsTextScaleFactorEnabled="False" />
-                            <TextBlock x:Name="RefreshCountdownText"
-                                       FontSize="14"
-                                       FontWeight="SemiBold"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       Visibility="Collapsed"
-                                       IsTextScaleFactorEnabled="False" />
-                        </Grid>
-                    </Button>
-                </Grid>
-            </Border>
-        </Grid>
+        </Border>
 
         <core:WebImportOverlay x:Name="WebImportOverlay" />
     </Grid>
-</Window>
+</overlays:ModuleOverlay>

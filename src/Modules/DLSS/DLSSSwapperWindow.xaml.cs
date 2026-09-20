@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI;
 using Microsoft.UI.Text;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -15,7 +14,6 @@ using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Core.Overlays;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
-using WinUIEx;
 using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.DLSS;
@@ -26,9 +24,8 @@ namespace Vanilla_RTX_App.Modules.DLSS;
 /// .dll or .zip gets into it, and the elevated swap itself - lives in <see cref="DLSSSwapper"/>.
 /// This holds one and renders it.
 /// </summary>
-public sealed partial class DLSSSwapperWindow : Window
+public sealed partial class DLSSSwapperWindow : ModuleOverlay
 {
-    private readonly AppWindow _appWindow;
     private bool _isClosing;
 
     private readonly DLSSSwapper _swapper = new();
@@ -41,54 +38,27 @@ public sealed partial class DLSSSwapperWindow : Window
     /// </summary>
     private bool _swapInProgress;
 
-    public bool OperationSuccessful { get; private set; } = false;
-    public string StatusMessage { get; private set; } = "";
 
     public DLSSSwapperWindow()
     {
         this.InitializeComponent();
+        AttachChrome();
 
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
+        ShowBrowseTarget();
 
-        _appWindow = this.AppWindow;
+        // The page viewer covers this whole module and puts its own Done button in the corner
+        // the frame's close button sits in, so the frame's steps aside for as long as it is up.
+        WebImportOverlay.Dismissed += (_, _) => IsCloseButtonVisible = true;
 
-        if (_appWindow.TitleBar != null)
-        {
-            _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        }
-
-        ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ThemeService.ResolveInitialTheme());
-
-        // The centered title dims with the window, same as the system's caption buttons
-        // beside it - this window has no titlebar controls of its own to include.
-        TitleBarFocus.Attach(this, WindowTitle);
-
-        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.dlss.ico"));
-
-        this.Closed += DLSSSwapperWindow_Closed;
-
-        if (Content is FrameworkElement root)
-            root.Loaded += DLSSSwapperWindow_Loaded;
+        this.Loaded += DLSSSwapperWindow_Loaded;
     }
     private async void DLSSSwapperWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (Content is FrameworkElement root)
-                root.Loaded -= DLSSSwapperWindow_Loaded;
+            this.Loaded -= DLSSSwapperWindow_Loaded;
 
             if (_isClosing) return;
-
-            SetTitleBar(TitleBarDragArea);
-
-            var text = Persistent.IsTargetingPreview ? "Minecraft Preview" : "Minecraft Release";
-            WindowTitle.Text = $"Swap DLSS version for {text}";
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -100,28 +70,17 @@ public sealed partial class DLSSSwapperWindow : Window
         }
     }
 
-    private void DLSSSwapperWindow_Closed(object sender, WindowEventArgs e)
+    protected override void OnClosing()
     {
         if (_isClosing) return;
         _isClosing = true;
 
-        if (Content is FrameworkElement root)
-            root.Loaded -= DLSSSwapperWindow_Loaded;
+        this.Loaded -= DLSSSwapperWindow_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
 
         WebImportOverlay.CloseIfOpen();
-
-        ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= DLSSSwapperWindow_Closed;
-    }
-
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
     }
 
     // ======================= Initialization =======================
@@ -238,7 +197,7 @@ public sealed partial class DLSSSwapperWindow : Window
 
         _scanCancellationTokenSource?.Cancel();
 
-        var hWnd = WindowNative.GetWindowHandle(this);
+        var hWnd = WindowHandle;
         var isPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
         var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
 
@@ -583,7 +542,7 @@ public sealed partial class DLSSSwapperWindow : Window
             picker.FileTypeFilter.Add(".dll");
             picker.FileTypeFilter.Add(".zip");
 
-            var hWnd = WindowNative.GetWindowHandle(this);
+            var hWnd = WindowHandle;
             InitializeWithWindow.Initialize(picker, hWnd);
 
             var files = await picker.PickMultipleFilesAsync();
@@ -595,6 +554,20 @@ public sealed partial class DLSSSwapperWindow : Window
         {
             Trace.WriteLine($"[DLSS] Error adding file: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Names the address the Download button opens, in its own label and its tooltip. Read
+    /// once at construction from the same <see cref="Links"/> accessor the click uses, so the
+    /// two cannot say different things - which is exactly what they did while the label was a
+    /// literal in XAML and the address was a setting.
+    /// </summary>
+    private void ShowBrowseTarget()
+    {
+        DownloadDllsTargetText.Text = $"Browse {EnvironmentVariables.LinkLabel(Links.DlssProvider)}";
+        ToolTipService.SetToolTip(DownloadDllsButton,
+            $"Browse {EnvironmentVariables.LinkLabel(Links.DlssProvider, includePath: true)} right here - " +
+            "anything you download will be imported automatically when you close it.");
     }
 
     // ======================= Browse for DLSS files (WebImportOverlay) =======================
@@ -613,6 +586,8 @@ public sealed partial class DLSSSwapperWindow : Window
     /// </summary>
     private void DownloadDllsButton_Click(object sender, RoutedEventArgs e)
     {
+        IsCloseButtonVisible = false;
+
         WebImportOverlay.Show(
             url: Links.DlssProvider,
             title: "Download DLSS files",
@@ -685,6 +660,7 @@ public sealed partial class DLSSSwapperWindow : Window
             {
                 OperationSuccessful = true;
                 StatusMessage = $"Swapped to DLSS {dllData.DisplayVersion}";
+                BlinkHard();
 
                 await _swapper.CacheInstalledDllAsync();
                 await LoadDllsAsync();

@@ -22,9 +22,10 @@
          top of the window's own acrylic backdrop. There is nothing behind this panel but the live
          window content it's supposed to be replacing, so anything less than fully opaque let that
          content bleed straight through and rendered as garbled overlapping text. -->
+    <!-- No top inset of its own: both hosts are ModuleOverlays, which already start below
+         the titlebar, and a second 36px here would sit this that far down inside them. -->
     <Border x:Name="Panel"
             Background="{ThemeResource SolidBackgroundFillColorBase}"
-            Margin="0,36,0,0"
             Translation="0,0,64">
         <Border.Shadow>
             <ThemeShadow />

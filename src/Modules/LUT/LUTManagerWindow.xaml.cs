@@ -3,38 +3,35 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Core.Overlays;
 using WinRT.Interop;
-using WinUIEx;
 using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.LUT;
 
 /// <summary>
-/// The RTX LUT manager's window: chrome, the preset dropdown, the crossfading preview image
+/// The RTX LUT manager's overlay: chrome, the preset dropdown, the crossfading preview image
 /// and the install button. Everything it does to actual files - preset discovery, the backup
 /// of the game's own three files, detecting what is installed and the elevated write that
 /// installs a preset - lives in <see cref="LUTManager"/>. This holds one and renders it.
 /// </summary>
-public sealed partial class LUTManagerWindow : Window
+public sealed partial class LUTManagerWindow : ModuleOverlay
 {
-    private readonly AppWindow _appWindow;
     private bool _isClosing;
 
     private readonly LUTManager _manager = new();
 
     /// <summary>
-    /// Which edition this window is for, taken once at construction rather than read live.
-    /// The defaults folder, the game path and the elevated write all belong to the edition
-    /// the window opened under, and MainWindow disables the Preview toggle for as long as
-    /// this window is up - so the two can't diverge, and the snapshot is what keeps that from
-    /// being load-bearing.
+    /// Which edition this is for, taken once at construction rather than read live. The
+    /// defaults folder, the game path and the elevated write all belong to the edition it
+    /// opened under, and MainWindow disables the Preview toggle for as long as it is up - so
+    /// the two can't diverge, and the snapshot is what keeps that from being load-bearing.
     /// </summary>
     private readonly bool _isPreview = Persistent.IsTargetingPreview;
 
@@ -61,57 +58,28 @@ public sealed partial class LUTManagerWindow : Window
     /// </summary>
     private bool _installInProgress;
 
-    public bool OperationSuccessful { get; private set; } = false;
-    public string StatusMessage { get; private set; } = "";
 
     public LUTManagerWindow()
     {
         this.InitializeComponent();
+        AttachChrome();
 
-        var manager = WinUIEx.WindowManager.Get(this);
-        manager.MinWidth = WindowMinSizeX;
-        manager.MinHeight = WindowMinSizeY;
-        manager.IsResizable = true;
-        manager.IsMaximizable = true;
-
-        _appWindow = this.AppWindow;
-
-        if (_appWindow.TitleBar != null)
-        {
-            _appWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            _appWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Standard;
-        }
-
+        // The install button's bevel is a ThemeService colour rather than a ThemeResource
+        // binding, so it has to be repainted by hand on every theme change - the same deal as
+        // the settings panel's path seams.
         ThemeService.ThemeChanged += ApplyTheme;
-        ApplyTheme(ThemeService.ResolveInitialTheme());
-
-        // The centered title dims with the window, same as the system's caption buttons
-        // beside it - this window has no titlebar controls of its own to include.
-        TitleBarFocus.Attach(this, WindowTitle);
-
-        this.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "icons", "vrtx.lut.ico"));
-
         InstallButton.IsEnabledChanged += (s, e) => ApplyInstallButtonBevel(_isPresetInstalled);
 
-        this.Closed += LUTManagerWindow_Closed;
-
-        if (Content is FrameworkElement root)
-            root.Loaded += LUTManagerWindow_Loaded;
+        this.Loaded += LUTManagerWindow_Loaded;
     }
 
     private async void LUTManagerWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (Content is FrameworkElement root)
-                root.Loaded -= LUTManagerWindow_Loaded;
+            this.Loaded -= LUTManagerWindow_Loaded;
 
             if (_isClosing) return;
-
-            SetTitleBar(TitleBarDragArea);
-
-            var target = _isPreview ? "Minecraft Preview" : "Minecraft Release";
-            WindowTitle.Text = $"RTX LUT manager - {target}";
 
             await InitializeAsync();
             if (_isClosing) return;
@@ -123,28 +91,20 @@ public sealed partial class LUTManagerWindow : Window
         }
     }
 
-    private void LUTManagerWindow_Closed(object sender, WindowEventArgs e)
+    protected override void OnClosing()
     {
         if (_isClosing) return;
         _isClosing = true;
 
-        if (Content is FrameworkElement root)
-            root.Loaded -= LUTManagerWindow_Loaded;
+        this.Loaded -= LUTManagerWindow_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
 
         ThemeService.ThemeChanged -= ApplyTheme;
-        this.Closed -= LUTManagerWindow_Closed;
     }
 
-    private void ApplyTheme(ElementTheme theme)
-    {
-        if (this.Content is FrameworkElement root)
-            root.RequestedTheme = theme;
-        ThemeService.ApplyTitleBarColors(_appWindow, theme);
-        ApplyInstallButtonBevel(_isPresetInstalled);
-    }
+    private void ApplyTheme(ElementTheme theme) => ApplyInstallButtonBevel(_isPresetInstalled);
 
     // -------------------------------------------------------------------------
     // Initialization
@@ -282,7 +242,7 @@ public sealed partial class LUTManagerWindow : Window
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
     {
         _scanCancellationTokenSource?.Cancel();
-        var hWnd = WindowNative.GetWindowHandle(this);
+        var hWnd = WindowHandle;
         var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd);
 
         if (path != null)
@@ -569,6 +529,7 @@ public sealed partial class LUTManagerWindow : Window
             {
                 OperationSuccessful = true;
                 StatusMessage = $"Installed LUT preset: {preset.Name}";
+                BlinkHard();
                 Trace.WriteLine($"[LUTManager] Preset [{preset.Name}] installed");
 
                 _installedPreset = await _manager.DetectCurrentPresetAsync();
@@ -583,6 +544,7 @@ public sealed partial class LUTManagerWindow : Window
             else
             {
                 Trace.WriteLine($"[LUTManager] Install of [{preset.Name}] failed or was cancelled");
+                Blink(good: false);
             }
         }
         catch (Exception ex)
