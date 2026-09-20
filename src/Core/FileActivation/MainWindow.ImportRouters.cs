@@ -34,7 +34,7 @@ public sealed partial class MainWindow
     /// up has to ask here. Used by <see cref="Core.FileActivation.FileActivationRouter"/> to
     /// hand a file activation to the window that owns that file type.</para>
     /// </summary>
-    internal object? FindChildWindow(Type windowType) =>
+    internal object? FindOpenModule(Type windowType) =>
         _openModules.FirstOrDefault(m => m.GetType() == windowType);
 
     /// <summary>
@@ -70,16 +70,16 @@ public sealed partial class MainWindow
     /// (<see cref="Core.FileActivation.IFileActivationTarget"/>).
     ///
     /// <para>This never <i>opens</i> one on the user's behalf: a window appearing on top of a
-    /// window nobody asked for, and PackBrowserWindow's own "no Minecraft data location yet"
+    /// window nobody asked for, and PackBrowserOverlay's own "no Minecraft data location yet"
     /// fallback putting a folder picker in front of them unprompted - reachable here because
     /// MainWindow_Loaded resolves that cache asynchronously and this can run first.</para>
     ///
-    /// <para>Calls ExpImpDel directly instead - the same utility PackBrowserWindow's Add-pack
+    /// <para>Calls ExpImpDel directly instead - the same utility PackBrowserOverlay's Add-pack
     /// button and drag-and-drop both reach downstream - and reports through the same Log() the
     /// rest of the window uses, one pack at a time, no windows and no pickers either way.</para>
     ///
     /// Per-file messages come straight from ExpImpDel.ImportStatusChanged rather than a
-    /// generic pass/fail here - PackBrowserWindow already subscribes to the exact same event
+    /// generic pass/fail here - PackBrowserOverlay already subscribes to the exact same event
     /// for its own status text, so this reuses the same wording a manual import would show
     /// ("duplicate already installed", "not identified as a resource pack", etc.) instead of
     /// inventing a second, vaguer vocabulary for the headless path.
@@ -107,9 +107,9 @@ public sealed partial class MainWindow
             void OnStatus(string message) => Log(message, LogLevel.Import);
             ExpImpDel.ImportStatusChanged += OnStatus;
 
-            // Same confirmation dialogs PackBrowserWindow shows for a non-resource/duplicate
+            // Same confirmation dialogs PackBrowserOverlay shows for a non-resource/duplicate
             // pack - ConfirmOverwrite/ConfirmNonResourceImport are static and global, so save
-            // and restore whatever PackBrowserWindow (if open) left there rather than
+            // and restore whatever PackBrowserOverlay (if open) left there rather than
             // clobbering it for the duration of this import.
             var previousConfirmOverwrite = ExpImpDel.ConfirmOverwrite;
             var previousConfirmNonResourceImport = ExpImpDel.ConfirmNonResourceImport;
@@ -137,10 +137,10 @@ public sealed partial class MainWindow
                 : $"Imported {succeeded} out of {paths.Count} pack{(paths.Count == 1 ? "" : "s")} - Use '{BrowsePacksButtonText.Text}' menu to import it manually, and see what it says.",
                 succeeded == paths.Count ? LogLevel.Success : LogLevel.Warning);
 
-            // If the user already has PackBrowserWindow open, its list was built before this
+            // If the user already has PackBrowserOverlay open, its list was built before this
             // import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var packBrowser in _openModules.OfType<Modules.PackBrowser.PackBrowserWindow>())
+                foreach (var packBrowser in _openModules.OfType<Modules.PackBrowser.PackBrowserOverlay>())
                     await packBrowser.LoadPacksAsync();
         }
         finally
@@ -166,8 +166,8 @@ public sealed partial class MainWindow
     /// <summary>
     /// Entry point for .rtpack file-type-association activation (see App.xaml.cs) - same
     /// idea as ImportPackFilesAsync, just for BetterRTX custom presets. Does not open
-    /// BetterRTXManagerWindow: importing a preset into the app's local cache is handled by
-    /// BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync, which never shows a window at
+    /// BetterRTXManagerOverlay: importing a preset into the app's local cache is handled by
+    /// BetterRTXManagerOverlay.ImportPresetFilesHeadlessAsync, which never shows a window at
     /// all (see its own remarks for why that's safe here specifically). Applying an imported
     /// preset to the game still only ever happens through the window itself, unaffected by
     /// this - this only gets a preset into the list waiting there next time it's opened.
@@ -204,10 +204,10 @@ public sealed partial class MainWindow
                 : $"Imported {succeeded} out of {total} BetterRTX preset{(total == 1 ? "" : "s")} - Use BetterRTX Manager's own Add button to import manually instead.",
                 succeeded == total ? LogLevel.Success : LogLevel.Warning);
 
-            // If the user already has BetterRTXManagerWindow open, its list was built before
+            // If the user already has BetterRTXManagerOverlay open, its list was built before
             // this import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var managerWindow in _openModules.OfType<Modules.BetterRTX.BetterRTXManagerWindow>())
+                foreach (var managerWindow in _openModules.OfType<Modules.BetterRTX.BetterRTXManagerOverlay>())
                     await managerWindow.RefreshLocalPresetsAsync();
         }
         finally

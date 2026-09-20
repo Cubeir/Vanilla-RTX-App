@@ -46,18 +46,18 @@ internal class DownloadQueueItem
 /// downloading, importing, hashing and the elevated install - lives in
 /// <see cref="BetterRTXManager"/>. This holds one and renders it.
 /// </summary>
-public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileActivation.IFileActivationTarget
+public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileActivation.IFileActivationTarget
 {
     private bool _isClosing;
 
     private readonly BetterRTXManager _manager = new();
 
     /// <summary>
-    /// Which edition this window is for, taken once at construction rather than read live:
+    /// Which edition this module is for, taken once at construction rather than read live:
     /// the cache folder, the Default backup and the elevated write all belong to the edition
     /// it opened under, and a mid-session flip would leave them pointing at different games.
-    /// MainWindow disables the Preview toggle while this window is up, so the snapshot is
-    /// what keeps that from being load-bearing. AlchitexWindow does the same.
+    /// MainWindow disables the Preview toggle while this module is up, so the snapshot is
+    /// what keeps that from being load-bearing. AlchitexOverlay does the same.
     /// </summary>
     private readonly bool _isPreview = Persistent.IsTargetingPreview;
 
@@ -92,7 +92,7 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
     private bool _applyInProgress;
 
 
-    public BetterRTXManagerWindow()
+    public BetterRTXManagerOverlay()
     {
         this.InitializeComponent();
 
@@ -105,21 +105,17 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
 
         ShowBrowseTarget();
 
-        // The page viewer covers this whole module and puts its own Done button in the corner
-        // the frame's close button sits in, so the frame's steps aside for as long as it is up.
-        WebImportOverlay.Dismissed += (_, _) => IsCloseButtonVisible = true;
-
-        this.Loaded += BetterRTXManagerWindow_Loaded;
+        this.Loaded += BetterRTXManagerOverlay_Loaded;
     }
 
     /// <summary>The cache-refresh button, which lives in MainWindow's titlebar while this is open.</summary>
     protected internal override FrameworkElement? TitleBarStrip => TitleBarActions;
 
-    private async void BetterRTXManagerWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void BetterRTXManagerOverlay_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            this.Loaded -= BetterRTXManagerWindow_Loaded;
+            this.Loaded -= BetterRTXManagerOverlay_Loaded;
 
             if (_isClosing) return;
 
@@ -145,7 +141,7 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
         if (_isClosing) return;
         _isClosing = true;
 
-        this.Loaded -= BetterRTXManagerWindow_Loaded;
+        this.Loaded -= BetterRTXManagerOverlay_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
@@ -219,7 +215,7 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
             BetterRTXManager.DefaultBackupState.BackupUnverifiable =>
                 "The app has a partial backup of your original RTX shader files, and it no longer matches what's in your game - which means the game is running shaders that aren't its own. " +
                 "Finishing the backup from those files would record somebody else's preset as your defaults permanently, so the app won't, and installing presets is disabled.\n\n" +
-                "Repair or reinstall Minecraft from the Xbox app to put its original files back, then reopen this window. Importing presets still works.",
+                "Repair or reinstall Minecraft from the Xbox app to put its original files back, then reopen this module. Importing presets still works.",
 
             _ =>
                 "The app couldn't write a backup of your original RTX shader files, so installing presets is disabled - without a backup there would be no way back from one. " +
@@ -1034,7 +1030,7 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
 
     /// <summary>
     /// One 3px half of the "fake split button" seam between the preset button and its delete
-    /// button - the same hand-written pattern this window's own "Create your own preset" /
+    /// button - the same hand-written pattern this module's own "Create your own preset" /
     /// "Add customized preset" pair uses directly in XAML via
     /// <c>{ThemeResource FakeSplitButtonDarkBorderColor}</c>. That binding auto-updates on theme
     /// change for free; built from code (these rows are assembled at runtime, one per preset) it
@@ -1108,8 +1104,6 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
     /// </summary>
     private void CreatePresetButton_Click(object sender, RoutedEventArgs e)
     {
-        IsCloseButtonVisible = false;
-
         WebImportOverlay.Show(
             url: Links.BetterRtxCreator,
             title: "Create your own preset",
@@ -1405,9 +1399,9 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
     /// <summary>
     /// Reloads and redisplays the local presets list - the same pair of calls
     /// ImportCustomPresetsAsync makes after its own import loop. Exposed so MainWindow can
-    /// call it on an already-open manager window once a headless .rtpack file-activation
+    /// call it on an already-open manager once a headless .rtpack file-activation
     /// import lands (see MainWindow.ImportBetterRTXPresetFilesAsync,
-    /// ImportPresetFilesHeadlessAsync above) - otherwise this window's list would keep
+    /// ImportPresetFilesHeadlessAsync above) - otherwise this module's list would keep
     /// showing what was installed before that import until closed and reopened.
     /// </summary>
     internal async Task RefreshLocalPresetsAsync()
@@ -1430,7 +1424,7 @@ public sealed partial class BetterRTXManagerWindow : ModuleOverlay, Core.FileAct
     }
 
     /// <summary>
-    /// Imports presets handed over by a double-click in Explorer, through this window rather
+    /// Imports presets handed over by a double-click in Explorer, through this module rather
     /// than MainWindow - see <see cref="Core.FileActivation.IFileActivationTarget"/>.
     ///
     /// <para>Deliberately the same call drag-and-drop and the Add button make, so an

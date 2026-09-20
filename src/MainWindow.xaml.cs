@@ -331,7 +331,7 @@ public sealed partial class MainWindow : Window
         // TitleBarFocus for why that beats naming each button here. The centered
         // "Vanilla RTX App" title is deliberately NOT included: it's the app's identity,
         // and it stays at full strength whether the window is focused or not.
-        TitleBarFocus.Attach(this, TitleBarActions, ModuleTitleBarActions);
+        TitleBarFocus.Attach(this, TitleBarActions, ModuleTitleBarActions, ModuleTitleBarSeparator, ModuleReturnButton, ModuleReturnSeparator);
 
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)
@@ -1205,7 +1205,7 @@ public sealed partial class MainWindow : Window
 
         // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
 
-        OpenModule(new Modules.PackBrowser.PackBrowserWindow(), ToDisable, _unused =>
+        OpenModule(new Modules.PackBrowser.PackBrowserOverlay(), ToDisable, _unused =>
         {
             if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
@@ -1792,7 +1792,7 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
 
-        OpenModule(new Modules.PackUpdater.PackUpdaterWindow(this), ToDisable, _unused =>
+        OpenModule(new Modules.PackUpdater.PackUpdaterOverlay(this), ToDisable, _unused =>
         {
             // The cache glyph used to be re-derived by hand here, and at startup, and would have
             // owed a third copy at every future cache-touching site. It now follows
@@ -1805,7 +1805,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton", "ResetButton"];
 
-        OpenModule(new Modules.BetterRTX.BetterRTXManagerWindow(), ToDisable, overlay =>
+        OpenModule(new Modules.BetterRTX.BetterRTXManagerOverlay(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.BetterRTX);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
@@ -1815,7 +1815,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton", "ResetButton"];
 
-        OpenModule(new Modules.DLSS.DLSSSwapperWindow(), ToDisable, overlay =>
+        OpenModule(new Modules.DLSS.DLSSSwapperOverlay(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.DLSS);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
@@ -1825,7 +1825,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton", "ResetButton"];
 
-        OpenModule(new Modules.LUT.LUTManagerWindow(), ToDisable, overlay =>
+        OpenModule(new Modules.LUT.LUTManagerOverlay(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.LUT);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
@@ -1843,7 +1843,7 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
             {
-                Log($"RTX Reactor adds proper RTX support to texture packs, it works best on packs tagged as {PackBrowserWindow.AlchitexCandidateTag}.", LogLevel.Alchitex);
+                Log($"RTX Reactor adds proper RTX support to texture packs, it works best on packs tagged as {PackBrowserOverlay.AlchitexCandidateTag}.", LogLevel.Alchitex);
             }
 #if DEBUG
             // Debug builds open the window with an empty queue on purpose. RTX Reactor's
@@ -1859,7 +1859,7 @@ public sealed partial class MainWindow : Window
 
         if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
         {
-            Log($"None of your selected packs is tagged '{PackBrowserWindow.AlchitexCandidateTag}' - RTX Reactor will ask you to confirm each one before generating.", LogLevel.Alchitex);
+            Log($"None of your selected packs is tagged '{PackBrowserOverlay.AlchitexCandidateTag}' - RTX Reactor will ask you to confirm each one before generating.", LogLevel.Alchitex);
         }
 
         string[] ToDisable =

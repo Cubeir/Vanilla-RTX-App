@@ -68,7 +68,7 @@ internal class DisplayPresetData
 /// land in the cache with no UI involved at all, and while this logic lived on the window
 /// that meant constructing a Window and then defusing its own startup by hand. None of this
 /// ever needed a window; it needed a folder. Split the same way Alchitex keeps its pipeline
-/// out of AlchitexWindow.</para>
+/// out of AlchitexOverlay.</para>
 ///
 /// <para>Bound to one Minecraft install by <see cref="TryAttach"/>. The import path is the
 /// one exception - it sets <see cref="CacheFolder"/> alone and uses nothing else.</para>
@@ -784,7 +784,7 @@ internal sealed class BetterRTXManager
     /// this is 2x that for 200% scale. A decoded image costs width x height x 4 bytes of
     /// graphics memory regardless of its file size, and these come out of third-party
     /// .rtpack archives at whatever resolution their author chose - every loaded preset holds
-    /// one for the window's lifetime.
+    /// one for the module's lifetime.
     /// </summary>
     private const int IconDecodeWidth = 192;
 
@@ -1132,7 +1132,7 @@ internal sealed class BetterRTXManager
     /// still only happens through the window itself, disclaimer and all, completely
     /// unaffected by this method.
     ///
-    /// <para><b>Never route this through the window.</b> A <c>BetterRTXManagerWindow</c> runs
+    /// <para><b>Never route this through the window.</b> A <c>BetterRTXManagerOverlay</c> runs
     /// its Loaded handler even on an instance that is never Activate()d, which starts the full
     /// startup pipeline - including a scan of this very cache folder - concurrently with the
     /// import loop below. That race surfaces as "pack_icon.png is being used by another

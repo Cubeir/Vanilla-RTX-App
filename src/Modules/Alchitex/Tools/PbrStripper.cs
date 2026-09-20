@@ -15,7 +15,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 ///
 /// Lives under Tools/, not Core/, because it isn't part of the generation pipeline - it's a
 /// conditional pass the pipeline may or may not run, only when the user explicitly agreed to
-/// it for a given pack (see AlchitexWindow's confirmation dialog).
+/// it for a given pack (see AlchitexOverlay's confirmation dialog).
 ///
 /// Why it exists: packs increasingly declare the "pbr" (Vibrant Visuals) or "raytraced"
 /// capability while shipping little or no actual PBR content - and those are exactly the

@@ -99,7 +99,7 @@ public static class ExpImpDel
 
     /// <summary>
     /// Opens a file picker and imports the chosen packs. Accepts .mcpack, .zip,
-    /// and .mcaddon. <paramref name="ownerHwnd"/> must be the PackBrowserWindow
+    /// and .mcaddon. <paramref name="ownerHwnd"/> must be the PackBrowserOverlay
     /// handle so the picker stays above the right window.
     /// </summary>
     public static async Task<bool> ImportPackAsync(IntPtr ownerHwnd)
@@ -597,7 +597,7 @@ public static class ExpImpDel
 /// <summary>
 /// Ready-made ContentDialog implementations for ExpImpDel.ConfirmOverwrite and
 /// ConfirmNonResourceImport, parameterized on whichever window is doing the importing.
-/// PackBrowserWindow's Add-pack button/drag-and-drop and MainWindow's .mcpack
+/// PackBrowserOverlay's Add-pack button/drag-and-drop and MainWindow's .mcpack
 /// file-activation path both wire these in as-is.
 ///
 /// <para>Each takes the element the dialog should belong to rather than a window: the pack

@@ -25,7 +25,7 @@ public enum AlchitexPhase
     Fog,
     Finalizing,
     Bookkeeping,
-    /// <summary>Not reported by the pipeline - the window raises it while uninstalling an
+    /// <summary>Not reported by the pipeline - the overlay raises it while uninstalling an
     /// original pack after a successful run, which is its own kind of work worth showing.</summary>
     RemovingPack,
     Done,

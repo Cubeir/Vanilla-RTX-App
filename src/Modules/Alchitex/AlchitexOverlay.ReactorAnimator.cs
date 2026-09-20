@@ -573,7 +573,7 @@ public sealed class ReactorAnimator
     }
 
     /// <summary>Drops the abort stance now, no grace period - for the click actually
-    /// landing, the run ending, or the window closing. Just the palette back to blue - see
+    /// landing, the run ending, or the module closing. Just the palette back to blue - see
     /// BeginAbortHint for why there's nothing else to undo.</summary>
     public void EndAbortHintImmediate()
     {
@@ -859,7 +859,7 @@ public sealed class ReactorAnimator
     // ── Per-phase behavior ───────────────────────────────────────────────────
 
     /// <summary>
-    /// The reactor's reaction to one step of the pipeline. Called from the window's
+    /// The reactor's reaction to one step of the pipeline. Called from the overlay's
     /// progress handler, which gets the phase straight from AlchitexPipeline rather than
     /// from parsing status strings - if a phase is added there, it gets a behavior here.
     /// </summary>
@@ -980,7 +980,7 @@ public sealed class ReactorAnimator
 
     /// <summary>
     /// How long a one-shot owns the grid. A timestamp rather than a flag, deliberately: a
-    /// flag that failed to clear (an exception, a run ending mid-flourish, a window closing)
+    /// flag that failed to clear (an exception, a run ending mid-flourish, a module closing)
     /// would wedge the reactor into never repainting again, and this is cosmetic code
     /// sitting on top of a pipeline. The worst a stale timestamp can do is expire.
     /// </summary>
@@ -1610,8 +1610,8 @@ public sealed class ReactorAnimator
         _bloomLoop = null;
     }
 
-    /// <summary>Stops every loop this animator owns. Call on window close so a timer or a
-    /// forever-storyboard can't outlive the window it was animating.</summary>
+    /// <summary>Stops every loop this animator owns. Call on close so a timer or a
+    /// forever-storyboard can't outlive the overlay it was animating.</summary>
     public void Shutdown()
     {
         StopOrbit();

@@ -145,7 +145,7 @@ public class PackUpdater
     /// cache-touching code path silently owed a refresh call it was easy to forget.
     ///
     /// Static because the cache is one process-wide thing - a single LocalSettings key plus one
-    /// file on disk - not a per-instance one. That matters in practice: PackUpdaterWindow falls
+    /// file on disk - not a per-instance one. That matters in practice: PackUpdaterOverlay falls
     /// back to `new PackUpdater()` when it can't borrow MainWindow's, and an invalidation from
     /// that second instance still has to reach whoever is drawing the glyph.
     ///
@@ -629,7 +629,7 @@ public class PackUpdater
     ///
     /// Without this the cache branch echoed back whatever it stored - always <c>Remote</c> - so
     /// <see cref="VersionSource.CachedRemote"/> was never produced anywhere in the app and the
-    /// "(You seem up-to-date)" wording that hangs off it in PackUpdaterWindow was unreachable.
+    /// "(You seem up-to-date)" wording that hangs off it in PackUpdaterOverlay was unreachable.
     ///
     /// <see cref="VersionSource.ZipballFallback"/> deliberately keeps its own provenance: that a
     /// reading came off the offline zipball is the more useful thing to tell the user, and it

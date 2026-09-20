@@ -95,7 +95,7 @@ internal sealed class LutPreset
 /// <para><b>Why it's separate from the window.</b> None of this is UI - it is folder
 /// scanning, SHA-256 comparison and one elevated copy. The window renders the list and
 /// decides when these run. Split the same way Alchitex keeps its pipeline out of
-/// AlchitexWindow, so that reading either half doesn't mean reading both.</para>
+/// AlchitexOverlay, so that reading either half doesn't mean reading both.</para>
 ///
 /// <para>Bound to one edition's install by <see cref="TryAttach"/>; nothing below works
 /// until that has succeeded.</para>

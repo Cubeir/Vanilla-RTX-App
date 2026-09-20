@@ -1,4 +1,4 @@
-<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerWindow"
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerOverlay"
                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:local="using:Vanilla_RTX_App.Modules.LUT"
@@ -70,12 +70,10 @@
                      ROW 0 — Preset dropdown + Install button pair
                      ═══════════════════════════════════════════════ -->
 
-                <!-- The wider right inset clears the frame's close button, which floats in
-                     that corner - see ModuleOverlayChrome. -->
                 <Grid x:Name="ButtonRowGrid"
                       Grid.Row="0"
                       Height="50"
-                      Margin="20,14,50,6"
+                      Margin="20,14,20,6"
                       VerticalAlignment="Top"
                       HorizontalAlignment="Stretch"
                       Translation="0,0,32">

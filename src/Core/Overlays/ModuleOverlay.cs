@@ -110,7 +110,6 @@ public class ModuleOverlay : UserControl
         Content = null;
 
         _chrome = new ModuleOverlayChrome { Body = body };
-        _chrome.CloseRequested += (_, _) => Close();
         Content = _chrome;
 
         // Out of the module's own markup here, while nothing is in a live tree yet. Doing it
@@ -122,19 +121,6 @@ public class ModuleOverlay : UserControl
         Visibility = Visibility.Collapsed;
         Opacity = 0;
         IsHitTestVisible = false;
-    }
-
-    /// <summary>
-    /// Whether the frame's own close button is showing. A module hides it while something of
-    /// its own covers the same corner - <see cref="WebImportOverlay"/>'s header puts its Done
-    /// button exactly there - and shows it again afterwards. Closing the module while that is
-    /// hidden still works from everywhere else; this is only about which button is under the
-    /// pointer.
-    /// </summary>
-    protected bool IsCloseButtonVisible
-    {
-        get => _chrome is null || _chrome.CloseControl.Visibility == Visibility.Visible;
-        set { if (_chrome is not null) _chrome.CloseControl.Visibility = value ? Visibility.Visible : Visibility.Collapsed; }
     }
 
     /// <summary>Fades the overlay in. Safe to call once; a second call while open does nothing.</summary>
@@ -182,8 +168,8 @@ public class ModuleOverlay : UserControl
     }
 
     /// <summary>
-    /// The module's own teardown - what its <c>Window_Closed</c> handler used to do. Stop
-    /// timers, cancel work, unsubscribe from anything static, and set
+    /// The module's own teardown. Stop timers, cancel work, unsubscribe from anything
+    /// static, and set
     /// <see cref="OperationSuccessful"/> / <see cref="StatusMessage"/>. Called exactly once.
     /// </summary>
     protected virtual void OnClosing() { }

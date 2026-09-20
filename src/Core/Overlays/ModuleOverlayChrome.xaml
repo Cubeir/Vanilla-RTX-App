@@ -8,7 +8,9 @@
              IsTextScaleFactorEnabled="False">
 
     <!-- The frame every feature module is shown in: the same surface MarkdownOverlay uses,
-         starting 36px down so it sits flush under the titlebar's bevelled bottom edge.
+         starting 36px down so it sits flush under the titlebar's bevelled bottom edge. It is
+         only the surface - a module's own markup fills it edge to edge, with nothing of the
+         frame's floating over it.
 
          It exists as XAML rather than as a few lines in ModuleOverlay's constructor for one
          reason: ThemeResource only re-evaluates on a theme change for a brush declared in
@@ -28,37 +30,10 @@
             <ThemeShadow />
         </Border.Shadow>
 
-        <Grid>
-            <!-- The module's own markup. A ContentPresenter rather than reparenting into a
-                 Panel, so a module whose root is not a Panel child needs no special case. -->
-            <ContentPresenter x:Name="BodyHost"
-                              HorizontalContentAlignment="Stretch"
-                              VerticalContentAlignment="Stretch" />
-
-            <!-- Return to the window. The same glyph and treatment as the settings panel's,
-                 and in the corner for the same reason it is not in the titlebar: the titlebar
-                 belongs to MainWindow now and says nothing about which module is open.
-
-                 Pinned rather than scrolled past, unlike the settings panel's: a module's body
-                 is its own scrolling surface (often several), so there is no one scroll offset
-                 this could sit at the top of. It is given a real background for that - it sits
-                 over live content rather than over a column of text. -->
-            <Button x:Name="CloseButton"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="0,8,12,0"
-                    Width="32"
-                    Height="32"
-                    Padding="0"
-                    CornerRadius="4"
-                    Canvas.ZIndex="1000"
-                    Click="CloseButton_Click"
-                    IsTextScaleFactorEnabled="False"
-                    ToolTipService.ToolTip="Return to the window">
-                <FontIcon Glyph="&#xE944;"
-                          FontSize="14"
-                          IsTextScaleFactorEnabled="False" />
-            </Button>
-        </Grid>
+        <!-- The module's own markup, and nothing else. The way out is MainWindow's
+             ModuleReturnButton, up in the titlebar beside the caption buttons - see §2i. -->
+        <ContentPresenter x:Name="BodyHost"
+                          HorizontalContentAlignment="Stretch"
+                          VerticalContentAlignment="Stretch" />
     </Border>
 </UserControl>

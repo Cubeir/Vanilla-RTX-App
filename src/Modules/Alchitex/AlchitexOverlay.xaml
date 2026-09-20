@@ -350,7 +350,7 @@
                                                  the rest of the window is, where a ComboBox's
                                                  popup stays opaque even with
                                                  ComboBoxDropDownBackground overridden. Same
-                                                 pattern LUTManagerWindow uses. The items and
+                                                 pattern LUTManagerOverlay uses. The items and
                                                  the button's own text are built in
                                                  BuildSecondaryPbrMenu. -->
                                             <StackPanel Spacing="4">

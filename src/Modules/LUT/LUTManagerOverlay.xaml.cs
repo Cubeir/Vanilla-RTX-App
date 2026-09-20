@@ -21,7 +21,7 @@ namespace Vanilla_RTX_App.Modules.LUT;
 /// of the game's own three files, detecting what is installed and the elevated write that
 /// installs a preset - lives in <see cref="LUTManager"/>. This holds one and renders it.
 /// </summary>
-public sealed partial class LUTManagerWindow : ModuleOverlay
+public sealed partial class LUTManagerOverlay : ModuleOverlay
 {
     private bool _isClosing;
 
@@ -59,7 +59,7 @@ public sealed partial class LUTManagerWindow : ModuleOverlay
     private bool _installInProgress;
 
 
-    public LUTManagerWindow()
+    public LUTManagerOverlay()
     {
         this.InitializeComponent();
         AttachChrome();
@@ -70,14 +70,14 @@ public sealed partial class LUTManagerWindow : ModuleOverlay
         ThemeService.ThemeChanged += ApplyTheme;
         InstallButton.IsEnabledChanged += (s, e) => ApplyInstallButtonBevel(_isPresetInstalled);
 
-        this.Loaded += LUTManagerWindow_Loaded;
+        this.Loaded += LUTManagerOverlay_Loaded;
     }
 
-    private async void LUTManagerWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void LUTManagerOverlay_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            this.Loaded -= LUTManagerWindow_Loaded;
+            this.Loaded -= LUTManagerOverlay_Loaded;
 
             if (_isClosing) return;
 
@@ -96,7 +96,7 @@ public sealed partial class LUTManagerWindow : ModuleOverlay
         if (_isClosing) return;
         _isClosing = true;
 
-        this.Loaded -= LUTManagerWindow_Loaded;
+        this.Loaded -= LUTManagerOverlay_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
@@ -220,12 +220,12 @@ public sealed partial class LUTManagerWindow : ModuleOverlay
             LUTManager.DefaultsState.GameRunningAPreset =>
                 "Your game is already running one of this app's LUT presets, and there's no backup of your original ray tracing files to go with it - " +
                 "so the app can't tell what your originals were, and backing up what's there now would make that preset permanent. Installing is disabled rather than risk that.\n\n" +
-                "Repairing or reinstalling Minecraft from the Xbox app puts its own files back; reopen this window afterwards and the backup will be taken properly.",
+                "Repairing or reinstalling Minecraft from the Xbox app puts its own files back; reopen this module afterwards and the backup will be taken properly.",
 
             LUTManager.DefaultsState.GameFilesMissing =>
                 "Your Minecraft installation is missing the ray tracing files this feature works with, and the app couldn't mend them - so there's nothing to back up, " +
                 "and without a backup there would be no way back from a preset. Installing is disabled.\n\n" +
-                "Repairing or reinstalling Minecraft from the Xbox app should sort it; reopen this window afterwards.",
+                "Repairing or reinstalling Minecraft from the Xbox app should sort it; reopen this module afterwards.",
 
             _ =>
                 "The app couldn't write a backup of your game's original ray tracing files, so installing presets is disabled - " +

@@ -19,7 +19,7 @@ using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 namespace Vanilla_RTX_App.Modules.PackBrowser;
 
-public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivation.IFileActivationTarget
+public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivation.IFileActivationTarget
 {
     private bool _isClosing;
 
@@ -34,7 +34,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
     private const bool AlchitexLegacyPacksEligible = false;
 
     /// <summary>
-    /// Purely cosmetic capability tags, and deliberately confined to this window: they get a
+    /// Purely cosmetic capability tags, and deliberately confined to this module: they get a
     /// badge and a VFX, and nothing else in the app ever learns a pack declared them.
     ///
     /// They are NOT candidates for PackType, and the reason is worth writing down, because
@@ -51,7 +51,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
     /// it has no root in the capabilities at all — it is decided by AlchitexSuitabilityScanner
     /// scanning the pack's own contents — whereas every other fact in that tuple is derived
     /// from the tags. These two are derived from the tags and still don't belong, because
-    /// nothing outside this window has any use for them.
+    /// nothing outside this module has any use for them.
     ///
     /// Internal rather than public because only BuildTagBadge, TagDisplayRank and
     /// PackBrowserBadgeVFX ever name them.
@@ -64,7 +64,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
 
     private static readonly Regex StrictSemVerRegex = new(@"^\d+\.\d+\.\d+$", RegexOptions.Compiled);
 
-    public PackBrowserWindow()
+    public PackBrowserOverlay()
     {
         this.InitializeComponent();
         AttachChrome();
@@ -73,13 +73,13 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
         ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(this, packName, existingPath);
         ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(this, packName);
 
-        this.Loaded += PackBrowserWindow_Loaded;
+        this.Loaded += PackBrowserOverlay_Loaded;
     }
-    private async void PackBrowserWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void PackBrowserOverlay_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            this.Loaded -= PackBrowserWindow_Loaded;
+            this.Loaded -= PackBrowserOverlay_Loaded;
 
             if (_isClosing) return;
 
@@ -107,7 +107,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
         if (_isClosing) return;
         _isClosing = true;
 
-        this.Loaded -= PackBrowserWindow_Loaded;
+        this.Loaded -= PackBrowserOverlay_Loaded;
 
         ExpImpDel.ImportStatusChanged -= OnImportStatusChanged;
     }
@@ -188,7 +188,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
     // Internal rather than private so MainWindow can re-run it on an already-open browser
     // after a headless .mcpack file-activation import lands (see
     // MainWindow.ImportPackFilesAsync) - otherwise the list would keep showing what was
-    // installed before that import until the user closed and reopened this window.
+    // installed before that import until the user closed and reopened this module.
     internal async Task LoadPacksAsync()
     {
         PackListContainer.Children.Clear();
@@ -663,7 +663,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
     // ════════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Imports files handed over by a double-click in Explorer, through this window rather
+    /// Imports files handed over by a double-click in Explorer, through this module rather
     /// than MainWindow - see <see cref="Core.FileActivation.IFileActivationTarget"/>.
     ///
     /// <para>Deliberately the same call drag-and-drop makes, so an activated file and a
@@ -993,7 +993,7 @@ public sealed partial class PackBrowserWindow : ModuleOverlay, Core.FileActivati
     /// Loads a pack's pack_icon.* as a BitmapImage, or null if it has none / none of them
     /// load. No manifest reading involved - just the icon file.
     ///
-    /// Public and static because the Alchitex window shows the same icons for the packs
+    /// Public and static because the Alchitex overlay shows the same icons for the packs
     /// queued for generation, and that's the same question with the same answer.
     /// </summary>
     public static async Task<BitmapImage?> LoadPackIconAsync(string packDir)

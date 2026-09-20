@@ -29,7 +29,7 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// visible behind a dismiss scrim.
 ///
 /// <para><b>The file is named for the window it serves, not for the class</b> - the same
-/// convention <c>MainWindow.LampAnimator.cs</c> and <c>PackBrowserWindow.BadgeVFX.cs</c> follow.
+/// convention <c>MainWindow.LampAnimator.cs</c> and <c>PackBrowserOverlay.BadgeVFX.cs</c> follow.
 /// It is not a partial of MainWindow (two XAML files cannot compile into one class) and it does
 /// not need to be: the split is by what you are looking at. What is on the main window is
 /// handled in <c>MainWindow.xaml.cs</c>; what is on this panel - including the wipe and the

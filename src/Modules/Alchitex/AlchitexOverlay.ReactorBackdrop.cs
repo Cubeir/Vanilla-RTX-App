@@ -13,7 +13,7 @@ using Vanilla_RTX_App.Core;
 namespace Vanilla_RTX_App.Modules.Alchitex;
 
 /// <summary>
-/// The window's background field of blue tiles, generated instead of shipped as a
+/// The overlay's background field of blue tiles, generated instead of shipped as a
 /// 10000x1000 PNG.
 ///
 /// The constants come off the art it replaces: a 40px grid, red always zero, six blues -
@@ -30,7 +30,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// Two rules keep it cheap, both learned the hard way:
 ///
 ///   - No composition animations. A running animation makes the window recomposite every
-///     frame, and this window is acrylic over most of its area, so every frame means
+///     frame, and this module is acrylic over most of its area, so every frame means
 ///     re-blurring. That cost is set by whether anything is animating at all, not by how
 ///     much - cutting the animated tile count sevenfold changed nothing. Motion is a slow
 ///     timer repainting a few tiles per tick instead, so the window composites about four
@@ -160,10 +160,10 @@ internal sealed class ReactorBackdrop
     private bool _isShutDown;
 
     /// <summary>
-    /// Whether this window gets a moving background at all. Energy saver is an explicit
+    /// Whether this module gets a moving background at all. Energy saver is an explicit
     /// request not to burn power on decoration, and a low core count stands in for a machine
     /// with better uses for its compositor - the same two checks as MainWindow's UI logger
-    /// tick rate. Read per window, so toggling energy saver and reopening changes it.
+    /// tick rate. Read per overlay, so toggling energy saver and reopening changes it.
     /// </summary>
     private readonly bool _motionAffordable = ResolveMotionBudget();
 
@@ -223,7 +223,7 @@ internal sealed class ReactorBackdrop
         }
     }
 
-    /// <summary>Drops the field. Call on window close so nothing outlives the window.</summary>
+    /// <summary>Drops the field. Call on close so nothing outlives the overlay.</summary>
     public void Shutdown()
     {
         if (_isShutDown) return;

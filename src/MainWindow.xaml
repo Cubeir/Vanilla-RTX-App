@@ -106,11 +106,20 @@
             </Border.Shadow>
         </Border>
 
-        <!-- Transparent drag area: starts just past the titlebar buttons so they keep receiving
-             clicks, and covers everything to the right of them. The left inset is measured off
-             the button strip - three 40px buttons, two 1px separators with 2px either side, and
-             TitleBarActions' own -2 left margin - so it has to come down whenever a button is
-             added or removed, or the window grows a band near the top that can't be dragged. -->
+        <!-- Transparent drag area: starts just past the titlebar buttons on the left and stops
+             just before ModuleReturnButton on the right, so both keep receiving clicks. A drag
+             region is a NATIVE one - SetTitleBar hands this rectangle to the window manager, and
+             XAML content inside it gets no input at all, so a button over it is simply dead.
+
+             The left inset is the button strip - three 40px buttons, two 1px separators with 2px
+             either side, and TitleBarActions' own -2 left margin - so it has to come down
+             whenever a button is added or removed, or the window grows a band near the top that
+             can't be dragged.
+
+             There is no matching inset on the right for ModuleReturnButton. Interactive XAML
+             declared after this element renders above it and takes input normally, which is what
+             the module titlebar strip has always relied on; only the drag region's own left edge
+             was ever measured. -->
         <Border x:Name="TitleBarDragArea"
                 Margin="132,-1,0,0"
                 Height="32"
@@ -304,18 +313,70 @@
              in here while its overlay is open and moved back out when it closes, so they
              read as a continuation of the three above rather than as a second cluster.
 
-             The 132px inset is the button strip's own width: TitleBarActions' -2 margin,
-             three 40px buttons and two separators at 1px with 2px either side, which comes
-             to 126, plus the same 6px gap TitleBarDragArea leaves. Those two numbers move
-             together - a titlebar button added or removed changes both.
+             The 133px inset puts it one separator-width past the strip above: TitleBarActions'
+             -2 margin, three 40px buttons and two separators at 1px with 2px either side comes
+             to 126, and 133 leaves room for ModuleTitleBarSeparator to sit between the two
+             clusters with 2px either side of it. Those numbers move together - a titlebar button
+             added or removed changes all three, TitleBarDragArea's left inset included.
              ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="ModuleTitleBarSeparator"
+                Margin="130,8,0,0"
+                Width="1"
+                Height="22"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                Visibility="Collapsed" />
+
         <Border x:Name="ModuleTitleBarActions"
-                Margin="132,-2,16,0"
+                Margin="133,-2,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 Height="34"
                 Width="Auto"
                 Visibility="Collapsed" />
+
+        <!-- ══ Return to the window ══════════════════════════════════════════
+             The way out of a feature module, disguised as a fourth caption button: same
+             height as the system's own, hard against them, and separated from them by the
+             same hairline the left-hand cluster uses between its buttons.
+
+             It is here rather than inside the module because there is exactly one of it. A
+             module is a body inside a frame (ModuleOverlayChrome) and the frame has no
+             chrome of its own - a button floating in the module's own top-right corner
+             pushed every module's content down and in to clear it, which is what this
+             replaced.
+
+             Shown and hidden by MainWindow.OpenModule alongside the strip above. It dims
+             with the window through TitleBarFocus, like the rest of the bar.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="ModuleReturnSeparator"
+                Margin="0,8,135,0"
+                Width="1"
+                Height="22"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                Visibility="Collapsed" />
+
+        <Button x:Name="ModuleReturnButton"
+                Margin="0,0,138,0"
+                Width="46"
+                Height="36"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                Style="{ThemeResource SubtleButtonStyle}"
+                Content="&#xE944;"
+                FontSize="14"
+                CornerRadius="0"
+                Padding="0"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Visibility="Collapsed"
+                Click="ModuleReturnButton_Click"
+                ToolTipService.ToolTip="Return to the window"
+                IsTextScaleFactorEnabled="False" />
 
         </Grid>
         <!-- /TitleBarLayer -->

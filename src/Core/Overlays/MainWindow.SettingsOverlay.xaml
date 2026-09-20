@@ -237,7 +237,7 @@
                                        IsTextScaleFactorEnabled="False" />
 
                             <!-- DropDownButton + MenuFlyout rather than a ComboBox, the same
-                                choice AlchitexWindow and LUTManagerWindow made: a flyout is
+                                choice AlchitexOverlay and LUTManagerOverlay made: a flyout is
                                 translucent out of the box and matches the acrylic around it,
                                 where a ComboBox's open list reads ComboBoxDropDownBackground
                                 from a popup outside the control's tree and cannot be re-keyed

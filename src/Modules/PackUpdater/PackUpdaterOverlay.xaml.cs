@@ -10,7 +10,7 @@ using static Vanilla_RTX_App.Core.EnvironmentVariables; // For Public Pack versi
 
 namespace Vanilla_RTX_App.Modules.PackUpdater;
 
-public sealed partial class PackUpdaterWindow : ModuleOverlay
+public sealed partial class PackUpdaterOverlay : ModuleOverlay
 {
     private readonly MainWindow _mainWindow;
     private readonly PackUpdater _updater;
@@ -23,7 +23,7 @@ public sealed partial class PackUpdaterWindow : ModuleOverlay
     private static readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
     private static readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
 
-    // This window's second line of defence against deploying a stale cache now lives in
+    // This module's second line of defence against deploying a stale cache now lives in
     // PackUpdater.InvalidateCacheIfStaleAsync, called from UpdateAllButtonStates.
     //
     // It used to live here, and it was wrong in both directions. It triggered on INSTALLED being
@@ -42,7 +42,7 @@ public sealed partial class PackUpdaterWindow : ModuleOverlay
     private DispatcherTimer? _installingAnimationTimer;
     private int _animationDots = 0;
 
-    public PackUpdaterWindow(MainWindow mainWindow)
+    public PackUpdaterOverlay(MainWindow mainWindow)
     {
         this.InitializeComponent();
         AttachChrome();
@@ -56,13 +56,13 @@ public sealed partial class PackUpdaterWindow : ModuleOverlay
         _mainWindow = mainWindow;
         _updater = mainWindow._updater ?? new PackUpdater();
 
-        this.Loaded += PackUpdaterWindow_Loaded;
+        this.Loaded += PackUpdaterOverlay_Loaded;
     }
-    private async void PackUpdaterWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void PackUpdaterOverlay_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            this.Loaded -= PackUpdaterWindow_Loaded;
+            this.Loaded -= PackUpdaterOverlay_Loaded;
 
             if (_isClosing) return;
 
@@ -74,7 +74,7 @@ public sealed partial class PackUpdaterWindow : ModuleOverlay
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[PackUpdaterWindow] The _Loaded Event Crashed: {ex.Message}");
+            Trace.WriteLine($"[PackUpdaterOverlay] The _Loaded Event Crashed: {ex.Message}");
             return;
         }
     }
@@ -84,7 +84,7 @@ public sealed partial class PackUpdaterWindow : ModuleOverlay
         if (_isClosing) return;
         _isClosing = true;
 
-        this.Loaded -= PackUpdaterWindow_Loaded;
+        this.Loaded -= PackUpdaterOverlay_Loaded;
 
         StopInstallingAnimation();
     }

@@ -31,7 +31,7 @@ internal sealed class DllData
 /// FileVersionInfo, File.Copy and one elevated replace. The window's job is to render the
 /// list this produces and to decide *when* these run; this class is the only thing that
 /// knows the cache layout. Split out so that reading either half doesn't mean reading
-/// both, exactly as Alchitex separates its pipeline from AlchitexWindow.</para>
+/// both, exactly as Alchitex separates its pipeline from AlchitexOverlay.</para>
 ///
 /// <para>The instance is bound to one Minecraft install by <see cref="TryAttach"/>; every
 /// method below is inert until that has succeeded.</para>

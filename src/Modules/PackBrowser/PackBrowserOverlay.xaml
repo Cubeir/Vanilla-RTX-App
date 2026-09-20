@@ -1,4 +1,4 @@
-<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackBrowser.PackBrowserWindow"
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackBrowser.PackBrowserOverlay"
                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:local="using:Vanilla_RTX_App.Modules.PackBrowser"
@@ -55,11 +55,9 @@
                     <StackPanel>
 
                         <!-- PSA / announcement cards -->
-                        <!-- The right inset clears the frame's close button, which floats
-                             in this corner - see ModuleOverlayChrome. -->
                         <StackPanel x:Name="PackBrowserAnnouncementsPanel"
                                     Spacing="12"
-                                    Margin="0,8,30,8" />
+                                    Margin="0,8,0,8" />
 
                         <!-- Pack list -->
                         <StackPanel x:Name="PackListContainer"

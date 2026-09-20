@@ -99,22 +99,22 @@
     <Page Update="Core\PsaCard.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\Alchitex\AlchitexWindow.xaml">
+    <Page Update="Modules\Alchitex\AlchitexOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\LUT\LUTManagerWindow.xaml">
+    <Page Update="Modules\LUT\LUTManagerOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\PackUpdater\PackUpdaterWindow.xaml">
+    <Page Update="Modules\PackUpdater\PackUpdaterOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\BetterRTX\BetterRTXManagerWindow.xaml">
+    <Page Update="Modules\BetterRTX\BetterRTXManagerOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\DLSS\DLSSSwapperWindow.xaml">
+    <Page Update="Modules\DLSS\DLSSSwapperOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Update="Modules\PackBrowser\PackBrowserWindow.xaml">
+    <Page Update="Modules\PackBrowser\PackBrowserOverlay.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>

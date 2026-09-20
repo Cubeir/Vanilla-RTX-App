@@ -12,11 +12,11 @@ namespace Vanilla_RTX_App.Modules.Alchitex;
 /// <summary>
 /// The pack tiles moving between the two queue rows and the reactor.
 ///
-/// A partial of the window rather than a class of its own, deliberately. Every method here
-/// reads the window's named XAML elements (InputQueuePanel, GenerateButton,
+/// A partial of the overlay rather than a class of its own, deliberately. Every method here
+/// reads the overlay's named XAML elements (InputQueuePanel, GenerateButton,
 /// QueueEjectionHost) and measures against its live layout; handing all of that to a
 /// separate type would be plumbing in exchange for nothing. What it isn't is part of the
-/// window's *logic*, which is why it doesn't belong in the same file as the batch loop.
+/// overlay's *logic*, which is why it doesn't belong in the same file as the batch loop.
 ///
 /// Four departures, four directions, and the distinction is the whole point of having them:
 /// up and out for a discarded pack, right into the reactor for an accepted one, left back

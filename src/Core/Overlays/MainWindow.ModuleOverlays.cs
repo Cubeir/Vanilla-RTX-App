@@ -27,7 +27,7 @@ public sealed partial class MainWindow
 {
     /// <summary>
     /// The open module, if any. A list rather than a single field because the file-activation
-    /// router asks "is a window of this type open" (<see cref="FindChildWindow"/>) and reads
+    /// router asks "is a window of this type open" (<see cref="FindOpenModule"/>) and reads
     /// better against a collection, and because one is exactly as cheap as the other here.
     /// </summary>
     private readonly List<ModuleOverlay> _openModules = new();
@@ -62,6 +62,7 @@ public sealed partial class MainWindow
         {
             _openModules.Remove(overlay);
             ReleaseModuleTitleBarStrip(overlay);
+            ShowModuleReturnButton(false);
 
             // Anything the module was still holding on its own controls goes with it. Those
             // controls are about to leave the visual tree, and a count left on one of them is
@@ -75,6 +76,7 @@ public sealed partial class MainWindow
 
         _openModules.Add(overlay);
         AdoptModuleTitleBarStrip(overlay);
+        ShowModuleReturnButton(true);
         ModuleOverlayHost.Children.Add(overlay);
         overlay.Show();
     }
@@ -98,6 +100,22 @@ public sealed partial class MainWindow
     }
 
     /// <summary>
+    /// The titlebar's return button closes whichever module is open. It is one button shared by
+    /// all six rather than one per module, which is the whole reason it can sit in the titlebar
+    /// and look like a caption button.
+    /// </summary>
+    private void ModuleReturnButton_Click(object sender, RoutedEventArgs e) =>
+        _openModules.LastOrDefault()?.Close();
+
+    /// <summary>Shows or hides the return button and the hairline that separates it from the system's own caption buttons.</summary>
+    private void ShowModuleReturnButton(bool show)
+    {
+        var visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        ModuleReturnButton.Visibility = visibility;
+        ModuleReturnSeparator.Visibility = visibility;
+    }
+
+    /// <summary>
     /// Hosts a module's titlebar buttons in this window's titlebar for as long as it is open.
     ///
     /// <para><b>The module's own element, not a copy</b>, so its <c>x:Name</c> field and every
@@ -112,6 +130,7 @@ public sealed partial class MainWindow
 
         ModuleTitleBarActions.Child = strip;
         ModuleTitleBarActions.Visibility = Visibility.Visible;
+        ModuleTitleBarSeparator.Visibility = Visibility.Visible;
     }
 
     /// <summary>
@@ -125,6 +144,7 @@ public sealed partial class MainWindow
 
         ModuleTitleBarActions.Child = null;
         ModuleTitleBarActions.Visibility = Visibility.Collapsed;
+        ModuleTitleBarSeparator.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>Closes every open module, for the window shutting down underneath them.</summary>

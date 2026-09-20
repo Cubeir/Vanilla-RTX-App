@@ -19,7 +19,7 @@ namespace Vanilla_RTX_App.Modules.Alchitex.Tools;
 ///
 /// Lives under Tools/, not Core/, since it isn't part of the generation pipeline itself -
 /// it's a one-off dev utility for bootstrapping materials.json, wired to a debug-only
-/// button in the Alchitex window.
+/// button in the Alchitex overlay.
 ///
 /// Append-only by design: this is meant to be re-run repeatedly as the artist's ongoing
 /// workflow for adding new materials over time, not a one-shot "regenerate everything"

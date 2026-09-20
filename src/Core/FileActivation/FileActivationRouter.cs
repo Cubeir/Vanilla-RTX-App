@@ -41,7 +41,7 @@ internal static class FileActivationRouter
     /// first matching route wins, and <see cref="Routes"/>' last entry deliberately matches
     /// everything left over - see <see cref="RouteAsync"/>.
     /// </summary>
-    /// <param name="OwnerWindow">
+    /// <param name="OwnerModule">
     /// The feature window that owns this file type. When one is open it takes the import
     /// itself (see <see cref="IFileActivationTarget"/>) and is what gets raised; otherwise the
     /// files go to MainWindow via <paramref name="Handler"/>. Must implement
@@ -51,7 +51,7 @@ internal static class FileActivationRouter
         string Label,
         string[] Extensions,
         Func<MainWindow, IReadOnlyList<string>, Task> Handler,
-        Type OwnerWindow);
+        Type OwnerModule);
 
     /// <summary>
     /// <list type="bullet">
@@ -69,9 +69,9 @@ internal static class FileActivationRouter
     private static readonly Route[] Routes =
     [
         new("BetterRTX preset", [".rtpack"], (window, files) => window.ImportBetterRTXPresetFilesAsync(files),
-            typeof(Modules.BetterRTX.BetterRTXManagerWindow)),
+            typeof(Modules.BetterRTX.BetterRTXManagerOverlay)),
         new("Minecraft pack",   [],          (window, files) => window.ImportPackFilesAsync(files),
-            typeof(Modules.PackBrowser.PackBrowserWindow)),
+            typeof(Modules.PackBrowser.PackBrowserOverlay)),
     ];
 
     // =========================================================================
@@ -198,7 +198,7 @@ internal static class FileActivationRouter
     /// import goes through MainWindow.
     /// </summary>
     private static IFileActivationTarget? FindOpenOwner(Route route) =>
-        MainWindow.Instance?.FindChildWindow(route.OwnerWindow) as IFileActivationTarget;
+        MainWindow.Instance?.FindOpenModule(route.OwnerModule) as IFileActivationTarget;
 
     /// <summary>
     /// Un-minimises and raises a window. Both halves are needed: Restore alone leaves a

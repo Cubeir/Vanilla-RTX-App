@@ -15,7 +15,7 @@ namespace Vanilla_RTX_App.Modules.PackBrowser;
 /// <summary>
 /// Adds subtle, out-of-phase looping animations on top of a tag badge's existing
 /// flat-color Background. Every effect here is purely additive: the flat color set
-/// by PackBrowserWindow.BuildTagBadge is never modified, only layered over, so if
+/// by PackBrowserOverlay.BuildTagBadge is never modified, only layered over, so if
 /// anything below throws (older WinAppSDK, theming quirk, whatever), the badge
 /// simply stays exactly as it looks today. That flat color is the fallback, by
 /// construction, not by convention.
@@ -60,13 +60,13 @@ internal static class PackBrowserBadgeVFX
                 case "Incompatible":
                     ApplyIncompatiblePulse(badge);
                     break;
-                case PackBrowserWindow.AlchitexCandidateTag:
+                case PackBrowserOverlay.AlchitexCandidateTag:
                     ApplyReactorRain(badge);
                     break;
-                case PackBrowserWindow.ChemistryTag:
+                case PackBrowserOverlay.ChemistryTag:
                     ApplyChemistryBlobs(badge);
                     break;
-                case PackBrowserWindow.UnknownCapabilityTag:
+                case PackBrowserOverlay.UnknownCapabilityTag:
                     ApplyUnknownGlitch(badge);
                     break;
             }
@@ -377,7 +377,7 @@ internal static class PackBrowserBadgeVFX
     // ════════════════════════════════════════════════════════════════════
     //  Alchitex candidate – a miniature ReactorBackdrop field
     //
-    //  Built to the same two rules as the real one in Alchitex/AlchitexWindow.ReactorBackdrop.cs,
+    //  Built to the same two rules as the real one in Alchitex/AlchitexOverlay.ReactorBackdrop.cs,
     //  for the same reasons:
     //
     //    - Nothing is animated. Colour never eases between two values; a cell is on

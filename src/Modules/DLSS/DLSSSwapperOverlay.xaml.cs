@@ -24,7 +24,7 @@ namespace Vanilla_RTX_App.Modules.DLSS;
 /// .dll or .zip gets into it, and the elevated swap itself - lives in <see cref="DLSSSwapper"/>.
 /// This holds one and renders it.
 /// </summary>
-public sealed partial class DLSSSwapperWindow : ModuleOverlay
+public sealed partial class DLSSSwapperOverlay : ModuleOverlay
 {
     private bool _isClosing;
 
@@ -39,24 +39,20 @@ public sealed partial class DLSSSwapperWindow : ModuleOverlay
     private bool _swapInProgress;
 
 
-    public DLSSSwapperWindow()
+    public DLSSSwapperOverlay()
     {
         this.InitializeComponent();
         AttachChrome();
 
         ShowBrowseTarget();
 
-        // The page viewer covers this whole module and puts its own Done button in the corner
-        // the frame's close button sits in, so the frame's steps aside for as long as it is up.
-        WebImportOverlay.Dismissed += (_, _) => IsCloseButtonVisible = true;
-
-        this.Loaded += DLSSSwapperWindow_Loaded;
+        this.Loaded += DLSSSwapperOverlay_Loaded;
     }
-    private async void DLSSSwapperWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void DLSSSwapperOverlay_Loaded(object sender, RoutedEventArgs e)
     {
         try
         {
-            this.Loaded -= DLSSSwapperWindow_Loaded;
+            this.Loaded -= DLSSSwapperOverlay_Loaded;
 
             if (_isClosing) return;
 
@@ -75,7 +71,7 @@ public sealed partial class DLSSSwapperWindow : ModuleOverlay
         if (_isClosing) return;
         _isClosing = true;
 
-        this.Loaded -= DLSSSwapperWindow_Loaded;
+        this.Loaded -= DLSSSwapperOverlay_Loaded;
 
         _scanCancellationTokenSource?.Cancel();
         _scanCancellationTokenSource?.Dispose();
@@ -433,7 +429,7 @@ public sealed partial class DLSSSwapperWindow : ModuleOverlay
 
     /// <summary>
     /// One 3px half of the "fake split button" seam between the version button and its delete
-    /// button - the same hand-written pattern this window's own "Create your own preset"-style
+    /// button - the same hand-written pattern this module's own "Create your own preset"-style
     /// button pairs use directly in XAML via <c>{ThemeResource FakeSplitButtonDarkBorderColor}</c>.
     /// That binding auto-updates on theme change for free; built from code (these rows are
     /// assembled at runtime, one per DLL) it needs the same live-theme handling
@@ -586,8 +582,6 @@ public sealed partial class DLSSSwapperWindow : ModuleOverlay
     /// </summary>
     private void DownloadDllsButton_Click(object sender, RoutedEventArgs e)
     {
-        IsCloseButtonVisible = false;
-
         WebImportOverlay.Show(
             url: Links.DlssProvider,
             title: "Download DLSS files",

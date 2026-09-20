@@ -658,7 +658,7 @@ public static class Helpers
     /// dropped too, and a § before whitespace takes only itself - "Cost: 5§ each" keeps its
     /// space. Trailing whitespace is trimmed, since a code at either end leaves some behind.
     ///
-    /// Lives here rather than in either caller: PackBrowserWindow needs it for display,
+    /// Lives here rather than in either caller: PackBrowserOverlay needs it for display,
     /// Alchitex needs it for the name it writes into a regenerated manifest, and both had
     /// their own version that disagreed on all three edge cases above.
     /// </summary>

@@ -18,7 +18,7 @@
          import from a document. Background is a AcrylicBrush rather than WebImportOverlay's
          opaque one: that control has to hide a live WebView2 sitting behind Loading/Error, this
          one only ever has static content behind it, so translucency costs nothing and matches
-         every other in-app overlay (AlchitexWindow, PackUpdaterWindow) -->
+         every other in-app overlay (AlchitexOverlay, PackUpdaterOverlay) -->
     <Border x:Name="Panel"
             Margin="0,36,0,0"
             HorizontalAlignment="Stretch"

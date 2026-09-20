@@ -828,7 +828,7 @@ public sealed class PbrBlacklist
 #region Run Options (UI-facing)
 
 /// <summary>
-/// Maps 1:1 to the "Secondary PBR texture" dropdown in the Alchitex window
+/// Maps 1:1 to the "Secondary PBR texture" dropdown in the Alchitex overlay
 /// (None / Auto / Normal map / Heightmap).
 /// </summary>
 public enum SecondaryPbrMode
@@ -840,7 +840,7 @@ public enum SecondaryPbrMode
 }
 
 /// <summary>
-/// Per-run options resolved from the Alchitex window's controls before the pipeline
+/// Per-run options resolved from the Alchitex overlay's controls before the pipeline
 /// starts. Kept as a plain, immutable record so the pipeline never reaches back into UI
 /// state mid-run - once RunAsync is called, the run's behavior is fully pinned down.
 ///
@@ -850,7 +850,7 @@ public enum SecondaryPbrMode
 /// with.
 ///
 /// StripExistingPbr is the one option that isn't a window-wide setting: it's decided per
-/// pack, from that pack's own confirmation dialog (AlchitexWindow), and the batch loop
+/// pack, from that pack's own confirmation dialog (AlchitexOverlay), and the batch loop
 /// applies it with `options with { StripExistingPbr = true }` for the packs the user agreed
 /// to have regenerated. See PbrStripper.
 /// </summary>

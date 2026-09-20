@@ -44,11 +44,11 @@ public static class AlchitexVariables
         // Off by default, and deliberately so - it deletes the user's own installed pack.
         public static bool DeleteOriginalPackEnabled = false;
         // UTC "O" stamp the once-a-day Ko-fi auto-scroll cooldown counts from. Seeded to
-        // "now" the first time this window ever opens (see Alchitex_Loaded) rather than
+        // "now" the first time this module ever opens (see Alchitex_Loaded) rather than
         // left empty until the scroll first plays - empty is read as "due immediately",
         // which would scroll a brand new user to a donation ask before they've even seen
         // what the feature does. Written immediately wherever it changes (not just on
-        // window close, like the rest of Persistent) so the cap holds even across a crash.
+        // app close, like the rest of Persistent) so the cap holds even across a crash.
         // Parse with DateTimeStyles.RoundtripKind, same trap as OnlineTexts' own cooldown.
         public static string LastSupportScrollUtc = "";
     }
@@ -93,7 +93,7 @@ public static class AlchitexVariables
 
 public sealed partial class Alchitex : ModuleOverlay
 {
-    private bool _isClosing; // just a secondary guard in case a future code ends up closing a window while already closing
+    private bool _isClosing; // just a secondary guard in case a future code ends up closing a module while already closing
     private CancellationTokenSource? _generateCts;
 
     /// <summary>
@@ -120,7 +120,7 @@ public sealed partial class Alchitex : ModuleOverlay
     /// successful, since the message itself already separates the two lists clearly.
     /// </summary>
 
-    // Accumulated across every Generate click in this window's lifetime, not just the
+    // Accumulated across every Generate click in this module's lifetime, not just the
     // most recent one - the user can click Generate more than once before closing.
     private readonly List<string> _succeededPackNames = new();
     private readonly List<string> _failedPackNames = new();
@@ -129,7 +129,7 @@ public sealed partial class Alchitex : ModuleOverlay
     private readonly List<string> _removedOriginalNames = new();
 
     // Drives the Generate button's three layers. Built in ShowMainContent, since it needs
-    // the XAML to exist, and shut down with the window so no loop outlives it.
+    // the XAML to exist, and shut down with the module so no loop outlives it.
     private ReactorAnimator? _reactor;
 
     // Whether the pointer is currently over GenerateButton - only PointerEntered/Exited
@@ -139,7 +139,7 @@ public sealed partial class Alchitex : ModuleOverlay
     // genuinely left and came back, rather than resuming the hover dance it was already in.
     private bool _isGenerateButtonPointerOver;
 
-    // Generates the window's tile field. Unlike the reactor this isn't gated on the license
+    // Generates the overlay's tile field. Unlike the reactor this isn't gated on the license
     // being accepted - the background is behind the license screen too, and was when it was
     // still a bitmap.
     private ReactorBackdrop? _backdrop;
@@ -206,7 +206,7 @@ public sealed partial class Alchitex : ModuleOverlay
         _isClosing = true;
 
         // A test bench run holds no pack and writes only into folders the user pointed at,
-        // but there's no reason to let it keep going once the window is gone.
+        // but there's no reason to let it keep going once the module is gone.
         _testBenchCts?.Cancel();
 
         _reactor?.Shutdown();
@@ -396,7 +396,7 @@ public sealed partial class Alchitex : ModuleOverlay
         // is exactly the case EndPressHold alone doesn't handle: it settles to rest
         // unconditionally, so releasing without actually leaving used to require a real
         // exit-then-re-enter before hovering read as hovering again. PointerEntered/Exited
-        // are the only place this window actually knows where the pointer is, so that's
+        // are the only place this module actually knows where the pointer is, so that's
         // where _isGenerateButtonPointerOver is tracked - resuming the hover dance here on
         // release is then just acting on it.
         GenerateButton.AddHandler(UIElement.PointerReleasedEvent,
@@ -498,11 +498,11 @@ public sealed partial class Alchitex : ModuleOverlay
     private const double TileShadowPadding = 6;
 
     /// <summary>
-    /// Packs this window is ignoring for the rest of its lifetime: discarded by the user,
+    /// Packs this module is ignoring for the rest of its lifetime: discarded by the user,
     /// skipped at a confirmation dialog, or already run (successfully or not).
     ///
     /// Deliberately NOT a change to EnvironmentVariables.SelectedPacks - that selection belongs
-    /// to the main window and the pack browser. Closing and reopening this window brings
+    /// to the main window and the pack browser. Closing and reopening this module brings
     /// everything back, which is exactly what "temporarily ignore" should mean. (The one
     /// case where SelectedPacks does change is the "Uninstall the original pack" toggle,
     /// and only because the folder genuinely stopped existing.)
@@ -533,7 +533,7 @@ public sealed partial class Alchitex : ModuleOverlay
         foreach (var (location, _) in InputQueue().Concat(_outputPacks))
         {
             if (_packIconCache.ContainsKey(location)) continue;
-            _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
+            _packIconCache[location] = await PackBrowserOverlay.LoadPackIconAsync(location);
         }
 
         RenderQueues();
@@ -571,9 +571,9 @@ public sealed partial class Alchitex : ModuleOverlay
 
     /// <summary>
     /// The main window's Clear button (and anything else that edits the shared selection)
-    /// empties EnvironmentVariables.SelectedPacks out from under this window. The queue is drawn
+    /// empties EnvironmentVariables.SelectedPacks out from under this module. The queue is drawn
     /// from that collection, so it follows along - no need for the main window to disable
-    /// its controls while this window is open just to keep the two in agreement.
+    /// its controls while this module is open just to keep the two in agreement.
     ///
     /// Generation follows too: the batch loop re-checks each pack against the live
     /// selection before starting it (IsStillQueued), so a pack cleared mid-run is skipped
@@ -778,7 +778,7 @@ public sealed partial class Alchitex : ModuleOverlay
         return tile;
     }
 
-    /// <summary>Drops a pack from the queue for this window's lifetime, with the same
+    /// <summary>Drops a pack from the queue for this module's lifetime, with the same
     /// send-off a skipped pack gets.</summary>
     private async Task DiscardPackAsync(string location, FrameworkElement tile)
     {
@@ -883,7 +883,7 @@ public sealed partial class Alchitex : ModuleOverlay
     }
 
     /// <summary>
-    /// Starts the once-a-day cooldown clock the first time this window is ever opened,
+    /// Starts the once-a-day cooldown clock the first time this module is ever opened,
     /// rather than leaving LastSupportScrollUtc empty until the first scroll actually
     /// plays. Only ever writes once per install - every later call sees a non-empty value
     /// and does nothing.
@@ -982,7 +982,7 @@ public sealed partial class Alchitex : ModuleOverlay
     }
 
     /// <summary>Reads the live control values into AlchitexVariables.Persistent. Shared by
-    /// ReadOptionsFromUI (on Generate) and Alchitex_Closed (on window close) so a
+    /// ReadOptionsFromUI (on Generate) and OnClosing (on close) so a
     /// toggle/dropdown change is captured regardless of which one happens first.</summary>
     private void SyncPersistentSettingsFromControls()
     {
@@ -1267,7 +1267,7 @@ public sealed partial class Alchitex : ModuleOverlay
             await RebuildPackIconsAsync();
 
             // Refresh even on an exception mid-batch - whatever succeeded before the
-            // exception is still worth reporting when the window closes.
+            // exception is still worth reporting when the module closes.
             UpdateSessionSummary();
         }
     }
@@ -1345,7 +1345,7 @@ public sealed partial class Alchitex : ModuleOverlay
         _outputPacks.Add((location, packName));
 
         if (!_packIconCache.ContainsKey(location))
-            _packIconCache[location] = await PackBrowserWindow.LoadPackIconAsync(location);
+            _packIconCache[location] = await PackBrowserOverlay.LoadPackIconAsync(location);
 
         var tile = BuildPackTile(location, packName, allowDiscard: false);
         OutputQueuePanel.Children.Add(tile);
@@ -1449,7 +1449,7 @@ public sealed partial class Alchitex : ModuleOverlay
             }
             else
             {
-                // Declined: out of the queue for this window's lifetime, with the same
+                // Declined: out of the queue for this module's lifetime, with the same
                 // send-off the discard button gives.
                 _dismissedLocations.Add(pack.Location);
 
@@ -1550,7 +1550,7 @@ public sealed partial class Alchitex : ModuleOverlay
             {
                 Title = $"{packName} may not be suitable for RTX enhancement by RTX Reactor!",
                 Content =
-                    $"\"{packName}\" isn't tagged as an \"{PackBrowserWindow.AlchitexCandidateTag}\" - it has few block " +
+                    $"\"{packName}\" isn't tagged as an \"{PackBrowserOverlay.AlchitexCandidateTag}\" - it has few block " +
                     "textures to work with, or uses a pack format too old to build RTX support on.\n\n" +
                     "You can still run it. Your installed copy is left untouched and the result is " +
                     "a separate RTX-compatible pack, so there's nothing to lose, but it may come out with little to " +
@@ -1572,10 +1572,10 @@ public sealed partial class Alchitex : ModuleOverlay
     }
 
     /// <summary>
-    /// Rebuilds StatusMessage/OperationSuccessful from every pack this window session has
+    /// Rebuilds StatusMessage/OperationSuccessful from every pack this module session has
     /// touched so far (see _succeededPackNames/_failedPackNames) - MainWindow's Closed
-    /// handler for this window reads these once the window actually closes, mirroring how
-    /// BetterRTX/DLSS/LUT manager windows report their own outcome.
+    /// handler for this module reads these once the module actually closes, mirroring how
+    /// the BetterRTX/DLSS/LUT managers report their own outcome.
     /// </summary>
     private void UpdateSessionSummary()
     {
