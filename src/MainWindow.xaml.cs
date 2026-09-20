@@ -149,6 +149,13 @@ public sealed partial class MainWindow : Window
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
         Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt);
 
+
+        // Up to 44 only, and no special variants
+        var PreviewArtLampOnly = Enumerable.Range(1, 44) 
+            .Select(i => $"ms-appx:///Assets/previews/vrtx.app.{i}.png").ToArray();
+        Previewer.Instance.InitializeButton(SettingsButton, PreviewArtLampOnly);
+
+
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,
             "ms-appx:///Assets/previews/fog.default.png",
             "ms-appx:///Assets/previews/fog.min.png",
@@ -254,10 +261,6 @@ public sealed partial class MainWindow : Window
 
         Previewer.Instance.InitializeButton(HelpButton,
             "ms-appx:///Assets/previews/cubeir.help.png"
-        );
-
-        Previewer.Instance.InitializeButton(SettingsButton,
-            "ms-appx:///Assets/previews/vrtx.settings.png"
         );
 
         Previewer.Instance.InitializeButton(BugButton,
