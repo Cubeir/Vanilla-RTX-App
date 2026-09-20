@@ -39,7 +39,7 @@ namespace Vanilla_RTX_App.Core.Overlays;
 public class ModuleOverlay : UserControl
 {
     /// <summary>Matches <see cref="MarkdownOverlay"/>'s fade, so switching surfaces feels like one app rather than several.</summary>
-    private const double FADE_MS = 100;
+    private const double FADE_MS = 125;
 
     private static bool AnimationsSuspended => Persistent.SuspendUIAnimations;
 

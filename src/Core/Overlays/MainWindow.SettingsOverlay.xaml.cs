@@ -57,14 +57,14 @@ public sealed partial class SettingsOverlay : UserControl
     /// The scrim's fade. Matches <see cref="MarkdownOverlay"/>'s so the two overlays feel
     /// like one surface being swapped rather than two different panels.
     /// </summary>
-    private const double FADE_MS = 100;
+    private const double FADE_MS = 125;
 
     /// <summary>
     /// How long the panel takes to cross its own width, fading as it goes. Longer than the
     /// scrim's fade because this is travel rather than a level change - over that distance
     /// 100ms reads as a jump - and short enough to stay ahead of a second click on the gear.
     /// </summary>
-    private const double SLIDE_MS = 120;
+    private const double SLIDE_MS = 150;
 
     private static bool AnimationsSuspended => Persistent.SuspendUIAnimations;
 

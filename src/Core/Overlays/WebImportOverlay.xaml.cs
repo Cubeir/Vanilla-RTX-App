@@ -77,7 +77,7 @@ public sealed partial class WebImportOverlay : UserControl
     /// the overlay feels slow to open on a high-refresh display. 100ms is 6 frames at 60Hz
     /// and 14 at 144Hz.
     /// </summary>
-    private const double FADE_MS = 100;
+    private const double FADE_MS = 125;
 
     public WebImportOverlay()
     {
