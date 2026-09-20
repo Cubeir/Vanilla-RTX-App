@@ -48,9 +48,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- Preset Selection UI - one flat [scrollable, fixed-bar] split; the titlebar is a
-             floating overlay (TitleBarHost below) rather than a row this panel excludes, so the
-             list can scroll all the way up underneath it. -->
+        <!-- Preset Selection UI - one flat [scrollable, fixed-bar] split. -->
         <Grid x:Name="PresetSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
@@ -64,7 +62,7 @@
 
             <Border x:Name="DefaultMissingCard"
                     Grid.Row="0"
-                    Margin="20,49,24,0"
+                    Margin="20,12,24,0"
                     Visibility="Collapsed"
                     CornerRadius="6"
                     Padding="6"
@@ -342,16 +340,14 @@
         </Grid>
 
         <!-- ══ Titlebar Actions ═══════════════════════════════════════════════
-             Declared here so the button's x:Name field and Click handler belong to this
-             class, but it never renders here: MainWindow moves the whole Border into its own
-             titlebar for as long as this module is open, where it reads as a continuation of
-             the three buttons already there. See ModuleOverlay.TitleBarStrip.
+             Declared here so the buttons' x:Name fields and Click handlers belong to this
+             class, but it never renders here: ModuleOverlayTitleBar takes the whole Border
+             and shows it in MainWindow's titlebar for as long as this module is open, where
+             it reads as a continuation of the buttons already there. That control owns the
+             placement and the divider in front of it - this is only what goes in it, sized
+             the way MainWindow sizes its own. See ModuleOverlay.TitleBarStrip.
              ═══════════════════════════════════════════════════════════════════ -->
-        <Border x:Name="TitleBarActions"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Left"
-                Height="34"
-                Width="Auto">
+        <Border x:Name="TitleBarActions">
             <Grid Background="Transparent"
                   BorderBrush="Transparent"
                   BorderThickness="1">

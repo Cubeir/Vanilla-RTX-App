@@ -28,27 +28,23 @@
                 IsHitTestVisible="False"
                 Canvas.ZIndex="-3" />
 
-        <!-- TITLEBAR -->
-
         <!-- ══ TITLEBAR ACTIONS - post-license, and not rendered here ════════════
              Declared in this class so its buttons' x:Name fields and handlers belong to it,
-             but MainWindow moves the whole Border into its own titlebar for as long as this
-             module is open - where it reads as a continuation of the three buttons already
-             there. See ModuleOverlay.TitleBarStrip.
+             but ModuleOverlayTitleBar takes the whole Border and shows it in MainWindow's
+             titlebar for as long as this module is open, where it reads as a continuation of
+             the buttons already there. That control owns the placement and the divider in
+             front of it - this is only what goes in it, sized the way MainWindow sizes its
+             own. See ModuleOverlay.TitleBarStrip.
 
              One of the two containers that make up the post-license UI (the other is
              MainGrid). Everything in here is hidden until the license is accepted, and
              children inherit that, so a new titlebar control added inside this Border needs
              NO code in ShowMainContent - just drop it in.
 
-             There is no Documentation button any more: MainWindow's Help button is right
-             beside this strip now and renders the same document.
+             Documentation is MainWindow's Help button, right beside this strip, which renders
+             the same document.
              ═══════════════════════════════════════════════════════════════════ -->
         <Border x:Name="TitleBarActions"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Left"
-                Height="34"
-                Width="Auto"
                 Visibility="Collapsed">
             <Grid Background="Transparent"
                   BorderBrush="Transparent"
@@ -76,7 +72,7 @@
                     
                     <!-- Separator -->
                     <Border Width="1"
-                            Margin="4,6,4,6"
+                            Margin="2,6,2,6"
                             Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                     <!-- PBR test bench: run loose textures through the generation path

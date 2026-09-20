@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl x:Class="Vanilla_RTX_App.Core.Overlays.ModuleOverlayTitleBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             IsTextScaleFactorEnabled="False">
+
+    <!-- Everything a feature module puts in the titlebar, in one place: the strip of buttons
+         the open module owns, on the left, and the way out of it on the right.
+
+         MainWindow hosts this control and positions it - its Margin is the width of its own
+         button cluster on one side and the system's caption buttons on the other - but nothing
+         about how any of this looks is MainWindow's. Both clusters below are the same markup
+         MainWindow's own cluster is built from, so a button here is the same size, the same
+         style and the same distance from its neighbour as the ones it appears to continue.
+         Change a measurement in that cluster and change it here too, or the seam shows. -->
+    <Grid HorizontalAlignment="Stretch"
+          VerticalAlignment="Top">
+
+        <!-- The open module's own buttons, reading as a continuation of MainWindow's cluster.
+             The hairline follows the strip's width rather than the module's presence: a module
+             whose buttons are hidden - Alchitex before its license is accepted, and in a
+             Release build, where its only buttons are developer tools - would otherwise leave
+             a divider standing in front of nothing. -->
+        <Grid x:Name="StripCluster"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              Height="35"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Border x:Name="StripSeparator"
+                    Grid.Column="0"
+                    Width="1"
+                    Margin="2,6,2,6"
+                    Visibility="Collapsed"
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+            <Border x:Name="StripHost"
+                    Grid.Column="1"
+                    SizeChanged="StripHost_SizeChanged" />
+        </Grid>
+
+        <!-- The way out of a module, disguised as a fourth caption button: as wide as the
+             system's own rather than as the app's, and separated from them by the same
+             hairline the app puts between two of its own. -->
+        <Grid x:Name="ReturnCluster"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Height="35"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button x:Name="ReturnButton"
+                    Grid.Column="0"
+                    FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                    Style="{ThemeResource SubtleButtonStyle}"
+                    Content="&#xE944;"
+                    Width="46"
+                    Height="35"
+                    CornerRadius="0"
+                    Padding="0"
+                    FontSize="14"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    Click="ReturnButton_Click"
+                    ToolTipService.ToolTip="Return to the main menu."
+                    IsTextScaleFactorEnabled="False" />
+
+            <Border Grid.Column="1"
+                    Width="1"
+                    Margin="2,6,2,6"
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+        </Grid>
+    </Grid>
+</UserControl>

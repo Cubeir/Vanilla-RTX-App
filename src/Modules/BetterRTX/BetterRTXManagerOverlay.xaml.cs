@@ -167,8 +167,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     /// read once, and a fixed card that tall costs the list most of its height.</item>
     /// <item>The no-backup card stays put: nothing in the list below it can be installed
     /// while it is up, so scrolling away from it would leave a greyed-out list with no
-    /// explanation on screen. Being the topmost element it then takes over the 37px the
-    /// scroller reserves for the floating titlebar.</item>
+    /// explanation on screen.</item>
     /// </list>
     ///
     /// <para>Called twice - from Loaded, when only the Preview half is known, and again once
@@ -180,13 +179,6 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
 
         bool showDefaultMissing = DefaultMissingText.Text.Length > 0;
         DefaultMissingCard.Visibility = showDefaultMissing ? Visibility.Visible : Visibility.Collapsed;
-
-        // The scroller and the empty state share row 1 and each reserves that 37px for
-        // itself, so both hand it over together - otherwise the empty state would sit 37px
-        // lower than centred in whatever space the card left it.
-        var topOffset = showDefaultMissing ? new Thickness(0, 12, 0, 0) : new Thickness(0, 37, 0, 0);
-        PresetScrollViewer.Margin = topOffset;
-        EmptyStatePanel.Margin = topOffset;
     }
 
     /// <summary>

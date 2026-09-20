@@ -62,7 +62,7 @@ public sealed partial class MainWindow
         {
             _openModules.Remove(overlay);
             ReleaseModuleTitleBarStrip(overlay);
-            ShowModuleReturnButton(false);
+            ModuleTitleBar.ShowReturn(false);
 
             // Anything the module was still holding on its own controls goes with it. Those
             // controls are about to leave the visual tree, and a count left on one of them is
@@ -76,7 +76,7 @@ public sealed partial class MainWindow
 
         _openModules.Add(overlay);
         AdoptModuleTitleBarStrip(overlay);
-        ShowModuleReturnButton(true);
+        ModuleTitleBar.ShowReturn(true);
         ModuleOverlayHost.Children.Add(overlay);
         overlay.Show();
     }
@@ -104,19 +104,12 @@ public sealed partial class MainWindow
     /// all six rather than one per module, which is the whole reason it can sit in the titlebar
     /// and look like a caption button.
     /// </summary>
-    private void ModuleReturnButton_Click(object sender, RoutedEventArgs e) =>
+    private void ModuleTitleBar_ReturnRequested(object? sender, EventArgs e) =>
         _openModules.LastOrDefault()?.Close();
 
-    /// <summary>Shows or hides the return button and the hairline that separates it from the system's own caption buttons.</summary>
-    private void ShowModuleReturnButton(bool show)
-    {
-        var visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        ModuleReturnButton.Visibility = visibility;
-        ModuleReturnSeparator.Visibility = visibility;
-    }
-
     /// <summary>
-    /// Hosts a module's titlebar buttons in this window's titlebar for as long as it is open.
+    /// Hands a module's titlebar buttons to the shared titlebar control for as long as it is
+    /// open.
     ///
     /// <para><b>The module's own element, not a copy</b>, so its <c>x:Name</c> field and every
     /// <c>Click</c> handler on it keep working untouched - which is the whole reason those
@@ -127,10 +120,7 @@ public sealed partial class MainWindow
     private void AdoptModuleTitleBarStrip(ModuleOverlay overlay)
     {
         if (overlay.TitleBarStrip is not { } strip) return;
-
-        ModuleTitleBarActions.Child = strip;
-        ModuleTitleBarActions.Visibility = Visibility.Visible;
-        ModuleTitleBarSeparator.Visibility = Visibility.Visible;
+        ModuleTitleBar.Strip = strip;
     }
 
     /// <summary>
@@ -141,10 +131,7 @@ public sealed partial class MainWindow
     private void ReleaseModuleTitleBarStrip(ModuleOverlay overlay)
     {
         if (overlay.TitleBarStrip is null) return;
-
-        ModuleTitleBarActions.Child = null;
-        ModuleTitleBarActions.Visibility = Visibility.Collapsed;
-        ModuleTitleBarSeparator.Visibility = Visibility.Collapsed;
+        ModuleTitleBar.Strip = null;
     }
 
     /// <summary>Closes every open module, for the window shutting down underneath them.</summary>

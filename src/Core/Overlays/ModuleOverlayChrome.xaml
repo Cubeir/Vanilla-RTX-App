@@ -30,8 +30,8 @@
             <ThemeShadow />
         </Border.Shadow>
 
-        <!-- The module's own markup, and nothing else. The way out is MainWindow's
-             ModuleReturnButton, up in the titlebar beside the caption buttons - see §2i. -->
+        <!-- The module's own markup, and nothing else. The way out is up in the titlebar,
+             beside the caption buttons - see ModuleOverlayTitleBar. -->
         <ContentPresenter x:Name="BodyHost"
                           HorizontalContentAlignment="Stretch"
                           VerticalContentAlignment="Stretch" />

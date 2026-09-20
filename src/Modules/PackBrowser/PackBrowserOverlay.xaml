@@ -26,9 +26,7 @@
         ════════════════════════════════════════════════════ -->
         <Grid x:Name="PackSelectionPanel"
               Visibility="Collapsed">
-            <!-- ── Content area - one flat area; the titlebar is a floating overlay
-                 (TitleBarHost below) rather than a row this excludes, so the list can scroll
-                 all the way up underneath it. ────────────────────────────────── -->
+            <!-- ── Content area - one flat area. ─────────────────────────────── -->
             <Grid>
                 <Grid.RowDefinitions>
                     <!-- Announcements (PSA cards, auto-height) -->
@@ -49,7 +47,7 @@
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Margin="5,36,5,0">
+                              Margin="5,0,5,0">
 
                     <!-- Wrap both panels in a single parent StackPanel -->
                     <StackPanel>

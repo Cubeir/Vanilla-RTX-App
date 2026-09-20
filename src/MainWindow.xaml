@@ -106,20 +106,14 @@
             </Border.Shadow>
         </Border>
 
-        <!-- Transparent drag area: starts just past the titlebar buttons on the left and stops
-             just before ModuleReturnButton on the right, so both keep receiving clicks. A drag
-             region is a NATIVE one - SetTitleBar hands this rectangle to the window manager, and
-             XAML content inside it gets no input at all, so a button over it is simply dead.
+        <!-- Transparent drag area. A drag region is a NATIVE one - SetTitleBar hands this
+             rectangle to the window manager - so its left inset has to clear the button cluster
+             beside it, and has to be brought back in whenever a button leaves, or the window
+             keeps a band near the top that can't be dragged.
 
-             The left inset is the button strip - three 40px buttons, two 1px separators with 2px
-             either side, and TitleBarActions' own -2 left margin - so it has to come down
-             whenever a button is added or removed, or the window grows a band near the top that
-             can't be dragged.
-
-             There is no matching inset on the right for ModuleReturnButton. Interactive XAML
-             declared after this element renders above it and takes input normally, which is what
-             the module titlebar strip has always relied on; only the drag region's own left edge
-             was ever measured. -->
+             Nothing is reserved on the right for ModuleOverlayTitleBar. Interactive XAML declared
+             after this element renders above it and takes input normally, which is what the
+             module's own titlebar buttons have always relied on. -->
         <Border x:Name="TitleBarDragArea"
                 Margin="132,-1,0,0"
                 Height="32"
@@ -307,61 +301,16 @@
             </Grid>
         </Border>
 
-        <!-- ══ Module titlebar strip ════════════════════════════════════════
-             Empty, and normally invisible. A feature module that owns titlebar buttons -
-             RTX Reactor's dev tools, the BetterRTX manager's cache refresh - has them moved
-             in here while its overlay is open and moved back out when it closes, so they
-             read as a continuation of the three above rather than as a second cluster.
+        <!-- ══ Module titlebar ══════════════════════════════════════════════
+             The open module's own buttons and the way out of it, both hidden while there is
+             no module open. Everything about how they look lives in the control; the margin
+             here is the only part that is this window's - the width of the button cluster
+             above on one side and of the system's caption buttons on the other, so the two
+             clusters sit flush against what they continue. The left figure moves with that
+             cluster, the same way TitleBarDragArea's does.
              ═══════════════════════════════════════════════════════════════════ -->
-        <Border x:Name="ModuleTitleBarSeparator"
-                    Margin="131,4,2,6"
-                    Width="1"
-                Height="21"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Left"
-                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                Visibility="Collapsed" />
-
-        <Border x:Name="ModuleTitleBarActions"
-                Margin="133,-2,16,0"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Left"
-                Height="35"
-                Width="Auto"
-                Visibility="Collapsed" />
-
-        <!-- ══ Return to the window ══════════════════════════════════════════
-             The way out of a feature module, disguised as a fourth caption button: same
-             height as the system's own, hard against them, and separated from them by the
-             same divisor the left-hand cluster uses between its buttons.
-             ═══════════════════════════════════════════════════════════════════ -->
-            <Border x:Name="ModuleReturnSeparator"
-                    Margin="0,4,140,6"
-                    Width="1"
-                    Height="21"
-                    VerticalAlignment="Top"
-                    HorizontalAlignment="Right"
-                    Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    Visibility="Collapsed" />
-
-            <Button x:Name="ModuleReturnButton"
-                Margin="0,-1,143,0"
-                Width="46"
-                Height="32"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Right"
-                FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                Style="{ThemeResource SubtleButtonStyle}"
-                Content="&#xE944;"
-                FontSize="14"
-                CornerRadius="0"
-                Padding="0"
-                Background="Transparent"
-                BorderBrush="Transparent"
-                Visibility="Collapsed"
-                Click="ModuleReturnButton_Click"
-                ToolTipService.ToolTip="Return to the main menu."
-                IsTextScaleFactorEnabled="False" />
+        <core:ModuleOverlayTitleBar x:Name="ModuleTitleBar"
+                                    Margin="128,-3,138,0" />
 
         </Grid>
         <!-- /TitleBarLayer -->

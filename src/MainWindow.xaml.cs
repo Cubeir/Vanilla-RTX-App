@@ -331,7 +331,9 @@ public sealed partial class MainWindow : Window
         // TitleBarFocus for why that beats naming each button here. The centered
         // "Vanilla RTX App" title is deliberately NOT included: it's the app's identity,
         // and it stays at full strength whether the window is focused or not.
-        TitleBarFocus.Attach(this, TitleBarActions, ModuleTitleBarActions, ModuleTitleBarSeparator, ModuleReturnButton, ModuleReturnSeparator);
+        TitleBarFocus.Attach(this, TitleBarActions, ModuleTitleBar);
+
+        ModuleTitleBar.ReturnRequested += ModuleTitleBar_ReturnRequested;
 
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)

@@ -49,9 +49,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- DLL Selection UI - one flat [scrollable, fixed-bar] split now; the titlebar is a
-             floating overlay (TitleBarHost below) rather than a row this panel excludes, so the
-             list can scroll all the way up underneath it. -->
+        <!-- DLL Selection UI - one flat [scrollable, fixed-bar] split. -->
         <Grid x:Name="DllSelectionPanel"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
