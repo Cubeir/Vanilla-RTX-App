@@ -205,7 +205,7 @@
                                               FontSize="20"
                                               VerticalAlignment="Center"
                                               IsTextScaleFactorEnabled="False" />
-                                    <TextBlock Text="Import more resource packs"
+                                    <TextBlock Text="Import texture packs"
                                                FontWeight="SemiBold"
                                                FontSize="14"
                                                VerticalAlignment="Center"
@@ -265,6 +265,36 @@
 
             </Grid>
         </Grid>
+
+        <!-- ══ Titlebar Actions ═══════════════════════════════════════════════
+             Declared here so the button's x:Name field and Click handler belong to this
+             class, but it never renders here: ModuleOverlayTitleBar takes the whole Border
+             and shows it in MainWindow's titlebar for as long as this module is open, where
+             it reads as a continuation of the buttons already there. That control owns the
+             placement and the divider in front of it - this is only what goes in it, sized
+             the way MainWindow sizes its own. See ModuleOverlay.TitleBarStrip.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <Border x:Name="TitleBarActions">
+            <Grid Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="1">
+                <Button x:Name="RefreshButton"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Content="&#xE895;"
+                        Width="40"
+                        Height="35"
+                        CornerRadius="0"
+                        FontSize="14"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="RefreshButton_Click"
+                        IsTextScaleFactorEnabled="False"
+                        ToolTipService.ToolTip="Rescan the packs folder and rebuild this list.
+                        &#x0a;&#x0a;The list is built when this menu opens, so anything that adds or removes a pack while it is open - RTX Reactor finishing a generation, a pack deleted in Explorer - leaves it showing what was there before. Packs you have already ticked stay ticked, as long as they are still installed.">
+                </Button>
+            </Grid>
+        </Border>
 
     </Grid>
 </overlays:ModuleOverlay>

@@ -23,6 +23,12 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
 {
     private bool _isClosing;
 
+    /// <summary>
+    /// Guards the refresh button against itself. An import disables that button for its own
+    /// duration instead, since it finishes with a reload of its own either way.
+    /// </summary>
+    private bool _reloadInProgress;
+
     private readonly Dictionary<string, Button> _packButtonMap = new();
     private readonly HashSet<string> _selectedPaths = new();
     private readonly List<string> _knownTags = new();
@@ -63,6 +69,9 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         $"Vibrant Visuals{(Random.Shared.Next(100) == 49 ? " 💩" : "")}";
 
     private static readonly Regex StrictSemVerRegex = new(@"^\d+\.\d+\.\d+$", RegexOptions.Compiled);
+
+    /// <summary>The refresh button, shown in MainWindow's titlebar while this module is open.</summary>
+    protected internal override FrameworkElement? TitleBarStrip => TitleBarActions;
 
     public PackBrowserOverlay()
     {
@@ -191,6 +200,11 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
     // installed before that import until the user closed and reopened this module.
     internal async Task LoadPacksAsync()
     {
+        // Every button is rebuilt, so the ticks have to be carried across by path: a selection
+        // survives a rescan for as long as the pack it names is still installed. Empty on the
+        // first load, which is why this costs nothing there.
+        var wasSelected = new HashSet<string>(_selectedPaths);
+
         PackListContainer.Children.Clear();
         _packButtonMap.Clear();
         _selectedPaths.Clear();
@@ -233,6 +247,11 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
 
             foreach (var pack in sortedPacks)
             {
+                // Before the button is built - CreatePackButton reads this to decide whether
+                // its selection overlay starts visible, which is the only way to restore a tick
+                // without walking a visual tree that has not been realised yet.
+                if (wasSelected.Contains(pack.PackPath)) _selectedPaths.Add(pack.PackPath);
+
                 var btn = CreatePackButton(pack);
                 PackListContainer.Children.Add(btn);
                 _packButtonMap[pack.PackPath] = btn;
@@ -414,7 +433,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             Height = 96,
             CornerRadius = new CornerRadius(3),
             Background = new SolidColorBrush(ColorHelper.FromArgb(200, 0, 0, 0)),
-            Visibility = Visibility.Collapsed,
+            Visibility = _selectedPaths.Contains(pack.PackPath) ? Visibility.Visible : Visibility.Collapsed,
             Tag = "SelectionOverlay"
         };
         selectionOverlay.Child = new FontIcon
@@ -673,9 +692,41 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
     public Task ImportActivatedFilesAsync(IReadOnlyList<string> paths) =>
         RunImportAsync(() => ExpImpDel.ImportFromPathsAsync(paths));
 
+    /// <summary>
+    /// Rescans the packs folder and rebuilds the list. The list is built when this module
+    /// opens and nothing tells it when the folder changes underneath it - RTX Reactor
+    /// promoting a generated pack is the case that prompted this - so a manual rescan is what
+    /// stands in for the refresh that reopening the module would have given.
+    /// </summary>
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_reloadInProgress) return;
+        _reloadInProgress = true;
+
+        try
+        {
+            RefreshButton.IsEnabled = false;
+            AddPackButton.IsEnabled = false;
+
+            LoadingPanel.Visibility = Visibility.Visible;
+            PackSelectionPanel.Visibility = Visibility.Collapsed;
+            await LoadPacksAsync();
+        }
+        finally
+        {
+            _reloadInProgress = false;
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            PackSelectionPanel.Visibility = Visibility.Visible;
+            AddPackButton.IsEnabled = true;
+            RefreshButton.IsEnabled = true;
+            Blink();
+        }
+    }
+
     private async Task RunImportAsync(Func<Task<bool>> importWork)
     {
         AddPackButton.IsEnabled = false;
+        RefreshButton.IsEnabled = false;
         var imported = false;
 
         try
@@ -692,6 +743,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             LoadingPanel.Visibility = Visibility.Collapsed;
             PackSelectionPanel.Visibility = Visibility.Visible;
             AddPackButton.IsEnabled = true;
+            RefreshButton.IsEnabled = true;
             SetImportBusy(false);
         }
     }
