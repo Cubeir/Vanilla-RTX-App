@@ -290,8 +290,9 @@
                         BorderBrush="Transparent"
                         Click="RefreshButton_Click"
                         IsTextScaleFactorEnabled="False"
-                        ToolTipService.ToolTip="Rescan the packs folder and rebuild this list.
-                        &#x0a;&#x0a;The list is built when this menu opens, so anything that adds or removes a pack while it is open - RTX Reactor finishing a generation, a pack deleted in Explorer - leaves it showing what was there before. Packs you have already ticked stay ticked, as long as they are still installed.">
+                        ToolTipService.ToolTip="Rescan the packs folder, rebuild this list, and measure how much space each pack takes.
+                        &#x0a;&#x0a;The list is built when this menu opens, so anything that adds or removes a pack while it is open - RTX Reactor finishing a generation, a pack deleted in Explorer - leaves it showing what was there before. Packs you have already ticked stay ticked, as long as they are still installed.
+                        &#x0a;&#x0a;Note: measuring sizes reads every file in every pack, so this takes noticeably longer than opening the menu does. Nothing else ever waits for it.">
                 </Button>
             </Grid>
         </Border>
