@@ -342,6 +342,8 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             if (selected) { _selectedPaths.Add(path); overlay.Visibility = Visibility.Visible; }
             else { _selectedPaths.Remove(path); overlay.Visibility = Visibility.Collapsed; }
         }
+
+        Blink(selected);
     }
 
     private void SelectPacksByTag(string tag)
@@ -357,6 +359,9 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             _selectedPaths.Add(path);
             overlay.Visibility = Visibility.Visible;
         }
+
+        // Some packs go on, the rest are left as they were, so neither direction is the truth.
+        BlinkEither();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -535,42 +540,30 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         return button;
     }
 
-    private static Border BuildSizeBadge(string sizeText)
-    {
+    private static Border BuildSizeBadge(string sizeText) => BuildPlainBadge(sizeText);
 
-        var badge = new Border
+    private static Border BuildVersionBadge(string version) => BuildPlainBadge($"Version: {version}");
+
+    /// <summary>
+    /// The neutral badge both of the top-row badges are. They sit side by side on the same row
+    /// and say the same kind of thing about a pack, so they are one builder rather than two -
+    /// which is how they came to be drawn on two different greys in the first place.
+    /// (<see cref="BuildTagBadge"/> is deliberately not one of these: a tag's colour is what
+    /// the tag means.)
+    /// </summary>
+    private static Border BuildPlainBadge(string text) => new()
+    {
+        CornerRadius = new CornerRadius(4),
+        Padding = new Thickness(8, 4, 8, 4),
+        Background = new SolidColorBrush(ColorHelper.FromArgb(155, 32, 32, 32)),
+        Child = new TextBlock
         {
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(8, 4, 8, 4),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(255, 48, 48, 48))
-        };
-        badge.Child = new TextBlock
-        {
-            Text = sizeText,
+            Text = text,
             FontSize = 12,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Foreground = new SolidColorBrush(Microsoft.UI.Colors.White)
-        };
-        return badge;
-    }
-
-    private static Border BuildVersionBadge(string version)
-    {
-        var badge = new Border
-        {
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(8, 4, 8, 4),
-            Background = new SolidColorBrush(ColorHelper.FromArgb(155, 32, 32, 32))
-        };
-        badge.Child = new TextBlock
-        {
-            Text = $"Version: {version}",
-            FontSize = 12,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.White)
-        };
-        return badge;
-    }
+        }
+    };
 
     /// <summary>
     /// Where a tag sits in the badge row: least important leftmost, most important hard up
@@ -740,7 +733,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             PackSelectionPanel.Visibility = Visibility.Visible;
             AddPackButton.IsEnabled = true;
             RefreshButton.IsEnabled = true;
-            Blink();
+            BlinkEither(rapid: true);
         }
     }
 
@@ -750,12 +743,19 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         RefreshButton.IsEnabled = false;
         var imported = false;
 
+        // An import is a download, an unzip, or both, over as many files as the user dropped.
+        // Stopped in the finally below and nowhere else - see ModuleOverlay.BlinkWhileBusy.
+        _ = BlinkWhileBusy(true);
+
         try
         {
             imported = await importWork();
         }
         finally
         {
+            // Awaited, or the outcome flash below arrives while the continuous blink is still
+            // running and is swallowed.
+            await BlinkWhileBusy(false);
             Blink(imported);
 
             LoadingPanel.Visibility = Visibility.Visible;
@@ -1159,8 +1159,12 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
                                           catch { return 0L; }
                                       });
 
-            double mb = totalBytes / (1024.0 * 1024.0);
-            return mb.ToString("F2") + " MB";
+            // Under a megabyte the two-decimal MB form reads "0.00 MB", which is the one
+            // size a badge must never claim: a stub pack of a few files is not an empty one.
+            double kb = totalBytes / 1024.0;
+            return kb < 1024
+                ? kb.ToString("F0") + " KB"
+                : (kb / 1024.0).ToString("F2") + " MB";
         }
         catch (Exception ex)
         {

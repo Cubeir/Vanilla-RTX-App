@@ -458,29 +458,33 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         // Start animation for this pack
         StartInstallingAnimation(packType);
 
+        // A pack install is a download and an extraction over the whole pack, and the one
+        // thing in this app besides tuning that runs long enough to be worth saying so in the
+        // titlebar. Stopped in the finally below and nowhere else - see
+        // ModuleOverlay.BlinkWhileBusy.
+        _ = BlinkWhileBusy(true);
+
+        var success = false;
+
         try
         {
-            var success = await Task.Run(() =>
+            success = await Task.Run(() =>
                 _updater.UpdateSinglePackAsync(packType, enableEnhancements));
 
-            if (success)
-            {
-                Trace.WriteLine($"{GetPackDisplayName(packType)} installed successfully");
-                BlinkHard();
-            }
-            else
-            {
-                Trace.WriteLine($"{GetPackDisplayName(packType)} installation failed");
-                Blink(good: false);
-            }
+            Trace.WriteLine($"{GetPackDisplayName(packType)} " +
+                            (success ? "installed successfully" : "installation failed"));
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"Error installing {GetPackDisplayName(packType)}: {ex.Message}");
-            Blink(good: false);
         }
         finally
         {
+            // Awaited, or the outcome flash arrives while the continuous blink is still
+            // running and is swallowed.
+            await BlinkWhileBusy(false);
+            BlinkHard(success);
+
             // Stop animation
             StopInstallingAnimation();
 

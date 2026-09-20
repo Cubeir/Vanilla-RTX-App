@@ -650,11 +650,14 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
 
             var success = await _swapper.InstallAsync(dllData.FilePath);
 
+            // The elevated replace has been through either way by here - see the same call in
+            // the BetterRTX and LUT installs.
+            BlinkHard(success);
+
             if (success)
             {
                 OperationSuccessful = true;
                 StatusMessage = $"Swapped to DLSS {dllData.DisplayVersion}";
-                BlinkHard();
 
                 await _swapper.CacheInstalledDllAsync();
                 await LoadDllsAsync();

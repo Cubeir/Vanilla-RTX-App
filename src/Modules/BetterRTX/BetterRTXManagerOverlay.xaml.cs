@@ -482,6 +482,11 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             LoadingPanel.Visibility = Visibility.Collapsed;
             PresetSelectionPanel.Visibility = Visibility.Visible;
         }
+        finally
+        {
+            // A wipe, whether or not the refetch behind it worked out.
+            Blink(good: false);
+        }
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
@@ -1513,11 +1518,16 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
                         SetPresetListBusy(true);
 
                         var success = await _manager.ApplyPresetAsync(presetToApply);
+
+                        // The elevated replace has been through either way by here, and the
+                        // user has just dismissed a UAC prompt - so whichever way it went is
+                        // worth saying. The DLSS and LUT installs say it in the same place.
+                        BlinkHard(success);
+
                         if (success)
                         {
                             OperationSuccessful = true;
                             StatusMessage = $"Installed {presetToApply.Name} successfully";
-                            BlinkHard();
                             Trace.WriteLine(StatusMessage);
                             await DisplayPresetsAsync();
                         }

@@ -525,11 +525,14 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
 
             bool success = await _manager.InstallAsync(preset);
 
+            // The elevated replace has been through either way by here - see the same call in
+            // the BetterRTX and DLSS installs.
+            BlinkHard(success);
+
             if (success)
             {
                 OperationSuccessful = true;
                 StatusMessage = $"Installed LUT preset: {preset.Name}";
-                BlinkHard();
                 Trace.WriteLine($"[LUTManager] Preset [{preset.Name}] installed");
 
                 _installedPreset = await _manager.DetectCurrentPresetAsync();
@@ -544,7 +547,6 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
             else
             {
                 Trace.WriteLine($"[LUTManager] Install of [{preset.Name}] failed or was cancelled");
-                Blink(good: false);
             }
         }
         catch (Exception ex)
