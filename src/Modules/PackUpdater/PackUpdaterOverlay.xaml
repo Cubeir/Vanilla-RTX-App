@@ -142,13 +142,16 @@
                                                       Grid.Column="0"
                                                       Header="Enhancements"
                                                       IsOn="True"
-                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors/incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing. For more details, search the following URL: https://minecraftrtx.net/enhancements - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using."
+                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors &amp; incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing.
+                                                       &#x0a;&#x0a;Enhancements are generally classified as slightly non-vanilla changes and are developed separately for Vanilla RTX resource packs, the files are then merged into the base pack for public releases or during installation if this toggle is left On.
+                                                       &#x0a;&#x0a;For more details, check Vanilla RTX download pages - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using or you have a specific reason to."
                                                       IsTextScaleFactorEnabled="False" />
 
                                         <!-- Install Button -->
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
                                               MinHeight="60"
+                                              CornerRadius="6"
                                               Translation="0,0,12">
                                             <Button x:Name="VanillaRTXNormals_InstallButton"
                                                     Content="Install"
@@ -282,13 +285,16 @@
                                                       Grid.Column="0"
                                                       Header="Enhancements"
                                                       IsOn="True"
-                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors/incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing. For more details, search the following URL: https://minecraftrtx.net/enhancements - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using."
+                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors &amp; incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing.
+                                                       &#x0a;&#x0a;Enhancements are generally classified as slightly non-vanilla changes and are developed separately for Vanilla RTX resource packs, the files are then merged into the base pack for public releases or during installation if this toggle is left On.
+                                                       &#x0a;&#x0a;For more details, check Vanilla RTX download pages - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using or you have a specific reason to."
                                                       IsTextScaleFactorEnabled="False" />
 
                                         <!-- Install Button -->
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
                                               MinHeight="60"
+                                              CornerRadius="6"
                                               Translation="0,0,12">
                                             <Button x:Name="VanillaRTX_InstallButton"
                                                     Content="Install"
@@ -422,13 +428,16 @@
                                                       Grid.Column="0"
                                                       Header="Enhancements"
                                                       IsOn="True"
-                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors/incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing. For more details, search the following URL: https://minecraftrtx.net/enhancements - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using."
+                                                      ToolTipService.ToolTip="Enables deployment of enhancements for this resource pack. This fixes numerous rendering errors &amp; incompatibilities of vanilla features and resources with ray tracing and enhances various other resources such as particles for ray tracing.
+                                                       &#x0a;&#x0a;Enhancements are generally classified as slightly non-vanilla changes and are developed separately for Vanilla RTX resource packs, the files are then merged into the base pack for public releases or during installation if this toggle is left On.
+                                                       &#x0a;&#x0a;For more details, check Vanilla RTX download pages - It is generally recommended that you keep this enabled, unless it causes issues with another add-on or resource pack you're using or you have a specific reason to."
                                                       IsTextScaleFactorEnabled="False" />
 
                                         <!-- Install Button -->
                                         <Grid Grid.Column="2"
                                               MinWidth="120"
                                               MinHeight="60"
+                                              CornerRadius="6"
                                               Translation="0,0,12">
                                             <Button x:Name="VanillaRTXOpus_InstallButton"
                                                     Content="Install"
