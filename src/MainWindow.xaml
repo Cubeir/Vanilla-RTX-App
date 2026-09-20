@@ -222,10 +222,10 @@
              panel now.
              ═══════════════════════════════════════════════════════════════════ -->
         <Border x:Name="TitleBarActions"
-                Margin="-2,-2,16,0"
+                Margin="-2,-3,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
-                Height="34"
+                Height="35"
                 Width="Auto">
             <Grid Background="Transparent"
                   BorderBrush="Transparent"
@@ -312,17 +312,11 @@
              RTX Reactor's dev tools, the BetterRTX manager's cache refresh - has them moved
              in here while its overlay is open and moved back out when it closes, so they
              read as a continuation of the three above rather than as a second cluster.
-
-             The 133px inset puts it one separator-width past the strip above: TitleBarActions'
-             -2 margin, three 40px buttons and two separators at 1px with 2px either side comes
-             to 126, and 133 leaves room for ModuleTitleBarSeparator to sit between the two
-             clusters with 2px either side of it. Those numbers move together - a titlebar button
-             added or removed changes all three, TitleBarDragArea's left inset included.
              ═══════════════════════════════════════════════════════════════════ -->
         <Border x:Name="ModuleTitleBarSeparator"
-                Margin="130,8,0,0"
-                Width="1"
-                Height="22"
+                    Margin="131,4,2,6"
+                    Width="1"
+                Height="21"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 Background="{ThemeResource DividerStrokeColorDefaultBrush}"
@@ -332,37 +326,28 @@
                 Margin="133,-2,16,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
-                Height="34"
+                Height="35"
                 Width="Auto"
                 Visibility="Collapsed" />
 
         <!-- ══ Return to the window ══════════════════════════════════════════
              The way out of a feature module, disguised as a fourth caption button: same
              height as the system's own, hard against them, and separated from them by the
-             same hairline the left-hand cluster uses between its buttons.
-
-             It is here rather than inside the module because there is exactly one of it. A
-             module is a body inside a frame (ModuleOverlayChrome) and the frame has no
-             chrome of its own - a button floating in the module's own top-right corner
-             pushed every module's content down and in to clear it, which is what this
-             replaced.
-
-             Shown and hidden by MainWindow.OpenModule alongside the strip above. It dims
-             with the window through TitleBarFocus, like the rest of the bar.
+             same divisor the left-hand cluster uses between its buttons.
              ═══════════════════════════════════════════════════════════════════ -->
-        <Border x:Name="ModuleReturnSeparator"
-                Margin="0,8,135,0"
-                Width="1"
-                Height="22"
-                VerticalAlignment="Top"
-                HorizontalAlignment="Right"
-                Background="{ThemeResource DividerStrokeColorDefaultBrush}"
-                Visibility="Collapsed" />
+            <Border x:Name="ModuleReturnSeparator"
+                    Margin="0,4,140,6"
+                    Width="1"
+                    Height="21"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Right"
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    Visibility="Collapsed" />
 
-        <Button x:Name="ModuleReturnButton"
-                Margin="0,0,138,0"
+            <Button x:Name="ModuleReturnButton"
+                Margin="0,-1,143,0"
                 Width="46"
-                Height="36"
+                Height="32"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
                 FontFamily="{ThemeResource SymbolThemeFontFamily}"
@@ -375,7 +360,7 @@
                 BorderBrush="Transparent"
                 Visibility="Collapsed"
                 Click="ModuleReturnButton_Click"
-                ToolTipService.ToolTip="Return to the window"
+                ToolTipService.ToolTip="Return to the main menu."
                 IsTextScaleFactorEnabled="False" />
 
         </Grid>
