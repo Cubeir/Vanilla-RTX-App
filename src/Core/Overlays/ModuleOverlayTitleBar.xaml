@@ -37,7 +37,7 @@
             <Border x:Name="StripSeparator"
                     Grid.Column="0"
                     Width="1"
-                    Margin="2,6,2,6"
+                    Margin="3,6,1,6"
                     Visibility="Collapsed"
                     Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
