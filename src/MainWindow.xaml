@@ -1205,69 +1205,16 @@
                     <!-- ROW 1 -->
                     <!-- ============================================ -->
 
-                    <!-- Pack Updater -->
-                    <Button x:Name="LaunchPackUpdateButton"
-                            Click="LaunchPackUpdateButton_Click"
+
+                    <!-- Alchitex -->
+                    <Button x:Name="LaunchAlchitexButton"
+                            Click="LaunchAlchitexButton_Click"
                             Grid.Row="0"
                             Grid.Column="0"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             CornerRadius="6, 0, 0 ,0"
-                            BorderThickness="0"
-                            IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="See installation information, update availability &amp; news of Vanilla RTX resource packs. Get updates faster, install or simply reinstall each pack.">
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xEBD3;"
-                                      FontSize="18"
-                                      Margin="0,0,8,0"
-                                      VerticalAlignment="Center"
-                                      x:Name="UpdateVanillaRTXGlyph"
-                                      x:FieldModifier="public" />
-                            <TextBlock Text="Get latest RTX packs"
-                                       VerticalAlignment="Center"
-                                       x:Name="UpdateVanillaRTXButtonText"
-                                       x:FieldModifier="public" />
-                        </StackPanel>
-                    </Button>
-
-                    <!--  Lut Manager Button -->
-                    <Button x:Name="LaunchLUTManagerButton"
-                            Click="LaunchLUTManagerButton_Click"
-                            Grid.Row="0"
-                            Grid.Column="2"
-                            FontWeight="SemiBold"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            CornerRadius="0, 6, 0 ,0"
-                            BorderThickness="0"
-                            IsTextScaleFactorEnabled="False"
-                            ToolTipService.ToolTip="Provides simpler, more reliable alternative to BetterRTX that works across all game versions by modifying RTX's default color look up tables.">
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Center">
-                            <FontIcon Glyph="&#xE790;"
-                                      FontSize="18"
-                                      Margin="0,0,8,0"
-                                      VerticalAlignment="Center" />
-                            <TextBlock Text="RTX LUT manager"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <!-- ============================================ -->
-                    <!-- ROW 2  -->
-                    <!-- ============================================ -->
-
-                    <!-- Alchitex -->
-                    <Button x:Name="LaunchAlchitexButton"
-                            Click="LaunchAlchitexButton_Click"
-                            Grid.Row="2"
-                            Grid.Column="0"
-                            FontWeight="SemiBold"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch"
-                            CornerRadius="0, 0, 0 ,0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="RTX Reactor can generate RTX support for any regular Minecraft Bedrock Edition texture pack.
@@ -1292,12 +1239,12 @@
                     <!-- Better RTX -->
                     <Button x:Name="LaunchBetterRTXManagerButton"
                             Click="LaunchBetterRTXManagerButton_Click"
-                            Grid.Row="2"
+                            Grid.Row="0"
                             Grid.Column="2"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
-                            CornerRadius="0, 0, 0, 0"
+                            CornerRadius="0, 6, 0, 0"
                             BorderThickness="0"
                             IsTextScaleFactorEnabled="False"
                             ToolTipService.ToolTip="Manage and install BetterRTX presets.">
@@ -1308,6 +1255,61 @@
                                       Margin="0,0,8,0"
                                       VerticalAlignment="Center" />
                             <TextBlock Text="BetterRTX manager"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+
+                    <!-- ============================================ -->
+                    <!-- ROW 2  -->
+                    <!-- ============================================ -->
+
+                    <!-- Pack Updater -->
+                    <Button x:Name="LaunchPackUpdateButton"
+                            Click="LaunchPackUpdateButton_Click"
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0, 0, 0 ,0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="See installation information, update availability &amp; news of Vanilla RTX resource packs. Get updates faster, install or simply reinstall each pack.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xEBD3;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center"
+                                      x:Name="UpdateVanillaRTXGlyph"
+                                      x:FieldModifier="public" />
+                            <TextBlock Text="Get latest RTX packs"
+                                       VerticalAlignment="Center"
+                                       x:Name="UpdateVanillaRTXButtonText"
+                                       x:FieldModifier="public" />
+                        </StackPanel>
+                    </Button>
+
+                    <!--  Lut Manager Button -->
+                    <Button x:Name="LaunchLUTManagerButton"
+                            Click="LaunchLUTManagerButton_Click"
+                            Grid.Row="2"
+                            Grid.Column="2"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            CornerRadius="0, 0, 0, 0"
+                            BorderThickness="0"
+                            IsTextScaleFactorEnabled="False"
+                            ToolTipService.ToolTip="Provides simpler, more reliable alternative to BetterRTX that works across all game versions by modifying RTX's default color look up tables.">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE790;"
+                                      FontSize="18"
+                                      Margin="0,0,8,0"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="RTX LUT manager"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
