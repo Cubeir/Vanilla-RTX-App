@@ -55,12 +55,12 @@
                         <!-- PSA / announcement cards -->
                         <StackPanel x:Name="PackBrowserAnnouncementsPanel"
                                     Spacing="12"
-                                    Margin="0,8,0,8" />
+                                    Margin="0,10,0,8" />
 
                         <!-- Pack list -->
                         <StackPanel x:Name="PackListContainer"
                                     Spacing="4"
-                                    Padding="0,0,0,8" />
+                                    Padding="0,-2,0,8" />
 
                     </StackPanel>
                 </ScrollViewer>
