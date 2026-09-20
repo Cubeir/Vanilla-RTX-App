@@ -236,7 +236,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         }
         else if (source == VersionSource.CachedRemote)
         {
-            suffix = isUpToDate ? "(You seem up-to-date)" : "";
+            suffix = isUpToDate ? "(You're up-to-date)" : "";
         }
         else
         {

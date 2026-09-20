@@ -868,7 +868,7 @@ public sealed partial class Alchitex : ModuleOverlay
     {
         const string Persuasion =
             "If this finally made a favorite pack look appropriate under ray tracing, or saved you the trouble of doing this by hand, and you'd like to help keep it free and maintained for everyone else too, a donation on Ko-fi goes a long way, and changes nothing about your ability to keep using the app.\n\n" +
-            "RTX Reactor is the culmination of all of the work that has gone on here, and it's handed to you completely free, because I wanted to help as many people as possible enjoy their packs with RTX, and any price would have worked against that goal..." +
+            "RTX Reactor is the culmination of years of work that has gone on here, and it is handed to you completely free, because I wanted to help as many people as possible enjoy their packs with RTX, and any price would have worked against that goal." +
             "";
         var credits = OnlineTextsContent.Credits?[0].Text?.Trim();
 
