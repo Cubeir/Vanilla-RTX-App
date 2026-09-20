@@ -42,7 +42,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
     public DLSSSwapperOverlay()
     {
         this.InitializeComponent();
-        AttachChrome();
+        PrepareContent();
 
         ShowBrowseTarget();
 

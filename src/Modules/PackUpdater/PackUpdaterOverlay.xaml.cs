@@ -45,7 +45,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
     public PackUpdaterOverlay(MainWindow mainWindow)
     {
         this.InitializeComponent();
-        AttachChrome();
+        PrepareContent();
 
         InitializeHoverEffects();
 

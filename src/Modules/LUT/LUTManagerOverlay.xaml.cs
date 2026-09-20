@@ -62,7 +62,7 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
     public LUTManagerOverlay()
     {
         this.InitializeComponent();
-        AttachChrome();
+        PrepareContent();
 
         // The install button's bevel is a ThemeService colour rather than a ThemeResource
         // binding, so it has to be repainted by hand on every theme change - the same deal as

@@ -5,9 +5,10 @@ using Microsoft.UI.Xaml.Controls;
 namespace Vanilla_RTX_App.Core.Overlays;
 
 /// <summary>
-/// The titlebar half of a feature module, kept with the rest of the module chrome rather than
-/// in MainWindow's markup: the strip of buttons the open module owns, and the button that
-/// closes it.
+/// The titlebar half of a feature module: the strip of buttons the open module owns, and the
+/// button that closes it. It is its own control rather than markup inside MainWindow because
+/// the two clusters carry real behaviour of their own - taking a module's buttons and giving
+/// them back, and a divider that follows whether anything ended up on screen.
 ///
 /// <para><b>MainWindow supplies only the position.</b> Its Margin is the width of MainWindow's
 /// own titlebar cluster on the left and of the system's caption buttons on the right - the two
@@ -31,7 +32,7 @@ public sealed partial class ModuleOverlayTitleBar : UserControl
     /// open. The element is the module's, not a copy of it, so its <c>x:Name</c> field and
     /// every <c>Click</c> handler on it keep working - which is why those buttons are still
     /// declared in the module's own XAML. It arrives already detached from that markup; see
-    /// <see cref="ModuleOverlay.AttachChrome"/> for why that has to happen there.
+    /// <see cref="ModuleOverlay.PrepareContent"/> for why that has to happen there.
     /// </summary>
     public FrameworkElement? Strip
     {

@@ -1,4 +1,4 @@
-﻿<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackUpdater.PackUpdaterOverlay"
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackUpdater.PackUpdaterOverlay"
                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
@@ -376,9 +376,7 @@
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
-                                        <!-- The whole overlay is the link, not just the title: it is only on screen while a
-                                             pointer sits over the cover, so a target one line of text tall is one most people
-                                             never find. The padding is the button's so the inset is clickable too. -->
+                                        <!-- The whole overlay is the link -->
                                         <HyperlinkButton NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-opus"
                                                          HorizontalAlignment="Stretch"
                                                          VerticalAlignment="Stretch"
@@ -556,9 +554,7 @@
                                                       TintLuminosityOpacity="0.64"
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
-                                    <!-- The whole overlay is the link, not just the title: it is only on screen while a
-                                         pointer sits over the cover, so a target one line of text tall is one most people
-                                         never find. The padding is the button's so the inset is clickable too. -->
+                                    <!-- The whole overlay is the link -->
                                     <HyperlinkButton NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
                                                      HorizontalAlignment="Stretch"
                                                      VerticalAlignment="Stretch"
@@ -640,9 +636,7 @@
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
-                                    <!-- The whole overlay is the link, not just the title: it is only on screen while a
-                                         pointer sits over the cover, so a target one line of text tall is one most people
-                                         never find. The padding is the button's so the inset is clickable too. -->
+                                    <!-- The whole overlay is the link -->
                                     <HyperlinkButton NavigateUri="https://curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-add-ons"
                                                      HorizontalAlignment="Stretch"
                                                      VerticalAlignment="Stretch"

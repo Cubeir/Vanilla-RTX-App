@@ -84,7 +84,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
     public PackBrowserOverlay()
     {
         this.InitializeComponent();
-        AttachChrome();
+        PrepareContent();
 
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(this, packName, existingPath);

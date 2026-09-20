@@ -1495,7 +1495,21 @@
              ═══════════════════════════════════════════════════════════════════ -->
         <Grid x:Name="ModuleOverlayHost"
               Grid.ColumnSpan="2"
-              Canvas.ZIndex="997" />
+              Canvas.ZIndex="997"
+              Margin="0,36,0,0"
+              Translation="0,0,64"
+              Opacity="0"
+              Visibility="Collapsed">
+            <Grid.Background>
+                <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
+                              TintOpacity="0.9"
+                              TintLuminosityOpacity="0.9"
+                              FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+            </Grid.Background>
+            <Grid.Shadow>
+                <ThemeShadow />
+            </Grid.Shadow>
+        </Grid>
 
         <!-- The settings panel - same placement rules as the markdown overlay above (starts
              36px down so it sits flush under the titlebar, below it in z so the titlebar's

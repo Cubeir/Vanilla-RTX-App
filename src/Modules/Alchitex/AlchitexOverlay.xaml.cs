@@ -151,7 +151,7 @@ public sealed partial class Alchitex : ModuleOverlay
     public Alchitex()
     {
         this.InitializeComponent();
-        AttachChrome();
+        PrepareContent();
 
         // The queue mirrors the app-wide selection, so it has to hear about edits made from
         // the main window while this is open - see SelectedPacks_CollectionChanged.

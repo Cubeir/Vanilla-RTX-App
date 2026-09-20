@@ -101,7 +101,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         _isProcessingQueue = false;
         _manager.DownloadTrackingReset = ClearDownloadTracking;
 
-        AttachChrome();
+        PrepareContent();
 
         ShowBrowseTarget();
 

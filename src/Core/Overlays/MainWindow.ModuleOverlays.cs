@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Core.Overlays;
 
@@ -31,6 +32,12 @@ public sealed partial class MainWindow
     /// better against a collection, and because one is exactly as cheap as the other here.
     /// </summary>
     private readonly List<ModuleOverlay> _openModules = new();
+
+    private Storyboard? _moduleHostFade;
+    private Action? _pendingHostCleanup;
+
+    /// <summary>Matches <see cref="MarkdownOverlay"/>'s fade, so switching surfaces feels like one app rather than several.</summary>
+    private const double MODULE_FADE_MS = 125;
 
     /// <summary>
     /// This window's content as a <see cref="FrameworkElement"/> - a XamlRoot, a dispatcher
@@ -72,13 +79,23 @@ public sealed partial class MainWindow
             LockControls(true, toDisable);
 
             onClosed?.Invoke(overlay);
+
+            ModuleOverlayHost.IsHitTestVisible = false;
+            FadeModuleHost(0.0, () =>
+            {
+                ModuleOverlayHost.Children.Remove(overlay);
+                ModuleOverlayHost.Visibility = Visibility.Collapsed;
+            });
         };
 
         _openModules.Add(overlay);
         AdoptModuleTitleBarStrip(overlay);
         ModuleTitleBar.ShowReturn(true);
+
         ModuleOverlayHost.Children.Add(overlay);
-        overlay.Show();
+        ModuleOverlayHost.Visibility = Visibility.Visible;
+        ModuleOverlayHost.IsHitTestVisible = true;
+        FadeModuleHost(1.0, null);
     }
 
     /// <summary>
@@ -114,7 +131,7 @@ public sealed partial class MainWindow
     /// <para><b>The module's own element, not a copy</b>, so its <c>x:Name</c> field and every
     /// <c>Click</c> handler on it keep working untouched - which is the whole reason those
     /// buttons are still declared in the module's own XAML. It arrives already detached from
-    /// that XAML; see <see cref="ModuleOverlay.AttachChrome"/> for why that has to happen
+    /// that XAML; see <see cref="ModuleOverlay.PrepareContent"/> for why that has to happen
     /// there rather than here.</para>
     /// </summary>
     private void AdoptModuleTitleBarStrip(ModuleOverlay overlay)
@@ -132,6 +149,67 @@ public sealed partial class MainWindow
     {
         if (overlay.TitleBarStrip is null) return;
         ModuleTitleBar.Strip = null;
+    }
+
+    /// <summary>
+    /// Fades the module frame - <c>ModuleOverlayHost</c>, the acrylic panel a module is shown
+    /// inside - in or out.
+    ///
+    /// <para><b>One fade for one frame, rather than one per module.</b> Only one module is
+    /// ever open, and the frame and the module inside it are a single surface: fading the
+    /// module on its own would slide its content in over an acrylic panel that had already
+    /// snapped into place.</para>
+    ///
+    /// <para>The end value is written back when the storyboard completes, because a storyboard
+    /// holds its end value without ever assigning it and <c>Stop</c> - the first thing the next
+    /// fade does - reverts the target to whatever base it still has.</para>
+    ///
+    /// <para><b>A superseded fade still runs its continuation, and that is load-bearing.</b>
+    /// <c>Stop</c> does not raise <c>Completed</c>, so a fade-out cut short by a fade-in would
+    /// otherwise never reach the callback that takes the closed module out of the tree - and
+    /// that is reachable, not theoretical: the window's body is clickable the instant a module
+    /// starts closing, so opening another one within the fade leaves the old one parented and
+    /// on screen underneath it.</para>
+    /// </summary>
+    private void FadeModuleHost(double to, Action? onCompleted)
+    {
+        _moduleHostFade?.Stop();
+        _moduleHostFade = null;
+
+        var superseded = _pendingHostCleanup;
+        _pendingHostCleanup = onCompleted;
+        superseded?.Invoke();
+
+        if (EnvironmentVariables.Persistent.SuspendUIAnimations)
+        {
+            _pendingHostCleanup = null;
+            ModuleOverlayHost.Opacity = to;
+            onCompleted?.Invoke();
+            return;
+        }
+
+        var animation = new DoubleAnimation
+        {
+            To = to,
+            Duration = new Duration(TimeSpan.FromMilliseconds(MODULE_FADE_MS)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+
+        var storyboard = new Storyboard();
+        Storyboard.SetTarget(animation, ModuleOverlayHost);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        storyboard.Children.Add(animation);
+        storyboard.Completed += (_, _) =>
+        {
+            ModuleOverlayHost.Opacity = to;
+
+            if (!ReferenceEquals(_pendingHostCleanup, onCompleted)) return;
+            _pendingHostCleanup = null;
+            onCompleted?.Invoke();
+        };
+
+        _moduleHostFade = storyboard;
+        storyboard.Begin();
     }
 
     /// <summary>Closes every open module, for the window shutting down underneath them.</summary>
