@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
@@ -125,6 +125,15 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         {
             AnimateOpacity(overlay, 0.0, _fadeOutDuration);
         };
+
+        // The overlay is the link now, not just a title inside it, so it is a full-card tab stop
+        // that happens to be invisible until hovered. Revealing it on focus is what keeps a
+        // keyboard user from landing on a link they cannot see.
+        if (overlay.Child is Control link)
+        {
+            link.GotFocus += (s, e) => AnimateOpacity(overlay, 1.0, _fadeInDuration);
+            link.LostFocus += (s, e) => AnimateOpacity(overlay, 0.0, _fadeOutDuration);
+        }
     }
 
     private void AnimateOpacity(UIElement element, double toValue, TimeSpan duration)

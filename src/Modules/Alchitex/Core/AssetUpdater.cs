@@ -94,7 +94,7 @@ public static class AssetUpdater
 
     // One connection at a time against someone else's CDN, with a gap between assets. Only
     // applies between assets that actually get fetched.
-    private static readonly TimeSpan RequestSpacing = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan RequestSpacing = TimeSpan.FromMilliseconds(666);
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly SemaphoreSlim _gate = new(1, 1);

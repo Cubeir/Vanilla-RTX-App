@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -402,9 +402,10 @@ public sealed partial class MainWindow : Window
             // about it again: PackUpdater raises this itself whenever it invalidates or fills the
             // cache, from wherever that happened. Before this, every site that could change the
             // cache owed a copy of the if/else below, which is the kind of debt only ever paid
-            // late. The initial probe is what paints the glyph for the first time.
+            // late. Nothing probes the cache here: the glyph also needs the remote's answer
+            // before it can say anything (see ApplyVanillaRTXGlyph), and the LocatePacksTask
+            // further down gets both in one pass.
             PackUpdater.DeployableCacheChanged += OnDeployableCacheChanged;
-            _ = Task.Run(() => _updater.RefreshDeployableCacheState());
 
             // Update UI to reflect loaded settings
             UpdateUI(1);
@@ -1019,9 +1020,39 @@ public sealed partial class MainWindow : Window
     // Both of these are PackUpdater's answers, drawn here. This window owns only the wording and
     // the glyphs, because both name things that live in this window's own XAML.
 
+    // The two facts the glyph is built from. The cache half is pushed here by PackUpdater; the
+    // update half is pulled once the remote has been asked, and is kept per edition because
+    // Release and Preview have different packs installed and so get different answers. An edition
+    // missing from the map has not been asked yet, which is deliberately not the same as "no
+    // updates": until the remote has answered, the button promises nothing.
+    private bool _hasDeployableCache;
+    private readonly Dictionary<bool, bool> _vanillaRTXUpdatesAvailable = new();
+
     /// <summary>
-    /// Follows <see cref="PackUpdater.DeployableCacheChanged"/>. Raised on whichever thread made
-    /// the change - an install runs under Task.Run - so this marshals before touching the glyph.
+    /// Paints the get-latest-packs glyph from those two facts. UI thread only.
+    ///
+    /// Syncfolder is a promise that opening the updater installs straight off the disk, and that
+    /// needs both halves to agree: a zipball is cached, and nothing is behind the remote. Updates
+    /// waiting means that zipball is about to be dropped as stale the moment the updater opens
+    /// (<see cref="PackUpdater.InvalidateCacheIfStaleAsync"/>), and knowing an update exists at
+    /// all means the remote was reachable - so the download the cloud implies is one that can
+    /// actually happen. The cloud is equally right with no cache at all, and before anyone has
+    /// asked, which is the state the XAML already starts in.
+    /// </summary>
+    private void ApplyVanillaRTXGlyph()
+    {
+        var knownUpToDate = _vanillaRTXUpdatesAvailable.TryGetValue(IsTargetingPreview, out var available)
+                            && !available;
+
+        UpdateVanillaRTXGlyph.Glyph = (_hasDeployableCache && knownUpToDate)
+            ? "\uE8F7"  // Syncfolder - installing is a copy out of the cached zipball
+            : "\uEBD3"; // Cloud - installing has to download first
+    }
+
+    /// <summary>
+    /// Follows <see cref="PackUpdater.DeployableCacheChanged"/>, which is how a cache change made
+    /// while this window is idle - an install finishing inside the updater, a stale zipball being
+    /// dropped - reaches the glyph. Raised on whichever thread made the change, so it marshals.
     /// </summary>
     private void OnDeployableCacheChanged(bool hasDeployableCache)
     {
@@ -1031,9 +1062,8 @@ public sealed partial class MainWindow : Window
         {
             if (_isClosing) return;
 
-            UpdateVanillaRTXGlyph.Glyph = hasDeployableCache
-                ? "\uE8F7"  // Syncfolder - a cached zipball is on disk, installs come straight from it
-                : "\uEBD3"; // Cloud - nothing cached, an install has to download first
+            _hasDeployableCache = hasDeployableCache;
+            ApplyVanillaRTXGlyph();
         });
     }
 
@@ -1043,69 +1073,33 @@ public sealed partial class MainWindow : Window
     private static readonly TimeSpan UpdateNoticeStartupDelay = TimeSpan.FromMilliseconds(2500);
     private bool _updateNoticeStartupDelayPending = true;
     private int _updateNoticeCheckInFlight;
+    private int _updateNoticeCheckPending;
 
     /// <summary>
-    /// Both halves of "what's going on with Vanilla RTX", run off the back of
-    /// <see cref="LocatePacksTask"/> - the one method every path that changes what's installed or
-    /// which edition we're targeting already goes through.
+    /// Serialises <see cref="RunVanillaRTXStatusPassAsync"/>, because <see cref="LocatePacksTask"/>
+    /// has nine call sites and several of them fire in bursts.
     ///
-    /// First the cache glyph gets reconciled. PackUpdater broadcasts every change it makes itself,
-    /// so this is only here to catch the ones made behind its back - a temp-folder sweep, a file
-    /// deleted by hand - and it is the only regularly scheduled moment that can.
-    ///
-    /// Then, at most once per session per edition, the user is told that updates are waiting or
-    /// that they have no packs yet. Per edition, not per session, is the point of the flag key:
-    /// Release and Preview have different packs installed, so flipping the Preview toggle asks a
-    /// genuinely different question and deserves its own answer. The flag is only spent when
-    /// something is actually said, so a check that failed offline doesn't silence a later one
-    /// that succeeds.
+    /// A request that arrives mid-pass is remembered rather than dropped. Dropping it is wrong
+    /// specifically when it came from the Preview toggle: the running pass snapshotted the old
+    /// edition and is about to discard its own answer as stale, so both would end up saying
+    /// nothing and the new edition would go unexamined until something else re-located packs.
     /// </summary>
     private async Task RefreshVanillaRTXStatusAsync()
     {
-        // LocatePacksTask has nine call sites and several fire in bursts; one pass at a time is
-        // plenty, and whoever loses the race would have been asking the same question anyway.
-        if (Interlocked.Exchange(ref _updateNoticeCheckInFlight, 1) == 1) return;
+        if (Interlocked.Exchange(ref _updateNoticeCheckInFlight, 1) == 1)
+        {
+            Interlocked.Exchange(ref _updateNoticeCheckPending, 1);
+            return;
+        }
 
         try
         {
-            var targetingPreview = IsTargetingPreview;
-
-            // Read off the UI thread while we're still on it, before the first await.
-            var menuName = UpdateVanillaRTXButtonText.Text;
-
-            // Probing opens the cached zipball, so keep it off the UI thread.
-            await Task.Run(() => _updater.RefreshDeployableCacheState());
-
-            var flagKey = targetingPreview ? "VanillaRTX_UpdateNotice_Preview" : "VanillaRTX_UpdateNotice_Release";
-            if (RuntimeFlags.Has(flagKey)) return;
-
-            if (_updateNoticeStartupDelayPending)
+            do
             {
-                _updateNoticeStartupDelayPending = false;
-                await Task.Delay(UpdateNoticeStartupDelay);
+                Interlocked.Exchange(ref _updateNoticeCheckPending, 0);
+                await RunVanillaRTXStatusPassAsync();
             }
-
-            // The edition can be toggled while we wait. If it moved, this answer is about the
-            // wrong game - drop it, the toggle's own LocatePacksTask has already asked again.
-            if (IsTargetingPreview != targetingPreview) return;
-
-            var (notice, outdatedCount) = await _updater.GetUpdateNoticeAsync(
-                VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
-
-            if (notice == PackUpdateNotice.None) return;
-            if (IsTargetingPreview != targetingPreview) return;
-            if (!RuntimeFlags.Set(flagKey)) return;
-
-            if (notice == PackUpdateNotice.NothingInstalled)
-            {
-                Log($"Start by installing a Vanilla RTX resource pack from the '{menuName}' menu!", LogLevel.VanillaRTX);
-                return;
-            }
-
-            var editionName = MinecraftUserDataLocator.GetVersionDisplayName(targetingPreview);
-            var lead = outdatedCount > 1 ? "Vanilla RTX updates are" : "A Vanilla RTX update is";
-
-            Log($"{lead} available for {editionName}, check the '{menuName}' menu.", LogLevel.VanillaRTX);
+            while (Interlocked.Exchange(ref _updateNoticeCheckPending, 0) == 1);
         }
         catch (Exception ex)
         {
@@ -1115,6 +1109,74 @@ public sealed partial class MainWindow : Window
         {
             Interlocked.Exchange(ref _updateNoticeCheckInFlight, 0);
         }
+    }
+
+    /// <summary>
+    /// Both halves of "what's going on with Vanilla RTX", run off the back of
+    /// <see cref="LocatePacksTask"/> - the one method every path that changes what's installed or
+    /// which edition we're targeting already goes through.
+    ///
+    /// The verdict is fetched on every pass, because <see cref="ApplyVanillaRTXGlyph"/> is drawn
+    /// from it and a glyph that stopped updating would be a glyph that lies. That costs nothing
+    /// in extra requests: the remote versions come out of the updater's own few-minute cache, the
+    /// same one the updater window fills, so a burst of re-locates asks GitHub once at most.
+    ///
+    /// Only the log line is rationed - at most once per session per edition. Per edition is the
+    /// point of the flag key: Release and Preview have different packs installed, so flipping the
+    /// toggle asks a genuinely different question and deserves its own answer. The flag is only
+    /// spent when something is actually said, so a check that failed offline doesn't silence a
+    /// later one that succeeds.
+    /// </summary>
+    private async Task RunVanillaRTXStatusPassAsync()
+    {
+        var targetingPreview = IsTargetingPreview;
+
+        // Read off the UI thread while we're still on it, before the first await.
+        var menuName = UpdateVanillaRTXButtonText.Text;
+
+        // Probing opens the cached zipball, so keep it off the UI thread. The return value is
+        // what's used rather than the event, which by design only fires when the answer changed -
+        // this is also the only regularly scheduled moment that catches a cache changed behind
+        // PackUpdater's back, by a temp sweep or by hand.
+        _hasDeployableCache = await Task.Run(() => _updater.RefreshDeployableCacheState());
+        ApplyVanillaRTXGlyph();
+
+        if (_updateNoticeStartupDelayPending)
+        {
+            _updateNoticeStartupDelayPending = false;
+            await Task.Delay(UpdateNoticeStartupDelay);
+        }
+
+        // The edition can be toggled while we wait. If it moved, this answer is about the wrong
+        // game - drop it, and the queued re-run picks the new one up.
+        if (IsTargetingPreview != targetingPreview) return;
+
+        var (notice, outdatedCount) = await _updater.GetUpdateNoticeAsync(
+            VanillaRTXVersion, VanillaRTXNormalsVersion, VanillaRTXOpusVersion);
+
+        if (IsTargetingPreview != targetingPreview) return;
+
+        // None covers both "everything is current" and "the remote could not be reached", and the
+        // glyph wants the same answer for each: nothing is going to invalidate the cached zipball,
+        // so an install comes off the disk.
+        _vanillaRTXUpdatesAvailable[targetingPreview] = notice == PackUpdateNotice.UpdatesAvailable;
+        ApplyVanillaRTXGlyph();
+
+        if (notice == PackUpdateNotice.None) return;
+
+        var flagKey = targetingPreview ? "VanillaRTX_UpdateNotice_Preview" : "VanillaRTX_UpdateNotice_Release";
+        if (!RuntimeFlags.Set(flagKey)) return;
+
+        if (notice == PackUpdateNotice.NothingInstalled)
+        {
+            Log($"Start by installing a Vanilla RTX resource pack from the '{menuName}' menu!", LogLevel.VanillaRTX);
+            return;
+        }
+
+        var editionName = MinecraftUserDataLocator.GetVersionDisplayName(targetingPreview);
+        var lead = outdatedCount > 1 ? "Vanilla RTX updates are" : "A Vanilla RTX update is";
+
+        Log($"{lead} available for {editionName}, check the '{menuName}' menu.", LogLevel.VanillaRTX);
     }
 
 

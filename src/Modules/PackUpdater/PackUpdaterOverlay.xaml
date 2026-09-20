@@ -1,4 +1,4 @@
-<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackUpdater.PackUpdaterOverlay"
+﻿<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.PackUpdater.PackUpdaterOverlay"
                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:overlays="using:Vanilla_RTX_App.Core.Overlays"
@@ -60,7 +60,6 @@
                                     <Border x:Name="NormalsOverlay"
                                             CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12"
                                             Opacity="0">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -69,25 +68,37 @@
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
-                                        <StackPanel Spacing="4">
-                                            <!-- Pack Name -->
-                                            <HyperlinkButton Content="Vanilla RTX Normals"
-                                                             FontSize="18"
-                                                             Foreground="{ThemeResource OverlayTextBrush}"
-                                                             FontWeight="SemiBold"
-                                                             Padding="0"
-                                                             HorizontalAlignment="Left"
-                                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/truly-vanilla-rtx"
-                                                             IsTextScaleFactorEnabled="False" />
+                                        <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                             pointer sits over the cover, so a target one line of text tall is one most people
+                                             never find. The padding is the button's so the inset is clickable too. -->
+                                        <HyperlinkButton NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/truly-vanilla-rtx"
+                                                         HorizontalAlignment="Stretch"
+                                                         VerticalAlignment="Stretch"
+                                                         HorizontalContentAlignment="Stretch"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="16,10,16,12"
+                                                         CornerRadius="0"
+                                                         BorderThickness="0"
+                                                         ToolTipService.ToolTip="https://www.curseforge.com/minecraft-bedrock/texture-packs/truly-vanilla-rtx"
+                                                         IsTextScaleFactorEnabled="False">
+                                            <StackPanel Spacing="4">
+                                                <!-- Pack Name -->
+                                                <TextBlock Text="Vanilla RTX Normals"
+                                                           FontSize="18"
+                                                           Foreground="{ThemeResource OverlayTextBrush}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"
+                                                           IsTextScaleFactorEnabled="False" />
 
-                                            <!-- Description -->
-                                            <TextBlock Text="Vanilla RTX with handcrafted 16x normal maps for all blocks!"
-                                                       Foreground="{ThemeResource OverlayTextBrush}"
-                                                       FontSize="13"
-                                                       Opacity="0.9"
-                                                       TextWrapping="Wrap"
-                                                       IsTextScaleFactorEnabled="False" />
-                                        </StackPanel>
+                                                <!-- Description -->
+                                                <TextBlock Text="Vanilla RTX with handcrafted 16x normal maps for all blocks!"
+                                                           Foreground="{ThemeResource OverlayTextBrush}"
+                                                           FontSize="13"
+                                                           Opacity="0.9"
+                                                           TextWrapping="Wrap"
+                                                           IsTextScaleFactorEnabled="False" />
+                                            </StackPanel>
+                                        </HyperlinkButton>
                                     </Border>
                                 </Grid>
 
@@ -203,7 +214,6 @@
                                     <Border x:Name="VanillaOverlay"
                                             CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12"
                                             Opacity="0">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -212,25 +222,37 @@
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
-                                        <StackPanel Spacing="4">
-                                            <!-- Pack Name -->
-                                            <HyperlinkButton Content="Vanilla RTX"
-                                                             FontSize="18"
-                                                             Foreground="{ThemeResource OverlayTextBrush}"
-                                                             FontWeight="SemiBold"
-                                                             Padding="0"
-                                                             HorizontalAlignment="Left"
-                                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx"
-                                                             IsTextScaleFactorEnabled="False" />
+                                        <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                             pointer sits over the cover, so a target one line of text tall is one most people
+                                             never find. The padding is the button's so the inset is clickable too. -->
+                                        <HyperlinkButton NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx"
+                                                         HorizontalAlignment="Stretch"
+                                                         VerticalAlignment="Stretch"
+                                                         HorizontalContentAlignment="Stretch"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="16,10,16,12"
+                                                         CornerRadius="0"
+                                                         BorderThickness="0"
+                                                         ToolTipService.ToolTip="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx"
+                                                         IsTextScaleFactorEnabled="False">
+                                            <StackPanel Spacing="4">
+                                                <!-- Pack Name -->
+                                                <TextBlock Text="Vanilla RTX"
+                                                           FontSize="18"
+                                                           Foreground="{ThemeResource OverlayTextBrush}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"
+                                                           IsTextScaleFactorEnabled="False" />
 
-                                            <!-- Description -->
-                                            <TextBlock Text="The default ray-traced Minecraft graphics, everything is covered!"
-                                                       FontSize="13"
-                                                       Foreground="{ThemeResource OverlayTextBrush}"
-                                                       Opacity="0.9"
-                                                       TextWrapping="Wrap"
-                                                       IsTextScaleFactorEnabled="False" />
-                                        </StackPanel>
+                                                <!-- Description -->
+                                                <TextBlock Text="The default ray-traced Minecraft graphics, everything is covered!"
+                                                           FontSize="13"
+                                                           Foreground="{ThemeResource OverlayTextBrush}"
+                                                           Opacity="0.9"
+                                                           TextWrapping="Wrap"
+                                                           IsTextScaleFactorEnabled="False" />
+                                            </StackPanel>
+                                        </HyperlinkButton>
                                     </Border>
                                 </Grid>
 
@@ -346,7 +368,6 @@
                                     <Border x:Name="OpusOverlay"
                                             CornerRadius="0,0,0,0"
                                             VerticalAlignment="Bottom"
-                                            Padding="16,10,16,12"
                                             Opacity="0">
                                         <Border.Background>
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -355,25 +376,37 @@
                                                           FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                         </Border.Background>
 
-                                        <StackPanel Spacing="4">
-                                            <!-- Pack Name -->
-                                            <HyperlinkButton Content="Vanilla RTX Opus"
-                                                             FontSize="18"
-                                                             Foreground="{ThemeResource OverlayTextBrush}"
-                                                             FontWeight="SemiBold"
-                                                             Padding="0"
-                                                             HorizontalAlignment="Left"
-                                                             NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-opus"
-                                                             IsTextScaleFactorEnabled="False" />
+                                        <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                             pointer sits over the cover, so a target one line of text tall is one most people
+                                             never find. The padding is the button's so the inset is clickable too. -->
+                                        <HyperlinkButton NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-opus"
+                                                         HorizontalAlignment="Stretch"
+                                                         VerticalAlignment="Stretch"
+                                                         HorizontalContentAlignment="Stretch"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="16,10,16,12"
+                                                         CornerRadius="0"
+                                                         BorderThickness="0"
+                                                         ToolTipService.ToolTip="https://www.curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-opus"
+                                                         IsTextScaleFactorEnabled="False">
+                                            <StackPanel Spacing="4">
+                                                <!-- Pack Name -->
+                                                <TextBlock Text="Vanilla RTX Opus"
+                                                           FontSize="18"
+                                                           Foreground="{ThemeResource OverlayTextBrush}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"
+                                                           IsTextScaleFactorEnabled="False" />
 
-                                            <!-- Description -->
-                                            <TextBlock Text="The composition of both Vanilla RTX and Vanilla RTX Normals!"
-                                                       FontSize="13"
-                                                       Foreground="{ThemeResource OverlayTextBrush}"
-                                                       Opacity="0.9"
-                                                       TextWrapping="Wrap"
-                                                       IsTextScaleFactorEnabled="False" />
-                                        </StackPanel>
+                                                <!-- Description -->
+                                                <TextBlock Text="The composition of both Vanilla RTX and Vanilla RTX Normals!"
+                                                           FontSize="13"
+                                                           Foreground="{ThemeResource OverlayTextBrush}"
+                                                           Opacity="0.9"
+                                                           TextWrapping="Wrap"
+                                                           IsTextScaleFactorEnabled="False" />
+                                            </StackPanel>
+                                        </HyperlinkButton>
                                     </Border>
                                 </Grid>
 
@@ -516,7 +549,6 @@
                                 <Border x:Name="SpecialOccasionOverlay"
                                         CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12"
                                         Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -524,22 +556,35 @@
                                                       TintLuminosityOpacity="0.64"
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
-                                    <StackPanel Spacing="4">
-                                        <HyperlinkButton Content="Vanilla RTX: Everwinter Extension"
-                                                         FontSize="20"
-                                                         Foreground="{ThemeResource OverlayTextBrush}"
-                                                         FontWeight="SemiBold"
-                                                         Padding="0"
-                                                         HorizontalAlignment="Left"
-                                                         NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
-                                                         IsTextScaleFactorEnabled="False" />
-                                        <TextBlock Text="An extension of the Vanilla RTX resource pack, everything is covered in frost! Featuring unyielding cold!"
-                                                   FontSize="14"
-                                                   Foreground="{ThemeResource OverlayTextBrush}"
-                                                   Opacity="0.9"
-                                                   TextWrapping="Wrap"
-                                                   IsTextScaleFactorEnabled="False" />
-                                    </StackPanel>
+                                    <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                         pointer sits over the cover, so a target one line of text tall is one most people
+                                         never find. The padding is the button's so the inset is clickable too. -->
+                                    <HyperlinkButton NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Stretch"
+                                                     VerticalContentAlignment="Center"
+                                                     Padding="16,10,16,12"
+                                                     CornerRadius="0"
+                                                     BorderThickness="0"
+                                                     ToolTipService.ToolTip="http://mcpedl.com/vanilla-rtx-everwinter"
+                                                     IsTextScaleFactorEnabled="False">
+                                        <StackPanel Spacing="4">
+                                            <!-- Pack Name -->
+                                            <TextBlock Text="Vanilla RTX: Everwinter Extension"
+                                                       FontSize="20"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
+                                            <TextBlock Text="An extension of the Vanilla RTX resource pack, everything is covered in frost! Featuring unyielding cold!"
+                                                       FontSize="14"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+                                    </HyperlinkButton>
                                 </Border>
                             </Grid>
                         </Grid>
@@ -587,7 +632,6 @@
                                 <Border x:Name="AddOnsOverlay"
                                         CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12"
                                         Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -596,23 +640,36 @@
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
-                                    <StackPanel Spacing="4">
-                                        <HyperlinkButton Content="Vanilla RTX Add-Ons"
-                                                         FontSize="18"
-                                                         Foreground="{ThemeResource OverlayTextBrush}"
-                                                         FontWeight="SemiBold"
-                                                         Padding="0"
-                                                         HorizontalAlignment="Left"
-                                                         NavigateUri="https://curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-add-ons"
-                                                         IsTextScaleFactorEnabled="False" />
+                                    <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                         pointer sits over the cover, so a target one line of text tall is one most people
+                                         never find. The padding is the button's so the inset is clickable too. -->
+                                    <HyperlinkButton NavigateUri="https://curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-add-ons"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Stretch"
+                                                     VerticalContentAlignment="Center"
+                                                     Padding="16,10,16,12"
+                                                     CornerRadius="0"
+                                                     BorderThickness="0"
+                                                     ToolTipService.ToolTip="https://curseforge.com/minecraft-bedrock/texture-packs/vanilla-rtx-add-ons"
+                                                     IsTextScaleFactorEnabled="False">
+                                        <StackPanel Spacing="4">
+                                            <!-- Pack Name -->
+                                            <TextBlock Text="Vanilla RTX Add-Ons"
+                                                       FontSize="18"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
 
-                                        <TextBlock Text="A series of smaller packages that give certain blocks more interesting properties with ray tracing!"
-                                                   FontSize="13"
-                                                   Foreground="{ThemeResource OverlayTextBrush}"
-                                                   Opacity="0.9"
-                                                   TextWrapping="Wrap"
-                                                   IsTextScaleFactorEnabled="False" />
-                                    </StackPanel>
+                                            <TextBlock Text="A series of smaller packages that give certain blocks more interesting properties with ray tracing!"
+                                                       FontSize="13"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+                                    </HyperlinkButton>
                                 </Border>
                             </Grid>
                         </Border>
@@ -642,7 +699,6 @@
                                 <Border x:Name="ChemistryOverlay"
                                         CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12"
                                         Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -651,23 +707,36 @@
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
-                                    <StackPanel Spacing="4">
-                                        <HyperlinkButton Content="Chemistry RTX Extensions"
-                                                         FontSize="18"
-                                                         Foreground="{ThemeResource OverlayTextBrush}"
-                                                         FontWeight="SemiBold"
-                                                         Padding="0"
-                                                         HorizontalAlignment="Left"
-                                                         NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/chemistry-rtx"
-                                                         IsTextScaleFactorEnabled="False" />
+                                    <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                         pointer sits over the cover, so a target one line of text tall is one most people
+                                         never find. The padding is the button's so the inset is clickable too. -->
+                                    <HyperlinkButton NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/chemistry-rtx"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Stretch"
+                                                     VerticalContentAlignment="Center"
+                                                     Padding="16,10,16,12"
+                                                     CornerRadius="0"
+                                                     BorderThickness="0"
+                                                     ToolTipService.ToolTip="https://www.curseforge.com/minecraft-bedrock/texture-packs/chemistry-rtx"
+                                                     IsTextScaleFactorEnabled="False">
+                                        <StackPanel Spacing="4">
+                                            <!-- Pack Name -->
+                                            <TextBlock Text="Chemistry RTX Extensions"
+                                                       FontSize="18"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
 
-                                        <TextBlock Text="Optional Vanilla RTX extensions to extend ray tracing support to Education Edition content!"
-                                                   FontSize="13"
-                                                   Foreground="{ThemeResource OverlayTextBrush}"
-                                                   Opacity="0.9"
-                                                   TextWrapping="Wrap"
-                                                   IsTextScaleFactorEnabled="False" />
-                                    </StackPanel>
+                                            <TextBlock Text="Optional Vanilla RTX extensions to extend ray tracing support to Education Edition content!"
+                                                       FontSize="13"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+                                    </HyperlinkButton>
                                 </Border>
                             </Grid>
                         </Border>
@@ -696,7 +765,6 @@
                                 <Border x:Name="CreativeOverlay"
                                         CornerRadius="0"
                                         VerticalAlignment="Center"
-                                        Padding="16,10,16,12"
                                         Opacity="0">
                                     <Border.Background>
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
@@ -705,23 +773,36 @@
                                                       FallbackColor="{ThemeResource OverlayBackgroundColor}" />
                                     </Border.Background>
 
-                                    <StackPanel Spacing="4">
-                                        <HyperlinkButton Content="Creative RTX Extension"
-                                                         FontSize="18"
-                                                         Foreground="{ThemeResource OverlayTextBrush}"
-                                                         FontWeight="SemiBold"
-                                                         Padding="0"
-                                                         HorizontalAlignment="Left"
-                                                         NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/creative-rtx"
-                                                         IsTextScaleFactorEnabled="False" />
+                                    <!-- The whole overlay is the link, not just the title: it is only on screen while a
+                                         pointer sits over the cover, so a target one line of text tall is one most people
+                                         never find. The padding is the button's so the inset is clickable too. -->
+                                    <HyperlinkButton NavigateUri="https://www.curseforge.com/minecraft-bedrock/texture-packs/creative-rtx"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalAlignment="Stretch"
+                                                     HorizontalContentAlignment="Stretch"
+                                                     VerticalContentAlignment="Center"
+                                                     Padding="16,10,16,12"
+                                                     CornerRadius="0"
+                                                     BorderThickness="0"
+                                                     ToolTipService.ToolTip="https://www.curseforge.com/minecraft-bedrock/texture-packs/creative-rtx"
+                                                     IsTextScaleFactorEnabled="False">
+                                        <StackPanel Spacing="4">
+                                            <!-- Pack Name -->
+                                            <TextBlock Text="Creative RTX Extension"
+                                                       FontSize="18"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
 
-                                        <TextBlock Text="Replaces Element block textures with high definition, exotic materials for creative builds with RTX!"
-                                                   FontSize="13"
-                                                   Foreground="{ThemeResource OverlayTextBrush}"
-                                                   Opacity="0.9"
-                                                   TextWrapping="Wrap"
-                                                   IsTextScaleFactorEnabled="False" />
-                                    </StackPanel>
+                                            <TextBlock Text="Replaces Element block textures with high definition, exotic materials for creative builds with RTX!"
+                                                       FontSize="13"
+                                                       Foreground="{ThemeResource OverlayTextBrush}"
+                                                       Opacity="0.9"
+                                                       TextWrapping="Wrap"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+                                    </HyperlinkButton>
                                 </Border>
                             </Grid>
                         </Border>
