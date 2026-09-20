@@ -266,12 +266,10 @@ public sealed partial class MainWindow : Window
         );
 
         Previewer.Instance.InitializeButton(ResetButton,
-            "ms-appx:///Assets/previews/table.reset.variables.png",
             "ms-appx:///Assets/previews/table.reset.variables.png"
         );
 
         Previewer.Instance.InitializeButton(ClearButton,
-            "ms-appx:///Assets/previews/table.reset.png",
             "ms-appx:///Assets/previews/table.reset.png"
         );
 
