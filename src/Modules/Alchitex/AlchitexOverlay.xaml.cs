@@ -1176,7 +1176,7 @@ public sealed partial class Alchitex : ModuleOverlay
                 {
                     succeeded++;
                     _succeededPackNames.Add(result.FinalManifestName ?? pack.Name);
-                    Blink();
+                    _ = Host.BlinkingLamp(true, true, 1.0);
 
                     // Only ever after a fully successful run for this pack - a failed or
                     // aborted one leaves the user's original exactly where it was.
@@ -1212,7 +1212,7 @@ public sealed partial class Alchitex : ModuleOverlay
                     // visibly, and not the way a finished pack does.
                     failedNames.Add(pack.Name);
                     _failedPackNames.Add(pack.Name);
-                    Blink(good: false);
+                    _ = Host.BlinkingLamp(true, true, 0.0);
 
                     await EjectFailedPackAsync(pack.Location, pack.Name);
                 }
@@ -1228,7 +1228,7 @@ public sealed partial class Alchitex : ModuleOverlay
                     ? $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} processed successfully!"
                     : $"Done - {succeeded}/{queue.Count} pack{(queue.Count == 1 ? "" : "s")} succeeded. Failed: {string.Join(", ", failedNames)}");
 
-                BlinkHard(succeeded > 0);
+                _ = Host.BlinkingLamp(true, true, succeeded > 0 ? 1.0 : 0.0, 1.0);
 
                 // Only on a real, un-aborted finish, and only if something actually came out
                 // of it - a batch that failed outright is not the moment to ask for support.
@@ -1240,7 +1240,7 @@ public sealed partial class Alchitex : ModuleOverlay
         {
             Trace.WriteLine($"[ALCHITEX] GenerateButton_Click failed: {ex}");
             SetStatusThenRevert($"Something went wrong: {ex.Message}");
-            Blink(good: false);
+            _ = Host.BlinkingLamp(true, true, 0.0);
         }
         finally
         {

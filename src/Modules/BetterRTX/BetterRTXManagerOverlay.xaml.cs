@@ -484,8 +484,8 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         }
         finally
         {
-            // A wipe, whether or not the refetch behind it worked out.
-            Blink(good: false);
+            // The cache comes back rebuilt, whether or not the refetch behind it worked out.
+            _ = Host.BlinkingLamp(true, true, 1.0);
         }
     }
 
@@ -1522,7 +1522,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
                         // The elevated replace has been through either way by here, and the
                         // user has just dismissed a UAC prompt - so whichever way it went is
                         // worth saying. The DLSS and LUT installs say it in the same place.
-                        BlinkHard(success);
+                        _ = Host.BlinkingLamp(true, true, success ? 1.0 : 0.0, 1.0);
 
                         if (success)
                         {

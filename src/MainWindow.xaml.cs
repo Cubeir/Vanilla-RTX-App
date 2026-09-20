@@ -703,6 +703,33 @@ public sealed partial class MainWindow : Window
     private void LockControls(bool enable, params string[] names)
         => WindowControlsManager.ToggleSpecificControls(this, enable, [.. names, nameof(SettingsButton)]);
 
+    /// <summary>
+    /// The titlebar lamp, and the app's one ambient status light. Called from here, from the
+    /// settings panel and from every feature module (through <c>ModuleOverlay.Host</c>).
+    ///
+    /// <para><b>The parameters are a vocabulary rather than a dial.</b>
+    /// <paramref name="singleFlashOnChance"/> 1.0 is the on-flash for something that arrived or
+    /// opened and 0.0 the off-flash for something closed or reset; 0.5 is for an event that is
+    /// honestly neither, like the Auto theme or selecting every pack carrying a tag.
+    /// <paramref name="rapidFlashChance"/> 1.0 is the loud version, for one heavy thing landing
+    /// or for an indeterminate event worth noticing. <paramref name="enable"/> with
+    /// <paramref name="singleFlash"/> false starts and stops the continuous blink instead -
+    /// the animation built for something that runs for a while.
+    /// </para>
+    ///
+    /// <para><b>Nothing else ever stops the continuous blink</b>, so start it fire-and-forget
+    /// and stop it in a <c>finally</c>: a path that leaves without stopping leaves the lamp
+    /// blinking for the rest of the session.</para>
+    ///
+    /// <para><b>A single flash that arrives while the lamp is busy is dropped, not queued</b> -
+    /// it takes the animation lock with a zero timeout and gives up. So a flash fired next to a
+    /// stop that has not finished is simply lost, and awaiting the stop to fix that costs the
+    /// caller the blink loop's whole wind-down. Neither is worth holding a caller up for: this
+    /// is a light in a titlebar, and every call site fires and forgets.</para>
+    ///
+    /// <para>Disabling is allowed through even under <c>SuspendUIAnimations</c>, so a lamp left
+    /// blinking by a run that started before the setting changed can still be turned off.</para>
+    /// </summary>
     public async Task BlinkingLamp(bool enable, bool singleFlash = false, double singleFlashOnChance = 0.75, double rapidFlashChance = 0.05)
     {
         if (!SuspendUIAnimations || !enable) // If the intention is to disable, allow it to pass in

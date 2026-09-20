@@ -343,7 +343,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             else { _selectedPaths.Remove(path); overlay.Visibility = Visibility.Collapsed; }
         }
 
-        Blink(selected);
+        _ = Host.BlinkingLamp(true, true, selected ? 1.0 : 0.0);
     }
 
     private void SelectPacksByTag(string tag)
@@ -361,7 +361,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         }
 
         // Some packs go on, the rest are left as they were, so neither direction is the truth.
-        BlinkEither();
+        _ = Host.BlinkingLamp(true, true, 0.5);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -733,7 +733,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             PackSelectionPanel.Visibility = Visibility.Visible;
             AddPackButton.IsEnabled = true;
             RefreshButton.IsEnabled = true;
-            BlinkEither(rapid: true);
+            _ = Host.BlinkingLamp(true, true, 0.5, 1.0);
         }
     }
 
@@ -744,8 +744,9 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         var imported = false;
 
         // An import is a download, an unzip, or both, over as many files as the user dropped.
-        // Stopped in the finally below and nowhere else - see ModuleOverlay.BlinkWhileBusy.
-        _ = BlinkWhileBusy(true);
+        // Nothing else ever turns the continuous blink off, so the finally below is the only
+        // place it stops and every path out of here has to go through it.
+        _ = Host.BlinkingLamp(true);
 
         try
         {
@@ -753,10 +754,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         }
         finally
         {
-            // Awaited, or the outcome flash below arrives while the continuous blink is still
-            // running and is swallowed.
-            await BlinkWhileBusy(false);
-            Blink(imported);
+            _ = Host.BlinkingLamp(false);
 
             LoadingPanel.Visibility = Visibility.Visible;
             PackSelectionPanel.Visibility = Visibility.Collapsed;

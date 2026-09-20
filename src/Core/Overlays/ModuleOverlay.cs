@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -60,7 +59,13 @@ public class ModuleOverlay : UserControl
     /// <summary>Raised once, after <see cref="OnClosing"/> and before the fade. The stand-in for <c>Window.Closed</c>.</summary>
     public event EventHandler? Closed;
 
-    /// <summary>The window every module now lives inside.</summary>
+    /// <summary>
+    /// The window every module now lives inside, and what a module reaches the titlebar lamp
+    /// through - <see cref="MainWindow.BlinkingLamp"/>, called with the arguments the event
+    /// wants, the same way MainWindow and the settings panel call it. Modules could not touch
+    /// it as windows, because a window covered it; it is on screen for all of them now, and it
+    /// is the only feedback a module has that survives being closed a second later.
+    /// </summary>
     protected static MainWindow Host => MainWindow.Instance!;
 
     /// <summary>
@@ -68,67 +73,6 @@ public class ModuleOverlay : UserControl
     /// longer has one of its own, and the pickers are modal to the app either way.
     /// </summary>
     protected static IntPtr WindowHandle => WindowNative.GetWindowHandle(MainWindow.Instance);
-
-    // ── The titlebar lamp ──────────────────────────────────────────────────
-    //
-    // Four calls, and which one to reach for is a question about the *event*, not about how
-    // much it matters. The lamp is a metaphor rather than a severity dial:
-    //
-    //   Blink(true)          something opened, arrived, turned on
-    //   Blink(false)         something closed, was reset, turned off
-    //   BlinkEither()        neither - a selection that is part on and part off
-    //   BlinkEither(rapid)   neither, and worth noticing - a refresh, a rebuild
-    //   BlinkHard(success)   one heavy thing landed, and which way it went is known
-    //   BlinkWhileBusy       a long run, for as long as it runs
-    //
-    // Modules never called any of this as windows, because a window covered the lamp. They sit
-    // under the titlebar now, so it is on screen for every one of them - and it is the only
-    // feedback a module has that survives being closed a second later.
-    //
-    // All of it is fire-and-forget except stopping the continuous blink: these are animations,
-    // nothing waits for one, and MainWindow.BlinkingLamp already no-ops under
-    // SuspendUIAnimations.
-
-    /// <summary>
-    /// A single flash. <paramref name="good"/> true is the on-flash for something that
-    /// arrived or opened, false the off-flash for something closed, reset or failed.
-    /// </summary>
-    protected static void Blink(bool good = true) => _ = Host.BlinkingLamp(true, true, good ? 1.0 : 0.0);
-
-    /// <summary>
-    /// <see cref="Blink"/> for something bigger than a single step finishing - an install, a
-    /// swap, a whole run. The rapid flash is what MainWindow spends on its own heaviest
-    /// actions, and it still carries which way the thing went.
-    /// </summary>
-    protected static void BlinkHard(bool good = true) => _ = Host.BlinkingLamp(true, true, good ? 1.0 : 0.0, rapidFlashChance: 1.0);
-
-    /// <summary>
-    /// A single flash whose direction is a coin toss, for an event that is honestly neither an
-    /// on nor an off - selecting every pack carrying a tag turns some on and leaves others
-    /// alone, so claiming either would be a lie about what just happened.
-    ///
-    /// <para><paramref name="rapid"/> is the same idea one step louder, for an indeterminate
-    /// event big enough to want noticing: a list rebuilt from disk may come back identical or
-    /// completely different, and the rapid flash says "that happened" without claiming which.
-    /// It is the same call the settings panel makes for the Auto theme, which is the other
-    /// place the app genuinely cannot say on or off.</para>
-    /// </summary>
-    protected static void BlinkEither(bool rapid = false) =>
-        _ = Host.BlinkingLamp(true, true, 0.5, rapidFlashChance: rapid ? 1.0 : 0.0);
-
-    /// <summary>
-    /// Starts or stops the continuous blink - the lamp's one animation built for something
-    /// that runs for a while, and what MainWindow itself shows while the Tuner is working.
-    ///
-    /// <para><b>Start it fire-and-forget, stop it in a <c>finally</c>.</b> Nothing else ever
-    /// turns it off, so a path that leaves without stopping leaves the lamp blinking for the
-    /// rest of the session.</para>
-    ///
-    /// <para><b>Await the stop if a flash follows it.</b> A single flash arriving while the
-    /// continuous animation is still running is swallowed rather than queued, so an outcome
-    /// flash fired next to a stop that has not finished is simply lost.</para>
-    /// </summary>
-    protected static Task BlinkWhileBusy(bool running) => Host.BlinkingLamp(running);
 
     /// <summary>
     /// A module's own titlebar buttons, if it has any. It is declared in the module's own XAML
