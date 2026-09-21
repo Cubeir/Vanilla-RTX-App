@@ -81,6 +81,8 @@ Three buttons sit next to the app's name. Each opens a page:
 
 > Help and Bugs can be opened on top of any feature, and closing them puts you back exactly where you were.
 
+> Next to their title are buttons to reload the page and jump back to the top, and on the right, a search button (**Ctrl+F**). Both pages are saved for offline reading and refreshed at most once an hour; if a refresh fails, the saved copy is shown.
+
 > While a feature is open, a **return button** appears at the right of the title bar, beside the window controls. It closes the feature, and so does **Esc**. Some features also put their own buttons in the title bar, next to Help and Bugs - for example the pack list's refresh button.
 
 > The Settings button is unavailable while a feature is open or the app is busy, because several settings (like where Minecraft is installed) would change what that work is using.

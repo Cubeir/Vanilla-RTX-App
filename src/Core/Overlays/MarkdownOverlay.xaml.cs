@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Input;
@@ -11,6 +14,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Modules;
+using Windows.Storage;
 using Windows.System;
 using Windows.UI.Core;
 
@@ -28,22 +32,23 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// Chromium instance (and GitHub's own page chrome, ads-adjacent trackers, and layout shift) to
 /// display text that fits in a <see cref="Markdig.MarkdownPipeline"/> parse and a handful of
 /// <see cref="TextBlock"/>s was the wrong tool for a job this small. Rendering the markdown
-/// directly is also what makes the in-memory cache below possible - there's a single string to
+/// directly is also what makes the cache below possible - there's a single file to
 /// cache, not a browser profile.</para>
 ///
-/// <para><b>Caching is deliberately just a static <see cref="Dictionary{TKey,TValue}"/>, keyed
-/// by the page URL the caller passed to <see cref="Show"/>.</b> It lives for exactly the
-/// process's lifetime - repeatedly opening Help or the bug tracker in one session never
-/// re-fetches, but a fresh launch always does. That matches what these two buttons need: the
-/// content changes rarely enough that a session-long cache is free, but it isn't worth the
-/// complexity of <see cref="AssetUpdater"/>-style cooldowns and on-disk persistence for two
-/// small text files nobody needs available offline.</para>
+/// <para><b>Pages are cached on disk and fetched at most once an hour</b>, the same model as
+/// <see cref="OnlineTexts"/>. raw.githubusercontent.com is effectively this app's CDN, and a
+/// fetch on every launch, times every user, is requests spent on documents that change a few
+/// times a year. Within <see cref="FetchCooldown"/> of the last successful fetch - across
+/// relaunches - the cached copy is shown without touching the network. After it, the page is
+/// fetched; if that fails, the cached copy is shown anyway, however old, because a stale
+/// document beats an error card. Only a page that has never been fetched can show the error.
+/// See <see cref="DiskCache"/> for the storage itself.</para>
 ///
-/// <para><b>Reload is rate-limited, deliberately, and this is not the same cache as above.</b>
+/// <para><b>Reload is rate-limited, deliberately, and it always goes to the network.</b>
 /// A WebView2 "reload" is a browser doing what browsers already do constantly; this is a direct,
 /// unconditional request to a git host's raw-content server, and a caller mashing the button has
 /// no throttle standing between them and that server. <see cref="_reloadCooldownUntil"/> is a
-/// second static dictionary, keyed by page URL and storing *next allowed reload time* rather
+/// static dictionary, keyed by page URL and storing *next allowed reload time* rather
 /// than *last reload time* (the pattern <c>AssetUpdater</c> already uses) - that's what makes the
 /// cooldown survive closing and reopening the overlay: it isn't instance state at all.</para>
 ///
@@ -61,8 +66,18 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// </summary>
 public sealed partial class MarkdownOverlay : UserControl
 {
-    /// <summary>Raw markdown text, keyed by the page URL passed to <see cref="Show"/>. Process-lifetime only - see the class doc.</summary>
-    private static readonly Dictionary<string, string> _cache = new(StringComparer.Ordinal);
+    /// <summary>How long a cached page is shown without asking the network at all - see the class doc.</summary>
+    private static readonly TimeSpan FetchCooldown = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// After a failed fetch, how long this session keeps showing the cached copy rather than
+    /// trying again. Without it, every reopen while offline sits through another attempt before
+    /// falling back to the page it could have shown straight away.
+    /// </summary>
+    private static readonly TimeSpan FailureBackoff = TimeSpan.FromMinutes(10);
+
+    /// <summary>Raw URL to the end of its failure backoff. Process-lifetime; a relaunch tries again.</summary>
+    private static readonly Dictionary<string, DateTime> _failedUntil = new(StringComparer.Ordinal);
 
     /// <summary>Next allowed Reload time per page URL - see the class doc. Process-lifetime, independent of any single overlay instance's open/closed state.</summary>
     private static readonly Dictionary<string, DateTime> _reloadCooldownUntil = new(StringComparer.Ordinal);
@@ -118,6 +133,9 @@ public sealed partial class MarkdownOverlay : UserControl
             RefreshReloadCooldownUI();
             _ = LoadAsync(bypassCache: true);
         };
+
+        Header.ScrollTopClick += (_, _) =>
+            ContentScrollViewer.ChangeView(null, 0, null, disableAnimation: AnimationsSuspended);
 
         Header.CloseClick += (_, _) => Close();
     }
@@ -215,7 +233,7 @@ public sealed partial class MarkdownOverlay : UserControl
             Visibility = Visibility.Collapsed;
             // Release the rendered visual tree (and everything it's holding - Image sources,
             // Hyperlink closures) rather than letting a large README sit alive in memory
-            // between visits. The cached markdown *string* is untouched; re-opening just re-renders it.
+            // between visits. The cached copy on disk is untouched; re-opening just re-renders it.
             MarkdownHost.Content = null;
             onClosed?.Invoke();
         });
@@ -236,6 +254,11 @@ public sealed partial class MarkdownOverlay : UserControl
     // Loading and rendering
     // =========================================================================
 
+    /// <summary>
+    /// Shows the page from the disk cache when it is fresh, otherwise fetches it - falling back
+    /// to the cached copy, however old, if the fetch fails. <paramref name="bypassCache"/>
+    /// (Reload) always goes to the network, with the same fallback. See the class doc.
+    /// </summary>
     private async Task LoadAsync(bool bypassCache)
     {
         ShowLoading("Loading...");
@@ -247,21 +270,40 @@ public sealed partial class MarkdownOverlay : UserControl
 
         try
         {
-            string? markdown = bypassCache ? null : GetCached(_pageUrl);
+            var cached = DiskCache.Read(_rawUrl);
+            var skipNetwork = !bypassCache && cached is not null
+                && (cached.Value.IsFresh || RecentlyFailed(_rawUrl));
 
-            if (markdown is null)
+            string? markdown;
+            if (skipNetwork)
             {
-                markdown = await FetchRawMarkdownAsync(_rawUrl, cts.Token);
-                if (markdown is null)
+                markdown = cached!.Value.Markdown;
+            }
+            else
+            {
+                // With a copy to fall back on, a slow network isn't worth waiting out.
+                var timeout = TimeSpan.FromSeconds(cached is null ? 15 : 5);
+                markdown = await FetchRawMarkdownAsync(_rawUrl, timeout, cts.Token);
+
+                if (markdown is not null)
                 {
-                    if (!cts.Token.IsCancellationRequested)
-                        ShowError("Couldn't load this page. Check your internet connection and try again.");
-                    return;
+                    _failedUntil.Remove(_rawUrl);
+                    DiskCache.Write(_rawUrl, markdown);
                 }
-                SetCached(_pageUrl, markdown);
+                else if (!cts.Token.IsCancellationRequested)
+                {
+                    _failedUntil[_rawUrl] = DateTime.UtcNow + FailureBackoff;
+                    markdown = cached?.Markdown;
+                    if (markdown is null)
+                    {
+                        ShowError("Couldn't load this page. Check your internet connection and try again.");
+                        return;
+                    }
+                    Trace.WriteLine($"[MarkdownOverlay] Fetch failed - showing the cached copy of {_rawUrl}");
+                }
             }
 
-            if (!_isOpen || cts.Token.IsCancellationRequested) return;
+            if (!_isOpen || cts.Token.IsCancellationRequested || markdown is null) return;
             RenderMarkdown(markdown);
         }
         catch (OperationCanceledException)
@@ -270,12 +312,15 @@ public sealed partial class MarkdownOverlay : UserControl
         }
     }
 
-    private async Task<string?> FetchRawMarkdownAsync(string rawUrl, CancellationToken token)
+    private static bool RecentlyFailed(string rawUrl) =>
+        _failedUntil.TryGetValue(rawUrl, out var until) && until > DateTime.UtcNow;
+
+    private async Task<string?> FetchRawMarkdownAsync(string rawUrl, TimeSpan timeout, CancellationToken token)
     {
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
+            timeoutCts.CancelAfter(timeout);
 
             using var response = await Helpers.SharedHttpClient.GetAsync(rawUrl, timeoutCts.Token);
             if (!response.IsSuccessStatusCode)
@@ -387,10 +432,67 @@ public sealed partial class MarkdownOverlay : UserControl
     // Cache
     // =========================================================================
 
-    private static string? GetCached(string key) =>
-        _cache.TryGetValue(key, out var value) ? value : null;
+    /// <summary>
+    /// One markdown file per fetched address, in <c>LocalState\MarkdownCache</c>. The file's own
+    /// last-write time is the fetch stamp, so there is no settings key to keep in step with it
+    /// and no date string to parse - a local-vs-UTC parse is exactly the mistake OnlineTexts'
+    /// cooldown once made (CLAUDE.md §4.17).
+    ///
+    /// <para>Keyed by the raw URL actually fetched, hashed into a file name: a user who points
+    /// Help at their own document gets their own cache entry rather than the default page's.
+    /// Written through a temp file and a move, so a crash mid-write leaves the previous copy
+    /// rather than half of a new one. Never throws; a cache that can't be read or written is
+    /// simply a cache that isn't there.</para>
+    /// </summary>
+    private static class DiskCache
+    {
+        public readonly record struct Entry(string Markdown, bool IsFresh);
 
-    private static void SetCached(string key, string value) => _cache[key] = value;
+        private static string Folder => Path.Combine(ApplicationData.Current.LocalFolder.Path, "MarkdownCache");
+
+        private static string PathFor(string rawUrl)
+        {
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(rawUrl));
+            return Path.Combine(Folder, Convert.ToHexString(hash, 0, 8).ToLowerInvariant() + ".md");
+        }
+
+        public static Entry? Read(string rawUrl)
+        {
+            try
+            {
+                var path = PathFor(rawUrl);
+                if (!File.Exists(path)) return null;
+
+                var markdown = File.ReadAllText(path);
+                if (string.IsNullOrWhiteSpace(markdown)) return null;
+
+                // A stamp in the future can't be trusted, so it reads as stale.
+                var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(path);
+                return new Entry(markdown, age >= TimeSpan.Zero && age < FetchCooldown);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[MarkdownOverlay] Couldn't read the cached copy of {rawUrl}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public static void Write(string rawUrl, string markdown)
+        {
+            try
+            {
+                Directory.CreateDirectory(Folder);
+                var path = PathFor(rawUrl);
+                var temp = path + ".tmp";
+                File.WriteAllText(temp, markdown);
+                File.Move(temp, path, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[MarkdownOverlay] Couldn't cache {rawUrl}: {ex.Message}");
+            }
+        }
+    }
 
     // =========================================================================
     // GitHub URL resolution
@@ -560,6 +662,7 @@ public sealed partial class MarkdownOverlay : UserControl
         ErrorState.Visibility = Visibility.Collapsed;
         ContentScrollViewer.Visibility = Visibility.Collapsed;
         SearchToggleButton.Visibility = Visibility.Collapsed;
+        Header.SetScrollTopButtonVisible(false);
     }
 
     private void ShowError(string text)
@@ -569,6 +672,7 @@ public sealed partial class MarkdownOverlay : UserControl
         LoadingState.Visibility = Visibility.Collapsed;
         ContentScrollViewer.Visibility = Visibility.Collapsed;
         SearchToggleButton.Visibility = Visibility.Collapsed;
+        Header.SetScrollTopButtonVisible(false);
     }
 
     private void ShowContent()
@@ -577,6 +681,7 @@ public sealed partial class MarkdownOverlay : UserControl
         ErrorState.Visibility = Visibility.Collapsed;
         ContentScrollViewer.Visibility = Visibility.Visible;
         SearchToggleButton.Visibility = Visibility.Visible;
+        Header.SetScrollTopButtonVisible(true);
     }
 
     // =========================================================================

@@ -31,6 +31,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="3" />
@@ -115,12 +116,28 @@
                 </Grid>
             </Button>
 
+            <!-- Back to top, for hosts with a long scrolling page - collapsed until the host asks
+                 for it (SetScrollTopButtonVisible), which also gives its Auto column back. -->
+            <Button x:Name="ScrollTopButton"
+                    Grid.Column="6"
+                    Style="{ThemeResource SubtleButtonStyle}"
+                    Width="32"
+                    Height="32"
+                    Padding="0"
+                    Margin="2,0,0,0"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed"
+                    Click="ScrollTopButton_Click"
+                    ToolTipService.ToolTip="Back to top">
+                <FontIcon Glyph="&#xE74A;" FontSize="14" />
+            </Button>
+
             <!-- Static, caller-supplied instruction ("what does Done mean here") - sandwiched
                  between the nav buttons and the Close button instead of its own row, so it
                  spends the width that would otherwise sit empty rather than its own vertical
                  space. Free to wrap; MinHeight above keeps the row from collapsing while it does. -->
             <TextBlock x:Name="GuideText"
-                       Grid.Column="6"
+                       Grid.Column="7"
                        Text=""
                        FontSize="12"
                        Opacity="0.7"
@@ -134,7 +151,7 @@
                  control placed here covers none of the host's content. Auto-sized, so a host
                  that supplies nothing leaves no gap. -->
             <ContentPresenter x:Name="ActionsHost"
-                              Grid.Column="7"
+                              Grid.Column="8"
                               VerticalAlignment="Center"
                               Margin="0,0,12,0" />
 
@@ -143,10 +160,10 @@
                  light/dark theme instead of always reading as the dark-theme accent. Set
                  imperatively in code-behind (ApplyCloseButtonBevel) because GetBevelColor is a
                  C# color choice, not a ThemeResource binding that re-resolves itself. -->
-            <Rectangle Grid.Column="8"
+            <Rectangle Grid.Column="9"
                        Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
             <Border x:Name="CloseButtonBevel"
-                    Grid.Column="8"
+                    Grid.Column="9"
                     BorderThickness="3,0,0,0" />
 
             <!-- Fills the entire header block, flush against the window's right edge, the
@@ -154,7 +171,7 @@
                  MainWindow's Preview toggle, achieved the same way: the accent bevel above
                  standing in for that button's own fake-split border. -->
             <Button x:Name="CloseButton"
-                    Grid.Column="9"
+                    Grid.Column="10"
                     Style="{ThemeResource AccentButtonStyle}"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"

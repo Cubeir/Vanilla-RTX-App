@@ -6,7 +6,7 @@ namespace Vanilla_RTX_App.Core.Overlays;
 
 /// <summary>
 /// The header every full-window in-app overlay shares: icon, a hyperlinked title, optional
-/// Back/Forward, Reload, a static guide sentence, a slot for the host's own controls
+/// Back/Forward, Reload, an optional back-to-top button, a static guide sentence, a slot for the host's own controls
 /// (<see cref="Actions"/>), and the big accent Close button. Knows nothing about what it's
 /// showing or what closing means - it just raises events and exposes setters, so
 /// <see cref="WebImportOverlay"/> and <see cref="MarkdownOverlay"/> can configure the same
@@ -25,6 +25,9 @@ public sealed partial class OverlayHeaderBar : UserControl
 
     /// <summary>Not raised while a cooldown is running - see <see cref="SetReloadCooldown"/>.</summary>
     public event RoutedEventHandler? ReloadClick;
+
+    /// <summary>Only raised while the button is shown (<see cref="SetScrollTopButtonVisible"/>).</summary>
+    public event RoutedEventHandler? ScrollTopClick;
 
     /// <summary>
     /// The primary accent button. What "close" means is the host's business: the web overlay
@@ -91,6 +94,13 @@ public sealed partial class OverlayHeaderBar : UserControl
     }
 
     /// <summary>
+    /// The back-to-top button beside Reload. Hidden by default: only a host with a long page
+    /// has a top to go back to, and it shows the button only while that page is on screen.
+    /// </summary>
+    public void SetScrollTopButtonVisible(bool visible) =>
+        ScrollTopButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>
     /// Greys Back/Forward against the host's real history. Separate from
     /// <see cref="SetNavButtonsVisible"/> because they answer different questions: whether
     /// this overlay navigates at all, versus whether there is anywhere to go right now.
@@ -148,6 +158,9 @@ public sealed partial class OverlayHeaderBar : UserControl
 
     /// <summary>XAML handler. Forwarded as <see cref="ReloadClick"/>.</summary>
     private void ReloadButton_Click(object sender, RoutedEventArgs e) => ReloadClick?.Invoke(this, e);
+
+    /// <summary>XAML handler. Forwarded as <see cref="ScrollTopClick"/>.</summary>
+    private void ScrollTopButton_Click(object sender, RoutedEventArgs e) => ScrollTopClick?.Invoke(this, e);
 
     /// <summary>XAML handler. Forwarded as <see cref="CloseClick"/>.</summary>
     private void CloseButton_Click(object sender, RoutedEventArgs e) => CloseClick?.Invoke(this, e);

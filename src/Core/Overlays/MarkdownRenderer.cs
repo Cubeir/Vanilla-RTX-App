@@ -403,6 +403,11 @@ public sealed class MarkdownRenderer
             AppendInlines(p.Inlines, para.Inline);
         }
 
+        // A paragraph that is nothing but images - a cover shot, a screenshot, a row of badges -
+        // is centered. An image sharing a line with text is left inline where the text put it.
+        if (IsImageOnly(para.Inline))
+            p.TextAlignment = TextAlignment.Center;
+
         rtb.Blocks.Add(p);
 
         // See RenderHeading - the Border exists only so a search highlight has a Background to set.
@@ -758,6 +763,36 @@ public sealed class MarkdownRenderer
         hyperlink.Inlines.Add(new Run { Text = autolink.Url });
         hyperlink.Click += (_, _) => _openLink(url);
         return hyperlink;
+    }
+
+    /// <summary>
+    /// True when <paramref name="container"/> holds at least one image and nothing else but
+    /// line breaks and whitespace. A linked image (<c>[![alt](img)](url)</c>) counts as an image.
+    /// </summary>
+    private static bool IsImageOnly(MI.ContainerInline? container)
+    {
+        if (container is null) return false;
+
+        var sawImage = false;
+        foreach (var inline in container)
+        {
+            switch (inline)
+            {
+                case MI.LinkInline { IsImage: true }:
+                    sawImage = true;
+                    break;
+                case MI.LinkInline link when TryGetSoleImageChild(link, out _):
+                    sawImage = true;
+                    break;
+                case MI.LineBreakInline:
+                    break;
+                case MI.LiteralInline lit when lit.Content.IsEmptyOrWhitespace():
+                    break;
+                default:
+                    return false;
+            }
+        }
+        return sawImage;
     }
 
     private static bool TryGetSoleImageChild(MI.LinkInline link, out MI.LinkInline image)
