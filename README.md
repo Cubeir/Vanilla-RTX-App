@@ -30,17 +30,17 @@ Install and update the Vanilla RTX resource packs, give ordinary texture packs R
 ## Contents
 
 - [Quick start](#quick-start)
-- [Overview](#the-main-window)
-- [Tuning packs](#tuning-packs)
+- [Overview](#overview--main-menu-features)
 - [Get latest RTX packs](#get-latest-rtx-packs)
 - [Select other packs](#select-other-packs)
+- [Tuning packs](#tuning-packs)
 - [RTX Reactor](#rtx-reactor)
 - [BetterRTX manager](#betterrtx-manager)
-- [RTX LUT manager](#rtx-lut-manager)
 - [DLSS swapper](#dlss-swapper)
+- [RTX LUT manager](#rtx-lut-manager)
 - [Launch Minecraft RTX](#launch-minecraft-rtx)
-- [Settings](#settings)
 - [Opening files with the app](#opening-files-with-the-app)
+- [Settings](#settings)
 - [Troubleshooting](#troubleshooting)
 
 <!-- Second Cover Image -->
@@ -48,7 +48,7 @@ Install and update the Vanilla RTX resource packs, give ordinary texture packs R
   <img alt="vanilla-rtx-app-cover" src="https://github.com/user-attachments/assets/64882d50-a751-4e6b-a46d-5becb9fe190a" />
 </p>
 
-## Quick start
+# Quick start
 
 For anyone who just wants to quickly get ray tracing working:
 
@@ -60,7 +60,7 @@ For anyone who just wants to quickly get ray tracing working:
 
 You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible. The rest of this page is the full handbook, for when you want to go further.
 
-# Overview
+# Overview & main menu features
 
 Features split into two main groups by what they touch:
 
@@ -71,7 +71,7 @@ The app finds both Minecraft and its user data on its own. If it ever can't, see
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/fe39284b-4275-4fb6-9339-26dec8057e5b" />
 
-## Title Bar
+## Title bar
 
 Three buttons sit next to the app's name. Each opens a page:
 
@@ -92,55 +92,9 @@ The **Preview** toggle points the whole app at Minecraft Preview instead of the 
 ## Log area, the lamp and the preview images
 
 - The **log** on the left tells you what the app is doing for transparency, warns you when something needs attention, and shows occasional announcements, might also occasionally point you in the right direction about certain features.
-- The **lamp** logo next to the app's name is the app's status light. It blinks while something long is running, and flashes when things finish, succeed or fail. It sometimes has a mind of its own - that's intended. It serves no actual purpose outside of being a fun visual cue as you interact with the app.
-- Hover over almost anything and a small piece of pixel art appears in the bottom-left, showing what that control does. Sliders show how they'll change the game's look, and toggles show a before and after.
+- The **lamp** logo next to the app's name is the app's status light. It blinks while something long is running, and flashes when things finish, succeed or fail. It sometimes has a mind of its own - that's intended. It serves no actual purpose beyond being a fun visual cue as you interact with the app.
+- Hover over almost anything and a small piece of pixel art appears in the bottom-left of the main menu, showing what that control does. Sliders show how they'll change the game's look, and toggles show a before and after.
 - **Announcement cards** appear throughout features, holding news, warnings and tips. They update on their own every few hours. Some can be dismissed for good, some for a while, and some that are important stay pinned.
-
-# Tuning packs
-
-The Tuner adjusts the look of Vanilla RTX, or any other ray-traced or Vibrant Visuals resource pack, to your preferences. Every option is built to keep a texture's original composition intact, so it nudges a pack in your direction rather than wrecking its look or inventing new materials.
-
-**Tuning changes a pack's files permanently, and each pass stacks on the one before.** For Vanilla RTX, going back is one click: Reinstall it from [Get latest RTX packs](#get-latest-rtx-packs). For anything else, export it first so you have a copy to quickly re-import via the app.
-
-<img alt="Vanilla RTX UI Screenshots" src="https://github.com/user-attachments/assets/3daab14b-12f5-4a14-8a5a-34c8dc8d2aad" />
-
-## Choosing what to tune
-
-- **Vanilla RTX, Vanilla RTX Normals, Vanilla RTX Opus** - There is a checkbox for each in the main menu. A checkbox you can't tick means that pack isn't installed; install it from Get latest RTX packs.
-- **Select other packs** - opens your full pack list, to pick any other pack. See [Select other packs](#select-other-packs). Only packs that are not tagged as `Incompatible with Tuner` can be tuned.
-
-## The options
-
-| Option | Range | What it does |
-|---|---|---|
-| Fog density multiplier | 0 to 10 | Scales all air fog: `0.5` halves it, `3` triples it, `0` effectively removes it. Fogs already at zero are set to a sensible literal value instead derived from the multiplier (e.g. 11 becomes 0.11), and anything past maximum density goes into scattering more light through the air. Underwater fog is affected too, much more gently, so underwater visibility and colors survive the original intent of the artist. |
-| Emissive strength multiplier | 0.2 to 16 | Makes glowing blocks brighter or dimmer while keeping their relative brightness and look intact, even at extreme values. |
-| Increase ambient lighting | on/off | Adds a small, even glow to every surface, like ambient light. Its strength follows the emissive multiplier. Too much gives a night-vision look. [1] |
-| Surface 3D effect intensity | 0 to 900% | How strong normal maps and heightmaps are. `0%` flattens surfaces, higher values deepen the differences, while keeping each texture's own detail in proportion, so details are not lost. |
-| Material grain offset | 0 to 64 | Adds a fine layer of noise to materials, up to the given amount. Emissive parts are touched to a lesser degree, and the pattern stays the same across animation frames and block variants, so a lit and unlit redstone lamp still match. The pattern resembles the grain in Vibrant Visuals' own textures. |
-| Roughness control | -16 to 48 | Positive values make surfaces less shiny, affecting glossy ones most, and slightly reduce metalness to match. Negative values do the opposite: rough surfaces get shinier and metalness goes up. Several small passes nat work better than one big one. |
-| Lazify surface normals | 0 to 255 | Blends the pack's normal maps and heightmaps toward a version derived from its color textures, making them less refined. `0` changes nothing, `255` is fully "lazy". The overall strength of the normal map is preserved. A small value like `1-10` adds subtle organic detail. It only works when the normal map matches the color texture's resolution, so it has no effect on Vanilla RTX Opus. |
-
-> **[1] Increase ambient lighting marks a pack.** On every later pass, the emissive multiplier only scales the ambient light, not the pack's regular glow, so repeated passes can't compound into a blown-out pack. Use it sparingly, ideally as your last step. A warning icon next to the toggle reminds you of this.
-
-> If you use Vanilla RTX with BetterRTX installed, fog looks quite different than in unmodded RTX. A fog multiplier of `0.5-0.7` compensates.
-
-![fog-panel](https://github.com/user-attachments/assets/a013dc6a-bd46-41f1-b980-0620f0514588)
-
-![street-default-vanilla-rtx](https://github.com/user-attachments/assets/19e802e9-42c6-4e70-a931-6474f5e10716)
-![street-3x-emissivity-tuned-vanilla-rtx](https://github.com/user-attachments/assets/90e7d2a4-afdc-4250-9ecf-d5cc15fd9dc7)
-
-![ambient-lighting](https://github.com/user-attachments/assets/e44fe5f8-06d0-4d43-978c-fc954f5d83e8)
-
-## The action buttons
-
-- **Tune selection** - applies the options above to every selected pack. While it runs it becomes **Abort tuning operation**: textures already finished keep their changes, and nothing else is touched. The app spends a few seconds gathering what it needs before changing anything, so aborting quickly after an accidental click usually means nothing was modified. Close Minecraft while tuning, or at least reload your world afterwards.
-- **Export** - saves each selected pack as a `.mcpack` file, asking where for each one. Good for backups before tuning, or for sharing your tuned pack.
-- **Delete** (the bin icon) - permanently deletes the selected packs from Minecraft's data folder.
-- **Clear selection** - unticks every selected pack.
-- **Reset** - puts every tuning option back to its default. This doesn't undo any tuning already done to a pack.
-
-These tools are powerful on the right pack: Vanilla RTX, for instance, can be tuned to closely match the style of most other vanilla-style PBR packs, or even Mojang's own Vibrant Visuals.
 
 # Get latest RTX packs
 
@@ -190,6 +144,52 @@ Each pack shows its icon, name, description, version, and tags:
 
 If the app can't find your user data, this button becomes a highlighted **Locate user data** button and temporarily serves a different purpose while you select the user data location the app must use. See [Troubleshooting](#troubleshooting).
 
+# Tuning packs
+
+The Tuner adjusts the look of Vanilla RTX, or any other ray-traced or Vibrant Visuals resource pack, to your preferences. Every option is built to keep a texture's original composition intact, so it nudges a pack in your direction rather than wrecking its look or inventing new materials.
+
+**Tuning changes a pack's files permanently, and each pass stacks on the one before.** For Vanilla RTX, going back is one click: Reinstall it from [Get latest RTX packs](#get-latest-rtx-packs). For anything else, export it first so you have a copy to quickly re-import via the app.
+
+<img alt="Vanilla RTX UI Screenshots" src="https://github.com/user-attachments/assets/3daab14b-12f5-4a14-8a5a-34c8dc8d2aad" />
+
+## Choosing what to tune
+
+- **Vanilla RTX, Vanilla RTX Normals, Vanilla RTX Opus** - There is a checkbox for each in the main menu. A checkbox you can't tick means that pack isn't installed; install it from Get latest RTX packs.
+- **Select other packs** - opens your full pack list, to pick any other pack. See [Select other packs](#select-other-packs). Only packs that are not tagged as `Incompatible with Tuner` can be tuned.
+
+## The options
+
+| Option | Range | What it does |
+|---|---|---|
+| Fog density multiplier | 0 to 10 | Scales all air fog: `0.5` halves it, `3` triples it, `0` effectively removes it. Fogs already at zero are set to a sensible literal value instead derived from the multiplier (e.g. 11 becomes 0.11), and anything past maximum density goes into scattering more light through the air. Underwater fog is affected too, much more gently, so underwater visibility and colors survive the original intent of the artist. |
+| Emissive strength multiplier | 0.2 to 16 | Makes glowing blocks brighter or dimmer while keeping their relative brightness and look intact, even at extreme values. |
+| Increase ambient lighting | on/off | Adds a small, even glow to every surface, like ambient light. Its strength follows the emissive multiplier. Too much gives a night-vision look. [1] |
+| Surface 3D effect intensity | 0 to 900% | How strong normal maps and heightmaps are. `0%` flattens surfaces, higher values deepen the differences, while keeping each texture's own detail in proportion, so details are not lost. |
+| Material grain offset | 0 to 64 | Adds a fine layer of noise to materials, up to the given amount. Emissive parts are touched to a lesser degree, and the pattern stays the same across animation frames and block variants, so a lit and unlit redstone lamp still match. The pattern resembles the grain in Vibrant Visuals' own textures. |
+| Roughness control | -16 to 48 | Positive values make surfaces less shiny, affecting glossy ones most, and slightly reduce metalness to match. Negative values do the opposite: rough surfaces get shinier and metalness goes up. Several small passes nat work better than one big one. |
+| Lazify surface normals | 0 to 255 | Blends the pack's normal maps and heightmaps toward a version derived from its color textures, making them less refined. `0` changes nothing, `255` is fully "lazy". The overall strength of the normal map is preserved. A small value like `1-10` adds subtle organic detail. It only works when the normal map matches the color texture's resolution, so it has no effect on Vanilla RTX Opus. |
+
+> **[1] Increase ambient lighting marks a pack.** On every later pass, the emissive multiplier only scales the ambient light, not the pack's regular glow, so repeated passes can't compound into a blown-out pack. Use it sparingly, ideally as your last step. A warning icon next to the toggle reminds you of this.
+
+> If you use Vanilla RTX with BetterRTX installed, fog looks quite different than in unmodded RTX. A fog multiplier of `0.5-0.7` compensates.
+
+![fog-panel](https://github.com/user-attachments/assets/a013dc6a-bd46-41f1-b980-0620f0514588)
+
+![street-default-vanilla-rtx](https://github.com/user-attachments/assets/19e802e9-42c6-4e70-a931-6474f5e10716)
+![street-3x-emissivity-tuned-vanilla-rtx](https://github.com/user-attachments/assets/90e7d2a4-afdc-4250-9ecf-d5cc15fd9dc7)
+
+![ambient-lighting](https://github.com/user-attachments/assets/e44fe5f8-06d0-4d43-978c-fc954f5d83e8)
+
+## The action buttons
+
+- **Tune selection** - applies the options above to every selected pack. While it runs it becomes **Abort tuning operation**: textures already finished keep their changes, and nothing else is touched. The app spends a few seconds gathering what it needs before changing anything, so aborting quickly after an accidental click usually means nothing was modified. Close Minecraft while tuning, or at least reload your world afterwards.
+- **Export** - saves each selected pack as a `.mcpack` file, asking where for each one. Good for backups before tuning, or for sharing your tuned pack.
+- **Delete** (the bin icon) - permanently deletes the selected packs from Minecraft's data folder.
+- **Clear selection** - unticks every selected pack.
+- **Reset** - puts every tuning option back to its default. This doesn't undo any tuning already done to a pack.
+
+These tools are powerful on the right pack: Vanilla RTX, for instance, can be tuned to closely match the style of most other vanilla-style PBR packs, or even Mojang's own Vibrant Visuals.
+
 # RTX Reactor
 
 RTX Reactor gives ordinary texture packs RTX support. It takes a pack's regular textures and generates a full set of ray tracing materials for it - how metallic, emissive, rough each surface is, plus normal maps or heightmaps for depth - along with fixes for water and translucent textures, optional atmospheric fog, and everything else a pack needs to function decently with ray tracing.  
@@ -233,13 +233,13 @@ Installs presets of [BetterRTX](https://bedrock.graphics), an unofficial mod to 
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/022acfe7-6b5e-4135-a11d-acfaea4d9f11" />
 
-- **The preset list** is an up to date list of pre-made presets provided by BetterRTX website. Click a preset to download it (several can queue up), then click again to install it. The installed preset is highlighted.
+- **The preset list** is an up-to-date list of pre-made presets provided by BetterRTX website. Click a preset to download it (several can queue up), then click again to install it. The installed preset is highlighted.
 - **Default RTX** is pinned at the top: a backup of your game's own shader files, taken the first time you open this manager. Click it to roll back to the unmodded look at any time.
 - **Add customized preset** - import `.rtpack` files, by browsing, dragging them onto the page, or opening them with the app from File Explorer. Imported presets can be deleted with the button (bin icon) beside them.
 - **Create your own preset** - opens the BetterRTX preset creator inside the app. Customize a preset, export it as `.rtpack`, then click **Done** and it will be imported automatically!
 - **Refresh** (title bar) - clears downloaded and imported presets and fetches the list again from the BetterRTX website. It never clears Default RTX preset.
 
-Staying on the latest files happens mostly on its own, as gauranteed by the app:
+Staying on the latest files happens mostly on its own, as guaranteed by the app:
 
 - **When Minecraft updates**, downloaded presets are cleared and Default RTX is re-taken from the updated game, so you can't accidentally install shaders built for an older version. You'll need to download presets again, which also depends on BetterRTX itself having caught up.
 - The app also checks the BetterRTX API for changes every so often and clears the downloaded preset cache. Use Refresh when it's slow to notice an update that may have dropped moments ago.
@@ -247,6 +247,16 @@ Staying on the latest files happens mostly on its own, as gauranteed by the app:
 On **Minecraft Preview**, BetterRTX works but isn't recommended: presets provided by the site/API are built for the regular release, and Preview can refuse to start with them. If that happens, roll back to **Default RTX (Preview)**.
 
 If a preset makes the game crash, roll back to Default RTX. You can use the [RTX LUT manager](#rtx-lut-manager) to give Minecraft RTX a different look in the meantime.
+
+# DLSS swapper
+
+Keeps your collection of DLSS versions and swaps the one Minecraft uses.
+
+- The version your game has now is added to the collection automatically, so you can always go back to it. It's highlighted in the list.
+- Click any version to swap to it.
+- **Add DLSS files** - add `nvngx_dlss.dll` files, or `.zip` archives containing any number of them, by browsing or dragging onto the page. Versions older than 2.0 aren't supported and are removed.
+- **Download DLSS files** - opens a DLSS download page inside the app (TechPowerUp by default; you can change it in [Settings](#settings)). Download what you want, then click **Done** and the files are imported automatically. You can also open the page in your normal browser and add the files yourself.
+- Versions you don't need can be deleted from the collection, except the one currently in use.
 
 # RTX LUT manager
 
@@ -261,20 +271,10 @@ Pick a preset from the dropdown to see a preview, then click **Install**.
 - **Inverted Day-Night Cycle** - day becomes night, and night becomes day.
 - **Matrix Fever** - based on [Matrix Fever](https://www.curseforge.com/minecraft-bedrock/texture-packs/matrix).
 - **Night Night** - extremely dark nights, great for a horror feel.
-- **RTX Beta 1.15 Era** - from the 1.15 RTX betas, an alternative to the default lut.
+- **RTX Beta 1.15 Era** - from the 1.15 RTX betas, an alternative to the default LUT.
 - **Whimsical Bright** - the opposite of Night Night: colorful and bright.
 
 Have an idea for a new preset? Suggest it!
-
-# DLSS swapper
-
-Keeps your collection of DLSS versions and swaps the one Minecraft uses.
-
-- The version your game has now is added to the collection automatically, so you can always go back to it. It's highlighted in the list.
-- Click any version to swap to it.
-- **Add DLSS files** - add `nvngx_dlss.dll` files, or `.zip` archives containing any number of them, by browsing or dragging onto the page. Versions older than 2.0 aren't supported and are removed.
-- **Download DLSS files** - opens a DLSS download page inside the app (TechPowerUp by default; you can change it in [Settings](#settings)). Download what you want, then click **Done** and the files are imported automatically. You can also open the page in your normal browser and add the files yourself.
-- Versions you don't need can be deleted from the collection, except the one currently in use.
 
 # Launch Minecraft RTX
 
@@ -290,6 +290,15 @@ This works around several long-standing game bugs that make turning on ray traci
 - [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850) (performance starvation with VSync on).
 
 Which settings it writes is up to you, if you wish to change it, see **Launch options** in [Settings](#settings). When it changes a file, the version before the change is kept beside it as `options.txt.backup`.
+
+# Opening files with the app
+
+The app can open two kinds of file straight from File Explorer (right-click -> **Open with**, or set it as the default):
+
+- **`.mcpack`** - imported as a resource pack and will appear in [Select other packs](#select-other-packs) menu.
+- **`.rtpack`** - imported as a BetterRTX preset into [BetterRTX manager](#betterrtx-manager). Ready to install!
+
+If the app isn't running it starts, imports are not silent because they might require your confirmation.
 
 # Settings
 
@@ -322,20 +331,11 @@ The addresses the app uses for things it doesn't ship itself: the **Documentatio
 
 At the very bottom are links to **[this repo](https://github.com/Cubeir/Vanilla-RTX-App/)**, **[Discord](https://discord.gg/A4wv4wwYud)** and **Ko-fi**, and the list of Vanilla RTX Insiders - the supporters who make this project possible. **[Please consider joining them!](https://ko-fi.com/cubeir)**
 
-# Opening files with the app
-
-The app can open two kinds of file straight from File Explorer (right-click -> **Open with**, or set it as the default):
-
-- **`.mcpack`** - imported as a resource pack and will appear in [Select other packs](#select-other-packs) menu.
-- **`.rtpack`** - imported as a BetterRTX preset into [BetterRTX manager](#betterrtx-manager). Ready to install!
-
-If the app isn't running it starts, imports are not silent because they might require your confirmation.
-
 # Troubleshooting
 
 ## Minecraft or its user data isn't found
 
-The app finds your game and your user data on its own and for almost everyone both will succeed silently, but if it does not, and you use a feature that needs them, the app tries to guide you to point it to the the correct locations:
+The app finds your game and your user data on its own and for almost everyone both will succeed silently, but if it does not, and you use a feature that needs them, the app tries to guide you to point it to the correct locations:
 
 **The game:** the app asks Windows where Minecraft is installed and follows that to the real files, wherever you installed them. If that fails, it searches the usual locations on every drive, then the whole system, usually succeeding in under a minute. If it still can't, it asks you: pick the folder containing `Minecraft.Windows.exe`, or the folder one level above it. You can also set either game's location manually in Settings, under **Game installations**. BetterRTX, the LUT manager and the DLSS swapper need this.
 
