@@ -948,6 +948,10 @@ public sealed partial class MainWindow : Window
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
 
+    /// <summary>The two documents' header titles - shared with the vanillartx:// links that open them (MainWindow.LinkCommands.cs).</summary>
+    private const string DocumentationTitle = "Vanilla RTX App Documentation";
+    private const string BugTrackerTitle = "Known Minecraft RTX Bugs & Issues";
+
     /// <summary>
     /// The settings panel is closed first if it's open,
     /// then the document opens. <see cref="MarkdownOverlay.Show"/> already handles the
@@ -959,7 +963,7 @@ public sealed partial class MainWindow : Window
         if (SettingsPanel.IsOpen)
             SettingsPanel.Hide();
 
-        DocsOverlay.Show(url: Links.Documentation, title: "Vanilla RTX App Documentation", glyph: "");
+        DocsOverlay.Show(url: Links.Documentation, title: DocumentationTitle, glyph: "");
 
         _ = BlinkingLamp(true, true, 1.0, 0.0);
     }
@@ -968,7 +972,7 @@ public sealed partial class MainWindow : Window
         if (SettingsPanel.IsOpen)
             SettingsPanel.Hide();
 
-        DocsOverlay.Show(url: Links.BugTracker, title: "Known Minecraft RTX Bugs & Issues", glyph: "");
+        DocsOverlay.Show(url: Links.BugTracker, title: BugTrackerTitle, glyph: "");
 
         _ = BlinkingLamp(true, true, 1.0, 1.0);
     }

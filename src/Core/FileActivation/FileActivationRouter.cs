@@ -13,10 +13,12 @@ using WinUIEx;   // Restore/SetForegroundWindow are WinUIEx extensions on Window
 namespace Vanilla_RTX_App.Core.FileActivation;
 
 /// <summary>
-/// Everything about being opened <i>from Explorer</i>: reading the paths a file activation
-/// launched us with, handing them to the instance that is already running when this one loses
+/// Everything about being opened <i>from outside the app</i> - a file from Explorer, or a
+/// <c>vanillartx://</c> link: reading what an activation
+/// launched us with, handing it to the instance that is already running when this one loses
 /// the mutex, dropping the duplicate deliveries Windows produces on its own, and routing what
-/// survives to whichever import owns that extension.
+/// survives to whichever import owns that extension, or to MainWindow's link commands
+/// (MainWindow.LinkCommands.cs) for a link.
 ///
 /// <para><b>Everything up to the moment a list of paths becomes an import lives here</b>, so
 /// that "what happens when someone double-clicks a .rtpack?" has one answer in one file, and
@@ -31,8 +33,8 @@ namespace Vanilla_RTX_App.Core.FileActivation;
 ///
 /// <para><b>The three ways in</b>, all from App.OnLaunched:
 /// <see cref="HandOffToRunningInstance"/> when this process lost the single-instance mutex,
-/// <see cref="RouteHandoffAsync"/> when it won and is being woken by one that lost, and
-/// <see cref="RouteLaunchAsync"/> when it won and was itself launched with files.</para>
+/// <see cref="HandleWakeAsync"/> when it won and is being woken by one that lost, and
+/// <see cref="RouteLaunchAsync"/> when it won and was itself launched with files or a link.</para>
 /// </summary>
 internal static class FileActivationRouter
 {
@@ -42,7 +44,7 @@ internal static class FileActivationRouter
     /// everything left over - see <see cref="RouteAsync"/>.
     /// </summary>
     /// <param name="OwnerModule">
-    /// The feature window that owns this file type. When one is open it takes the import
+    /// The module that owns this file type. When it is open it takes the import
     /// itself (see <see cref="IFileActivationTarget"/>) and is what gets raised; otherwise the
     /// files go to MainWindow via <paramref name="Handler"/>. Must implement
     /// <see cref="IFileActivationTarget"/> or it is ignored.
@@ -89,6 +91,8 @@ internal static class FileActivationRouter
     public static void HandOffToRunningInstance()
     {
         var incoming = GetActivationFilePaths();
+        if (GetActivationLink() is { } link)
+            incoming.Add(link.OriginalString);
         if (incoming.Count == 0) return;
 
         WriteHandoffFile(incoming);
@@ -96,39 +100,71 @@ internal static class FileActivationRouter
 
     /// <summary>
     /// Everything the wake event means: a second launch either just wants the app in front,
-    /// or brought files with it.
+    /// or brought files or a link with it.
     ///
     /// <para><b>Which window is raised is decided here, not by the caller.</b> A plain wake
     /// raises MainWindow. A wake carrying files raises whichever window ends up importing
     /// them, which may not be MainWindow - see <see cref="RouteAsync"/>. Raising MainWindow
     /// unconditionally first is what made a double-clicked file yank the app away from the
-    /// feature window the user had open for exactly that file.</para>
+    /// module the user had open for exactly that file.</para>
     /// </summary>
     public static async Task HandleWakeAsync()
     {
         var pending = ConsumeHandoffFile();
+        var links = pending.Select(AsAppLink).OfType<Uri>().ToList();
+        var paths = pending.Where(p => AsAppLink(p) is null).ToList();
 
-        if (pending.Count == 0)
+        if (paths.Count == 0 && links.Count == 0)
         {
             BringToFront(MainWindow.Instance);
             return;
         }
 
-        await RouteAsync(pending);
+        await RouteAsync(paths);
+        foreach (var link in links)
+            await RouteLinkAsync(link);
     }
 
     /// <summary>
-    /// For a cold launch that won the mutex: imports the files this process was itself
-    /// started with. No hand-off file involved - the activation args carry them directly.
-    /// No-ops for an ordinary launch from the Start menu or taskbar.
+    /// For a cold launch that won the mutex: imports the files, or follows the link, this
+    /// process was itself started with. No hand-off file involved - the activation args carry
+    /// them directly. No-ops for an ordinary launch from the Start menu, the taskbar or the
+    /// <c>vanillartx</c> command alias.
     /// </summary>
     public static async Task RouteLaunchAsync()
     {
         var launched = GetActivationFilePaths();
-        if (launched.Count == 0) return;
+        if (launched.Count > 0)
+            await RouteAsync(launched);
 
-        await RouteAsync(launched);
+        if (GetActivationLink() is { } link)
+            await RouteLinkAsync(link);
     }
+
+    /// <summary>
+    /// Raises the window and hands a <c>vanillartx://</c> link to MainWindow, which knows what
+    /// each one opens - see MainWindow.LinkCommands.cs. Links skip
+    /// <see cref="FilterRecentlyHandledFiles"/>: every command means "be here" rather than
+    /// "do this", so a duplicate delivery lands somewhere the user already is.
+    /// </summary>
+    private static async Task RouteLinkAsync(Uri link)
+    {
+        if (MainWindow.Instance == null) return;
+
+        BringToFront(MainWindow.Instance);
+        await MainWindow.Instance.OpenLinkAsync(link);
+    }
+
+    /// <summary>
+    /// <paramref name="value"/> as one of this app's links, or null if it isn't one. A hand-off
+    /// line is either a file path or a link, and no Windows path can start with
+    /// "vanillartx:" - a drive letter is one character - so the scheme alone tells them apart.
+    /// </summary>
+    private static Uri? AsAppLink(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && uri.Scheme.Equals(MainWindow.LinkScheme, StringComparison.OrdinalIgnoreCase)
+            ? uri
+            : null;
 
     // =========================================================================
     // Routing
@@ -307,6 +343,26 @@ internal static class FileActivationRouter
         }
     }
 
+    /// <summary>
+    /// The <c>vanillartx://</c> link this process was launched with, or null for any other kind
+    /// of launch. Read from the same activation args as <see cref="GetActivationFilePaths"/>,
+    /// for the same reason.
+    /// </summary>
+    internal static Uri? GetActivationLink()
+    {
+        try
+        {
+            var activationArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
+            if (activationArgs?.Kind != ExtendedActivationKind.Protocol) return null;
+            return (activationArgs.Data as IProtocolActivatedEventArgs)?.Uri;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[FileActivation] Failed to read protocol activation args: {ex.Message}");
+            return null;
+        }
+    }
+
     private static string HandoffFilePath =>
         Path.Combine(ApplicationData.Current.LocalFolder.Path, "pending_pack_import.txt");
 
@@ -314,8 +370,8 @@ internal static class FileActivationRouter
     /// How a second launch that lost the single-instance mutex hands its files to the
     /// instance that won, which picks them up on the wake signal.
     ///
-    /// <para>One path per line, every type mixed together freely - <see cref="RouteAsync"/>
-    /// is what sorts them back out on the reading side. Plain text rather than JSON is a
+    /// <para>One file path or link per line, every kind mixed together freely - the wake handler
+    /// sorts them back out on the reading side (see <see cref="AsAppLink"/>). Plain text rather than JSON is a
     /// deliberate choice here, not laziness: Release publishes trimmed, and JsonSerializer's
     /// generic overloads need a source-generated context to survive that (see
     /// AlchitexJsonContext for the pattern and what happens without it). A flat file of paths

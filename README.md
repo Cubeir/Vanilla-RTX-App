@@ -295,12 +295,32 @@ Which settings it writes is up to you; to change them, see **Launch options** in
 
 # Opening files with the app
 
-The app can open two kinds of file straight from File Explorer (right-click -> **Open with**, or set it as the default):
+The app can open two kinds of file straight from File Explorer (right-click -> **Import into Vanilla RTX App** or **Open with**, or set it as the default):
 
 - **`.mcpack`** - imported as a resource pack and will appear in [Select other packs](#select-other-packs) menu.
 - **`.rtpack`** - imported as a BetterRTX preset into [BetterRTX manager](#betterrtx-manager). Ready to install!
 
 If the app isn't running, it starts. Imports aren't silent, because some may need your confirmation.
+
+## Links and the command alias
+
+Type **`vanillartx`** into Win+R or a terminal to start the app.
+
+**`vanillartx://` links** open the app, or bring it forward if it's already running, and can go straight to a screen:
+
+| Link | Opens |
+|---|---|
+| `vanillartx://packupdater` | Get latest RTX packs |
+| `vanillartx://packbrowser` | Select other packs |
+| `vanillartx://rtxreactor` | RTX Reactor |
+| `vanillartx://betterrtx` | BetterRTX manager |
+| `vanillartx://dlss` | DLSS swapper |
+| `vanillartx://lut` | RTX LUT manager |
+| `vanillartx://settings` | Settings |
+| `vanillartx://help` | This page - add a section to jump to it, e.g. `vanillartx://help/rtx-reactor` |
+| `vanillartx://bugs` | The Minecraft RTX bug list |
+
+Names aren't case-sensitive, and an `open` in front works too (`vanillartx://OpenPackBrowser`). A link only ever opens a screen - it can't install, tune, launch or change anything - and it behaves exactly like clicking that button yourself: if the button is unavailable right now, so is the link, and if another feature is already open, you're asked to close it first.
 
 # Settings
 

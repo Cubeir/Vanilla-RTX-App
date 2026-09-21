@@ -211,6 +211,13 @@ public sealed partial class MarkdownOverlay : UserControl
     public bool IsOpen => _isOpen;
 
     /// <summary>
+    /// The page URL currently showing, as passed to <see cref="Show"/>, or null while closed.
+    /// Lets a caller that wants a page open - rather than toggled - leave it alone when it
+    /// already is.
+    /// </summary>
+    public string? ShowingUrl => _isOpen ? _pageUrl : null;
+
+    /// <summary>
     /// Closes the overlay, optionally continuing into <paramref name="onClosed"/> once the
     /// fade-out has actually finished. Callers that open something else in that continuation
     /// get the same real animation a Close click gets, rather than a swap under a panel that

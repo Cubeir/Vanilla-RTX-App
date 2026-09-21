@@ -4,8 +4,11 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap2="http://schemas.microsoft.com/appx/manifest/uap/windows10/2"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap2 uap3 uap5 rescap">
 
   <Identity
     Name="Cubeir.VanillaRTXApp"
@@ -63,6 +66,9 @@
             </uap:SupportedFileTypes>
             <uap:DisplayName>Minecraft Resource Pack</uap:DisplayName>
             <uap:Logo>Assets\icons\import.mcpack.png</uap:Logo>
+            <uap2:SupportedVerbs>
+              <uap3:Verb Id="import">Import into Vanilla RTX App</uap3:Verb>
+            </uap2:SupportedVerbs>
           </uap:FileTypeAssociation>
         </uap:Extension>
         <uap:Extension Category="windows.fileTypeAssociation">
@@ -72,8 +78,33 @@
             </uap:SupportedFileTypes>
             <uap:DisplayName>Minecraft RTX Shader Pack</uap:DisplayName>
             <uap:Logo>Assets\icons\import.rtpack.png</uap:Logo>
+            <uap2:SupportedVerbs>
+              <uap3:Verb Id="import">Import into Vanilla RTX App</uap3:Verb>
+            </uap2:SupportedVerbs>
           </uap:FileTypeAssociation>
         </uap:Extension>
+
+        <!-- vanillartx://<command> links - what each command opens is
+             Core\FileActivation\MainWindow.LinkCommands.cs. A link can only open a screen,
+             never act: any web page can put one in front of a user. -->
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="vanillartx">
+            <uap:DisplayName>Vanilla RTX App</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+
+        <!-- Lets "vanillartx" start the app from Win+R or a terminal.
+             Executable and EntryPoint are spelled out rather than using the $targetnametoken$ /
+             $targetentrypoint$ tokens the Application element uses: the build only substitutes
+             those on Application itself, and left here they reach the package literally.
+             Executable is the assembly name - rename the project and this has to follow. -->
+        <uap5:Extension Category="windows.appExecutionAlias"
+                        Executable="Vanilla RTX App.exe"
+                        EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias>
+            <uap5:ExecutionAlias Alias="vanillartx.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>
