@@ -119,7 +119,7 @@ public sealed partial class SettingsOverlay : UserControl
         ThemeService.ThemeChanged += ApplyBevelColors;
         Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyBevelColors;
 
-        VersionText.Text = $"\nApp Version: {appVersion} – Copyright (c) {DateTime.Today.Year} Cubeir";
+        VersionText.Text = $"Copyright (c) {DateTime.Today.Year} Cubeir\nVersion: {appVersion}";
     }
 
     /// <summary>True while the panel is showing. MainWindow reads it to toggle and to decide which overlay has to close first.</summary>

@@ -180,7 +180,7 @@
             <Grid>
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
-                              Padding="18,0,30,22">
+                              Padding="18,0,30,0">
                     <StackPanel Spacing="14"
                                 Tapped="PanelBody_Tapped">
 
@@ -735,7 +735,7 @@
                                    TextAlignment="Center"
                                    FontSize="11"
                                    Opacity="0.55"
-                                   Margin="0,-16,0,0"
+                                   Margin="0,0,0,16"
                                    IsTextScaleFactorEnabled="False" />
 
                     </StackPanel>
