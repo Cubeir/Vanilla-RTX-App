@@ -90,7 +90,7 @@ public sealed partial class PsaCard : UserControl
         _text = item.Text;
         _kind = item.Kind;
         _cooldownMinutes = item.CooldownMinutes;
-        SetLinkedText(ContentText, item.Text);
+        Overlays.MarkdownRenderer.RenderInlines(ContentText.Inlines, item.Text, OpenLink);
 
         // ── Glyph override ────────────────────────────────────────────────────
         // Value is a 4–5 char hex string e.g. "E946". Convert to the char the FontIcon expects.
@@ -135,42 +135,16 @@ public sealed partial class PsaCard : UserControl
     }
 
     /// <summary>
-    /// Fills <paramref name="target"/> with <paramref name="text"/>, turning every [label](url)
-    /// into a clickable <see cref="Hyperlink"/> that opens in the default browser and shows its
-    /// address on hover - the only thing a reader has to judge a link by before following it.
-    ///
-    /// <para>Only markdown links are interpreted. Everything else in a PSA has always been shown
-    /// verbatim, and running the whole text through a markdown renderer would start eating the
-    /// asterisks and underscores in announcements already published.</para>
-    ///
-    /// <para>A link whose URL doesn't parse as http, https or mailto is left as the literal text
-    /// it was written as: a typo'd link should look wrong, not vanish into a label that goes
-    /// nowhere.</para>
+    /// Opens a PSA link in the default browser or mail client. Anything but an absolute http,
+    /// https or mailto address is refused and logged: this text comes off the network, and a
+    /// link in it must not be able to launch whatever protocol handler happens to be installed.
     /// </summary>
-    private static void SetLinkedText(TextBlock target, string text)
+    private static void OpenLink(string url)
     {
-        target.Inlines.Clear();
-        var last = 0;
-
-        foreach (System.Text.RegularExpressions.Match m in OnlineTexts.MarkdownLinkRegex.Matches(text))
-        {
-            if (!Uri.TryCreate(m.Groups[2].Value, UriKind.Absolute, out var uri) ||
-                uri.Scheme is not ("http" or "https" or "mailto"))
-                continue;
-
-            if (m.Index > last)
-                target.Inlines.Add(new Run { Text = text.Substring(last, m.Index - last) });
-
-            var link = new Hyperlink { NavigateUri = uri };
-            link.Inlines.Add(new Run { Text = m.Groups[1].Value });
-            ToolTipService.SetToolTip(link, uri.ToString());
-            target.Inlines.Add(link);
-
-            last = m.Index + m.Length;
-        }
-
-        if (last < text.Length)
-            target.Inlines.Add(new Run { Text = text.Substring(last) });
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto")
+            _ = Windows.System.Launcher.LaunchUriAsync(uri);
+        else
+            Trace.WriteLine($"[PsaCard] Refused to open link '{url}' — only absolute http, https and mailto are allowed");
     }
 
     private static string FormatCooldownTooltip(int? cooldownMinutes)

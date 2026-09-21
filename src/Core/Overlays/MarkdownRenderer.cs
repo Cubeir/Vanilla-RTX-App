@@ -88,18 +88,128 @@ public sealed class MarkdownRenderer
     private static readonly MarkdownPipeline Pipeline =
         new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
+    /// <summary>
+    /// Inline formatting only, for short texts that were written as plain text first: the
+    /// announcement PSAs. Every block parser but the paragraph is removed, so a line starting
+    /// "- " or "1. " stays the literal text it has always been rather than turning into a list,
+    /// and "---" under a line doesn't become a heading. Raw HTML is off, so a word in angle
+    /// brackets is text rather than a tag that vanishes. What is left is emphasis, strikethrough,
+    /// code spans, links and bare-URL autolinks - and CommonMark's flanking rules, which are what
+    /// keep an intraword underscore like <c>terrain_texture.json</c> from ever turning italic.
+    /// </summary>
+    private static readonly MarkdownPipeline InlinePipeline = BuildInlinePipeline();
+
+    private static MarkdownPipeline BuildInlinePipeline()
+    {
+        // DisableHtml first: it removes HtmlBlockParser itself and would find nothing to remove
+        // once the block parsers below are gone.
+        var builder = new MarkdownPipelineBuilder().UseEmphasisExtras().UseAutoLinks().DisableHtml();
+        builder.BlockParsers.RemoveAll(p => p is not Markdig.Parsers.ParagraphBlockParser);
+        builder.BlockParsers.Find<Markdig.Parsers.ParagraphBlockParser>()!.ParseSetexHeadings = false;
+        return builder.Build();
+    }
+
     private readonly string _blobBaseUrl;
     private readonly string _rawBaseUrl;
     private readonly Action<string> _openLink;
+    private readonly bool _softBreaksAreHard;
     private readonly Dictionary<string, FrameworkElement> _anchors = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _usedAnchorSlugs = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MarkdownSearchEntry> _searchEntries = new();
 
-    private MarkdownRenderer(string blobBaseUrl, string rawBaseUrl, Action<string> openLink)
+    private MarkdownRenderer(string blobBaseUrl, string rawBaseUrl, Action<string> openLink, bool softBreaksAreHard = false)
     {
         _blobBaseUrl = blobBaseUrl;
         _rawBaseUrl = rawBaseUrl;
         _openLink = openLink;
+        _softBreaksAreHard = softBreaksAreHard;
+    }
+
+    /// <summary>
+    /// Renders <paramref name="markdown"/>'s inline formatting into <paramref name="target"/>,
+    /// through <see cref="InlinePipeline"/>. Links hand their URL to <paramref name="openLink"/>
+    /// unresolved - there is no source repository to resolve a relative one against.
+    ///
+    /// <para><b>Every newline is kept.</b> Markdown folds a single newline into a space, and
+    /// every PSA published so far was written expecting it to be a line break, because it always
+    /// was one. A blank line is a paragraph break and comes out as the same empty line it always
+    /// did; only a run of several blank lines collapses to one.</para>
+    ///
+    /// <para>Images degrade to their "[alt]" text: nothing here may hold an
+    /// <see cref="InlineUIContainer"/>. Never throws - a failure renders the text verbatim.</para>
+    /// </summary>
+    public static void RenderInlines(InlineCollection target, string markdown, Action<string> openLink)
+    {
+        try
+        {
+            var renderer = new MarkdownRenderer(string.Empty, string.Empty, openLink, softBreaksAreHard: true);
+            var first = true;
+            foreach (var block in Markdig.Markdown.Parse(markdown, InlinePipeline))
+            {
+                if (block is not MS.ParagraphBlock para) continue;
+                if (!first)
+                {
+                    target.Add(new LineBreak());
+                    target.Add(new LineBreak());
+                }
+                first = false;
+                renderer.AppendInlines(target, para.Inline, allowInlineUI: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[MarkdownRenderer] Inline render failed, falling back to plain text: {ex.Message}");
+            target.Clear();
+            target.Add(new Run { Text = markdown });
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="markdown"/> as <see cref="RenderInlines"/> would show it, minus the
+    /// formatting, for a surface that can only hold plain text (the sidebar log). A link keeps
+    /// its address as "label (url)" - the only way it can still be followed there - unless the
+    /// label already is the address, as with a bare-URL autolink.
+    /// </summary>
+    public static string ToPlainText(string markdown)
+    {
+        try
+        {
+            var sb = new StringBuilder();
+            foreach (var block in Markdig.Markdown.Parse(markdown, InlinePipeline))
+            {
+                if (block is not MS.ParagraphBlock { Inline: { } inline }) continue;
+                if (sb.Length > 0) sb.Append("\n\n");
+                AppendPsaPlainText(sb, inline);
+            }
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[MarkdownRenderer] Plain-text conversion failed, using the raw text: {ex.Message}");
+            return markdown;
+        }
+    }
+
+    private static void AppendPsaPlainText(StringBuilder sb, MI.ContainerInline container)
+    {
+        foreach (var inline in container)
+        {
+            switch (inline)
+            {
+                case MI.LinkInline link:
+                    var label = GetPlainText(link);
+                    sb.Append(label);
+                    if (!string.IsNullOrEmpty(link.Url) && label != link.Url)
+                        sb.Append(" (").Append(link.Url).Append(')');
+                    break;
+                case MI.LineBreakInline: sb.Append('\n'); break;
+                case MI.LiteralInline lit: sb.Append(lit.Content.ToString()); break;
+                case MI.CodeInline code: sb.Append(code.Content); break;
+                case MI.HtmlEntityInline entity: sb.Append(entity.Transcoded.ToString()); break;
+                case MI.AutolinkInline autolink: sb.Append(autolink.Url); break;
+                case MI.ContainerInline nested: AppendPsaPlainText(sb, nested); break;
+            }
+        }
     }
 
     /// <summary>
@@ -551,7 +661,7 @@ public sealed class MarkdownRenderer
                 break;
 
             case MI.LineBreakInline lineBreak:
-                target.Add(lineBreak.IsHard ? new LineBreak() : new Run { Text = " " });
+                target.Add(lineBreak.IsHard || _softBreaksAreHard ? new LineBreak() : new Run { Text = " " });
                 break;
 
             case MI.HtmlEntityInline entity:

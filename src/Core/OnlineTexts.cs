@@ -166,12 +166,19 @@ internal partial class OnlineTextsJsonContext : JsonSerializerContext
 //     • Malformed values (wrong type, out of range) are logged and ignored; defaults apply.
 //     • Any exception during modifier parsing is caught; the item is still created with defaults.
 //
-// ── LINKS ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+// ── FORMATTING ──────────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   [label](https://example.com) in body text renders as a clickable label on a PsaCard, and as
-//   "label (https://example.com)" in the plain-text log. http, https and mailto only; anything else,
-//   or a URL that doesn't parse, stays as the literal text it was written as. Older builds show the
-//   raw markdown, so a link should still read acceptably that way.
+//   Body text supports markdown's inline formatting and nothing else (MarkdownRenderer.RenderInlines):
+//     *italic* _italic_ **bold** __bold__ ~~strikethrough~~ `code`
+//     [label](https://example.com), and bare https://… addresses, as clickable links
+//   Lines starting "- " or "1. " stay literal text, every newline stays a line break, and an
+//   underscore inside a word (terrain_texture.json) is never emphasis - so text written as plain
+//   text reads exactly as it always has. Escape a literal * or _ with a backslash when it would
+//   otherwise pair up: \*.
+//
+//   Links open only if they are absolute http, https or mailto. The sidebar log shows formatting
+//   stripped and links as "label (url)". Builds older than this show the raw markdown, so keep it
+//   light enough to read that way. The dismiss hash is over the raw text, markup included.
 //
 // ── # SuspendControls ───────────────────────────────────────────────────────────────────────────────────────────────
 //
@@ -243,15 +250,6 @@ public static class OnlineTexts
     private static readonly Regex _modifierRegex = new(
         @"\[(\w+):""([^""]*)""\]",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    /// <summary>
-    /// [label](url) in PSA body text. Neither half may span a line, and the URL may not contain
-    /// whitespace - markdown's own rules for an inline link, minus the optional title, which
-    /// nothing here would display.
-    /// </summary>
-    internal static readonly Regex MarkdownLinkRegex = new(
-        @"\[([^\]\r\n]+)\]\(([^)\s]+)\)",
-        RegexOptions.Compiled);
 
     /// <summary>The running app's version, parsed once for the [minver]/[maxver] gate.</summary>
     private static readonly Lazy<Version?> _appVersion =
@@ -406,13 +404,6 @@ public static class OnlineTexts
 
         return kept.Length > 0 ? kept : null;
     }
-
-    /// <summary>
-    /// <paramref name="text"/> with every [label](url) written out as "label (url)", for
-    /// surfaces that can only show plain text, such as the sidebar log.
-    /// </summary>
-    public static string LinksToPlainText(string text) =>
-        MarkdownLinkRegex.Replace(text, m => $"{m.Groups[1].Value} ({m.Groups[2].Value})");
 
     // ── Version gate ──────────────────────────────────────────────────────────
 

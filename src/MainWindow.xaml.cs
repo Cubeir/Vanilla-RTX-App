@@ -483,7 +483,7 @@ public sealed partial class MainWindow : Window
                 {
                     for (int i = psa.Length - 1; i >= 0; i--)
                     {
-                        Log(OnlineTexts.LinksToPlainText(psa[i].Text));
+                        Log(Core.Overlays.MarkdownRenderer.ToPlainText(psa[i].Text));
                         await Task.Delay((int)(700 * speedMultiplier));
                     }
                 }
