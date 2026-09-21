@@ -2369,9 +2369,8 @@ the layout works perfectly but is wrong in many spots, with many dumb margins
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
 
-- Do the TODOs scattered in the code
-
 - Update the documentation, make it more useful for users who use the app to see it.
+And PSAs, going forward,version gated! with many new useful features.
 
 - Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
 apparently some third party launchers use them for other things, like userdata, as well..
