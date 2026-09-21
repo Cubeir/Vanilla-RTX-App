@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -614,6 +615,10 @@ public static class PostProcess
     /// name/description, the "raytraced" capability added (and "pbr" dropped), Alchitex
     /// metadata, and format_version bumped to at least 2.
     ///
+    /// <para>A pack that only has a legacy pack_manifest.json has it promoted first (see
+    /// <see cref="PromoteLegacyManifest"/>), then goes through every edit below like any other;
+    /// the legacy file is removed once manifest.json is written.</para>
+    ///
     /// <para><b>What comes in goes out, plus exactly the edits listed above.</b> This method
     /// is not a manifest fixer-upper. It does not normalise, upgrade, complete or repair
     /// anything it was not asked to change: a field's value, its JSON kind, the order of
@@ -654,16 +659,21 @@ public static class PostProcess
     /// </summary>
     public static string? UpdateManifest(string packRoot, string appVersion)
     {
-        var manifestPath = Path.Combine(packRoot, "manifest.json");
-        if (!File.Exists(manifestPath))
+        var manifestPath = Path.Combine(packRoot, PackManifest.ModernFileName);
+        var legacyPath = Path.Combine(packRoot, PackManifest.LegacyFileName);
+        var fromLegacy = !File.Exists(manifestPath) && File.Exists(legacyPath);
+
+        if (!fromLegacy && !File.Exists(manifestPath))
         {
-            Trace.WriteLine($"[ALCHITEX] No manifest.json found at '{packRoot}' - skipping manifest update.");
+            Trace.WriteLine($"[ALCHITEX] No manifest.json or pack_manifest.json found at '{packRoot}' - skipping manifest update.");
             return null;
         }
 
         try
         {
-            var root = SafeParseJsonObject(File.ReadAllText(manifestPath));
+            var root = fromLegacy
+                ? PromoteLegacyManifest(legacyPath)
+                : SafeParseJsonObject(File.ReadAllText(manifestPath));
             if (root == null)
             {
                 Trace.WriteLine($"[ALCHITEX] '{manifestPath}' doesn't parse to a JSON object at its root - skipping manifest update.");
@@ -713,12 +723,132 @@ public static class PostProcess
             EnsureCapability(root, "raytraced", removeCapability: "pbr");
 
             MinecraftJson.WriteIndented(manifestPath, root);
+
+            // Only once manifest.json is safely written. Left behind, it would be a second
+            // manifest in the output still carrying the source pack's pack_id - the same
+            // identity as the pack this one was generated from.
+            if (fromLegacy)
+                File.Delete(legacyPath);
+
             return finalName;
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[ALCHITEX] Failed to update manifest.json at '{manifestPath}': {ex.Message}");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Builds a format_version 2 manifest, in memory, from a legacy <c>pack_manifest.json</c>, for
+    /// <see cref="UpdateManifest"/> to finish exactly as it finishes any other manifest. Null if
+    /// the file can't be read as a manifest at all.
+    ///
+    /// <para><b>Why this exists.</b> A legacy manifest cannot carry the edits UpdateManifest has to
+    /// make: it has no <c>format_version</c> and no <c>capabilities</c>, so there is nowhere to
+    /// declare <c>raytraced</c>, and its identity is <c>header.pack_id</c>, which the modern path
+    /// never rerolls. Left alone, the output kept the source pack's identity and declared nothing -
+    /// an RTX pack the game didn't know was one, sharing a UUID with the pack it came from. Like
+    /// the format_version bump, this is the cost of an edit we do make, not a tidy-up.</para>
+    ///
+    /// <para><b>Rebuilt from a template, not converted field by field.</b> The two layouts share
+    /// almost nothing: identity, modules and version all live somewhere else and in a different
+    /// shape. What carries over is what the pack's author actually expressed - its name, its
+    /// description, its version, and each module's type and description. Everything
+    /// UpdateManifest is about to overwrite anyway (UUIDs, metadata, capabilities) is not
+    /// carried, and legacy fields with no modern meaning are dropped.</para>
+    ///
+    /// <para><b><c>min_engine_version</c> is deliberately not written.</b> Nothing in a legacy
+    /// manifest says which game version the pack targets, and a value invented here would be a
+    /// claim about the pack nobody made - §4.18's rule, and the exact failure that rule came from.
+    /// A format 1 manifest promoted to 2 has always gone out without one, and loads.</para>
+    ///
+    /// <para>Versions become the modern three-integer form: an array is taken as-is, a string like
+    /// <c>"1.4.4.1"</c> keeps its first three numeric parts, and anything unreadable becomes
+    /// <c>[1, 0, 0]</c>. A pack with no module, or no resources module, gets one, since it
+    /// reached Alchitex as a resource pack.</para>
+    /// </summary>
+    private static JsonObject? PromoteLegacyManifest(string legacyPath)
+    {
+        var legacy = PackManifest.FromFile(legacyPath);
+        if (legacy?.Header is null)
+        {
+            Trace.WriteLine($"[ALCHITEX] '{legacyPath}' isn't a readable legacy manifest - skipping manifest update.");
+            return null;
+        }
+
+        var version = legacy.VersionArray is { Length: > 0 } array
+            ? ToVersionTriplet(array)
+            : ParseVersionTriplet(legacy.VersionString);
+
+        var header = new JsonObject();
+        if (legacy.HeaderName is { } name) header["name"] = name;
+        if (legacy.HeaderDescription is { } description) header["description"] = description;
+        header["uuid"] = Guid.NewGuid().ToString();
+        header["version"] = IntArray(version);
+
+        var modules = new JsonArray();
+        foreach (var legacyModule in legacy.Modules)
+        {
+            var moduleVersion = MinecraftJson.GetIntArray(legacyModule.Node["version"]) is { Length: > 0 } moduleArray
+                ? ToVersionTriplet(moduleArray)
+                : ParseVersionTriplet(MinecraftJson.GetString(legacyModule.Node["version"]));
+
+            var module = new JsonObject();
+            if (legacyModule.Description is { } moduleDescription) module["description"] = moduleDescription;
+            module["type"] = legacyModule.Type ?? "resources";
+            module["uuid"] = Guid.NewGuid().ToString();
+            module["version"] = IntArray(moduleVersion);
+            modules.Add(module);
+        }
+
+        if (!legacy.HasResourceModule)
+        {
+            var module = new JsonObject();
+            if (legacy.HeaderDescription is { } moduleDescription) module["description"] = moduleDescription;
+            module["type"] = "resources";
+            module["uuid"] = Guid.NewGuid().ToString();
+            module["version"] = IntArray(version);
+            // First, because UpdateManifest edits the first module and this is the one that matters.
+            modules.Insert(0, module);
+        }
+
+        Trace.WriteLine($"[ALCHITEX] Promoting legacy '{legacyPath}' to a format_version 2 manifest.json");
+
+        return new JsonObject
+        {
+            ["format_version"] = 2,
+            ["header"] = header,
+            ["modules"] = modules,
+        };
+
+        static int[] ToVersionTriplet(int[] parts) =>
+            Array.Exists(parts, p => p < 0) ? new[] { 1, 0, 0 } : new[] { At(parts, 0), At(parts, 1), At(parts, 2) };
+
+        static int At(int[] parts, int index) => index < parts.Length ? parts[index] : 0;
+
+        static int[] ParseVersionTriplet(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return new[] { 1, 0, 0 };
+
+            var parts = text.Trim().Split('.');
+            var result = new int[3];
+            for (var i = 0; i < 3; i++)
+            {
+                if (i >= parts.Length) break;
+                if (!int.TryParse(parts[i], NumberStyles.None, CultureInfo.InvariantCulture, out result[i]))
+                    return new[] { 1, 0, 0 };
+            }
+            return result;
+        }
+
+        // JsonValue.Create(int) rather than the generic Add<T>: the generic path reflects and
+        // this file ships trimmed (see EnsureMetadata).
+        static JsonArray IntArray(int[] values)
+        {
+            var array = new JsonArray();
+            foreach (var value in values) array.Add((JsonNode?)JsonValue.Create(value));
+            return array;
         }
     }
 

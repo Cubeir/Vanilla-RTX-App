@@ -45,7 +45,6 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         ? "Minecraft Preview" : "Minecraft";
 
     public const string AlchitexCandidateTag = "RTX Reactor Candidate";
-    private const bool AlchitexLegacyPacksEligible = false;
 
     /// <summary>
     /// Purely cosmetic capability tags, and deliberately confined to this module: they get a
@@ -856,9 +855,9 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
 
     /// <summary>
     /// Parses the old pack_manifest.json format (pre-1.16 era).
-    /// Always Incompatible — no capabilities field exists.
-    /// Legacy packs are exempt from the Alchitex candidate tag; see
-    /// <see cref="AlchitexLegacyPacksEligible"/>.
+    /// Always Incompatible — no capabilities field exists. Eligible for the Alchitex candidate
+    /// tag like any modern pack: RTX Reactor promotes the manifest to format_version 2 on the
+    /// way out (PostProcess.PromoteLegacyManifest).
     /// </summary>
     private async Task<PackData> ParseLegacyPackManifestAsync(string packDir, PackManifest manifest)
     {
@@ -873,9 +872,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         var capabilityTags = new List<string>();
         bool potentiallySuitable = false;
 
-        // TODO: re-enable Alchitex candidate check for legacy packs if automatic
-        //       manifest format upgrade is implemented downstream in Alchitex.
-        if (AlchitexLegacyPacksEligible && AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
+        if (AlchitexSuitabilityScanner.IsPotentiallySuitable(packDir))
         {
             potentiallySuitable = true;
             capabilityTags.Add(AlchitexCandidateTag);
