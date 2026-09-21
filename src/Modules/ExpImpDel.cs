@@ -123,7 +123,7 @@ public static class ExpImpDel
     /// point). Bulk-import rules:
     /// <list type="bullet">
     ///   <item>.mcpack / .zip  — imported individually.</item>
-    ///   <item>.mcaddon        — every resource-pack .mcpack inside is queued.</item>
+    ///   <item>.mcaddon        — every pack inside is imported, as .mcpack files or folders.</item>
     ///   <item>folder          — root scanned non-recursively for .mcpack, .zip,
     ///                           and .mcaddon files; each queued by its own rule.</item>
     /// </list>
@@ -231,13 +231,25 @@ public static class ExpImpDel
     // ── .mcaddon ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Opens an .mcaddon and imports each .mcpack it contains through the normal
-    /// archive path, which handles resource-type checking and dupe detection.
-    /// Behaviour packs are filtered out automatically at that stage.
+    /// Opens an .mcaddon and imports every pack inside it, through the same resource-type
+    /// check, duplicate detection and extraction as any other import - so a behaviour pack
+    /// gets the same "not a resource pack" question it would get on its own.
+    ///
+    /// <para><b>An .mcaddon holds its packs in one of two shapes, and often both.</b> As
+    /// .mcpack files, each a zip of its own, or as plain folders each holding a manifest.
+    /// Both are imported. A folder pack is exactly what an .mcpack is once unzipped, so it
+    /// goes through <see cref="ImportPackFromZipAsync"/> with its manifest's folder as the
+    /// pack root - no temp copy, no second code path. See <see cref="FindFolderPackManifests"/>
+    /// for which folders count.</para>
+    ///
+    /// <para>An .mcpack is extracted to a temp file first, since a zip inside a zip can't be
+    /// opened in place, and is reported and named by its own file name - not the temp file's,
+    /// which is what a pack with its manifest at its root would otherwise be installed as.</para>
     /// </summary>
     private static async Task<bool> ImportFromMcAddonAsync(string addonPath, string destination)
     {
-        ReportStatus($"Opening addon '{Path.GetFileName(addonPath)}'…");
+        var addonName = Path.GetFileName(addonPath);
+        ReportStatus($"Opening addon '{addonName}'…");
 
         bool anySuccess = false;
 
@@ -246,14 +258,16 @@ public static class ExpImpDel
         var mcpackEntries = addonZip.Entries
             .Where(e => Path.GetExtension(e.Name).Equals(".mcpack", StringComparison.OrdinalIgnoreCase))
             .ToList();
+        var folderManifests = FindFolderPackManifests(addonZip);
 
-        if (mcpackEntries.Count == 0)
+        var packCount = mcpackEntries.Count + folderManifests.Count;
+        if (packCount == 0)
         {
-            ReportStatus($"'{Path.GetFileName(addonPath)}' contains no .mcpack files, skipped.");
+            ReportStatus($"'{addonName}' contains no packs, skipped.");
             return false;
         }
 
-        ReportStatus($"Found {mcpackEntries.Count} pack{(mcpackEntries.Count == 1 ? "" : "s")} inside '{Path.GetFileName(addonPath)}'.");
+        ReportStatus($"Found {packCount} pack{(packCount == 1 ? "" : "s")} inside '{addonName}'.");
 
         foreach (var entry in mcpackEntries)
         {
@@ -261,7 +275,7 @@ public static class ExpImpDel
             try
             {
                 await Task.Run(() => entry.ExtractToFile(tempMcpack, overwrite: true));
-                bool ok = await ImportFromArchiveAsync(tempMcpack, destination);
+                bool ok = await ImportFromArchiveAsync(tempMcpack, destination, displayName: entry.Name);
                 if (ok) anySuccess = true;
             }
             finally
@@ -271,14 +285,65 @@ public static class ExpImpDel
             }
         }
 
+        foreach (var manifest in folderManifests)
+        {
+            var folder = PackRootOf(manifest).TrimEnd('/');
+            var label = folder.Length == 0 ? addonName : folder.Split('/').Last();
+            if (await ImportPackFromZipAsync(addonZip, manifest, label, folder.Length == 0 ? Path.GetFileNameWithoutExtension(addonName) : label, destination))
+                anySuccess = true;
+        }
+
         return anySuccess;
     }
 
+    /// <summary>
+    /// One manifest per folder pack inside an .mcaddon, outermost first.
+    ///
+    /// <para>A folder is a pack when it directly holds a manifest.json or pack_manifest.json;
+    /// with both, manifest.json wins, the same preference <see cref="FindShallowManifestEntry"/>
+    /// has. <b>A manifest inside a folder that is already a pack is part of that pack</b>, not a
+    /// pack of its own, so it is skipped - the same outermost-wins rule an .mcpack gets by
+    /// taking its shallowest manifest. A manifest at the addon's root makes the whole addon one
+    /// pack, which is simply that rule with an empty root.</para>
+    /// </summary>
+    private static List<ZipArchiveEntry> FindFolderPackManifests(ZipArchive zip)
+    {
+        var perFolder = zip.Entries
+            .Where(e => e.Name.Equals(PackManifest.ModernFileName, StringComparison.OrdinalIgnoreCase)
+                     || e.Name.Equals(PackManifest.LegacyFileName, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(PackRootOf, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.OrderBy(e => e.Name.Equals(PackManifest.ModernFileName, StringComparison.OrdinalIgnoreCase) ? 0 : 1).First())
+            .OrderBy(e => e.FullName.Count(c => c == '/'))
+            .ToList();
+
+        var packs = new List<ZipArchiveEntry>();
+        foreach (var manifest in perFolder)
+        {
+            var root = PackRootOf(manifest);
+            if (!packs.Any(p => root.StartsWith(PackRootOf(p), StringComparison.OrdinalIgnoreCase)))
+                packs.Add(manifest);
+        }
+        return packs;
+    }
+
+    /// <summary>The folder a manifest entry sits in, as a zip path prefix ("Folder/Sub/"), or "" at the root.</summary>
+    private static string PackRootOf(ZipArchiveEntry manifest) =>
+        manifest.FullName.Contains('/')
+            ? manifest.FullName.Substring(0, manifest.FullName.LastIndexOf('/') + 1)
+            : string.Empty;
+
     // ── Archive (.mcpack / .zip) ──────────────────────────────────────────────
 
-    private static async Task<bool> ImportFromArchiveAsync(string archivePath, string destination)
+    /// <summary>
+    /// Imports the one pack an archive holds: the shallowest manifest in it decides where the
+    /// pack's root is. <paramref name="displayName"/> is the file name to report and fall back
+    /// on; it defaults to the archive's own, and is passed when the archive is a temp file
+    /// standing in for something else (an .mcpack taken out of an .mcaddon).
+    /// </summary>
+    private static async Task<bool> ImportFromArchiveAsync(string archivePath, string destination, string? displayName = null)
     {
-        ReportStatus($"Inspecting '{Path.GetFileName(archivePath)}'…");
+        var fileName = displayName ?? Path.GetFileName(archivePath);
+        ReportStatus($"Inspecting '{fileName}'…");
 
         using var zip = ZipFile.OpenRead(archivePath);
 
@@ -286,9 +351,27 @@ public static class ExpImpDel
 
         if (manifestEntry == null)
         {
-            ReportStatus($"'{Path.GetFileName(archivePath)}' has no manifest — not a valid resource pack, skipped.");
+            ReportStatus($"'{fileName}' has no manifest — not a valid resource pack, skipped.");
             return false;
         }
+
+        return await ImportPackFromZipAsync(zip, manifestEntry, fileName, Path.GetFileNameWithoutExtension(fileName), destination);
+    }
+
+    /// <summary>
+    /// The shared core of every import: given an open zip and the manifest that defines a pack
+    /// inside it, checks the pack is a resource pack, checks for an installed duplicate, and
+    /// extracts the manifest's folder - and only that folder - as the pack.
+    ///
+    /// <para>Callers decide which manifest that is, and that is the only thing that differs
+    /// between them: an .mcpack/.zip uses its shallowest manifest (<see cref="ImportFromArchiveAsync"/>),
+    /// an .mcaddon one per pack folder inside it (<see cref="ImportFromMcAddonAsync"/>).
+    /// <paramref name="sourceFileName"/> is what messages call the source; <paramref name="sourceBaseName"/>
+    /// is the pack's fallback name, and its folder name when the manifest sits at the zip's
+    /// root. They differ for a file (extension off) and are the same for a folder.</para>
+    /// </summary>
+    private static async Task<bool> ImportPackFromZipAsync(ZipArchive zip, ZipArchiveEntry manifestEntry, string sourceFileName, string sourceBaseName, string destination)
+    {
 
         bool isLegacy = Path.GetFileName(manifestEntry.FullName)
             .Equals(PackManifest.LegacyFileName, StringComparison.OrdinalIgnoreCase);
@@ -317,7 +400,7 @@ public static class ExpImpDel
         {
             string packDisplayName = parsed?.HeaderName is { Length: > 0 } n
                 ? n
-                : Path.GetFileNameWithoutExtension(archivePath);
+                : sourceBaseName;
 
             bool importAnyway = ConfirmNonResourceImport != null
                 && await ConfirmNonResourceImport(packDisplayName);
@@ -339,7 +422,7 @@ public static class ExpImpDel
             var existingMatch = FindExistingPackMatch(headerUuid);
             if (existingMatch != null)
             {
-                string displayName = parsed.HeaderName ?? Path.GetFileNameWithoutExtension(archivePath);
+                string displayName = parsed.HeaderName ?? sourceBaseName;
 
                 bool overwrite = ConfirmOverwrite != null
                     && await ConfirmOverwrite(displayName, existingMatch);
@@ -362,18 +445,16 @@ public static class ExpImpDel
         }
 
         // ── Extract ───────────────────────────────────────────────────────────
-        var packRootInZip = manifestEntry.FullName.Contains('/')
-            ? manifestEntry.FullName.Substring(0, manifestEntry.FullName.LastIndexOf('/') + 1)
-            : string.Empty;
+        var packRootInZip = PackRootOf(manifestEntry);
 
         var rawFolderName = string.IsNullOrEmpty(packRootInZip)
-            ? Path.GetFileNameWithoutExtension(archivePath)
+            ? sourceBaseName
             : packRootInZip.TrimEnd('/').Split('/').Last();
 
         var folderName = SanitizeFolderName(rawFolderName);
         var finalDestination = ResolveUniqueDestination(destination, folderName);
 
-        ReportStatus($"Extracting '{Path.GetFileName(archivePath)}' -> '{Path.GetFileName(finalDestination)}'…");
+        ReportStatus($"Extracting '{sourceFileName}' -> '{Path.GetFileName(finalDestination)}'…");
 
         Directory.CreateDirectory(finalDestination);
 

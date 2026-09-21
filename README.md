@@ -141,7 +141,7 @@ Each pack shows its icon, name, description, version, and tags:
 
 - Click packs to select them, then **Confirm selection** to return with them selected.
 - The **select** menu can select all packs with a given tag, select everything, or clear the selection.
-- **Import texture packs**: click to browse, or drag files onto the page. It accepts `.mcpack`, `.zip`, `.mcaddon` (any resource packs bundled inside; behavior packs are ignored), and whole folders of packs. If a pack is already installed, you're asked whether to replace it. If something doesn't look like a resource pack, you're asked whether to import it anyway.
+- **Import texture packs**: click to browse, or drag files onto the page. It accepts `.mcpack`, `.zip`, `.mcaddon` (every pack bundled inside, whether as `.mcpack` files or as folders; behavior packs get the same "not a resource pack" question), and whole folders of packs. If a pack is already installed, you're asked whether to replace it. If something doesn't look like a resource pack, you're asked whether to import it anyway.
 - The **refresh** button in the title bar rescans the folder, keeps your selection, and measures how much disk space each pack takes. That measuring is the only thing that shows the size badges, because it can take a few seconds on a big collection.
 
 If the app can't find your user data, this button becomes a highlighted **Locate user data** button and temporarily serves a different purpose while you select the user data location the app must use. See [Troubleshooting](#troubleshooting).
