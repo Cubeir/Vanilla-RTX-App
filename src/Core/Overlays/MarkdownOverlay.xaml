@@ -44,7 +44,91 @@
             </Grid.RowDefinitions>
 
             <local:OverlayHeaderBar x:Name="Header"
-                                     Grid.Row="0" />
+                                     Grid.Row="0">
+                <!-- Search, in the header rather than over the page, so it never covers a line
+                     of the document. Only ever visible over rendered content (see
+                     ShowContent/ShowLoading/ShowError). The toggle and the bar swap places in the
+                     same slot rather than one disabling the other, so there is never a dead
+                     button sitting there while the bar is open. -->
+                <local:OverlayHeaderBar.Actions>
+                    <Grid>
+                        <Button x:Name="SearchToggleButton"
+                                Visibility="Collapsed"
+                                Style="{ThemeResource SubtleButtonStyle}"
+                                Width="32"
+                                Height="32"
+                                Padding="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Click="SearchToggleButton_Click"
+                                ToolTipService.ToolTip="Search this page (Ctrl+F)">
+                            <FontIcon Glyph="&#xE721;" FontSize="14" />
+                        </Button>
+
+                        <Border x:Name="SearchBar"
+                                Visibility="Collapsed"
+                                Background="{ThemeResource SolidBackgroundFillColorBase}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Padding="10,4,4,4">
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="2">
+                                <FontIcon Glyph="&#xE721;"
+                                          FontSize="13"
+                                          Opacity="0.55"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,6,0" />
+                                <TextBox x:Name="SearchBox"
+                                         Width="180"
+                                         PlaceholderText="Search this page"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         TextChanged="SearchBox_TextChanged"
+                                         KeyDown="SearchBox_KeyDown" />
+                                <TextBlock x:Name="SearchMatchCountText"
+                                           Text=""
+                                           Opacity="0.6"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,4,0"
+                                           MinWidth="46"
+                                           IsTextScaleFactorEnabled="False" />
+                                <Button x:Name="SearchPreviousButton"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Width="28"
+                                        Height="28"
+                                        Padding="0"
+                                        Click="SearchPreviousButton_Click"
+                                        ToolTipService.ToolTip="Previous match (Shift+Enter)">
+                                    <FontIcon Glyph="&#xE70E;" FontSize="11" />
+                                </Button>
+                                <Button x:Name="SearchNextButton"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Width="28"
+                                        Height="28"
+                                        Padding="0"
+                                        Click="SearchNextButton_Click"
+                                        ToolTipService.ToolTip="Next match (Enter)">
+                                    <FontIcon Glyph="&#xE70D;" FontSize="11" />
+                                </Button>
+                                <Button x:Name="SearchCloseButton"
+                                        Style="{ThemeResource SubtleButtonStyle}"
+                                        Width="28"
+                                        Height="28"
+                                        Padding="0"
+                                        Margin="4,0,0,0"
+                                        Click="SearchCloseButton_Click"
+                                        ToolTipService.ToolTip="Close search (Esc)">
+                                    <FontIcon Glyph="&#xE711;" FontSize="11" />
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </local:OverlayHeaderBar.Actions>
+            </local:OverlayHeaderBar>
 
             <Grid Grid.Row="1">
                 <ScrollViewer x:Name="ContentScrollViewer"
@@ -98,91 +182,6 @@
                                 Click="RetryButton_Click" />
                     </StackPanel>
                 </Grid>
-
-                <!-- Search - floating, top-right, only ever visible over rendered content (see
-                     ShowContent/ShowLoading/ShowError). The toggle button and the bar itself
-                     swap places rather than one disabling the other, so there's never a dead
-                     button sitting there while the bar is open. -->
-                <Button x:Name="SearchToggleButton"
-                        Visibility="Collapsed"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Width="40"
-                        Height="40"
-                        CornerRadius="8"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="0,12,22,0"
-                        Click="SearchToggleButton_Click"
-                        ToolTipService.ToolTip="Search this page (Ctrl+F)">
-                    <FontIcon Glyph="&#xE721;" FontSize="16" />
-                </Button>
-
-                <Border x:Name="SearchBar"
-                        Visibility="Collapsed"
-                        Background="{ThemeResource SolidBackgroundFillColorBase}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="0,16,16,0"
-                        Padding="10,4,4,4"
-                        Translation="0,0,48">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-                    <StackPanel Orientation="Horizontal"
-                                Spacing="2">
-                        <FontIcon Glyph="&#xE721;"
-                                  FontSize="13"
-                                  Opacity="0.55"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,6,0" />
-                        <TextBox x:Name="SearchBox"
-                                 Width="180"
-                                 PlaceholderText="Search this page"
-                                 BorderThickness="0"
-                                 Background="Transparent"
-                                 TextChanged="SearchBox_TextChanged"
-                                 KeyDown="SearchBox_KeyDown" />
-                        <TextBlock x:Name="SearchMatchCountText"
-                                   Text=""
-                                   Opacity="0.6"
-                                   FontSize="12"
-                                   VerticalAlignment="Center"
-                                   Margin="6,0,4,0"
-                                   MinWidth="46"
-                                   IsTextScaleFactorEnabled="False" />
-                        <Button x:Name="SearchPreviousButton"
-                                Style="{ThemeResource SubtleButtonStyle}"
-                                Width="28"
-                                Height="28"
-                                Padding="0"
-                                Click="SearchPreviousButton_Click"
-                                ToolTipService.ToolTip="Previous match (Shift+Enter)">
-                            <FontIcon Glyph="&#xE70E;" FontSize="11" />
-                        </Button>
-                        <Button x:Name="SearchNextButton"
-                                Style="{ThemeResource SubtleButtonStyle}"
-                                Width="28"
-                                Height="28"
-                                Padding="0"
-                                Click="SearchNextButton_Click"
-                                ToolTipService.ToolTip="Next match (Enter)">
-                            <FontIcon Glyph="&#xE70D;" FontSize="11" />
-                        </Button>
-                        <Button x:Name="SearchCloseButton"
-                                Style="{ThemeResource SubtleButtonStyle}"
-                                Width="28"
-                                Height="28"
-                                Padding="0"
-                                Margin="4,0,0,0"
-                                Click="SearchCloseButton_Click"
-                                ToolTipService.ToolTip="Close search (Esc)">
-                            <FontIcon Glyph="&#xE711;" FontSize="11" />
-                        </Button>
-                    </StackPanel>
-                </Border>
             </Grid>
         </Grid>
     </Border>

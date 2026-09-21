@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
+using Windows.System;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Core.Overlays;
 
@@ -123,6 +125,29 @@ public sealed partial class MainWindow
     /// </summary>
     private void ModuleTitleBar_ReturnRequested(object? sender, EventArgs e) =>
         _openModules.LastOrDefault()?.Close();
+
+    /// <summary>
+    /// Escape is the return button's shortcut: it closes the open module, and nothing else.
+    ///
+    /// <para><b>Registered on the window's root without <c>handledEventsToo</c></b>, so
+    /// anything that already gives Escape a meaning of its own keeps it - the document search
+    /// box closes its bar and marks the key handled, and that has to be the end of it rather
+    /// than also tearing down the module behind it. Flyouts and dialogs live in popups outside
+    /// this tree and never reach here at all, which is how Escape dismissing a dialog stays a
+    /// dialog's business.</para>
+    ///
+    /// <para><b>Ignored while a document is open over the module.</b> Help and Bugs draw on
+    /// top of one (§2i), so the module is not what the user is looking at - closing it from
+    /// under the page they are reading would lose its state out of sight.</para>
+    /// </summary>
+    private void ModuleEscape_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Escape) return;
+        if (_openModules.Count == 0 || DocsOverlay.IsOpen) return;
+
+        e.Handled = true;
+        _openModules.LastOrDefault()?.Close();
+    }
 
     /// <summary>
     /// Hands a module's titlebar buttons to the shared titlebar control for as long as it is

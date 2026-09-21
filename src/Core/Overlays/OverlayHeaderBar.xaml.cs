@@ -5,11 +5,12 @@ using Microsoft.UI.Xaml.Media;
 namespace Vanilla_RTX_App.Core.Overlays;
 
 /// <summary>
-/// The chrome every full-window in-app overlay shares: icon, a hyperlinked title, optional
-/// Back/Forward, Reload, a static guide sentence, and the big accent Close button. Knows
-/// nothing about what it's showing or what closing means - it just raises events and exposes
-/// setters, so <see cref="WebImportOverlay"/> and <see cref="MarkdownOverlay"/> can configure
-/// the same visual block differently (the former needs Back/Forward, the latter never does).
+/// The header every full-window in-app overlay shares: icon, a hyperlinked title, optional
+/// Back/Forward, Reload, a static guide sentence, a slot for the host's own controls
+/// (<see cref="Actions"/>), and the big accent Close button. Knows nothing about what it's
+/// showing or what closing means - it just raises events and exposes setters, so
+/// <see cref="WebImportOverlay"/> and <see cref="MarkdownOverlay"/> can configure the same
+/// visual block differently (the former needs Back/Forward, the latter its search).
 /// </summary>
 public sealed partial class OverlayHeaderBar : UserControl
 {
@@ -30,6 +31,22 @@ public sealed partial class OverlayHeaderBar : UserControl
     /// treats it as Done and imports what was downloaded, the markdown overlay just returns.
     /// </summary>
     public event RoutedEventHandler? CloseClick;
+
+    public static readonly DependencyProperty ActionsProperty = DependencyProperty.Register(
+        nameof(Actions), typeof(object), typeof(OverlayHeaderBar),
+        new PropertyMetadata(null, (d, e) => ((OverlayHeaderBar)d).ActionsHost.Content = e.NewValue));
+
+    /// <summary>
+    /// The host's own controls, shown right against the Close button. Set in the host's XAML
+    /// (<c>&lt;local:OverlayHeaderBar.Actions&gt;</c>) rather than built here, so their
+    /// <c>x:Name</c> fields and handlers belong to the host - this control only gives them a
+    /// place. Null leaves no gap.
+    /// </summary>
+    public object? Actions
+    {
+        get => GetValue(ActionsProperty);
+        set => SetValue(ActionsProperty, value);
+    }
 
     public OverlayHeaderBar()
     {

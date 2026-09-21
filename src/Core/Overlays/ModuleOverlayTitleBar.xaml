@@ -72,7 +72,7 @@
                     Background="Transparent"
                     BorderBrush="Transparent"
                     Click="ReturnButton_Click"
-                    ToolTipService.ToolTip="Return to the main menu."
+                    ToolTipService.ToolTip="(ESC) - Return to the main menu."
                     IsTextScaleFactorEnabled="False" />
 
             <Border Grid.Column="1"

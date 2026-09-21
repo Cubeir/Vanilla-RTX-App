@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -333,6 +333,7 @@ public sealed partial class MainWindow : Window
         TitleBarFocus.Attach(this, TitleBarActions, ModuleTitleBar);
 
         ModuleTitleBar.ReturnRequested += ModuleTitleBar_ReturnRequested;
+        RootElement.AddHandler(UIElement.KeyDownEvent, new Microsoft.UI.Xaml.Input.KeyEventHandler(ModuleEscape_KeyDown), handledEventsToo: false);
 
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)

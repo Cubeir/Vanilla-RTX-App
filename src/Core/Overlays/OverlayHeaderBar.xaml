@@ -7,14 +7,12 @@
              mc:Ignorable="d"
              IsTextScaleFactorEnabled="False">
 
-    <!-- Shared chrome for every full-window in-app overlay (WebImportOverlay, MarkdownOverlay):
+    <!-- The header every full-window in-app overlay shares (WebImportOverlay, MarkdownOverlay):
          icon + title hyperlink, optional back/forward, reload, a caller-supplied guide sentence,
-         and the big accent Done/Return/Close button on the right. Purely presentational - the
-         host owns what the title link points at, what each button does, and what "closing"
-         means; this control only raises the click as an event and exposes setters for the text/
-         glyphs/visibility a given overlay wants. Lifted verbatim out of WebImportOverlay, which
-         was the only user of this markup until MarkdownOverlay needed the same chrome minus
-         Back/Forward. -->
+         a slot for the host's own controls, and the big accent Done/Return button on the right.
+         Purely presentational - the host owns what the title link points at, what each button
+         does, and what "closing" means; this control only raises the click as an event and
+         exposes setters for the text/glyphs/visibility a given overlay wants. -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -34,6 +32,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="3" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
@@ -130,15 +129,24 @@
                        TextWrapping="Wrap"
                        IsTextScaleFactorEnabled="False" />
 
+            <!-- Whatever the host puts here (Actions), right against the Close button - the one
+                 stretch of this row that sits empty on an overlay with nothing to guide, and a
+                 control placed here covers none of the host's content. Auto-sized, so a host
+                 that supplies nothing leaves no gap. -->
+            <ContentPresenter x:Name="ActionsHost"
+                              Grid.Column="7"
+                              VerticalAlignment="Center"
+                              Margin="0,0,12,0" />
+
             <!-- Accent bevel - same left-edge treatment as MainWindow's Preview toggle, driven
                  by ThemeService.GetBevelColor rather than a static resource so it swaps with
                  light/dark theme instead of always reading as the dark-theme accent. Set
                  imperatively in code-behind (ApplyCloseButtonBevel) because GetBevelColor is a
                  C# color choice, not a ThemeResource binding that re-resolves itself. -->
-            <Rectangle Grid.Column="7"
+            <Rectangle Grid.Column="8"
                        Fill="{ThemeResource ButtonBackgroundThemeBrush}" />
             <Border x:Name="CloseButtonBevel"
-                    Grid.Column="7"
+                    Grid.Column="8"
                     BorderThickness="3,0,0,0" />
 
             <!-- Fills the entire header block, flush against the window's right edge, the
@@ -146,7 +154,7 @@
                  MainWindow's Preview toggle, achieved the same way: the accent bevel above
                  standing in for that button's own fake-split border. -->
             <Button x:Name="CloseButton"
-                    Grid.Column="8"
+                    Grid.Column="9"
                     Style="{ThemeResource AccentButtonStyle}"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
