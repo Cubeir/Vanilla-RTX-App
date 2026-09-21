@@ -285,9 +285,9 @@ Starts Minecraft with ray tracing already switched on. Before launching, it writ
 - `gfx_vsync: 0` - VSync off, which fixes a large ray tracing performance drop.
 
 This works around several long-standing game bugs that make turning on ray tracing difficult, including:
-- [MCPE-191513](https://bugs.mojang.com/browse/MCPE/issues/MCPE-191513) (ray tracing can't be enabled from the main menu)
-- [MCPE-152158](https://bugs.mojang.com/browse/MCPE/issues/MCPE-152158) (PBR textures not loading after enabling ray tracing in a fresh launch)
-- [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850) (performance starvation with VSync on).
+- [MCPE-191513](https://bugs.mojang.com/browse/MCPE/issues/MCPE-191513) - ray tracing can't be enabled from the main menu.
+- [MCPE-152158](https://bugs.mojang.com/browse/MCPE/issues/MCPE-152158) - PBR textures not loading after enabling ray tracing in a fresh launch.
+- [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850) - performance starvation with VSync on.
 
 Which settings it writes is up to you; to change them, see **Launch options** in [Settings](#settings). When it changes a file, the version before the change is kept beside it as `options.txt.backup`.
 
