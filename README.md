@@ -306,7 +306,7 @@ If the app isn't running, it starts. Imports aren't silent, because some may nee
 
 Type **`vanillartx`** into Win+R or a terminal to start the app.
 
-**`vanillartx://` links** open the app, or bring it forward if it's already running, and can go straight to a screen:
+**`vanillartx://` links** open the app (or bring it forward if it's already running) and can go straight to a screen:
 
 | Link | Opens |
 |---|---|
