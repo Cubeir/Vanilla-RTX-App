@@ -2367,12 +2367,6 @@ gives a bit of visual assurance that things are... up to date and not stale.
 - restructure main window to be less sloppy and more correct whilst looking the same by the end.
 the layout works perfectly but is wrong in many spots, with many dumb margins
 
-- Breakdown Helpers.cs into more digestible pieces, a Helpers folder, with separated files for each foundational helper
-some helpers are helpers but within them more helpers, clean the code... that class grew organically.
-
-- Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
-> Tick the app as supporting regular English and British English as well .. no reason not to.
-
 - Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
 apparently some third party launchers use them for other things, like userdata, as well..
 ..but wait for at least a single report of failure related to this before touching anything
