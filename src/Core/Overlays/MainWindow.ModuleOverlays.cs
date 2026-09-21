@@ -90,6 +90,11 @@ public sealed partial class MainWindow
             });
         };
 
+        // Not before Loaded: until then the module's controls aren't in the visual tree to be
+        // found. Walks the whole window so a module's titlebar strip, which lives outside the
+        // overlay once adopted, is covered too.
+        overlay.Loaded += (_, _) => WindowControlsManager.ApplySuspensions(Content);
+
         _openModules.Add(overlay);
         AdoptModuleTitleBarStrip(overlay);
         ModuleTitleBar.ShowReturn(true);

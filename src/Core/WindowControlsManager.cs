@@ -219,6 +219,68 @@ public class WindowControlsManager
         }
     }
 
+    // ── Remote suspension ─────────────────────────────────────────────────────
+
+    private static readonly HashSet<string> _suspendedNames = new(StringComparer.OrdinalIgnoreCase);
+    // Weak, because a module's controls leave the tree when it closes and must not be kept
+    // alive by having once been suspended.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, object> _suspendedControls = new();
+
+    /// <summary>
+    /// Disables every control under <paramref name="root"/> whose name is in
+    /// <paramref name="names"/>, and keeps it disabled for the rest of the session. This is the
+    /// remote kill switch driven by the announcements .md's <c># SuspendControls</c> section
+    /// (<see cref="OnlineTextsContent.SuspendControls"/>).
+    ///
+    /// <para><b>Additive and idempotent.</b> Names accumulate across calls, and a control
+    /// already suspended is left alone, so calling this once from cache and again after a fresh
+    /// fetch is safe. Nothing is ever un-suspended: a name dropped from the .md takes effect on
+    /// the next launch.</para>
+    ///
+    /// <para><b>A suspended control is held down by its own <c>IsEnabledChanged</c>, not by a
+    /// lock count.</b> Every path that re-enables a control - a <see cref="Release"/> restoring
+    /// its pre-lock state, <see cref="ClearStates(UIElement?)"/>, a module assigning
+    /// <c>IsEnabled = true</c> outright - is immediately undone. A lock count could only stop
+    /// the first of those.</para>
+    ///
+    /// <para>Only controls in the visual tree at the time can be found, so a feature module's
+    /// controls are reached by <see cref="ApplySuspensions"/> as each module loads, and a
+    /// <c>MenuFlyoutItem</c> inside a flyout that has never opened is out of reach.</para>
+    /// </summary>
+    public static void SuspendControls(UIElement? root, IEnumerable<string>? names)
+    {
+        if (names != null)
+            foreach (var name in names)
+                if (!string.IsNullOrWhiteSpace(name)) _suspendedNames.Add(name.Trim());
+
+        ApplySuspensions(root);
+    }
+
+    /// <summary>
+    /// Suspends whatever under <paramref name="root"/> matches a name already passed to
+    /// <see cref="SuspendControls"/>. Free when nothing is suspended, which is every session
+    /// where the .md doesn't ask for it.
+    /// </summary>
+    public static void ApplySuspensions(UIElement? root)
+    {
+        if (root == null || _suspendedNames.Count == 0) return;
+
+        foreach (var control in GetAllSupportedControls(root, null).ToList())
+        {
+            if (!_suspendedNames.Contains(control.Name) || !_suspendedControls.TryAdd(control, _suspendedNames)) continue;
+
+            control.IsEnabled = false;
+            control.IsEnabledChanged += KeepSuspended;
+            System.Diagnostics.Trace.WriteLine($"[WindowControlsManager] Suspended '{control.Name}'");
+        }
+    }
+
+    private static void KeepSuspended(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is Control { IsEnabled: true } control)
+            control.IsEnabled = false;
+    }
+
     /// <summary>Adds a control name to <see cref="_globalExclusions"/> for the rest of the session.</summary>
     public static void AddGlobalExclusion(string controlName) { if (!string.IsNullOrEmpty(controlName)) _globalExclusions.Add(controlName); }
 

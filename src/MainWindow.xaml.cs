@@ -338,6 +338,22 @@ public sealed partial class MainWindow : Window
             root.Loaded += MainWindow_Loaded;
     }
 
+    /// <summary>
+    /// Disables whatever the announcements .md lists under <c># SuspendControls</c>, twice: at
+    /// once from the cache App already parsed synchronously, then again if the fetch App started
+    /// comes back fresh, which is what gets a newly added suspension to everyone within the
+    /// fetch cooldown rather than one launch later. Both are additive; see
+    /// <see cref="WindowControlsManager.SuspendControls"/>. Modules pick the list up as they
+    /// load, in <see cref="OpenModule"/>.
+    /// </summary>
+    private async Task ApplyRemoteSuspensionsAsync()
+    {
+        WindowControlsManager.SuspendControls(Content, OnlineTextsContent.SuspendControls);
+
+        if (await OnlineTexts.LatestUpdate && !_isClosing)
+            WindowControlsManager.SuspendControls(Content, OnlineTextsContent.SuspendControls);
+    }
+
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         try
@@ -415,6 +431,9 @@ public sealed partial class MainWindow : Window
             // Assign Previewer images a bit after attaching vessels, just a safety gap
             InitializePreviewerImages();
 
+            // Remote kill switch, applied under the splash so a suspended control is never seen enabled
+            _ = ApplyRemoteSuspensionsAsync();
+
             // Brief delay to ensure everything is fully locked and loaded, then fade out splash screen
             await Task.Delay((int)(700 * speedMultiplier));
             // ================ Do all UI updates you DON'T want to be seen BEFORE here, and for what you want seen, AFTER here =======================
@@ -464,7 +483,7 @@ public sealed partial class MainWindow : Window
                 {
                     for (int i = psa.Length - 1; i >= 0; i--)
                     {
-                        Log(psa[i].Text);
+                        Log(OnlineTexts.LinksToPlainText(psa[i].Text));
                         await Task.Delay((int)(700 * speedMultiplier));
                     }
                 }

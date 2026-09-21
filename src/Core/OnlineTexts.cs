@@ -16,23 +16,22 @@ using Windows.Storage;
 
 namespace Vanilla_RTX_App.Core;
 
-// IDEA: could be expanded on, have a field at the end, to disable/enable features/buttons/controls on a whim
-// TODO: Add a feature [minver:"x.x.x.x"] to GATE the display of a PSA based on the current app version.
-// This would allow us to show PSAs only to users who are on a certain version or higher, which could be useful for announcing
-// new features or changes that only apply to newer versions of the app. (this whole thing was written by Intellisense by the way)
-
-// IDEA: expand on it, explore extracting image links from texts, and actually displaying it in the app, via webview or something
-
-
 // =====================================================================================================================
 // PsaItem — A single announcement entry.
+//
+// MinVersion / MaxVersion are the [minver:""] / [maxver:""] gate, inclusive at both ends, null meaning unbounded.
+// The gate is applied by OnlineTexts.GetFiltered, not by the parser, so a gated item stays in OnlineTextsContent:
+// CleanupOrphanedDismissals reads that content, and an item missing from it would have its dismissal pruned -
+// widening the range later would then resurface something the user had already dismissed.
 // =====================================================================================================================
 
 public record PsaItem(
     string Text,
     PsaKind Kind,
     string? Glyph = null,
-    int? CooldownMinutes = null
+    int? CooldownMinutes = null,
+    Version? MinVersion = null,
+    Version? MaxVersion = null
 );
 
 
@@ -52,10 +51,21 @@ public record PsaItem(
 //   the fetch failed or the .md has no section for that module.
 //   Anywhere else, call OnlineTexts.GetFiltered(OnlineTextsContent.YourProperty), which
 //   strips dismissed entries according to each item's PsaKind.
+//
+// SuspendControls is the one property that is not a PsaItem[] and is not filled by that
+// reflection map - see the # SuspendControls section in the .md format notes on OnlineTexts.
 // =====================================================================================================================
 
 public static class OnlineTextsContent
 {
+    /// <summary>
+    /// Control names the .md asks to have disabled, already version-gated for this build.
+    /// Null when the section is absent or lists nothing. Read by
+    /// <see cref="WindowControlsManager.SuspendControls(Microsoft.UI.Xaml.UIElement?, System.Collections.Generic.IEnumerable{string}?)"/>.
+    /// </summary>
+    public static string[]? SuspendControls { get; set; }
+
+
     public static PsaItem[]? Credits { get; set; }
     public static PsaItem[]? PSA { get; set; }
     public static PsaItem[]? PackUpdateAnnouncements { get; set; }
@@ -114,7 +124,7 @@ internal partial class OnlineTextsJsonContext : JsonSerializerContext
 //
 // ── RULES ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   • Single # only = section header.
+//   • Single # only = section header. The space after it is optional, as it is after ## and ###.
 //   • ## (not ###) = Timed item separator.
 //   • ### or deeper = Permanent item separator.
 //   • Separators are checked ### first, then ## to avoid misclassification.
@@ -136,17 +146,49 @@ internal partial class OnlineTextsJsonContext : JsonSerializerContext
 //                           Icons glyph. Value must be a 4–5 character hex code (no prefix/suffix or anything).
 //                           Examples: E946, EF2C, F003
 //     [cd:"120"]          — Cooldown in minutes before a Timed item reappears after being dismissed.
+//     [minver:"1.2.3.4"]  — Only shown when the app version is at least this. Inclusive.
+//     [maxver:"1.2.3.4"]  — Only shown when the app version is at most this. Inclusive.
+//                           1 to 4 numeric parts; missing parts are 0, so "1.26" means 1.26.0.0.
+//                           Use both for a range. A min above the max matches nothing.
 //
 //   Examples:
 //     # PackUpdateAnnouncements [glyph:"E7BA"]
 //     ## Chaos Cubes [cd:"60"] [glyph:"E946"]
 //     ### Update [glyph:"EF2C"] [cd:"1440"] // cd useless here
 //     ##  [cd:"720"]
+//     ### Please update [maxver:"1.26.20.0"]
+//
+//   Builds older than the version gate ignore [minver]/[maxver] as unknown keys and show the
+//   item regardless - a [minver] announcement still reaches everyone still on such a build.
 //
 //   Failure handling:
 //     • Unknown field names are logged and ignored.
 //     • Malformed values (wrong type, out of range) are logged and ignored; defaults apply.
 //     • Any exception during modifier parsing is caught; the item is still created with defaults.
+//
+// ── LINKS ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+//
+//   [label](https://example.com) in body text renders as a clickable label on a PsaCard, and as
+//   "label (https://example.com)" in the plain-text log. http, https and mailto only; anything else,
+//   or a URL that doesn't parse, stays as the literal text it was written as. Older builds show the
+//   raw markdown, so a link should still read acceptably that way.
+//
+// ── # SuspendControls ───────────────────────────────────────────────────────────────────────────────────────────────
+//
+//   A reserved section name. Every non-empty line in it, with its leading #s and surrounding
+//   whitespace stripped, is the x:Name of a control to disable for the rest of the session - the
+//   remote kill switch for a feature that has broken badly enough that nobody should reach it
+//   until an update ships. These all name the same kind of thing:
+//
+//     # SuspendControls
+//     ### BetterRTXButton
+//     ## DLSSButton [maxver:"1.26.21.0"]      ← only on builds up to the one that fixes it
+//     LaunchButton
+//
+//   [minver]/[maxver] gate a line here exactly as they gate a PSA, and they are the reason to keep
+//   a line after the fix ships: dropping it outright re-enables the broken control on every build
+//   that still has the bug. Names are matched case-insensitively. A name nothing carries does
+//   nothing. Builds older than this section ignore it as an unknown section.
 //
 // ── DISMISS SYSTEM ──────────────────────────────────────────────────────────────────────────────────────────────────
 //
@@ -190,7 +232,10 @@ public static class OnlineTexts
     private static readonly Dictionary<string, PropertyInfo> _propMap =
         typeof(OnlineTextsContent)
             .GetProperties(BindingFlags.Public | BindingFlags.Static)
+            .Where(p => p.PropertyType == typeof(PsaItem[]))
             .ToDictionary(p => p.Name.ToLowerInvariant(), p => p, StringComparer.Ordinal);
+
+    private const string SUSPEND_SECTION = "suspendcontrols";
 
     // ── Modifier regex ────────────────────────────────────────────────────────
     // Matches [key:"value"] anywhere in a line. Key is word chars; value is anything except ".
@@ -198,6 +243,19 @@ public static class OnlineTexts
     private static readonly Regex _modifierRegex = new(
         @"\[(\w+):""([^""]*)""\]",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    /// <summary>
+    /// [label](url) in PSA body text. Neither half may span a line, and the URL may not contain
+    /// whitespace - markdown's own rules for an inline link, minus the optional title, which
+    /// nothing here would display.
+    /// </summary>
+    internal static readonly Regex MarkdownLinkRegex = new(
+        @"\[([^\]\r\n]+)\]\(([^)\s]+)\)",
+        RegexOptions.Compiled);
+
+    /// <summary>The running app's version, parsed once for the [minver]/[maxver] gate.</summary>
+    private static readonly Lazy<Version?> _appVersion =
+        new(() => ParseGateVersion(EnvironmentVariables.appVersion));
 
     // ── Concurrency ───────────────────────────────────────────────────────────
 
@@ -229,7 +287,17 @@ public static class OnlineTexts
     /// Awaitable version of <see cref="TriggerUpdate"/>.
     /// Returns true if a fresh network fetch succeeded, false otherwise.
     /// </summary>
-    public static async Task<bool> TriggerUpdateAsync()
+    public static Task<bool> TriggerUpdateAsync() => LatestUpdate = RunUpdateAsync();
+
+    /// <summary>
+    /// The most recent <see cref="TriggerUpdateAsync"/>, so something that didn't start the
+    /// update can still act on its outcome. App starts the fetch before MainWindow exists, and
+    /// MainWindow awaits this to re-apply <see cref="OnlineTextsContent.SuspendControls"/> once
+    /// fresh content has landed. Completed-false until the first trigger.
+    /// </summary>
+    public static Task<bool> LatestUpdate { get; private set; } = Task.FromResult(false);
+
+    private static async Task<bool> RunUpdateAsync()
     {
         Trace.WriteLine("[OnlineTexts] TriggerUpdateAsync");
         TryApplyCache();
@@ -309,6 +377,7 @@ public static class OnlineTexts
     /// Timed     — passes through once its cooldown has elapsed.
     /// Permanent — passes through only if never permanently dismissed.
     /// </para>
+    /// Any kind is dropped first if its [minver]/[maxver] range excludes this app version.
     /// Always use this instead of reading OnlineTextsContent properties directly.
     /// </summary>
     public static PsaItem[]? GetFiltered(PsaItem[]? source)
@@ -323,6 +392,7 @@ public static class OnlineTexts
             .Where(item =>
             {
                 if (string.IsNullOrWhiteSpace(item.Text)) return false;
+                if (!IsInVersionRange(item.MinVersion, item.MaxVersion)) return false;
                 var hash = DismissHash(item.Text);
                 return item.Kind switch
                 {
@@ -335,6 +405,51 @@ public static class OnlineTexts
             .ToArray();
 
         return kept.Length > 0 ? kept : null;
+    }
+
+    /// <summary>
+    /// <paramref name="text"/> with every [label](url) written out as "label (url)", for
+    /// surfaces that can only show plain text, such as the sidebar log.
+    /// </summary>
+    public static string LinksToPlainText(string text) =>
+        MarkdownLinkRegex.Replace(text, m => $"{m.Groups[1].Value} ({m.Groups[2].Value})");
+
+    // ── Version gate ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Whether this build falls inside [min, max], inclusive, null meaning unbounded. An app
+    /// version that can't be read passes every gate: failing open shows an announcement to
+    /// someone it wasn't meant for, failing closed would silently hide every gated one.
+    /// </summary>
+    private static bool IsInVersionRange(Version? min, Version? max)
+    {
+        var app = _appVersion.Value;
+        if (app is null) return true;
+        if (min is not null && app < min) return false;
+        if (max is not null && app > max) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// 1 to 4 non-negative integer parts, padded to 4 with zeros; null for anything else.
+    ///
+    /// <para>The padding is load-bearing. <see cref="Version"/> treats an absent build or
+    /// revision as -1, so <c>new Version("1.26")</c> sorts <i>below</i> 1.26.0.0 and a
+    /// [maxver:"1.26"] would exclude the very build it names.</para>
+    /// </summary>
+    private static Version? ParseGateVersion(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var parts = value.Trim().Split('.');
+        if (parts.Length is < 1 or > 4) return null;
+
+        var n = new int[4];
+        for (int i = 0; i < parts.Length; i++)
+            if (!int.TryParse(parts[i], NumberStyles.None, CultureInfo.InvariantCulture, out n[i]))
+                return null;
+
+        return new Version(n[0], n[1], n[2], n[3]);
     }
 
     /// <summary>
@@ -656,11 +771,15 @@ public static class OnlineTexts
     /// Returns the cleaned title (fields removed, trimmed) plus parsed modifier values.
     /// Any field that fails to parse is logged and skipped; defaults remain null.
     /// </summary>
-    private static (string cleanTitle, string? glyph, int? cooldownMinutes)
-        ExtractModifiers(string titleLine)
+    private readonly record struct Modifiers(
+        string? Glyph, int? CooldownMinutes, Version? MinVersion, Version? MaxVersion);
+
+    private static (string cleanTitle, Modifiers modifiers) ExtractModifiers(string titleLine)
     {
         string? glyph = null;
         int? cooldownMinutes = null;
+        Version? minVersion = null;
+        Version? maxVersion = null;
 
         var clean = _modifierRegex.Replace(titleLine, match =>
         {
@@ -686,6 +805,17 @@ public static class OnlineTexts
                             Trace.WriteLine($"[OnlineTexts] Invalid cd value: '{val}' — must be a positive integer (minutes), ignored");
                         break;
 
+                    case "minver":
+                    case "maxver":
+                        var version = ParseGateVersion(val);
+                        if (version is null)
+                            Trace.WriteLine($"[OnlineTexts] Invalid {key} value: '{val}' — must be 1–4 dot-separated numbers, ignored");
+                        else if (key == "minver")
+                            minVersion = version;
+                        else
+                            maxVersion = version;
+                        break;
+
                     default:
                         Trace.WriteLine($"[OnlineTexts] Unknown modifier key: '{key}' — ignored");
                         break;
@@ -699,7 +829,7 @@ public static class OnlineTexts
             return string.Empty; // remove the field token from the title string
         });
 
-        return (clean.Trim(), glyph, cooldownMinutes);
+        return (clean.Trim(), new Modifiers(glyph, cooldownMinutes, minVersion, maxVersion));
     }
 
     // =========================================================================
@@ -716,8 +846,13 @@ public static class OnlineTexts
         {
             foreach (var prop in _propMap.Values)
                 prop.SetValue(null, null);
+            OnlineTextsContent.SuspendControls = null;
 
-            var sections = Parse(raw);
+            var (sections, suspended) = Parse(raw);
+
+            OnlineTextsContent.SuspendControls = suspended.Count > 0 ? suspended.ToArray() : null;
+            if (suspended.Count > 0)
+                Trace.WriteLine($"[OnlineTexts] Suspending {suspended.Count} control(s): {string.Join(", ", suspended)}");
 
             foreach (var (key, blocks) in sections)
             {
@@ -728,12 +863,14 @@ public static class OnlineTexts
                 }
 
                 var items = blocks
-                    .Where(b => !string.IsNullOrWhiteSpace(b.text))
+                    .Where(b => !string.IsNullOrWhiteSpace(b.Text))
                     .Select(b => new PsaItem(
-                        b.text.Trim(),
-                        b.kind,
-                        Glyph: b.glyph,
-                        CooldownMinutes: b.cooldownMinutes))
+                        b.Text.Trim(),
+                        b.Kind,
+                        Glyph: b.Modifiers.Glyph,
+                        CooldownMinutes: b.Modifiers.CooldownMinutes,
+                        MinVersion: b.Modifiers.MinVersion,
+                        MaxVersion: b.Modifiers.MaxVersion))
                     .ToArray();
 
                 prop.SetValue(null, items.Length > 0 ? items : null);
@@ -749,8 +886,11 @@ public static class OnlineTexts
         }
     }
 
+    private readonly record struct ParsedBlock(string Text, PsaKind Kind, Modifiers Modifiers);
+
     /// <summary>
-    /// Core parser. Returns: lowercase-section-name → ordered list of block tuples.
+    /// Core parser. Returns lowercase-section-name → ordered blocks, plus the control names
+    /// listed under # SuspendControls.
     ///
     /// Single #     = opens a new section. Modifiers on this line apply to the Pinned block only.
     ///               [glyph:] on a # line does NOT inherit to ## / ### child blocks.
@@ -759,25 +899,29 @@ public static class OnlineTexts
     /// ## (not ###)  = Timed item separator.
     /// No separator  = entire section body is one Pinned item.
     /// Separator titles are ignored beyond modifier extraction.
+    ///
+    /// # SuspendControls is not a section of blocks: every line in it is a control name, with
+    /// ##/### read as decoration rather than as separators. Its version gate is applied here
+    /// rather than at display time, since there is no dismissal state for it to protect.
     /// </summary>
-    private static Dictionary<string, List<(string text, PsaKind kind, string? glyph, int? cooldownMinutes)>>
-        Parse(string raw)
+    private static (Dictionary<string, List<ParsedBlock>> sections, List<string> suspended) Parse(string raw)
     {
-        var result = new Dictionary<string, List<(string, PsaKind, string?, int?)>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<ParsedBlock>>(StringComparer.Ordinal);
+        var suspended = new List<string>();
         var lines = raw.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
-        List<(string text, PsaKind kind, string? glyph, int? cooldownMinutes)>? currentBlocks = null;
+        List<ParsedBlock>? currentBlocks = null;
+        var inSuspendSection = false;
         var block = new StringBuilder();
 
         // Per-block state — reset for every ## / ### separator
         var currentKind = PsaKind.Pinned;
-        string? currentGlyph = null;
-        int? currentCooldown = null;
+        var currentModifiers = default(Modifiers);
 
         void CommitBlock()
         {
             if (currentBlocks is null) return;
-            currentBlocks.Add((block.ToString(), currentKind, currentGlyph, currentCooldown));
+            currentBlocks.Add(new ParsedBlock(block.ToString(), currentKind, currentModifiers));
             block.Clear();
         }
 
@@ -786,25 +930,44 @@ public static class OnlineTexts
             var line = rawLine.TrimEnd();
 
             // ── Single # header ───────────────────────────────────────────────
-            if (line.StartsWith("# ") && !line.StartsWith("## ") && line.Length > 2)
+            if (line.StartsWith('#') && !line.StartsWith("##") && line.Length > 1)
             {
                 CommitBlock();
 
-                var (cleanTitle, glyph, _) = ExtractModifiers(line.Substring(2));
-                // cd intentionally ignored on # lines — Pinned blocks are never dismissed
+                var (cleanTitle, modifiers) = ExtractModifiers(line.Substring(1));
 
                 var name = cleanTitle.ToLowerInvariant();
                 if (string.IsNullOrEmpty(name)) continue;
 
-                currentBlocks = new List<(string, PsaKind, string?, int?)>();
+                inSuspendSection = name == SUSPEND_SECTION;
+                if (inSuspendSection)
+                {
+                    currentBlocks = null;
+                    Trace.WriteLine("[OnlineTexts] Section: SuspendControls");
+                    continue;
+                }
+
+                currentBlocks = new List<ParsedBlock>();
                 result[name] = currentBlocks;
                 block.Clear();
                 currentKind = PsaKind.Pinned;
-                currentGlyph = glyph;   // applies to the Pinned block only, not inherited by children
-                currentCooldown = null;
+                // Applies to the Pinned block only, not inherited by children. cd is dropped
+                // because Pinned blocks are never dismissed.
+                currentModifiers = modifiers with { CooldownMinutes = null };
 
                 Trace.WriteLine($"[OnlineTexts] Section: '{name}'" +
-                    (glyph != null ? $" glyph={glyph}" : ""));
+                    (modifiers.Glyph != null ? $" glyph={modifiers.Glyph}" : ""));
+            }
+            // ── Any line under # SuspendControls → a control name ─────────────
+            else if (inSuspendSection)
+            {
+                var (controlName, modifiers) = ExtractModifiers(line.TrimStart().TrimStart('#'));
+                if (string.IsNullOrEmpty(controlName)) continue;
+
+                if (IsInVersionRange(modifiers.MinVersion, modifiers.MaxVersion))
+                    suspended.Add(controlName);
+                else
+                    Trace.WriteLine($"[OnlineTexts] Suspension of '{controlName}' is outside this version's range — skipped");
             }
             // ── ### or deeper → Permanent ─────────────────────────────────────
             else if (currentBlocks is not null && line.StartsWith("###"))
@@ -812,13 +975,9 @@ public static class OnlineTexts
                 CommitBlock();
                 currentKind = PsaKind.Permanent;
 
-                var (_, glyph, cd) = ExtractModifiers(line.Substring(3));
-                currentGlyph = glyph;   // null means default glyph — no inheritance from # line
-                currentCooldown = cd;
-
-                Trace.WriteLine($"[OnlineTexts] ### → Permanent" +
-                    (glyph != null ? $" glyph={glyph}" : "") +
-                    (cd != null ? $" cd={cd}" : ""));
+                // Null glyph means default — no inheritance from the # line
+                (_, currentModifiers) = ExtractModifiers(line.Substring(3));
+                LogSeparator("### → Permanent", currentModifiers);
             }
             // ── ## (exactly, not ###) → Timed ─────────────────────────────────
             else if (currentBlocks is not null && line.StartsWith("##"))
@@ -826,13 +985,8 @@ public static class OnlineTexts
                 CommitBlock();
                 currentKind = PsaKind.Timed;
 
-                var (_, glyph, cd) = ExtractModifiers(line.Substring(2));
-                currentGlyph = glyph;   // null means default glyph — no inheritance from # line
-                currentCooldown = cd;
-
-                Trace.WriteLine($"[OnlineTexts] ## → Timed" +
-                    (glyph != null ? $" glyph={glyph}" : "") +
-                    (cd != null ? $" cd={cd}" : ""));
+                (_, currentModifiers) = ExtractModifiers(line.Substring(2));
+                LogSeparator("## → Timed", currentModifiers);
             }
             // ── Body line ─────────────────────────────────────────────────────
             else if (currentBlocks is not null)
@@ -842,8 +996,15 @@ public static class OnlineTexts
         }
 
         CommitBlock();
-        return result;
+        return (result, suspended);
     }
+
+    private static void LogSeparator(string label, Modifiers m) =>
+        Trace.WriteLine($"[OnlineTexts] {label}" +
+            (m.Glyph != null ? $" glyph={m.Glyph}" : "") +
+            (m.CooldownMinutes != null ? $" cd={m.CooldownMinutes}" : "") +
+            (m.MinVersion != null ? $" minver={m.MinVersion}" : "") +
+            (m.MaxVersion != null ? $" maxver={m.MaxVersion}" : ""));
 
     /// <summary>
     /// Removes permanently dismissed hashes that no longer match any item in the current .md.
