@@ -1550,7 +1550,7 @@ public sealed partial class Alchitex : ModuleOverlay
             {
                 Title = $"{packName} may not be suitable for RTX enhancement by RTX Reactor!",
                 Content =
-                    $"\"{packName}\" isn't tagged as an \"{PackBrowserOverlay.AlchitexCandidateTag}\"\n\n" +
+                    $"\"{packName}\" isn't tagged as an \"{PackBrowserOverlay.AlchitexCandidateTag}\".\n\n" +
                     "You can still run it. Your installed copy is left untouched and the result is " +
                     "a separate RTX-compatible pack, so there's nothing to lose, " +
                     "but it may come out with little to nothing added to it, or it may not work at all.",

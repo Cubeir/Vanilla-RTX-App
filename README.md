@@ -76,7 +76,7 @@ The app finds both Minecraft and its user data on its own. If it ever can't, see
 Three buttons sit next to the app's name. Each opens a page:
 
 - **Settings** - everything that configures the app itself. See [Settings](#settings).
-- **Help** - convenient way to browse the contents of this page while using the app.
+- **Help** - a convenient way to browse the contents of this page while using the app.
 - **Bugs** - an up-to-date [list of known Minecraft RTX bugs](https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking) and their status on Mojang's tracker.
 
 > Help and Bugs can be opened on top of any feature, and closing them puts you back exactly where you were.
@@ -87,11 +87,11 @@ Three buttons sit next to the app's name. Each opens a page:
 
 ## Preview
 
-The **Preview** toggle points the whole app at Minecraft Preview instead of the regular release: installs, tuning, launching, BetterRTX, LUTs and DLSS all target Preview while it's on. The cached files related to two games are kept completely separate, like each one's backups of its original files.
+The **Preview** toggle points the whole app at Minecraft Preview instead of the regular release: installs, tuning, launching, BetterRTX, LUTs and DLSS all target Preview while it's on. The cached files related to the two games are kept completely separate, including each one's backups of its original files.
 
 ## Log area, the lamp and the preview images
 
-- The **log** on the left tells you what the app is doing for transparency, warns you when something needs attention, and shows occasional announcements, might also occasionally point you in the right direction about certain features.
+- The **log** on the left tells you what the app is doing for transparency, warns you when something needs attention, and shows occasional announcements. It may also point you toward features worth knowing about.
 - The **lamp** logo next to the app's name is the app's status light. It blinks while something long is running, and flashes when things finish, succeed or fail. It sometimes has a mind of its own - that's intended. It serves no actual purpose beyond being a fun visual cue as you interact with the app.
 - Hover over almost anything and a small piece of pixel art appears in the bottom-left of the main menu, showing what that control does. Sliders show how they'll change the game's look, and toggles show a before and after.
 - **Announcement cards** appear throughout features, holding news, warnings and tips. They update on their own every few hours. Some can be dismissed for good, some for a while, and some that are important stay pinned.
@@ -112,7 +112,7 @@ For each pack you'll see the version **Installed** and the version **Available**
 - **Update** - a newer version is available.
 - **Reinstall** - you're up to date. Use it to put a pack back to its original state, for example after tuning.
 
-**Enhancements** toggle (on by default): adds the pack's enhancements: fixes for many rendering errors and incompatibilities with ray tracing, and improvements to things like particles. They're classified as mildly non-vanilla changes, which is why you can turn them off - for instance if they clash with another pack you use.
+The **Enhancements** toggle (on by default) adds the pack's enhancements - fixes for many rendering errors and incompatibilities with ray tracing, and improvements to things like particles. They're classified as mildly non-vanilla changes, which is why you can turn them off - for instance if they clash with another pack you use.
 
 Things worth knowing:
 
@@ -139,7 +139,7 @@ Each pack shows its icon, name, description, version, and tags:
 
 - Click packs to select them, then **Confirm selection** to return with them selected.
 - The **select** menu can select all packs with a given tag, select everything, or clear the selection.
-- **Import texture packs**: click to browse, or drag files onto the page. It accepts `.mcpack`, `.zip`, `.mcaddon` (any resource packs bundled inside; behavior packs are ignored), and whole folders of packs. If a pack is already installed, you're asked whether to replace it. If something doesn't look like a resource pack, you're asked whether to confirm to import it anyway.
+- **Import texture packs**: click to browse, or drag files onto the page. It accepts `.mcpack`, `.zip`, `.mcaddon` (any resource packs bundled inside; behavior packs are ignored), and whole folders of packs. If a pack is already installed, you're asked whether to replace it. If something doesn't look like a resource pack, you're asked whether to import it anyway.
 - The **refresh** button in the title bar rescans the folder, keeps your selection, and measures how much disk space each pack takes. That measuring is the only thing that shows the size badges, because it can take a few seconds on a big collection.
 
 If the app can't find your user data, this button becomes a highlighted **Locate user data** button and temporarily serves a different purpose while you select the user data location the app must use. See [Troubleshooting](#troubleshooting).
@@ -161,12 +161,12 @@ The Tuner adjusts the look of Vanilla RTX, or any other ray-traced or Vibrant Vi
 
 | Option | Range | What it does |
 |---|---|---|
-| Fog density multiplier | 0 to 10 | Scales all air fog: `0.5` halves it, `3` triples it, `0` effectively removes it. Fogs already at zero are set to a sensible literal value instead derived from the multiplier (e.g. 11 becomes 0.11), and anything past maximum density goes into scattering more light through the air. Underwater fog is affected too, much more gently, so underwater visibility and colors survive the original intent of the artist. |
+| Fog density multiplier | 0 to 10 | Scales all air fog: `0.5` halves it, `3` triples it, `0` effectively removes it. Fogs already at zero are set to a sensible literal value instead derived from the multiplier (e.g. `5` becomes `0.5`), and anything past maximum density goes into scattering more light through the air. Underwater fog is affected too, much more gently, so underwater visibility and colors survive the original intent of the artist. |
 | Emissive strength multiplier | 0.2 to 16 | Makes glowing blocks brighter or dimmer while keeping their relative brightness and look intact, even at extreme values. |
 | Increase ambient lighting | on/off | Adds a small, even glow to every surface, like ambient light. Its strength follows the emissive multiplier. Too much gives a night-vision look. [1] |
 | Surface 3D effect intensity | 0 to 900% | How strong normal maps and heightmaps are. `0%` flattens surfaces, higher values deepen the differences, while keeping each texture's own detail in proportion, so details are not lost. |
 | Material grain offset | 0 to 64 | Adds a fine layer of noise to materials, up to the given amount. Emissive parts are touched to a lesser degree, and the pattern stays the same across animation frames and block variants, so a lit and unlit redstone lamp still match. The pattern resembles the grain in Vibrant Visuals' own textures. |
-| Roughness control | -16 to 48 | Positive values make surfaces less shiny, affecting glossy ones most, and slightly reduce metalness to match. Negative values do the opposite: rough surfaces get shinier and metalness goes up. Several small passes nat work better than one big one. |
+| Roughness control | -16 to 48 | Positive values make surfaces less shiny, affecting glossy ones most, and slightly reduce metalness to match. Negative values do the opposite: rough surfaces get shinier and metalness goes up. Several small passes tend to work better than one big one. |
 | Lazify surface normals | 0 to 255 | Blends the pack's normal maps and heightmaps toward a version derived from its color textures, making them less refined. `0` changes nothing, `255` is fully "lazy". The overall strength of the normal map is preserved. A small value like `1-10` adds subtle organic detail. It only works when the normal map matches the color texture's resolution, so it has no effect on Vanilla RTX Opus. |
 
 > **[1] Increase ambient lighting marks a pack.** On every later pass, the emissive multiplier only scales the ambient light, not the pack's regular glow, so repeated passes can't compound into a blown-out pack. Use it sparingly, ideally as your last step. A warning icon next to the toggle reminds you of this.
@@ -192,7 +192,7 @@ These tools are powerful on the right pack: Vanilla RTX, for instance, can be tu
 
 # RTX Reactor
 
-RTX Reactor gives ordinary texture packs RTX support. It takes a pack's regular textures and generates a full set of ray tracing materials for it - how metallic, emissive, rough each surface is, plus normal maps or heightmaps for depth - along with fixes for water and translucent textures, optional atmospheric fog, and everything else a pack needs to function decently with ray tracing.  
+RTX Reactor gives ordinary texture packs RTX support. It takes a pack's regular textures and generates a full set of ray tracing materials for it - how metallic, emissive, rough, etc. each surface is, plus normal maps or heightmaps for depth - along with fixes for water and translucent textures, optional atmospheric fog, and everything else a pack needs to function decently with ray tracing.  
 Results may vary, but after over 3 years of development, the algorithms responsible for this take it much further than you'd expect, enjoy!
 
 By default **your installed pack is never touched.** RTX Reactor works on a copy and installs the result as a new pack beside it, named after the original with a new icon and **- RTX** suffix. If anything goes wrong or you abort, the unfinished copy is cleaned up and nothing is left behind.
@@ -233,13 +233,13 @@ Installs presets of [BetterRTX](https://bedrock.graphics), an unofficial mod to 
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/022acfe7-6b5e-4135-a11d-acfaea4d9f11" />
 
-- **The preset list** is an up-to-date list of pre-made presets provided by BetterRTX website. Click a preset to download it (several can queue up), then click again to install it. The installed preset is highlighted.
+- **The preset list** is an up-to-date list of pre-made presets provided by the BetterRTX website. Click a preset to download it (several can queue up), then click again to install it. The installed preset is highlighted.
 - **Default RTX** is pinned at the top: a backup of your game's own shader files, taken the first time you open this manager. Click it to roll back to the unmodded look at any time.
 - **Add customized preset** - import `.rtpack` files, by browsing, dragging them onto the page, or opening them with the app from File Explorer. Imported presets can be deleted with the button (bin icon) beside them.
 - **Create your own preset** - opens the BetterRTX preset creator inside the app. Customize a preset, export it as `.rtpack`, then click **Done** and it will be imported automatically!
-- **Refresh** (title bar) - clears downloaded and imported presets and fetches the list again from the BetterRTX website. It never clears Default RTX preset.
+- **Refresh** (title bar) - clears downloaded and imported presets and fetches the list again from the BetterRTX website. It never clears the Default RTX preset.
 
-Staying on the latest files happens mostly on its own, as guaranteed by the app:
+The app goes to great lengths to make sure you never install stale files, and that your Default backup always matches your game - mostly without you having to do anything:
 
 - **When Minecraft updates**, downloaded presets are cleared and Default RTX is re-taken from the updated game, so you can't accidentally install shaders built for an older version. You'll need to download presets again, which also depends on BetterRTX itself having caught up.
 - The app also checks the BetterRTX API for changes every so often and clears the downloaded preset cache. Use Refresh when it's slow to notice an update that may have dropped moments ago.
@@ -289,7 +289,7 @@ This works around several long-standing game bugs that make turning on ray traci
 - [MCPE-152158](https://bugs.mojang.com/browse/MCPE/issues/MCPE-152158) (PBR textures not loading after enabling ray tracing in a fresh launch)
 - [MCPE-121850](https://bugs.mojang.com/browse/MCPE/issues/MCPE-121850) (performance starvation with VSync on).
 
-Which settings it writes is up to you, if you wish to change it, see **Launch options** in [Settings](#settings). When it changes a file, the version before the change is kept beside it as `options.txt.backup`.
+Which settings it writes is up to you; to change them, see **Launch options** in [Settings](#settings). When it changes a file, the version before the change is kept beside it as `options.txt.backup`.
 
 # Opening files with the app
 
@@ -298,33 +298,33 @@ The app can open two kinds of file straight from File Explorer (right-click -> *
 - **`.mcpack`** - imported as a resource pack and will appear in [Select other packs](#select-other-packs) menu.
 - **`.rtpack`** - imported as a BetterRTX preset into [BetterRTX manager](#betterrtx-manager). Ready to install!
 
-If the app isn't running it starts, imports are not silent because they might require your confirmation.
+If the app isn't running, it starts. Imports aren't silent, because some may need your confirmation.
 
 # Settings
 
 Opened with the gear in the title bar. Changes are saved automatically.
 
-#### **Appearance**
+#### Appearance
 
 - **App theme** - Light, Dark, or Auto to follow Windows.
 - **Suspend UI animations** - turns off the app's animations: fades, the lamp, the log's typing effect, the pixel art, RTX Reactor effects, and so on. Recommended if flashing bothers you, it also makes the app start faster and use a little less energy.
 
-#### **Game installations** and **Game user data**
+#### Game installations and Game user data
 
-Where Minecraft and Minecraft Preview are installed, and where each keeps your worlds, settings and packs. The app takes extensive measures to find all four by itself, but you can set or change it here if it is missing, wrong, or you wish to point it elsewhere.
+Where Minecraft and Minecraft Preview are installed, and where each keeps your worlds, settings and packs. The app takes extensive measures to find all four by itself, but you can set or change them here if one is missing, wrong, or you wish to point it elsewhere.
 
 - Click a path to open it in File Explorer.
 - **Select** or **Change** picks a different folder, starting from the current one. A folder is only accepted if it passes some checks the app runs to ensure it is the right directory. For instance, the app also reads the game's own config to make sure Release and Preview aren't mixed up.
 
-#### **Launch options**
+#### Launch options
 
 The `options.txt` settings [Launch Minecraft RTX](#launch-minecraft-rtx) writes before starting the game. Edit any value, **Add option** for any other setting, or remove a row - the game then simply keeps whatever value it already has for it. With no options at all, the button just launches the game without changing anything. **Defaults** puts the original three back.
 
-#### **Content sources**
+#### Content sources
 
 The addresses the app uses for things it doesn't ship itself: the **Documentation page** (this page) and **Minecraft RTX bug list** that Help and Bugs show, the **DLSS downloads** page, and the **BetterRTX preset creator**. Change one and that feature uses your address instead. An address that isn't usable is rejected with the reason shown, and emptying a box goes back to the built-in one. The two documents must be `.md` files.
 
-#### **Maintenance**
+#### Maintenance
 
 - **Copy debug logs** - copies a full diagnostic report to your clipboard: system details, the app's log, every setting, recent errors, and the state of every control. Paste it into a bug report.
 - **Wipe all app data** - deletes everything the app has stored and restarts it as if freshly installed: settings, caches, downloaded presets, remembered game locations, all of it. Before it does, it restores your game's original BetterRTX and LUT files from the app's backups, which may show several admin prompts. **Approve every one.** If you don't and the game isn't back on its original files, the app's backups of them are gone for good, and fixing that means reinstalling Minecraft.
