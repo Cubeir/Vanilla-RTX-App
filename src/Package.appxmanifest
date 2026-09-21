@@ -47,17 +47,15 @@
           </uap:ShowNameOnTiles>
         </uap:DefaultTile >
         <uap:SplashScreen Image="Assets\icons\SplashScreen.png"  BackgroundColor="transparent"/>
-        <uap:LockScreen BadgeLogo="Assets\icons\BadgeLogo.png"  Notification="badge"/>
-        <uap:InitialRotationPreference>
-          <uap:Rotation Preference="landscape"/></uap:InitialRotationPreference>
       </uap:VisualElements>
 
       <Extensions>
-        <!-- Registers the app as an option in "Open with" / double-click for .mcpack files,
-             alongside Minecraft's own association - this does not claim the default handler,
-             Windows requires the user to set that explicitly. See App.xaml.cs (file
-             activation handling) and MainWindow.ImportPackFilesAsync for what happens when
-             the app is actually opened this way. -->
+        <!-- File types the app can be opened with. Each one registers the app as an option in
+             "Open with" alongside Minecraft's own association - it does not claim the default
+             handler; Windows leaves that to the user. What happens next is
+             Core\FileActivation\FileActivationRouter.cs, and its Routes table has to agree with
+             this list: the manifest is what makes Explorer offer the app, the table is what the
+             app does with the file. -->
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="mcpack">
             <uap:SupportedFileTypes>
@@ -67,10 +65,6 @@
             <uap:Logo>Assets\icons\import.mcpack.png</uap:Logo>
           </uap:FileTypeAssociation>
         </uap:Extension>
-        <!-- Same idea for .rtpack (BetterRTX custom presets) - see
-             MainWindow.ImportBetterRTXPresetFilesAsync and
-             BetterRTXManagerWindow.ImportPresetFilesHeadlessAsync for what happens when the
-             app is opened this way. -->
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="rtpack">
             <uap:SupportedFileTypes>

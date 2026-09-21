@@ -20,22 +20,22 @@ namespace Vanilla_RTX_App;
 ///
 /// <para><b>These live on MainWindow because what they do is drive it:</b> its log carries
 /// every per-file message from the import, its progress bar runs for the duration, its
-/// buttons are disabled while it runs, and its open child windows are refreshed afterwards so
-/// they aren't left showing a list built before the import landed. All of that is private to
+/// buttons are disabled while it runs, and any open module showing that list is refreshed so
+/// it isn't left showing a list built before the import landed. All of that is private to
 /// the window; a partial keeps it that way.</para>
 /// </summary>
 public sealed partial class MainWindow
 {
     /// <summary>
-    /// The open child window of the given type, or null when it isn't open.
+    /// The open module of the given type, or null when it isn't open.
     ///
-    /// <para>MainWindow is the only thing that tracks feature windows - it opens them and
+    /// <para>MainWindow is the only thing that tracks open modules - it opens them and
     /// removes them from its list on Closed - so a caller that needs to know whether one is
     /// up has to ask here. Used by <see cref="Core.FileActivation.FileActivationRouter"/> to
-    /// hand a file activation to the window that owns that file type.</para>
+    /// hand a file activation to the module that owns that file type.</para>
     /// </summary>
-    internal object? FindOpenModule(Type windowType) =>
-        _openModules.FirstOrDefault(m => m.GetType() == windowType);
+    internal object? FindOpenModule(Type moduleType) =>
+        _openModules.FirstOrDefault(m => m.GetType() == moduleType);
 
     /// <summary>
     /// Serializes .mcpack imports specifically - see ImportBetterRTXPresetFilesAsync's own
@@ -48,7 +48,7 @@ public sealed partial class MainWindow
     /// handler more than once for a single multi-select "Open with" - one process wins the
     /// launch mutex and imports its files directly, but a second process can lose that race
     /// and still be carrying the very same file list, which it hands off to the first through
-    /// the wake-event/pending-file mechanism in App.xaml.cs. App.xaml.cs's own
+    /// FileActivationRouter's wake-event/hand-off mechanism. The router's own
     /// FilterRecentlyHandledFiles is the first line of defence against that - it drops a
     /// duplicate file list before either import path ever sees it - but this lock is what
     /// keeps two *different* concurrent .mcpack requests (not duplicates of each other, just
@@ -65,18 +65,18 @@ public sealed partial class MainWindow
     private static readonly SemaphoreSlim McpackImportLock = new(1, 1);
 
     /// <summary>
-    /// Entry point for .mcpack file-type-association activation (see App.xaml.cs), used when
+    /// Entry point for .mcpack file activation (see FileActivationRouter), used when
     /// no pack browser is open - one that is takes the import itself
     /// (<see cref="Core.FileActivation.IFileActivationTarget"/>).
     ///
-    /// <para>This never <i>opens</i> one on the user's behalf: a window appearing on top of a
-    /// window nobody asked for, and PackBrowserOverlay's own "no Minecraft data location yet"
+    /// <para>This never <i>opens</i> one on the user's behalf: a module opening over a
+    /// window nobody asked it to leave, and PackBrowserOverlay's own "no Minecraft data location yet"
     /// fallback putting a folder picker in front of them unprompted - reachable here because
     /// MainWindow_Loaded resolves that cache asynchronously and this can run first.</para>
     ///
     /// <para>Calls ExpImpDel directly instead - the same utility PackBrowserOverlay's Add-pack
     /// button and drag-and-drop both reach downstream - and reports through the same Log() the
-    /// rest of the window uses, one pack at a time, no windows and no pickers either way.</para>
+    /// rest of the window uses, one pack at a time, no modules and no pickers either way.</para>
     ///
     /// Per-file messages come straight from ExpImpDel.ImportStatusChanged rather than a
     /// generic pass/fail here - PackBrowserOverlay already subscribes to the exact same event
@@ -158,19 +158,19 @@ public sealed partial class MainWindow
     /// (Minecraft's own resource_packs vs. this app's RTX_Cache) and share no state, so there
     /// is no correctness reason for a slow import of one type to hold up the other. The
     /// double-activation hazard McpackImportLock's remarks describe applies here just the
-    /// same, and App.xaml.cs's FilterRecentlyHandledFiles is the same first line of defence -
+    /// same, and FileActivationRouter's FilterRecentlyHandledFiles is the same first line of defence -
     /// this lock is only for genuinely separate concurrent .rtpack requests.
     /// </summary>
     private static readonly SemaphoreSlim RtpackImportLock = new(1, 1);
 
     /// <summary>
-    /// Entry point for .rtpack file-type-association activation (see App.xaml.cs) - same
-    /// idea as ImportPackFilesAsync, just for BetterRTX custom presets. Does not open
-    /// BetterRTXManagerOverlay: importing a preset into the app's local cache is handled by
-    /// BetterRTXManagerOverlay.ImportPresetFilesHeadlessAsync, which never shows a window at
-    /// all (see its own remarks for why that's safe here specifically). Applying an imported
-    /// preset to the game still only ever happens through the window itself, unaffected by
-    /// this - this only gets a preset into the list waiting there next time it's opened.
+    /// Entry point for .rtpack file activation when the BetterRTX manager isn't open - same
+    /// idea as ImportPackFilesAsync, just for BetterRTX custom presets. When the manager is
+    /// open, <see cref="Core.FileActivation.FileActivationRouter"/> hands the files to it
+    /// instead (§2g). Does not open the manager: importing into the app's preset cache is
+    /// <see cref="Modules.BetterRTX.BetterRTXManager.ImportPresetFilesHeadlessAsync"/>, which
+    /// needs no UI at all. Installing a preset into the game still only ever happens from the
+    /// manager itself - this only puts the preset in its list, ready for the next time it opens.
     /// </summary>
     public async Task ImportBetterRTXPresetFilesAsync(IReadOnlyList<string> filePaths)
     {
@@ -207,8 +207,8 @@ public sealed partial class MainWindow
             // If the user already has BetterRTXManagerOverlay open, its list was built before
             // this import landed - refresh it so it isn't left showing stale contents.
             if (succeeded > 0)
-                foreach (var managerWindow in _openModules.OfType<Modules.BetterRTX.BetterRTXManagerOverlay>())
-                    await managerWindow.RefreshLocalPresetsAsync();
+                foreach (var manager in _openModules.OfType<Modules.BetterRTX.BetterRTXManagerOverlay>())
+                    await manager.RefreshLocalPresetsAsync();
         }
         finally
         {
