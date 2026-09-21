@@ -2350,26 +2350,21 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)
 
+- be a lot less TIGHT with the cooldowns ALL THROUGHOUT the app, ALL throughout, EVERYWHERE.
+
+- add a refresh button to packupdater menu too..?
+something to sync/check for updates again, not with its own cooldown, let it reflect cooldown of last checked.
+gives a bit of visual assurance that things are... up to date and not stale.
+
+- Improve the .rtpack/.mcpack icons - something nicer looking and more creative.
+
+- restructure main window to be less sloppy and more correct whilst looking the same by the end.
+the layout works perfectly but is wrong in many spots, with many dumb margins
+
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
 
 - Do the TODOs scattered in the code
-
-- restructuring the whole thing, no more module-in-Windows, all in main window, changes the whole page.
-
-- Should ditch the module-in-window structure
-everything must be on main window, like most modern winui apps do
-the design choice was an organic one, simple way to limit the lifecycle of presentation while letting background run
-some thoughts need to be thunk surrounding this shift, some features can't be used in parallel, etc..
-
-Make the app a a NAVIGABLE PLACE rather than a module launcher.
-everything keeps running in the background and so long as it does, continues to disable other features similar to current design.
-thins is the current design enforces this pretty nicely
-leaving a window kills a lot of its temp info/tasks
-so other things become available
-it sort of.. Holds the user in the windiw by their choice and if they leave its their fault, you don't have to babysit.
-but
-figure a better design honestly... something cleaner to work with.
 
 - Update the documentation, make it more useful for users who use the app to see.
 
@@ -2380,12 +2375,13 @@ apparently some third party launchers use them for other things, like userdata, 
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line, customize its visuals, etc... to make it look like before with layering tricks
 
->> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.
+- How would a greater redesign of Mainwindow even work? (for 5.0?)
+Where would tuning go. what'd happen to logs
+a redesign must be thought thoroughly
+maybe navigation view? like every other winui 3.0 app on the planet, or something more clever that keeps the app's visual design
+while offloading Tuning elsewhere...
+Tuner is no longer "the main dish" its a module like the others but the main window is still designed around it..
+the thing is it is such a core part of the app too. figure this out later.
 
-- More previewer asset ideas:
-random block renders thrown in there
-iconns/logos of features of app thrown in there too, one for each would be enough
-Idea, of a render of a Tuner block, but each side features one of the feature-unique icons you've made!
-Also leave a reference to the original icon: Netherite, and the slightly uglier one after that.
-Leave references to iconic Vanilla RTX worlds as well, from its previous updates/history
+>> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.
 */
