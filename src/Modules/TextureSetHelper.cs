@@ -10,10 +10,9 @@ using Vanilla_RTX_App.Modules.Json;
 
 namespace Vanilla_RTX_App.Modules;
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  TextureSetHelper  ──  parsing, resolution, and virtual-bitmap creation
-// ══════════════════════════════════════════════════════════════════════════════
-
+/// <summary>
+///  TextureSetHelper: parsing, resolution, and virtual-bitmap creation
+/// </summary>
 public static class TextureSetHelper
 {
     public enum TextureKind { Color, Mer, Normal, Heightmap }
