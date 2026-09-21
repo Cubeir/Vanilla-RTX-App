@@ -2373,9 +2373,6 @@ some helpers are helpers but within them more helpers, clean the code... that cl
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
 
-- Update the documentation, make it more useful for users who use the app to see it.
-And PSAs, going forward,version gated! with many new useful features.
-
 - Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
 apparently some third party launchers use them for other things, like userdata, as well..
 ..but wait for at least a single report of failure related to this before touching anything

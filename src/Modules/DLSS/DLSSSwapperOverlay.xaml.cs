@@ -586,7 +586,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
             url: Links.DlssProvider,
             title: "Download DLSS files",
             glyph: "",
-            guideText: "Once your your desired DLSS dll files have finished downloading, click Done.",
+            guideText: "Once your your desired DLSS .dll files have finished downloading, click Done, and they'll automatically import.",
             stagingTag: "DLSS",
             watchedExtensions: new[] { ".dll", ".zip" },
             onFilesReady: ImportDllFilesAsync);

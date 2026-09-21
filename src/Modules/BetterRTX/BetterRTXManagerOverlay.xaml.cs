@@ -1105,7 +1105,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             url: Links.BetterRtxCreator,
             title: "Create your own preset",
             glyph: "",
-            guideText: "Once you've customized your preset, click Export, and export as .rtpack. Once downloaded, click Done; It'll auto-import & you can install it from the window.",
+            guideText: "Once you've customized your preset, click Export, build and export as .rtpack. Once it downloads, click Done; It'll auto-import & you can install it.",
             stagingTag: "BetterRTX",
             watchedExtensions: BetterRTXManager.SupportedCustomPresetExtensions,
             onFilesReady: ImportCustomPresetsAsync);

@@ -128,7 +128,7 @@
                     VerticalAlignment="Center"
                     Visibility="Collapsed"
                     Click="ScrollTopButton_Click"
-                    ToolTipService.ToolTip="Back to top">
+                    ToolTipService.ToolTip="Go back to the top">
                 <FontIcon Glyph="&#xE74A;" FontSize="14" />
             </Button>
 
