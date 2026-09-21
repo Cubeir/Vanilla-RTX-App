@@ -758,16 +758,21 @@ public static class PostProcess
     /// UpdateManifest is about to overwrite anyway (UUIDs, metadata, capabilities) is not
     /// carried, and legacy fields with no modern meaning are dropped.</para>
     ///
-    /// <para><b><c>min_engine_version</c> is deliberately not written.</b> Nothing in a legacy
-    /// manifest says which game version the pack targets, and a value invented here would be a
-    /// claim about the pack nobody made - §4.18's rule, and the exact failure that rule came from.
-    /// A format 1 manifest promoted to 2 has always gone out without one, and loads.</para>
+    /// <para><b><c>min_engine_version</c> is always <see cref="LegacyMinEngineVersion"/>.</b>
+    /// A legacy manifest has no such field and nothing in it says which game version it targets,
+    /// so there is no value to carry; this is a fixed default rather than a guess about the pack.
+    /// Written as an int array, the form format_version 2 takes. It does not contradict §4.18's
+    /// rule against touching this field: that rule protects a value the author wrote, and here
+    /// the author wrote none and the manifest is being built from scratch. A modern manifest's
+    /// <c>min_engine_version</c>, present or absent, is still never touched.</para>
     ///
     /// <para>Versions become the modern three-integer form: an array is taken as-is, a string like
     /// <c>"1.4.4.1"</c> keeps its first three numeric parts, and anything unreadable becomes
     /// <c>[1, 0, 0]</c>. A pack with no module, or no resources module, gets one, since it
     /// reached Alchitex as a resource pack.</para>
     /// </summary>
+    private static readonly int[] LegacyMinEngineVersion = { 1, 21, 30 };
+
     private static JsonObject? PromoteLegacyManifest(string legacyPath)
     {
         var legacy = PackManifest.FromFile(legacyPath);
@@ -786,6 +791,7 @@ public static class PostProcess
         if (legacy.HeaderDescription is { } description) header["description"] = description;
         header["uuid"] = Guid.NewGuid().ToString();
         header["version"] = IntArray(version);
+        header["min_engine_version"] = IntArray(LegacyMinEngineVersion);
 
         var modules = new JsonArray();
         foreach (var legacyModule in legacy.Modules)
