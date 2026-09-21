@@ -854,24 +854,24 @@ public sealed partial class MainWindow : Window
                 Log("What? you're expecting some kind of hidden message?? Believe me I've crammed enough of those throughout the app already.", LogLevel.VanillaRTX);
                 Task.Run(async () =>
                 {
-                    await Task.Delay(5000);
+                    await Task.Delay(5666);
                     Log("But now that you've found this one in particular, I won't leave you empty-handed. Wait a couple of seconds...", LogLevel.Lengthy);
-                    await Task.Delay(4000);
+                    await Task.Delay(6660);
                     _ = OpenUrl("https://youtu.be/1MhB8mF10H4?si=UragVyvGtqUgm4Oi&t=450");
                     await Task.Delay(3014);
                     Log("I just love this piece! That's it. Hope you like it too.", LogLevel.Misc);
-                    await Task.Delay(delay: TimeSpan.FromMinutes(10));
-                    Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something in: 5 hours.", LogLevel.Lengthy);
+                    await Task.Delay(delay: TimeSpan.FromMinutes(11));
+                    Log("The secret message you triggered ten minutes ago wasn't done yet... It might do something, several hours from now...", LogLevel.Lengthy);
                     await Task.Delay(delay: TimeSpan.FromHours(7));
                     Log("This was Cubeir, creator of Vanilla RTX, this app, and everything else around it...", LogLevel.VanillaRTX);
                     await Task.Delay(2718);
-                    Log("If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?", LogLevel.Error);
+                    Log("If people knew the amount of love, effort, time I had to put in and the difficulties I had to push through to keep this up, maybe they'd appreciate it.. just a tiny bit more", LogLevel.Error);
                     await Task.Delay(2718);
                     Log("Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!", LogLevel.Warning);
 
                     int iteration = 0;
                     var rng = Random.Shared;
-                    string[] baseMsgs = { "If people knew the amount of love, effort, and difficulty I had to go through to keep this up, maybe they'd appreciate it.. just a tiny bit more?",
+                    string[] baseMsgs = { "If people knew the amount of love, effort, time I had to put in and the difficulties I had to push through to keep this up, maybe they'd appreciate it.. just a tiny bit more",
                                              "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
                     LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
                     string[] spookyEmojis = { "👁️" };
@@ -1194,7 +1194,7 @@ public sealed partial class MainWindow : Window
         var editionName = MinecraftUserDataLocator.GetVersionDisplayName(targetingPreview);
         var lead = outdatedCount > 1 ? "Vanilla RTX updates are" : "A Vanilla RTX update is";
 
-        Log($"{lead} available for {editionName}, check the '{menuName}' menu.", LogLevel.VanillaRTX);
+        Log($"{lead} available for {editionName}, check the '{menuName}' menu.", LogLevel.Package);
     }
 
 
@@ -2095,7 +2095,7 @@ public sealed partial class MainWindow : Window
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Misc, PSA, Alchitex, Cache,
+        Success, Informational, Warning, Error, Network, Lengthy, Misc, PSA, Alchitex, Cache, Package,
         DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset, Import
     }
 
@@ -2170,6 +2170,7 @@ public sealed partial class MainWindow : Window
             LogLevel.BetterRTX => "🧈 ",
             LogLevel.LUT => "🎨 ",
             LogLevel.VanillaRTX => "⛏️ ",
+            LogLevel.Package => "📦 ",
             LogLevel.Import => "📥 ",
             null => "",
             _ => "💩 "
@@ -2365,6 +2366,9 @@ gives a bit of visual assurance that things are... up to date and not stale.
 
 - restructure main window to be less sloppy and more correct whilst looking the same by the end.
 the layout works perfectly but is wrong in many spots, with many dumb margins
+
+- Breakdown Helpers.cs into more digestible pieces, a Helpers folder, with separated files for each foundational helper
+some helpers are helpers but within them more helpers, clean the code... that class grew organically.
 
 - Look deeper into Package.appxmanifest Properties, there is a lot here you're not using but could be useful/replace existing manner of doing things
 > Tick the app as supporting regular English and British English as well .. no reason not to.
