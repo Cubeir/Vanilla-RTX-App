@@ -57,7 +57,7 @@ public sealed partial class ReviewPromptControl : UserControl
         Hide();
     }
 
-    private const double FADE_MS = 125;
+    private const double FADE_MS = 100;
 
     private Storyboard? _fade;
     private bool _hiding;
