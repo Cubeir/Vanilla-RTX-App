@@ -11,19 +11,6 @@
              IsHitTestVisible="False"
              IsTextScaleFactorEnabled="False">
 
-    <!-- Edge-to-edge over the window, save for the 37px titlebar strip above it (matches every
-         module window's own TitleBarBackground height) so the system titlebar stays reachable
-         while this is open, and the overlay reads as sitting directly beneath it - same bevel,
-         same shadow, no gap.
-
-         Background is deliberately SolidBackgroundFillColorBase (a Color resource, wrapped as a
-         plain opaque brush) rather than the usual CardBackgroundFillColorDefaultBrush every other
-         card in this app uses - that one carries real alpha, designed to look right sitting on
-         top of the window's own acrylic backdrop. There is nothing behind this panel but the live
-         window content it's supposed to be replacing, so anything less than fully opaque let that
-         content bleed straight through and rendered as garbled overlapping text. -->
-    <!-- No top inset of its own: both hosts are ModuleOverlays, which already start below
-         the titlebar, and a second 36px here would sit this that far down inside them. -->
     <Border x:Name="Panel"
             Background="{ThemeResource SolidBackgroundFillColorBase}"
             Translation="0,0,64">
@@ -102,12 +89,7 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Downloads shelf - a small floating, opaque card (not the translucent card
-                     brush - same reasoning as Panel above) anchored over the page, bottom-right.
-                     Collapsed until the first watched-extension download starts, then stays up
-                     for the rest of the session so the user can see exactly what came down and
-                     whether it finished - this is the entire answer to "how do I know when it's
-                     safe to click Done". -->
+                <!-- Downloads shelf, so user can see when downloads finish before clicking Done. -->
                 <Border x:Name="DownloadsShelf"
                         Visibility="Collapsed"
                         Background="{ThemeResource SolidBackgroundFillColorBase}"
@@ -116,7 +98,7 @@
                         CornerRadius="8"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Bottom"
-                        Margin="0,0,16,16"
+                        Margin="0,0,16,8"
                         Width="360"
                         MaxHeight="280"
                         Translation="0,0,48">
