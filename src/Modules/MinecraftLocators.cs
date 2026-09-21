@@ -553,28 +553,12 @@ public static class MinecraftGDKLocator
         return null;
     }
     /// <summary>
-    /// Resolves a path to its physical target, following symlinks/junctions to the end.
-    /// Returns the original path unchanged if it is not a link or resolution fails.
-    /// Safe to call on any path - non-links are a no-op.
+    /// Resolves a path to its physical target, following symlinks and junctions anywhere
+    /// along it. Returns the original path unchanged if there is nothing to resolve or
+    /// resolution fails. See <see cref="Helpers.ResolveToPhysicalPath"/>, shared with
+    /// <see cref="MinecraftUserDataLocator"/>.
     /// </summary>
-    private static string ResolveToPhysicalPath(string path)
-    {
-        try
-        {
-            var resolved = Directory.ResolveLinkTarget(path, returnFinalTarget: true)?.FullName;
-            if (!string.IsNullOrEmpty(resolved) && Directory.Exists(resolved))
-            {
-                Trace.WriteLine($"[GDKLocator] Symlink resolved: {path} → {resolved}");
-                return resolved;
-            }
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[GDKLocator] ResolveLinkTarget failed for {path}: {ex.Message}");
-        }
-
-        return path;
-    }
+    private static string ResolveToPhysicalPath(string path) => Helpers.ResolveToPhysicalPath(path);
 
     /// <summary>
     /// Returns true if the directory exists and directly contains Minecraft.Windows.exe.
@@ -728,6 +712,12 @@ public static class MinecraftGDKLocator
 /// All deeper paths (com.mojang, resource_packs, options.txt) are derived from this
 /// root on demand via the helper methods below.
 ///
+/// Like GDKLocator's, that stored path is always PHYSICAL: symlinks and junctions - on the
+/// folder itself or anywhere above it - are resolved before a path is validated or cached,
+/// via <see cref="Helpers.ResolveToPhysicalPath"/>. Third-party launchers relocate user data
+/// with links, and every user-data path in the app is built from this root, so resolving it
+/// here is what makes all of them physical without any of them doing it themselves.
+///
 /// Unlike GDKLocator, there is no exe or config file to serve as an absolute gospel
 /// here - validation is based on folder structure (presence of the "Users" subfolder).
 /// If the default AppData location is absent, we cannot reliably auto-discover an
@@ -806,6 +796,8 @@ public static class MinecraftUserDataLocator
     /// </summary>
     public static bool TrySetCustomDataRoot(bool isPreview, string path)
     {
+        path = Helpers.ResolveToPhysicalPath(path);
+
         if (!IsValidDataRoot(path, isPreview))
         {
             Trace.WriteLine($"[UserDataLocator] Rejected custom path (no Users subfolder): {path}");
@@ -929,12 +921,17 @@ public static class MinecraftUserDataLocator
             ? EnvironmentVariables.Persistent.MinecraftPreviewDataPath
             : EnvironmentVariables.Persistent.MinecraftDataPath;
 
-        // 1. Cached path - still there and valid?
+        // 1. Cached path - still there and valid? Resolved again every time: a path cached
+        // before resolution existed, or a link that has since been repointed, is corrected here
+        // rather than trusted.
         if (!string.IsNullOrEmpty(cachedPath))
         {
-            if (IsValidDataRoot(cachedPath, isPreview))
+            var physicalPath = Helpers.ResolveToPhysicalPath(cachedPath);
+            if (IsValidDataRoot(physicalPath, isPreview))
             {
-                Trace.WriteLine($"[UserDataLocator] {versionName} cache valid: {cachedPath}");
+                if (!string.Equals(physicalPath, cachedPath, StringComparison.OrdinalIgnoreCase))
+                    SetCachedPath(isPreview, physicalPath);
+                Trace.WriteLine($"[UserDataLocator] {versionName} cache valid: {physicalPath}");
                 return true;
             }
 
@@ -944,9 +941,9 @@ public static class MinecraftUserDataLocator
 
         // 2. Default AppData location
         var folderName = isPreview ? PreviewRootFolderName : StableRootFolderName;
-        var defaultPath = Path.Combine(
+        var defaultPath = Helpers.ResolveToPhysicalPath(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            folderName);
+            folderName));
 
         if (IsValidDataRoot(defaultPath, isPreview))
         {

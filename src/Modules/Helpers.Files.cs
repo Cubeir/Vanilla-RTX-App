@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace Vanilla_RTX_App.Modules;
 
@@ -128,6 +130,98 @@ public static partial class Helpers
             Volatile.Write(ref _elevatedReplaceInFlight, 0);
         }
     }
+
+
+    /// <summary>
+    /// The physical location of a folder: <paramref name="path"/> with every symlink and
+    /// junction along it followed to the end - at the folder itself or at any folder above it -
+    /// along with a <c>subst</c>-mapped drive. Returns the path unchanged when there is nothing to
+    /// resolve or resolution fails, so it is safe to call on any path.
+    ///
+    /// <para><b>Why it matters, and why it is only called at the roots.</b> Most file APIs
+    /// follow links transparently, so a linked path works until something *compares* paths -
+    /// prefix checks, relative paths, a cache keyed by path, a rename that has to stay in the same
+    /// parent - and a linked and a physical spelling of one folder disagree. Every path in the app
+    /// is built from four roots (each edition's install and user data folder), so the two
+    /// locators resolve those once, as they are cached, and everything built from them is
+    /// physical by construction.</para>
+    ///
+    /// <para><b>Asks Windows for the open folder's final path</b>
+    /// (<c>GetFinalPathNameByHandle</c>) rather than reading link targets one at a time:
+    /// <see cref="Directory.ResolveLinkTarget(string, bool)"/> only resolves the last folder in
+    /// the path, so a junction on a parent - a redirected AppData, for instance - goes unnoticed.
+    /// That remains the fallback for a folder that can't be opened (access-restricted locations
+    /// like WindowsApps), where it at least covers the common case of the folder itself being a
+    /// link.</para>
+    /// </summary>
+    public static string ResolveToPhysicalPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return path;
+
+        var resolved = TryGetFinalPath(path) ?? TryResolveLinkTarget(path);
+        if (resolved is null || !Directory.Exists(resolved)
+            || string.Equals(resolved.TrimEnd('\\'), path.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+            return path;
+
+        Trace.WriteLine($"[Paths] Resolved to physical path: {path} -> {resolved}");
+        return resolved;
+    }
+
+    private static string? TryGetFinalPath(string path)
+    {
+        try
+        {
+            // No access rights are needed just to ask where a handle points; backup semantics
+            // is what lets CreateFile open a directory at all.
+            using var handle = CreateFileW(path, 0, FileShareAll, IntPtr.Zero,
+                OpenExisting, FileFlagBackupSemantics, IntPtr.Zero);
+            if (handle.IsInvalid) return null;
+
+            var buffer = new char[512];
+            var length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Length, 0);
+            if (length > buffer.Length)
+            {
+                // Too small: the return value is the size needed, terminator included.
+                buffer = new char[length];
+                length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Length, 0);
+            }
+            if (length == 0 || length > buffer.Length) return null;
+
+            // The answer comes back in the \\?\ form; strip it to an ordinary path.
+            var final = new string(buffer, 0, (int)length);
+            if (final.StartsWith(@"\\?\UNC\", StringComparison.Ordinal)) return @"\\" + final[8..];
+            if (final.StartsWith(@"\\?\", StringComparison.Ordinal)) return final[4..];
+            return final;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Paths] Couldn't get the final path of {path}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static string? TryResolveLinkTarget(string path)
+    {
+        try { return Directory.ResolveLinkTarget(path, returnFinalTarget: true)?.FullName; }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Paths] ResolveLinkTarget failed for {path}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private const uint FileShareAll = 0x1 | 0x2 | 0x4; // read | write | delete
+    private const uint OpenExisting = 3;
+    private const uint FileFlagBackupSemantics = 0x02000000;
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(string lpFileName, uint dwDesiredAccess,
+        uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition,
+        uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandleW(SafeFileHandle hFile, [Out] char[] lpszFilePath,
+        uint cchFilePath, uint dwFlags);
 
 
     /// <summary>
