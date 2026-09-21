@@ -1550,11 +1550,10 @@ public sealed partial class Alchitex : ModuleOverlay
             {
                 Title = $"{packName} may not be suitable for RTX enhancement by RTX Reactor!",
                 Content =
-                    $"\"{packName}\" isn't tagged as an \"{PackBrowserOverlay.AlchitexCandidateTag}\" - it has few block " +
-                    "textures to work with, or uses a pack format too old to build RTX support on.\n\n" +
+                    $"\"{packName}\" isn't tagged as an \"{PackBrowserOverlay.AlchitexCandidateTag}\"\n\n" +
                     "You can still run it. Your installed copy is left untouched and the result is " +
-                    "a separate RTX-compatible pack, so there's nothing to lose, but it may come out with little to " +
-                    "nothing added to it, or it may not work at all.",
+                    "a separate RTX-compatible pack, so there's nothing to lose, " +
+                    "but it may come out with little to nothing added to it, or it may not work at all.",
                 PrimaryButtonText = "Generate anyway",
                 CloseButtonText = "Skip this pack",
                 DefaultButton = ContentDialogButton.Close,

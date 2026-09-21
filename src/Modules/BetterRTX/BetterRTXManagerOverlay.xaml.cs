@@ -757,7 +757,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             description = isCurrent
                 ? Helpers.SanitizePathForDisplay(localPreset.PresetPath ?? "")
                 : isDefault
-                    ? "Click to rollback" + (Helpers.RuntimeFlags.Set("Already_Informed_About_How_Default_RTX_Preset_Is_Made") ? ": this preset was automatically created from your latest game files upon your first attempt at installing a BetterRTX preset" : "")
+                    ? "Click to rollback" + (Helpers.RuntimeFlags.Set("Already_Informed_About_How_Default_RTX_Preset_Is_Made") ? ": this preset was automatically created from your game files" : "")
                     : "Click to install";
         }
         else if (presetData is DisplayPresetData displayPreset)

@@ -650,7 +650,7 @@
                                 CornerRadius="6,0,0,6"
                                 BorderThickness="0"
                                 IsTextScaleFactorEnabled="False"
-                                ToolTipService.ToolTip="Clears all pack sections.">
+                                ToolTipService.ToolTip="Clears all pack selections.">
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xEA99;"

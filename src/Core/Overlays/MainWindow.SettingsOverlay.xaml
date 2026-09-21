@@ -549,7 +549,7 @@
                         <TextBlock Text="Content sources"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                        <TextBlock Text="Where the app gets some of the things it doesn't ship by itself. Change one and that feature goes to your address instead; the defaults will be used i what's here ever stops being usable."
+                        <TextBlock Text="Where the app gets some of the things it doesn't ship by itself. Change one and that feature goes to your address instead."
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <TextBlock Text="Documentation page"
