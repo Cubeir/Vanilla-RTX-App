@@ -532,8 +532,8 @@ public sealed class MarkdownRenderer
         columnCount = Math.Max(columnCount, 1);
 
         var grid = new Grid();
-        for (var c = 0; c < columnCount; c++)
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        foreach (var width in ResolveColumnWidths(table, columnCount))
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
 
         var rowIndex = 0;
         foreach (var rowBlock in table)
@@ -595,13 +595,59 @@ public sealed class MarkdownRenderer
             BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(1, 1, 0, 0),
             CornerRadius = new CornerRadius(4),
-            Child = new ScrollViewer
-            {
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                Content = grid
-            }
+            // A table with nothing to wrap hugs its content. Stretched, the outer border's top
+            // edge would run on past the last column, since the cells draw the other edges.
+            HorizontalAlignment = grid.ColumnDefinitions.Any(c => c.Width.IsStar)
+                ? HorizontalAlignment.Stretch
+                : HorizontalAlignment.Left,
+            Child = grid
         };
+    }
+
+    /// <summary>Longest cell, in characters, that a column may hold and still be sized to its content rather than wrapped.</summary>
+    private const int TableAutoColumnMaxChars = 32;
+
+    /// <summary>
+    /// How wide each column is: short columns take exactly their content's width, and long
+    /// ones share what is left in proportion to how much text they hold, wrapping inside it -
+    /// roughly what GitHub does with the same table.
+    ///
+    /// <para><b>A table never scrolls sideways, deliberately.</b> Every column used to be sized
+    /// to its content inside a horizontal ScrollViewer, so a column of sentences ran far off
+    /// the edge and had to be scrolled to be read. That nested ScrollViewer also caused two bugs
+    /// of its own: its scrollbar draws over content rather than beside it, covering the last
+    /// row, and it swallowed mouse-wheel input it had no vertical room to use, so the page
+    /// stopped scrolling whenever the pointer crossed a table. Wrapping removes the need for it,
+    /// and both bugs with it.</para>
+    ///
+    /// <para>A table whose short columns alone are wider than the page is clipped rather than
+    /// scrollable - a trade taken knowingly, since documentation tables are a few narrow label
+    /// columns and at most a couple of prose ones.</para>
+    /// </summary>
+    private static List<GridLength> ResolveColumnWidths(MT.Table table, int columnCount)
+    {
+        var longest = new int[columnCount];
+        foreach (var rowBlock in table)
+        {
+            if (rowBlock is not MT.TableRow row) continue;
+            var col = 0;
+            foreach (var cellBlock in row)
+            {
+                if (col >= columnCount) break;
+                if (cellBlock is MT.TableCell cell && Math.Max(1, cell.ColumnSpan) == 1)
+                {
+                    var length = cell.OfType<MS.ParagraphBlock>().Sum(p => GetPlainText(p.Inline).Length);
+                    longest[col] = Math.Max(longest[col], length);
+                }
+                col += cellBlock is MT.TableCell c ? Math.Max(1, c.ColumnSpan) : 1;
+            }
+        }
+
+        return longest
+            .Select(chars => chars <= TableAutoColumnMaxChars
+                ? GridLength.Auto
+                : new GridLength(chars, GridUnitType.Star))
+            .ToList();
     }
 
     // =========================================================================
