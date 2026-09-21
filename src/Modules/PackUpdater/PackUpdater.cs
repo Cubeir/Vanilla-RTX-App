@@ -66,11 +66,11 @@ public class PackUpdater
     // for identical data.
     private const string RemoteVersionsCacheKey = "RemoteVersionsCache";
     private const string RemoteVersionsCacheTimeKey = "RemoteVersionsCacheTime";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(5);
 
     // Cache validation check cooldown (Zip re-check versus remote before trying to install from it)
     private const string LastCacheCheckKey = "LastCacheValidationCheck";
-    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(55);
+    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(30);
 
     private bool _installationInProgress = false;
     private PackType? _currentInstallingPack = null;

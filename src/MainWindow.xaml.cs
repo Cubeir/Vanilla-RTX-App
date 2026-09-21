@@ -29,8 +29,9 @@ using static Vanilla_RTX_App.Core.EnvironmentVariables.Persistent;
 using static Vanilla_RTX_App.Modules.Helpers;
 
 namespace Vanilla_RTX_App;
-
-// For dynamically updating number of other selected packs in the UI (select other packs button)
+/// <summary>
+/// For dynamically updating number of other selected packs in the UI (select other packs button)
+/// </summary>
 public class PackSelectionViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -77,9 +78,6 @@ public class PackSelectionViewModel : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BrowseButtonLabel))));
     }
 }
-
-// --------------------------------------------\                       /-------------------------------------------- \\
-
 public sealed partial class MainWindow : Window
 {
     #region MainWindow Boilerplate
@@ -1891,10 +1889,6 @@ public sealed partial class MainWindow : Window
     {
         if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
 
-        // Packs increasingly declare "pbr"/"raytraced" while shipping little or no actual content for the graphics mode, and those
-        // are precisely RTX Reactor's audience (Faithful 32x and friends), yet none of them can ever earn the candidate tag.
-        // The tag is now advisory only, anything the user  selected can be sent through, and RTX Reactor confirms per pack,
-        // in its own window, before touching one that either already claims PBR or looks like a poor fit.
         if (SelectedPacks.Count == 0)
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
@@ -1902,10 +1896,6 @@ public sealed partial class MainWindow : Window
                 Log($"RTX Reactor adds proper RTX support to texture packs, it works best on packs tagged as {PackBrowserOverlay.AlchitexCandidateTag}.", LogLevel.Alchitex);
             }
 #if DEBUG
-            // Debug builds open the window with an empty queue on purpose. RTX Reactor's
-            // dev-only tools: the materials.json bootstrapper and the PBR test bench, don't
-            // read the pack queue at all, so requiring a pack just to reach them is pure
-            // friction during development. Generate refuses an empty queue on its own anyway.
             Log("No packs selected - opening RTX Reactor anyway (Debug build).", LogLevel.Alchitex);
 #else
             Log("You must select at least one texture pack to use this feature on.", LogLevel.Warning);
@@ -2350,13 +2340,9 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)
 
-- be a lot less TIGHT with the cooldowns ALL THROUGHOUT the app, ALL throughout, EVERYWHERE.
-
 - add a refresh button to packupdater menu too..?
 something to sync/check for updates again, not with its own cooldown, let it reflect cooldown of last checked.
 gives a bit of visual assurance that things are... up to date and not stale.
-
-- Improve the .rtpack/.mcpack icons - something nicer looking and more creative.
 
 - restructure main window to be less sloppy and more correct whilst looking the same by the end.
 the layout works perfectly but is wrong in many spots, with many dumb margins
@@ -2366,7 +2352,7 @@ the layout works perfectly but is wrong in many spots, with many dumb margins
 
 - Do the TODOs scattered in the code
 
-- Update the documentation, make it more useful for users who use the app to see.
+- Update the documentation, make it more useful for users who use the app to see it.
 
 - Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
 apparently some third party launchers use them for other things, like userdata, as well..
