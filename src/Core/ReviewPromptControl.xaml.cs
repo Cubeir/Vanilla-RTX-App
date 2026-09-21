@@ -3,12 +3,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Storage;
 using System.Diagnostics;
 
 namespace Vanilla_RTX_App.Core;
 
-// TODO: Animate Opacity, instead of suddenly making it visible?
 public sealed partial class ReviewPromptControl : UserControl
 {
     public event EventHandler? Closed;
@@ -57,11 +57,46 @@ public sealed partial class ReviewPromptControl : UserControl
         Hide();
     }
 
+    /// <summary>
+    /// Fades the prompt in over <see cref="FADE_MS"/>, or shows it outright when UI animations
+    /// are suspended - a storyboard under that setting is a snap with overhead, the same call
+    /// every overlay in Core\Overlays makes.
+    ///
+    /// <para>Opacity is zeroed before the grid goes Visible, or the first frame draws it at full
+    /// strength and the fade starts from a flash. Hiding is deliberately still instant: every way
+    /// out is the user dismissing it, and the control leaves the tree the moment it closes.</para>
+    /// </summary>
     public void Show()
     {
+        if (EnvironmentVariables.Persistent.SuspendUIAnimations)
+        {
+            RootGrid.Opacity = 1;
+            RootGrid.Visibility = Visibility.Visible;
+            return;
+        }
+
+        RootGrid.Opacity = 0;
         RootGrid.Visibility = Visibility.Visible;
-        Trace.WriteLine("RootGrid visibility set to Visible");
+
+        var fade = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(FADE_MS)),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(fade, RootGrid);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+
+        var sb = new Storyboard();
+        sb.Children.Add(fade);
+        // A storyboard holds its end value without assigning it; write it back so nothing that
+        // stops this storyboard later can revert the prompt to invisible.
+        sb.Completed += (_, _) => RootGrid.Opacity = 1;
+        sb.Begin();
     }
+
+    private const double FADE_MS = 125;
 
     public void Hide()
     {
