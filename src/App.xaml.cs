@@ -126,6 +126,7 @@ public partial class App : Application
                 $"Time:      {DateTime.Now}\n" +
                 $"Message:   {message}\n" +
                 $"Detail:\n{detail}\n\n" +
+                $"{TraceManager.GetRecentExceptions()}\n" +
                 $"{TraceManager.GetAllTraceLogs()}\n\n");
         }
         catch { /* we're truly fucked then */ }
@@ -238,7 +239,112 @@ public static class TraceManager
         _listener = new InMemoryTraceListener(maxEntries: 25000);
         Trace.Listeners.Add(_listener);
 
+        AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceException;
+
         Trace.WriteLine("TraceManager initialized");
+    }
+
+    // ── Recent exceptions ─────────────────────────────────────────────────────
+
+    private sealed class ExceptionRecord
+    {
+        public DateTime Timestamp;
+        public int ThreadId;
+        public required string Key;
+        public required string Summary;
+        public required string Stack;
+        public int Repeats;
+    }
+
+    private const int MaxExceptionRecords = 40;
+    private const int MaxStackChars = 4000;
+    private static readonly LinkedList<ExceptionRecord> _exceptions = new();
+    private static readonly object _exceptionsLock = new();
+    [ThreadStatic] private static bool _inFirstChanceHandler;
+
+    /// <summary>
+    /// Keeps the last <see cref="MaxExceptionRecords"/> exceptions thrown anywhere in the
+    /// process, with the call stack that threw them, for the debug report and the crash log.
+    ///
+    /// <para><b>This is where the report's stack traces come from, and it has to be first-chance.</b>
+    /// The app catches almost everything it throws and logs <c>ex.Message</c> to Trace, so by the
+    /// time a user presses "Copy debug logs" the stack of the failure they are reporting is gone.
+    /// A stack captured at report time is only ever the button's own click handler. And
+    /// <c>ex.StackTrace</c> is no use here either: it is built while the exception unwinds, so at
+    /// first chance it holds the throwing frame and nothing above it - hence
+    /// <c>new StackTrace(1)</c>, which is the full call stack at the throw.</para>
+    ///
+    /// <para><b>Cost is per throw, and nothing when nothing throws.</b> A stack walk is tens of
+    /// microseconds; the heaviest thrower is a pack scan retrying malformed JSON, a few hundred
+    /// times at most. No file/line info is requested, which is the expensive half and needs PDBs
+    /// a Release build doesn't ship anyway - method names survive trimming and are enough.</para>
+    ///
+    /// <para>Cancellation is skipped: it is how every overlay stops its own work, not a failure.
+    /// A throw identical to the one before it (same type, message and stack - a retry loop)
+    /// bumps a counter instead of evicting everything else from the buffer. The handler must
+    /// never throw, and is guarded against re-entry because anything it calls could itself throw
+    /// first-chance.</para>
+    /// </summary>
+    private static void OnFirstChanceException(object? sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs e)
+    {
+        if (_inFirstChanceHandler || e.Exception is OperationCanceledException) return;
+        _inFirstChanceHandler = true;
+        try
+        {
+            var stack = new StackTrace(1, false).ToString();
+            if (stack.Length > MaxStackChars) stack = stack[..MaxStackChars] + "   ...";
+
+            var ex = e.Exception;
+            var summary = $"{ex.GetType().FullName} (0x{ex.HResult:X8}): {ex.Message}";
+            var key = summary + stack;
+
+            lock (_exceptionsLock)
+            {
+                if (_exceptions.Last?.Value is { } last && last.Key == key)
+                {
+                    last.Repeats++;
+                    last.Timestamp = DateTime.Now;
+                    return;
+                }
+
+                _exceptions.AddLast(new ExceptionRecord
+                {
+                    Timestamp = DateTime.Now,
+                    ThreadId = Environment.CurrentManagedThreadId,
+                    Key = key,
+                    Summary = summary,
+                    Stack = stack,
+                });
+                if (_exceptions.Count > MaxExceptionRecords)
+                    _exceptions.RemoveFirst();
+            }
+        }
+        catch { }
+        finally
+        {
+            _inFirstChanceHandler = false;
+        }
+    }
+
+    /// <summary>The recorded exceptions, oldest first, as a report section.</summary>
+    public static string GetRecentExceptions()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"===== Recent Exceptions (last {MaxExceptionRecords}, handled or not, cancellations excluded)");
+        lock (_exceptionsLock)
+        {
+            if (_exceptions.Count == 0)
+                sb.AppendLine("(none)");
+
+            foreach (var r in _exceptions)
+            {
+                sb.Append($"[{r.Timestamp:HH:mm:ss.fff}] [T{r.ThreadId}] {r.Summary}");
+                sb.AppendLine(r.Repeats > 0 ? $"  (x{r.Repeats + 1}, last at the time shown)" : "");
+                sb.AppendLine(r.Stack.TrimEnd());
+                sb.AppendLine();
+            }
+        }
+        return sb.ToString();
     }
 
     public static string GetAllTraceLogs()

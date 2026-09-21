@@ -1176,8 +1176,10 @@ public sealed partial class SettingsOverlay : UserControl
             sb.AppendLine("===== UI Controls State");
             CollectUIControlsState(sb);
 
-            // TODO: Stack trace
-            // Append later, could be useful
+            // Last, beside the trace it explains: a failure the log only names by its message
+            // shows up here with the stack that threw it.
+            sb.AppendLine();
+            sb.AppendLine(TraceManager.GetRecentExceptions());
 
             var dataPackage = new DataPackage();
             dataPackage.SetText(sb.ToString());
@@ -1290,6 +1292,54 @@ public sealed partial class SettingsOverlay : UserControl
                     sb.AppendLine($"UI Culture: {culture.Name}");
                 }
                 catch { /* non-critical */ }
+
+#if DEBUG
+                sb.AppendLine("Build: Debug");
+#else
+                sb.AppendLine("Build: Release");
+#endif
+
+                // Every timestamp in the trace is local time with no offset, so this is what lines
+                // the report up against a user saying "it broke around 3pm".
+                var now = DateTimeOffset.Now;
+                sb.AppendLine($"Report Time: {now:yyyy-MM-dd HH:mm:ss} (UTC{now:zzz})");
+
+                try
+                {
+                    using var process = Process.GetCurrentProcess();
+                    sb.AppendLine($"Session Uptime: {DateTime.Now - process.StartTime:d\\.hh\\:mm\\:ss}");
+                    sb.AppendLine($"Threads: {process.Threads.Count}, Handles: {process.HandleCount}");
+                }
+                catch { /* non-critical */ }
+
+                sb.AppendLine($"Managed Heap: {GC.GetTotalMemory(false) / 1024 / 1024} MB");
+
+                // Energy saver switches off the app's own motion (the Alchitex backdrop, the log's
+                // tick rate), so it explains "the animation doesn't play" reports on its own.
+                try { sb.AppendLine($"Energy Saver: {Windows.System.Power.PowerManager.EnergySaverStatus}"); }
+                catch { /* non-critical */ }
+
+                // Layout reports are unreadable without the size and scale they happened at.
+                try
+                {
+                    if (_host is not null)
+                    {
+                        var size = _host.AppWindow.Size;
+                        var scale = _host.Content?.XamlRoot?.RasterizationScale ?? 1.0;
+                        sb.AppendLine($"Window: {size.Width}x{size.Height} px at {scale * 100:0}% scale");
+                    }
+                }
+                catch { /* non-critical */ }
+
+                // The DLSS and BetterRTX import flows are the only WebView2 users and degrade to an
+                // error card without it, so a report from either wants to know what is installed.
+                try { sb.AppendLine($"WebView2 Runtime: {Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString()}"); }
+                catch (Exception ex) { sb.AppendLine($"WebView2 Runtime: unavailable ({ex.GetType().Name})"); }
+
+                // A control switched off from the announcements .md looks exactly like a bug from
+                // the outside - the controls section below shows it disabled, never why.
+                var suspended = OnlineTextsContent.SuspendControls;
+                sb.AppendLine($"Remotely Suspended Controls: {(suspended is { Length: > 0 } ? string.Join(", ", suspended) : "none")}");
 
                 sb.AppendLine();
             }
