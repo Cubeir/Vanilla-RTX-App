@@ -805,7 +805,8 @@ public static class PostProcess
             module["type"] = legacyModule.Type ?? "resources";
             module["uuid"] = Guid.NewGuid().ToString();
             module["version"] = IntArray(moduleVersion);
-            modules.Add(module);
+            // The cast selects the non-generic Add(JsonNode?); a bare JsonObject binds to the reflective Add<T> and trips the trimmer (IL2026)
+            modules.Add((JsonNode)module);
         }
 
         if (!legacy.HasResourceModule)
