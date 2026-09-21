@@ -208,10 +208,9 @@ public class MinecraftLauncher
 
     /// <summary>
     /// Applies all requested updates to a single options.txt file: validates
-    /// accessibility, clears read-only, backs up (.backup, overwritten each run —
-    /// purely a "don't curse me" safety net, never read back by the app), applies
-    /// each update line-by-line (appending any parameter not already present),
-    /// then writes the file back.
+    /// accessibility, clears read-only, applies each update line-by-line (appending any
+    /// parameter not already present), then - only if something changed - replaces the file
+    /// atomically, keeping the previous one as .backup. See <see cref="ReplaceAtomicallyAsync"/>.
     /// </summary>
     private static async Task<(bool success, bool modified, List<string> messages)> TryUpdateOptionsFileAsync(
         string optionsFilePath,
@@ -260,21 +259,55 @@ public class MinecraftLauncher
                 fileModified |= applied;
             }
 
-            // Backup is purely defensive — never read back by the app, just a
-            // safety net so the user has somewhere to go if something looks wrong.
-            // TODO: Maybe make it so it restores the backup if anything goes wrong, and make the backup be the
-            // version that is made once and never overriden, this idea is rough, think it through later.
-            var backupPath = optionsFilePath + ".backup";
-            File.Copy(optionsFilePath, backupPath, true);
+            // Every value already right: leave the file, and with it the backup, alone. That is
+            // what keeps .backup meaning "before the app's last real change" rather than being
+            // overwritten with an identical copy on every launch.
+            if (!fileModified)
+                return (true, false, messages);
 
-            await File.WriteAllLinesAsync(optionsFilePath, lines);
+            await ReplaceAtomicallyAsync(optionsFilePath, lines);
 
-            return (true, fileModified, messages);
+            return (true, true, messages);
         }
         catch (Exception ex)
         {
             messages.Add($"❗ Failed to update [{ownerLabel}] options file: {ex.Message}");
             return (false, false, messages);
+        }
+    }
+
+    /// <summary>
+    /// Writes <paramref name="lines"/> to a temp file beside <paramref name="optionsFilePath"/>,
+    /// then swaps it in with <see cref="File.Replace(string, string, string?)"/>, which moves the
+    /// previous file to <c>.backup</c> in the same step.
+    ///
+    /// <para><b>Atomic is the point.</b> Writing in place truncates first, so a failure mid-write
+    /// (disk full, an antivirus lock) leaves the game a half-written options.txt. Here the
+    /// original is untouched until the finished file replaces it whole, so a failure leaves it
+    /// exactly as it was and there is nothing to recover. The temp file lives in the same folder
+    /// because Replace needs source and destination on one volume.</para>
+    ///
+    /// <para><b>The backup is never restored automatically, deliberately.</b> It is the file as
+    /// it was before the app's last change, possibly weeks ago, and options.txt is where every
+    /// setting the user has changed in game since then lives - restoring it would roll all of
+    /// that back. Nothing needs it anyway: the line edits cannot fail on malformed content,
+    /// Bedrock rewrites an options.txt it can't read with defaults, and a missing file is never
+    /// visited (and is usually a reset the user made on purpose). It is there for a person to go
+    /// back to by hand.</para>
+    /// </summary>
+    private static async Task ReplaceAtomicallyAsync(string optionsFilePath, List<string> lines)
+    {
+        var tempPath = optionsFilePath + ".tmp";
+        try
+        {
+            await File.WriteAllLinesAsync(tempPath, lines);
+            File.Replace(tempPath, optionsFilePath, optionsFilePath + ".backup");
+        }
+        finally
+        {
+            // Gone already on success - Replace consumes its source. On failure, this is the
+            // only thing left behind.
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
         }
     }
 
