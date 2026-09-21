@@ -2371,10 +2371,6 @@ gives a bit of visual assurance that things are... up to date and not stale.
 - restructure main window to be less sloppy and more correct whilst looking the same by the end.
 the layout works perfectly but is wrong in many spots, with many dumb margins
 
-- Add something to actively resolve junctions/symlinks EVERYWHERE, not just for GDKLocator...
-apparently some third party launchers use them for other things, like userdata, as well..
-..but wait for at least a single report of failure related to this before touching anything
-
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line, customize its visuals, etc... to make it look like before with layering tricks
 
