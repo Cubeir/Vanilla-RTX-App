@@ -57,51 +57,89 @@ public sealed partial class ReviewPromptControl : UserControl
         Hide();
     }
 
+    private const double FADE_MS = 125;
+
+    private Storyboard? _fade;
+    private bool _hiding;
+
     /// <summary>
-    /// Fades the prompt in over <see cref="FADE_MS"/>, or shows it outright when UI animations
-    /// are suspended - a storyboard under that setting is a snap with overhead, the same call
-    /// every overlay in Core\Overlays makes.
-    ///
-    /// <para>Opacity is zeroed before the grid goes Visible, or the first frame draws it at full
-    /// strength and the fade starts from a flash. Hiding is deliberately still instant: every way
-    /// out is the user dismissing it, and the control leaves the tree the moment it closes.</para>
+    /// Fades the prompt in over <see cref="FADE_MS"/>. Opacity is zeroed before the grid goes
+    /// Visible, or the first frame draws it at full strength and the fade starts from a flash.
     /// </summary>
     public void Show()
     {
+        RootGrid.Opacity = 0;
+        RootGrid.Visibility = Visibility.Visible;
+        AnimateOpacity(1, onCompleted: null);
+    }
+
+    /// <summary>
+    /// Fades the prompt out, then collapses it and raises <see cref="Closed"/> - which takes the
+    /// control out of the tree, so that has to wait for the fade or there is nothing left to see
+    /// fading.
+    ///
+    /// <para><b>Hit testing goes off at once, and a second call is ignored.</b> The prompt stays on
+    /// screen for the length of the fade, and in that window a second click - on another button, or
+    /// the backdrop - would otherwise record a second, contradictory answer (Show later after Don't
+    /// show again) and raise Closed twice.</para>
+    /// </summary>
+    public void Hide()
+    {
+        if (_hiding) return;
+        _hiding = true;
+        RootGrid.IsHitTestVisible = false;
+
+        AnimateOpacity(0, () =>
+        {
+            RootGrid.Visibility = Visibility.Collapsed;
+            Closed?.Invoke(this, EventArgs.Empty);
+        });
+    }
+
+    /// <summary>
+    /// Animates <c>RootGrid</c>'s opacity, or assigns it outright when UI animations are
+    /// suspended - a storyboard under that setting is a snap with overhead, the same call every
+    /// overlay in Core\Overlays makes.
+    ///
+    /// <para>A fade already running is stopped where it stands, so hiding mid-fade-in fades out
+    /// from wherever it had got to. <c>Stop</c> reverts to the base value, hence the read-then-
+    /// assign. The end value is written back on completion for the same reason: a storyboard only
+    /// holds its end value, and the next <c>Stop</c> would otherwise undo it.</para>
+    /// </summary>
+    private void AnimateOpacity(double to, Action? onCompleted)
+    {
+        var current = RootGrid.Opacity;
+        _fade?.Stop();
+        _fade = null;
+
         if (EnvironmentVariables.Persistent.SuspendUIAnimations)
         {
-            RootGrid.Opacity = 1;
-            RootGrid.Visibility = Visibility.Visible;
+            RootGrid.Opacity = to;
+            onCompleted?.Invoke();
             return;
         }
 
-        RootGrid.Opacity = 0;
-        RootGrid.Visibility = Visibility.Visible;
+        RootGrid.Opacity = current;
 
-        var fade = new DoubleAnimation
+        var anim = new DoubleAnimation
         {
-            From = 0,
-            To = 1,
+            To = to,
             Duration = new Duration(TimeSpan.FromMilliseconds(FADE_MS)),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            EasingFunction = new QuadraticEase { EasingMode = to > current ? EasingMode.EaseOut : EasingMode.EaseIn }
         };
-        Storyboard.SetTarget(fade, RootGrid);
-        Storyboard.SetTargetProperty(fade, "Opacity");
+        Storyboard.SetTarget(anim, RootGrid);
+        Storyboard.SetTargetProperty(anim, "Opacity");
 
         var sb = new Storyboard();
-        sb.Children.Add(fade);
-        // A storyboard holds its end value without assigning it; write it back so nothing that
-        // stops this storyboard later can revert the prompt to invisible.
-        sb.Completed += (_, _) => RootGrid.Opacity = 1;
+        sb.Children.Add(anim);
+        sb.Completed += (_, _) =>
+        {
+            RootGrid.Opacity = to;
+            onCompleted?.Invoke();
+        };
+
+        _fade = sb;
         sb.Begin();
-    }
-
-    private const double FADE_MS = 125;
-
-    public void Hide()
-    {
-        RootGrid.Visibility = Visibility.Collapsed;
-        Closed?.Invoke(this, EventArgs.Empty);
     }
 }
 
@@ -111,7 +149,7 @@ public static class ReviewPromptManager
     private static readonly string DONT_SHOW_KEY = $"ReviewPromptDontShow_{EnvironmentVariables.appVersionMajorMinor}"; // Ask again only with Major or Minor updates (not new builds/revisions)
 
     private static readonly string LAST_PROMPT_KEY = "ReviewPromptLastPromptTime";
-    private const double MINUTES_BEFORE_PROMPT = 4444; // how many hours to wait before showing for the first time, or showing again if deferred
+    private const double HOURS_BEFORE_PROMPT = 100; // Hours after first launch before the first ask, and after each "Show later" before the next
     private const int SHOW_DELAY_Milisecs = 0; // delay to show it after being called
 
     private static void CleanupOldVersionKeys()
@@ -227,11 +265,11 @@ public static class ReviewPromptManager
             }
         }
 
-        var minutesSince = (DateTime.UtcNow - checkTime).TotalMinutes;
-        Trace.WriteLine($"Minutes since check time: {minutesSince} (need {MINUTES_BEFORE_PROMPT})");
+        var hoursSince = (DateTime.UtcNow - checkTime).TotalHours;
+        Trace.WriteLine($"Hours since check time: {hoursSince:F1} (need {HOURS_BEFORE_PROMPT})");
         Trace.WriteLine($"Current UTC: {DateTime.UtcNow}");
 
-        return minutesSince >= MINUTES_BEFORE_PROMPT;
+        return hoursSince >= HOURS_BEFORE_PROMPT;
     }
 
     private static void ShowPrompt()
