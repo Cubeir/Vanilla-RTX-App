@@ -27,25 +27,24 @@
                         Style="{ThemeResource AccentButtonStyle}"
                         Click="ManualSelectionButton_Click">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="The app couldn't auto-locate your game files using the usual fast methods!&#x0a;A system-wide scan is in progress, there is a high chance it will find your game given enough time."
-                                   FontSize="15"
+                        <TextBlock Text="We couldn't auto-locate your game files using conventional tactics&#x0a;A system-wide scan is in progress, there is a high chance it will find your game given enough time."
+                                   FontSize="14"
                                    TextAlignment="Center"
                                    FontWeight="Medium"
                                    HorizontalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False" />
-                        <TextBlock x:Name="ManualSelectionText"
-                                   Text="But if it is taking too long? Click to manually navigate to the folder where the game is installed to, it should have a file called Minecraft.Windows.exe inside of it.
-                                   &#x0a;&#x0a;The app is tolerant towards slightly imprecise location selections, it will still try to have a look around no matter where you select, but if you're still having trouble finding out where your game is installed to, join the Vanilla RTX Discord server and ask for help, or try to find out online."
-                                   FontSize="13"
-                                   Opacity="0.8"
-                                   FontWeight="Medium"
-                                   TextAlignment="Center"
-                                   HorizontalAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   MaxWidth="400"
                                    IsTextScaleFactorEnabled="False" />
                     </StackPanel>
                 </Button>
+                <TextBlock x:Name="ManualSelectionText"
+                           Text="Taking far too long? Click above and manually navigate to the folder where the game is installed to, it should have a file called Minecraft.Windows.exe inside of it. You could do the same from the settings menu, but if you're still having trouble finding out where your game is installed to, join the Vanilla RTX Discord server and ask for help, or try to find out online."
+                           FontSize="13"
+                           Opacity="0.75"
+                           FontWeight="Normal"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="400"
+                           IsTextScaleFactorEnabled="False" />
             </StackPanel>
         </Grid>
 
