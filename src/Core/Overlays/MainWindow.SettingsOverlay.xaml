@@ -99,13 +99,13 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
-        <!-- A full-width accent action. Left-aligned content because these sit in a column of
-             left-aligned text and a centred label would float away from everything around it. -->
+        <!-- A full-width accent action, its label centred on the button. -->
         <Style x:Key="SettingsActionButtonStyle"
                TargetType="Button"
                BasedOn="{StaticResource AccentButtonStyle}">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
@@ -253,44 +253,52 @@
                                 where a ComboBox's open list reads ComboBoxDropDownBackground
                                 from a popup outside the control's tree and cannot be re-keyed
                                 from here. -->
-                            <DropDownButton x:Name="ThemeModeButton"
-                                            Grid.Column="1"
-                                            MinWidth="132"
-                                            HorizontalContentAlignment="Left"
-                                            IsTextScaleFactorEnabled="False">
-                                <DropDownButton.Content>
-                                    <StackPanel Orientation="Horizontal"
-                                                Spacing="8">
-                                        <FontIcon x:Name="ThemeModeGlyph"
-                                                  Glyph="&#xEC46;"
-                                                  FontSize="15"
-                                                  VerticalAlignment="Center" />
-                                        <TextBlock x:Name="ThemeModeLabel"
-                                                   Text="Dark"
-                                                   VerticalAlignment="Center"
-                                                   IsTextScaleFactorEnabled="False" />
-                                    </StackPanel>
-                                </DropDownButton.Content>
-                                <DropDownButton.Flyout>
-                                    <MenuFlyout Placement="Bottom">
-                                        <RadioMenuFlyoutItem x:Name="ThemeSystemItem"
-                                                             Text="Auto"
-                                                             GroupName="AppThemeMode"
-                                                             Click="ThemeModeItem_Click"
-                                                             Tag="System" />
-                                        <RadioMenuFlyoutItem x:Name="ThemeLightItem"
-                                                             Text="Light"
-                                                             GroupName="AppThemeMode"
-                                                             Click="ThemeModeItem_Click"
-                                                             Tag="Light" />
-                                        <RadioMenuFlyoutItem x:Name="ThemeDarkItem"
-                                                             Text="Dark"
-                                                             GroupName="AppThemeMode"
-                                                             Click="ThemeModeItem_Click"
-                                                             Tag="Dark" />
-                                    </MenuFlyout>
-                                </DropDownButton.Flyout>
-                            </DropDownButton>
+                            <!-- The shadow sits on a Border because the XAML compiler rejects
+                                 Translation on a DropDownButton ("Property Not Found"). -->
+                            <Border Grid.Column="1"
+                                    CornerRadius="4"
+                                    Translation="0,0,12">
+                                <Border.Shadow>
+                                    <ThemeShadow />
+                                </Border.Shadow>
+                                <DropDownButton x:Name="ThemeModeButton"
+                                                MinWidth="132"
+                                                HorizontalContentAlignment="Left"
+                                                IsTextScaleFactorEnabled="False">
+                                    <DropDownButton.Content>
+                                        <StackPanel Orientation="Horizontal"
+                                                    Spacing="8">
+                                            <FontIcon x:Name="ThemeModeGlyph"
+                                                      Glyph="&#xEC46;"
+                                                      FontSize="15"
+                                                      VerticalAlignment="Center" />
+                                            <TextBlock x:Name="ThemeModeLabel"
+                                                       Text="Dark"
+                                                       VerticalAlignment="Center"
+                                                       IsTextScaleFactorEnabled="False" />
+                                        </StackPanel>
+                                    </DropDownButton.Content>
+                                    <DropDownButton.Flyout>
+                                        <MenuFlyout Placement="Bottom">
+                                            <RadioMenuFlyoutItem x:Name="ThemeSystemItem"
+                                                                 Text="Auto"
+                                                                 GroupName="AppThemeMode"
+                                                                 Click="ThemeModeItem_Click"
+                                                                 Tag="System" />
+                                            <RadioMenuFlyoutItem x:Name="ThemeLightItem"
+                                                                 Text="Light"
+                                                                 GroupName="AppThemeMode"
+                                                                 Click="ThemeModeItem_Click"
+                                                                 Tag="Light" />
+                                            <RadioMenuFlyoutItem x:Name="ThemeDarkItem"
+                                                                 Text="Dark"
+                                                                 GroupName="AppThemeMode"
+                                                                 Click="ThemeModeItem_Click"
+                                                                 Tag="Dark" />
+                                        </MenuFlyout>
+                                    </DropDownButton.Flyout>
+                                </DropDownButton>
+                            </Border>
                         </Grid>
 
                         <Grid>
@@ -341,7 +349,11 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="Minecraft (Release)"
                                        Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
+                            <Grid CornerRadius="6,4,4,6"
+                                  Translation="0,0,32">
+                                <Grid.Shadow>
+                                    <ThemeShadow />
+                                </Grid.Shadow>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="3" />
@@ -377,7 +389,11 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="Minecraft Preview"
                                        Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
+                            <Grid CornerRadius="6,4,4,6"
+                                  Translation="0,0,32">
+                                <Grid.Shadow>
+                                    <ThemeShadow />
+                                </Grid.Shadow>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="3" />
@@ -420,9 +436,13 @@
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Minecraft (Release)"
+                            <TextBlock Text="Minecraft User Data (Release)"
                                        Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
+                            <Grid CornerRadius="6,4,4,6"
+                                  Translation="0,0,32">
+                                <Grid.Shadow>
+                                    <ThemeShadow />
+                                </Grid.Shadow>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="3" />
@@ -456,9 +476,13 @@
                         </StackPanel>
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Minecraft Preview"
+                            <TextBlock Text="Minecraft User Data Preview"
                                        Style="{StaticResource SettingsItemLabelStyle}" />
-                            <Grid>
+                            <Grid CornerRadius="6,4,4,6"
+                                  Translation="0,0,32">
+                                <Grid.Shadow>
+                                    <ThemeShadow />
+                                </Grid.Shadow>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="3" />
@@ -516,11 +540,15 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Button x:Name="AddLaunchOptionButton"
+                                    Translation="0,0,12"
                                     Grid.Column="0"
                                     Style="{ThemeResource AccentButtonStyle}"
                                     Click="AddLaunchOptionButton_Click"
                                     IsTextScaleFactorEnabled="False"
                                     ToolTipService.ToolTip="Add another options.txt setting to write before launching.">
+                                <Button.Shadow>
+                                    <ThemeShadow />
+                                </Button.Shadow>
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="8">
                                     <FontIcon Glyph="&#xE710;"
@@ -571,9 +599,14 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="DocumentationBox"
+                                     Translation="0,0,24"
                                      Grid.Column="0"
                                      Margin="0,0,6,0"
-                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                                     Style="{StaticResource SettingsUrlBoxStyle}">
+                                <TextBox.Shadow>
+                                    <ThemeShadow />
+                                </TextBox.Shadow>
+                            </TextBox>
                             <Button x:Name="DocumentationResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
@@ -593,9 +626,14 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="BugTrackerBox"
+                                     Translation="0,0,24"
                                      Grid.Column="0"
                                      Margin="0,0,6,0"
-                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                                     Style="{StaticResource SettingsUrlBoxStyle}">
+                                <TextBox.Shadow>
+                                    <ThemeShadow />
+                                </TextBox.Shadow>
+                            </TextBox>
                             <Button x:Name="BugTrackerResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
@@ -615,9 +653,14 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="DlssProviderBox"
+                                     Translation="0,0,24"
                                      Grid.Column="0"
                                      Margin="0,0,6,0"
-                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                                     Style="{StaticResource SettingsUrlBoxStyle}">
+                                <TextBox.Shadow>
+                                    <ThemeShadow />
+                                </TextBox.Shadow>
+                            </TextBox>
                             <Button x:Name="DlssProviderResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
@@ -637,9 +680,14 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="BetterRtxCreatorBox"
+                                     Translation="0,0,24"
                                      Grid.Column="0"
                                      Margin="0,0,6,0"
-                                     Style="{StaticResource SettingsUrlBoxStyle}" />
+                                     Style="{StaticResource SettingsUrlBoxStyle}">
+                                <TextBox.Shadow>
+                                    <ThemeShadow />
+                                </TextBox.Shadow>
+                            </TextBox>
                             <Button x:Name="BetterRtxCreatorResetButton"
                                     Grid.Column="1"
                                     Style="{StaticResource SettingsUrlResetButtonStyle}">
@@ -659,8 +707,12 @@
 
                         <StackPanel Spacing="5">
                             <Button x:Name="HardResetButton"
+                                    Translation="0,0,32"
                                     Style="{StaticResource SettingsActionButtonStyle}"
                                     Click="HardResetButton_Click">
+                                <Button.Shadow>
+                                    <ThemeShadow />
+                                </Button.Shadow>
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="10">
                                     <FontIcon Glyph="&#xE7BA;"
@@ -677,8 +729,12 @@
 
                         <StackPanel Spacing="5">
                             <Button x:Name="CopyLogsButton"
+                                    Translation="0,0,32"
                                     Style="{StaticResource SettingsActionButtonStyle}"
                                     Click="CopyLogsButton_Click">
+                                <Button.Shadow>
+                                    <ThemeShadow />
+                                </Button.Shadow>
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="10">
                                     <FontIcon Glyph="&#xE8C8;"
