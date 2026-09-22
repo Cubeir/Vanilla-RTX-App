@@ -725,14 +725,14 @@ public sealed partial class SettingsOverlay : UserControl
             new UrlField
             {
                 Box = DocumentationBox, ResetButton = DocumentationResetButton, Hint = DocumentationHint,
-                Description = $"The markdown the Documentation button renders.",
+                Description = $"The markdown file the help page renders.",
                 Fallback = Defaults.DocumentationUrl, Kind = LinkKind.Markdown,
                 Read = () => Persistent.DocumentationUrl, Write = v => Persistent.DocumentationUrl = v
             },
             new UrlField
             {
                 Box = BugTrackerBox, ResetButton = BugTrackerResetButton, Hint = BugTrackerHint,
-                Description = "The markdown Bug/Issues list button renders.",
+                Description = "The markdown file the bugs list page renders.",
                 Fallback = Defaults.BugTrackerUrl, Kind = LinkKind.Markdown,
                 Read = () => Persistent.BugTrackerUrl, Write = v => Persistent.BugTrackerUrl = v
             },
@@ -1360,7 +1360,6 @@ public sealed partial class SettingsOverlay : UserControl
 
     private void KoFiLink_Click(object sender, RoutedEventArgs e)
     {
-        RollCredits();
         _ = MainWindow.OpenUrl("https://ko-fi.com/cubeir");
     }
 
@@ -1368,18 +1367,5 @@ public sealed partial class SettingsOverlay : UserControl
     {
         MainWindow.Log("Here is the invitation!\nDiscord.gg/A4wv4wwYud", MainWindow.LogLevel.VanillaRTX);
         _ = MainWindow.OpenUrl("https://discord.gg/A4wv4wwYud");
-    }
-
-    /// <summary>
-    /// Writes the supporter/credits text into the log, once per session. The settings panel
-    /// shows the same text inline; this is what keeps the log's version of the gesture - the
-    /// Ko-fi link there calls it on the way out to the browser, exactly as the old titlebar
-    /// Donate button did.
-    /// </summary>
-    private void RollCredits()
-    {
-        var credits = OnlineTextsContent.Credits?.FirstOrDefault()?.Text;
-        if (!string.IsNullOrEmpty(credits) && Helpers.RuntimeFlags.Set("Has_Rolled_Credits"))
-            MainWindow.Log(credits);
     }
 }

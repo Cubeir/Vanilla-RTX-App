@@ -661,7 +661,7 @@
                                 </StackPanel>
                             </Button>
                             <TextBlock Style="{StaticResource SettingsHintTextStyle}"
-                                       Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies are gone." />
+                                       Text="Deletes everything the app has stored on this device, leaving it as if freshly installed. You may be asked to approve several admin prompts so your game's Default RTX and LUT files can be restored before the app's copies of them are gone." />
                         </StackPanel>
 
                         <StackPanel Spacing="5">
@@ -694,25 +694,30 @@
                             <HyperlinkButton x:Name="GitHubLink"
                                              Content="GitHub"
                                              Padding="6,2,6,2"
+                                             FontWeight="Medium"
                                              Click="GitHubLink_Click"
                                              IsTextScaleFactorEnabled="False"
                                              ToolTipService.ToolTip="Source code, releases and issue tracker." />
                             <TextBlock Text="•"
-                                       Opacity="0.4"
+                                       Opacity="0.5"
+                                       FontWeight="Medium"
                                        VerticalAlignment="Center"
                                        IsTextScaleFactorEnabled="False" />
                             <HyperlinkButton x:Name="KoFiLink"
                                              Content="Support the developer (Ko-Fi)"
                                              Padding="6,2,6,2"
+                                             FontWeight="Medium"
                                              Click="KoFiLink_Click"
                                              IsTextScaleFactorEnabled="False"
                                              ToolTipService.ToolTip="Buy the developer some coffee - Vanilla RTX is free and continued, help keep it that way!" />
                             <TextBlock Text="•"
-                                       Opacity="0.4"
+                                       Opacity="0.5"
+                                       FontWeight="Medium"
                                        VerticalAlignment="Center"
                                        IsTextScaleFactorEnabled="False" />
                             <HyperlinkButton x:Name="DiscordLink"
                                              Content="Discord"
+                                             FontWeight="Medium"
                                              Padding="6,2,6,2"
                                              Click="DiscordLink_Click"
                                              IsTextScaleFactorEnabled="False"
@@ -723,7 +728,7 @@
                                    Text="With ❤️‍🔥 – By Cubeir (R. Sol)"
                                    TextWrapping="Wrap"
                                    TextAlignment="Center"
-                                   FontSize="11"
+                                   FontSize="12"
                                    Opacity="0.75"
                                    LineHeight="20"
                                    Margin="0,0,0,0"
@@ -733,9 +738,10 @@
                                    Text="App Version Unknown"
                                    TextWrapping="Wrap"
                                    TextAlignment="Center"
-                                   FontSize="11"
+                                   LineHeight="18"
+                                   FontSize="12"
                                    Opacity="0.55"
-                                   Margin="0,0,0,16"
+                                   Margin="0,0,0,7"
                                    IsTextScaleFactorEnabled="False" />
 
                     </StackPanel>
