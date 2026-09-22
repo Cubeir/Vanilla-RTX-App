@@ -480,12 +480,14 @@ public sealed partial class MarkdownOverlay : UserControl
             if (remaining > 0)
             {
                 Header.SetReloadCooldown(remaining);
-                if (_cooldownTimer is null)
-                {
-                    _cooldownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-                    _cooldownTimer.Tick += (_, _) => RefreshReloadCooldownUI();
-                    _cooldownTimer.Start();
-                }
+
+                // Kept running rather than merely kept alive. Closing stops this timer, and this
+                // control is one instance shared by every document - switching from Help to Bugs
+                // closes and reopens it - so a check for the field being null would find a timer
+                // that exists and is stopped, and the countdown would freeze on screen while the
+                // cooldown itself carried on expiring.
+                _cooldownTimer ??= CreateCooldownTimer();
+                if (!_cooldownTimer.IsEnabled) _cooldownTimer.Start();
                 return;
             }
             _reloadCooldownUntil.Remove(_pageUrl);
@@ -494,6 +496,13 @@ public sealed partial class MarkdownOverlay : UserControl
         _cooldownTimer?.Stop();
         _cooldownTimer = null;
         Header.SetReloadCooldown(null);
+    }
+
+    private DispatcherTimer CreateCooldownTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        timer.Tick += (_, _) => RefreshReloadCooldownUI();
+        return timer;
     }
 
     // =========================================================================
