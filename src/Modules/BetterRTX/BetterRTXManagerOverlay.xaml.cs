@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -346,7 +346,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
                 // Show manual selection button
                 _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
-                    ManualSelectionButton.Visibility = Visibility.Visible;
+                    ManualSelectionPanel.Visibility = Visibility.Visible;
                 });
 
                 // Start system-wide search
@@ -470,6 +470,9 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             settings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
             UpdateRefreshButtonState();
 
+            // The loading panel is shared, and the manual-pick offer inside it belongs to the
+            // locate phase alone - left visible it would read as an instruction for this refresh.
+            ManualSelectionPanel.Visibility = Visibility.Collapsed;
             LoadingPanel.Visibility = Visibility.Visible;
             PresetSelectionPanel.Visibility = Visibility.Collapsed;
             await Task.Delay(100);
@@ -1454,6 +1457,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             return;
         }
 
+        ManualSelectionPanel.Visibility = Visibility.Collapsed;
         LoadingPanel.Visibility = Visibility.Visible;
         PresetSelectionPanel.Visibility = Visibility.Collapsed;
 

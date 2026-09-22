@@ -1,4 +1,4 @@
-<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerOverlay"
+﻿<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerOverlay"
                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:local="using:Vanilla_RTX_App.Modules.LUT"
@@ -19,31 +19,38 @@
                               Width="100"
                               Height="100"/>
 
-                <Button x:Name="ManualSelectionButton"
-                        Visibility="Collapsed"
-                        HorizontalAlignment="Center"
-                        Padding="20,12,20,12"
-                        Style="{ThemeResource AccentButtonStyle}"
-                        Click="ManualSelectionButton_Click">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="We couldn't auto-locate your game files using conventional tactics&#x0a;A system-wide scan is in progress, there is a high chance it will find your game given enough time."
-                                   FontSize="14"
-                                   TextAlignment="Center"
-                                   FontWeight="Medium"
-                                   HorizontalAlignment="Center"
-                                   IsTextScaleFactorEnabled="False" />
-                    </StackPanel>
-                </Button>
-                <TextBlock x:Name="ManualSelectionText"
-                           Text="Taking far too long? Click above and manually navigate to the folder where the game is installed to, it should have a file called Minecraft.Windows.exe inside of it. You could do the same from the settings menu, but if you're still having trouble finding out where your game is installed to, join the Vanilla RTX Discord server and ask for help, or try to find out online."
-                           FontSize="13"
-                           Opacity="0.75"
-                           FontWeight="Normal"
-                           TextAlignment="Center"
-                           HorizontalAlignment="Center"
-                           TextWrapping="Wrap"
-                           MaxWidth="400"
-                           IsTextScaleFactorEnabled="False" />
+                <!-- Shown together, and only while a manual pick is the thing being offered: the
+                     explanation under the button reads as an instruction for whatever is on screen,
+                     so it must never outlive the button it explains. -->
+                <StackPanel x:Name="ManualSelectionPanel"
+                            Visibility="Collapsed"
+                            Spacing="20"
+                            HorizontalAlignment="Center">
+                    <Button x:Name="ManualSelectionButton"
+                            HorizontalAlignment="Center"
+                            Padding="20,12,20,12"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="ManualSelectionButton_Click">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="We couldn't auto-locate your game files using conventional tactics&#x0a;A system-wide scan is in progress, there is a high chance it will find your game given enough time."
+                                       FontSize="14"
+                                       TextAlignment="Center"
+                                       FontWeight="Medium"
+                                       HorizontalAlignment="Center"
+                                       IsTextScaleFactorEnabled="False" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="ManualSelectionText"
+                               Text="Taking far too long? Click above and manually navigate to the folder where the game is installed to, it should have a file called Minecraft.Windows.exe inside of it. You could do the same from the settings menu, but if you're still having trouble finding out where your game is installed to, join the Vanilla RTX Discord server and ask for help, or try to find out online."
+                               FontSize="13"
+                               Opacity="0.75"
+                               FontWeight="Normal"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="400"
+                               IsTextScaleFactorEnabled="False" />
+                </StackPanel>
             </StackPanel>
         </Grid>
 

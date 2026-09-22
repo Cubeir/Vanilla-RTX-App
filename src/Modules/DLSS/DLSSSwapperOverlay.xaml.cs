@@ -109,7 +109,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
 
                 _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
-                    ManualSelectionButton.Visibility = Visibility.Visible;
+                    ManualSelectionPanel.Visibility = Visibility.Visible;
                 });
 
                 Trace.WriteLine("[DLSS] Starting system-wide search...");

@@ -138,7 +138,7 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
                 }
 
                 _ = this.DispatcherQueue.TryEnqueue(() =>
-                    ManualSelectionButton.Visibility = Visibility.Visible);
+                    ManualSelectionPanel.Visibility = Visibility.Visible);
 
                 _scanCancellationTokenSource = new CancellationTokenSource();
                 minecraftPath = await MinecraftGDKLocator.SearchForMinecraftAsync(
