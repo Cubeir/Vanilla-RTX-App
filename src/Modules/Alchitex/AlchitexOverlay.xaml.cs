@@ -1993,9 +1993,6 @@ public sealed partial class Alchitex : ModuleOverlay
 
 
 /* ### BACKLOG/TODO OF ALCHITEX (HIGHLY CONFIDENTIAL)
-- Need a new dev tool to verify integrity of the materials.json file, and to TRIM IT DOWN!
-I.e. where it falls back to fallbacks anyway, remove the unneeded entries, could cut down the size of the file by 500kb or so,
-which is genuinely helpful when retrieving the new json from web.
 
 - Be smart with the values chosen for recursion
 An idea was, wheer confidence is high, higher mins are permissable, where confidence is lower, lower mins reduce error rate.
@@ -2018,21 +2015,5 @@ Also the decisionmaker of making things flatter the more noisy is a bit too aggr
 
 - Could have added something to objectively derive baseline normal and heightmap intensities from Vanilla RTX/Normals, get the median of the whole thing, calculate deviation from that median.
 Then uniformly adjust all, until a baseline is reached, though with manual alterations and tweaks this may no longer be necessary and make actually become counterproductive.
-
-- An idea leftover from the alchemist project was:
-Breaking down MER generation into four parts, each layer processed independantly of the other.
-Would make the pipeline a lot more digestible, and add room for more versatility within each part.
-Each layer gets its own recursion pass.
-Adds a sort of modularity that CAN help you elevate the quality of the whole thing.
-
-It also said that, maybe dealing with absolutes is wrong, instead try to develop something that SWAYS assignment of certain PBR properties towards certain channels.
-By "swaying" and concentrating certain properties towards certain colors (the more of them there is) it could help for instance
-Keep a diamond ore's grey parts MER composition INTACT, without any sacrifice, whilst swaying metalness towards Bluer parts.
-Then, all get composited independantly. Can produce Significantly more predictable results, with greater control over the final output.
-This is an alterantive way to go about the current recursion tactic, but it remains to be experimented with more thoroughly...
-
-It is probably a less generally-applicable idea. It might work better in places but you have to be considering ANY texture pack that might come its way
-and if some system ends up being so specific about some things that it degrades other scenarios (most other), then it is probably not a good idea.
-Still, it was worth recording here, maybe more thoughts develop on it down the line, or if you're a third-party reading this, feel free to chip in.
 
 */

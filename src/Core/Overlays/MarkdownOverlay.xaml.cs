@@ -89,6 +89,21 @@ public sealed partial class MarkdownOverlay : UserControl
     private static readonly Dictionary<string, DateTime> _reloadCooldownUntil = new(StringComparer.Ordinal);
     private const int ReloadCooldownSeconds = 60;
 
+    /// <summary>
+    /// How far down each page was last left, so reopening it lands where the reader was rather
+    /// than at the top. Kept here rather than in the visual tree because closing releases that
+    /// tree outright (see <see cref="CloseInternal"/>), and for the session only - a page's
+    /// position is worth restoring five minutes later, not next week.
+    /// </summary>
+    private static readonly Dictionary<string, double> _scrollOffsets = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// True from an open until the page it opened has been rendered. Rendering also happens on
+    /// Reload and Try Again, where the reader has not gone anywhere and being moved would be the
+    /// bug rather than the fix.
+    /// </summary>
+    private bool _restorePositionOnRender;
+
     private bool _isOpen;
     private string _pageUrl = string.Empty;
     private string _rawUrl = string.Empty;
@@ -140,6 +155,12 @@ public sealed partial class MarkdownOverlay : UserControl
             // above while the first is still in flight.
             _reloadCooldownUntil[_pageUrl] = DateTime.UtcNow.AddSeconds(ReloadCooldownSeconds);
             RefreshReloadCooldownUI();
+
+            // Re-rendering replaces the content and takes the scroll position with it, and
+            // someone who asked for a fresh copy of the page they are reading meant to stay on it.
+            RememberScrollOffset();
+            _restorePositionOnRender = true;
+
             _ = LoadAsync(bypassCache: true);
         };
 
@@ -188,6 +209,7 @@ public sealed partial class MarkdownOverlay : UserControl
         _pageUrl = url;
         _anchors = null;
         _searchEntries = Array.Empty<MarkdownSearchEntry>();
+        _restorePositionOnRender = true;
 
         try
         {
@@ -238,6 +260,8 @@ public sealed partial class MarkdownOverlay : UserControl
     private void CloseInternal(Action? onClosed)
     {
         if (!_isOpen) return;
+
+        RememberScrollOffset();
         _isOpen = false;
         _fetchCts?.Cancel();
         _cooldownTimer?.Stop();
@@ -326,6 +350,9 @@ public sealed partial class MarkdownOverlay : UserControl
             MarkdownHost.Content = result.Content;
             ShowContent();
 
+            var restore = _restorePositionOnRender;
+            _restorePositionOnRender = false;
+
             if (!string.IsNullOrEmpty(_pendingFragment))
             {
                 var slug = _pendingFragment;
@@ -333,6 +360,10 @@ public sealed partial class MarkdownOverlay : UserControl
                 // The content isn't laid out yet on this same tick - give it one dispatcher
                 // pass before asking a heading to scroll itself into view.
                 DispatcherQueue.TryEnqueue(() => ScrollToAnchor(slug));
+            }
+            else if (restore)
+            {
+                RestoreScrollOffset();
             }
         }
         catch (Exception ex)
@@ -342,6 +373,58 @@ public sealed partial class MarkdownOverlay : UserControl
             Trace.WriteLine($"[MarkdownOverlay] Render failed: {ex}");
             ShowError("This page couldn't be displayed.");
         }
+    }
+
+    /// <summary>Keeps where this page was left, for the next time it is opened.</summary>
+    private void RememberScrollOffset()
+    {
+        if (string.IsNullOrEmpty(_pageUrl) || MarkdownHost.Content is null) return;
+
+        var offset = ContentScrollViewer.VerticalOffset;
+        if (offset > 0.5) _scrollOffsets[_pageUrl] = offset;
+        else _scrollOffsets.Remove(_pageUrl);
+    }
+
+    /// <summary>
+    /// Scrolls back to where this page was left, once there is enough page to scroll.
+    ///
+    /// <para><b>The wait is the whole problem.</b> Freshly rendered markdown is shorter than its
+    /// final height: inline images have no dimensions until they load, so asking for an offset on
+    /// the tick the content is set clamps it to whatever the page is at that moment and lands the
+    /// reader part-way up. Each layout pass is a chance to try again, and the attempt and time
+    /// caps are what stop a page that never grows tall enough - a document edited down since it
+    /// was last read - from leaving a handler subscribed for the session.</para>
+    ///
+    /// <para>A reader who scrolls while that is going on has said where they want to be, so the
+    /// restore gives up rather than yanking them somewhere else.</para>
+    /// </summary>
+    private void RestoreScrollOffset()
+    {
+        if (!_scrollOffsets.TryGetValue(_pageUrl, out var target) || target <= 0.5) return;
+
+        var attempts = 0;
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+        var page = _pageUrl;
+
+        void OnLayoutUpdated(object? sender, object e)
+        {
+            // A different document is on screen when the overlay was switched while this waited -
+            // its position is not this one's to set.
+            if (!_isOpen || !string.Equals(_pageUrl, page, StringComparison.Ordinal)
+                || ContentScrollViewer.VerticalOffset > 0.5 || DateTime.UtcNow > deadline)
+            {
+                ContentScrollViewer.LayoutUpdated -= OnLayoutUpdated;
+                return;
+            }
+
+            var reachable = Math.Max(0, ContentScrollViewer.ExtentHeight - ContentScrollViewer.ViewportHeight);
+            if (reachable + 0.5 < target && ++attempts < 120) return;
+
+            ContentScrollViewer.LayoutUpdated -= OnLayoutUpdated;
+            ContentScrollViewer.ChangeView(null, Math.Min(target, reachable), null, disableAnimation: true);
+        }
+
+        ContentScrollViewer.LayoutUpdated += OnLayoutUpdated;
     }
 
     private void OnLinkActivated(string target)

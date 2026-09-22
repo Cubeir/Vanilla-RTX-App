@@ -2370,11 +2370,7 @@ public sealed partial class MainWindow : Window
     #endregion UI Logger
 }
 
-/* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE PBC (STRICTLY CONFIDENTIAL)
-
-- add a refresh button to packupdater menu too..?
-something to sync/check for updates again, not with its own cooldown, let it reflect cooldown of last checked.
-gives a bit of visual assurance that things are... up to date and not stale.
+/* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
 - restructure main window to be less sloppy and more correct whilst looking the same by the end.
 the layout works perfectly but is wrong in many spots, with many dumb margins
@@ -2389,6 +2385,17 @@ maybe navigation view? like every other winui 3.0 app on the planet, or somethin
 while offloading Tuning elsewhere...
 Tuner is no longer "the main dish" its a module like the others but the main window is still designed around it..
 the thing is it is such a core part of the app too. figure this out later.
+
+an idea for mainwindow redesign:
+moving tuner into a button like Alchitex, with its own unique design themed around Gold and Tuner's lamp.
+make 3x2 button grid large all the way to the top, make the shape assymetrical, give them special logos and colors maybe
+instead of glyphs, each button is a block to the top, each with their own weird shape, fit 7 in there
+we'll see.
+prolly not a good idea
+tuner is the most... repeatedly-used module, so, having it in main window makes sense
+having to continously click in and out to tune packs is annoying
+It makes sense both ways
+Moving the "Export" and "Delete" buttons to select other packs menu like that one 3.2 concept image also works well
 
 >> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.
 */
