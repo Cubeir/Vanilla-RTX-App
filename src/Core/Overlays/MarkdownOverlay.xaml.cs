@@ -104,6 +104,12 @@ public sealed partial class MarkdownOverlay : UserControl
     /// </summary>
     private bool _restorePositionOnRender;
 
+    /// <summary>
+    /// True while a fetch is running. The Reload cooldown is armed by the answer rather than by
+    /// the click, so this is what stops a second click going out behind the first.
+    /// </summary>
+    private bool _loadInFlight;
+
     private bool _isOpen;
     private string _pageUrl = string.Empty;
     private string _rawUrl = string.Empty;
@@ -147,20 +153,17 @@ public sealed partial class MarkdownOverlay : UserControl
             // The button should already be disabled for the duration, but a click that slips in
             // right on the boundary (or one queued before SetReloadCooldown took effect) must
             // still be refused - the cooldown is the invariant, not the button's IsEnabled.
+            if (_loadInFlight) return;
             if (_reloadCooldownUntil.TryGetValue(_pageUrl, out var until) && until > DateTime.UtcNow)
                 return;
-
-            // Armed here rather than when the fetch lands: Reload always goes to the network, so
-            // the cooldown can start at the click, and a second click is refused by the guard
-            // above while the first is still in flight.
-            _reloadCooldownUntil[_pageUrl] = DateTime.UtcNow.AddSeconds(ReloadCooldownSeconds);
-            RefreshReloadCooldownUI();
 
             // Re-rendering replaces the content and takes the scroll position with it, and
             // someone who asked for a fresh copy of the page they are reading meant to stay on it.
             RememberScrollOffset();
             _restorePositionOnRender = true;
 
+            // The cooldown is armed by the load itself, and only if the remote answered - a
+            // reload that failed must not spend the attempt the user would make next.
             _ = LoadAsync(bypassCache: true);
         };
 
@@ -303,6 +306,7 @@ public sealed partial class MarkdownOverlay : UserControl
     {
         ShowLoading("Loading...");
 
+        _loadInFlight = true;
         _fetchCts?.Cancel();
         _fetchCts?.Dispose();
         var cts = new CancellationTokenSource();
@@ -313,12 +317,11 @@ public sealed partial class MarkdownOverlay : UserControl
             var asset = DocumentAsset(_rawUrl);
             var read = await AssetUpdater.ResolveFreshOrCachedAsync(asset, force: bypassCache, cancellationToken: cts.Token);
 
-            // Opening a page that reached the remote arms Reload's cooldown, so the button reads
-            // as "this page has just been checked" - which includes a 304, where the server
-            // confirmed the cached copy is current and pressing Reload would learn nothing. A
-            // page served without asking anyone leaves the button live. A Reload armed it at the
-            // click.
-            if (!bypassCache && read.CheckedRemote)
+            // Reaching the remote arms Reload's cooldown, so the button reads as "this page has
+            // just been checked" - which includes a 304, where the server confirmed the cached
+            // copy is current and pressing Reload would learn nothing. A page served without
+            // asking anyone, or an attempt that failed, leaves the button live.
+            if (read.CheckedRemote)
             {
                 _reloadCooldownUntil[_pageUrl] = DateTime.UtcNow.AddSeconds(ReloadCooldownSeconds);
                 RefreshReloadCooldownUI();
@@ -339,6 +342,10 @@ public sealed partial class MarkdownOverlay : UserControl
         catch (OperationCanceledException)
         {
             // Superseded by a newer Show()/Reload/Retry, or the overlay closed mid-fetch.
+        }
+        finally
+        {
+            _loadInFlight = false;
         }
     }
 

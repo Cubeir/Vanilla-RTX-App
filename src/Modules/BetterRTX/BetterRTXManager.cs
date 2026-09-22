@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -130,17 +130,43 @@ internal sealed class BetterRTXManager
     private static readonly TimeSpan ApiRequestTimeout = TimeSpan.FromSeconds(15);
 
     /// <summary>
-    /// Whether opening this manager already did what the refresh button does: cleared the
-    /// downloaded presets and rebuilt the index from a fresh fetch.
+    /// What the refresh button asks for: a cold start. Fetches the index, and <b>only if that
+    /// worked</b> clears the downloaded and imported presets and stores the new index, so the
+    /// next read comes off disk rather than making a second identical request.
     ///
-    /// <para><b>Fetching the index is not enough to set it</b>, and that is the point. The hourly
-    /// check asks the API and then wipes <i>only</i> if the hash moved, while the button wipes
-    /// regardless - which is what it is for, since the API can ship new files without its
-    /// payload changing. Putting the button on cooldown for a check that wiped nothing would
-    /// claim work that didn't happen, and would lock out the one action the button offers for
-    /// exactly that case.</para>
+    /// <para><b>The order is the whole point.</b> Wiping first and fetching afterwards is how a
+    /// user with no connection loses every preset they had and cannot download any of them back.
+    /// Fetching first means a failed refresh costs nothing: false comes back, nothing was
+    /// touched, and the caller leaves the button live to try again.</para>
+    ///
+    /// <para>This deliberately wipes whatever the index says, where the hourly check only wipes
+    /// when the index's hash moved - the API can ship new files without its payload changing,
+    /// and forcing that case is the only reason this button exists.</para>
     /// </summary>
-    public bool RefreshedSinceAttach { get; private set; }
+    public async Task<bool> RebuildFromApiAsync()
+    {
+        var fresh = await FetchApiDataAsync();
+        if (string.IsNullOrWhiteSpace(fresh))
+        {
+            Trace.WriteLine("[BetterRTX] [Refresh] API unreachable - nothing cleared");
+            return false;
+        }
+
+        await WipeNonDefaultPresetsCacheAsync();
+        await SaveApiCacheAsync(fresh, ComputeApiHash(fresh));
+
+        // It is a successful check as much as a rebuild, so the hourly window starts again.
+        try { ApplicationData.Current.LocalSettings.Values[API_LAST_FETCH_KEY] = DateTime.UtcNow.Ticks; }
+        catch { }
+
+        return true;
+    }
+
+    private static string ComputeApiHash(string json)
+    {
+        using var sha256 = SHA256.Create();
+        return Convert.ToHexString(sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
+    }
 
     /// <summary>
     /// Which edition this instance is attached to, as decided by <see cref="TryAttachAsync"/>.
@@ -260,7 +286,6 @@ internal sealed class BetterRTXManager
     /// </summary>
     public async Task<AttachFailure> TryAttachAsync(string minecraftPath, bool isPreview)
     {
-        RefreshedSinceAttach = false;
         IsPreview = isPreview;
         GameMaterialsPath = Path.Combine(minecraftPath, "data", "renderer", "materials");
 
@@ -412,10 +437,6 @@ internal sealed class BetterRTXManager
             Trace.WriteLine("[BetterRTX] [SoftWipe] API cache deleted");
         }
 
-        // Every path that does the refresh button's job comes through here, so this is where
-        // "the window opened already refreshed" is decided - see RefreshedSinceAttach.
-        RefreshedSinceAttach = true;
-
         // Clear in-memory tracking. The download queue itself lives on the window, so it
         // gets told to drop anything still pointing at a folder this just deleted.
         _cachedApiHash = null;
@@ -473,15 +494,7 @@ internal sealed class BetterRTXManager
             // Stamp the successful fetch time now
             settings.Values[API_LAST_FETCH_KEY] = DateTime.UtcNow.Ticks;
 
-            // Compute hash of fresh response
-            string freshHash;
-            using (var sha256 = SHA256.Create())
-            {
-                var bytes = System.Text.Encoding.UTF8.GetBytes(freshJson);
-                freshHash = BitConverter.ToString(sha256.ComputeHash(bytes))
-                                        .Replace("-", "")
-                                        .ToLowerInvariant();
-            }
+            var freshHash = ComputeApiHash(freshJson);
 
             Trace.WriteLine($"[BetterRTX] [StalenessCheck] Fresh hash : {freshHash[..16]}...");
             Trace.WriteLine($"[BetterRTX] [StalenessCheck] Cached hash: {(_cachedApiHash != null ? _cachedApiHash[..16] + "..." : "none yet")}");
@@ -493,11 +506,7 @@ internal sealed class BetterRTXManager
                 try
                 {
                     var existingJson = await File.ReadAllTextAsync(ApiCachePath);
-                    using var sha256 = SHA256.Create();
-                    var bytes = System.Text.Encoding.UTF8.GetBytes(existingJson);
-                    _cachedApiHash = BitConverter.ToString(sha256.ComputeHash(bytes))
-                                                 .Replace("-", "")
-                                                 .ToLowerInvariant();
+                    _cachedApiHash = ComputeApiHash(existingJson);
                     Trace.WriteLine($"[BetterRTX] [StalenessCheck] Loaded cache hash from disk: {_cachedApiHash[..16]}...");
                 }
                 catch (Exception ex)

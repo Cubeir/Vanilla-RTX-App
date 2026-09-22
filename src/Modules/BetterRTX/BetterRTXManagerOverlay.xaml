@@ -19,6 +19,19 @@
                               Width="100"
                               Height="100" />
 
+                <!-- What the wait is for. Set from code at each stage - locating the game,
+                     asking bedrock.graphics, reading presets off disk - because every one of
+                     them can be the slow one depending on the machine and the connection. -->
+                <TextBlock x:Name="LoadingStatusText"
+                           Text="Getting things ready..."
+                           FontSize="14"
+                           Opacity="0.85"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="400"
+                           IsTextScaleFactorEnabled="False" />
+
                 <!-- Shown together, and only while a manual pick is the thing being offered: the
                      explanation under the button reads as an instruction for whatever is on screen,
                      so it must never outlive the button it explains. -->

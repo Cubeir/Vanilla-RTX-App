@@ -343,9 +343,9 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
                         Persistent.MinecraftInstallPath = null;
                 }
 
-                // Show manual selection button
                 _ = this.DispatcherQueue.TryEnqueue(() =>
                 {
+                    SetLoadingStatus("Looking for your Minecraft installation...");
                     ManualSelectionPanel.Visibility = Visibility.Visible;
                 });
 
@@ -378,17 +378,17 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     }
 
     /// <summary>
-    /// Starts the countdown timer, and arms the cooldown first when opening this window already
-    /// did what pressing the button would do - see
-    /// <see cref="BetterRTXManager.RefreshedSinceAttach"/>. A countdown therefore means the list
-    /// on screen was rebuilt seconds ago, and a live button means pressing it still has work to
-    /// do.
+    /// Starts the countdown timer for whatever cooldown a previous press left running.
+    ///
+    /// <para><b>Opening the window never arms it</b>, unlike the reload buttons elsewhere in the
+    /// app. Those refresh what you are looking at, so opening does the same thing pressing them
+    /// would. This one clears every downloaded and imported preset and rebuilds from scratch -
+    /// an action nothing automatic performs, and the one thing to reach for when the API has
+    /// shipped new files without saying so. Putting it on cooldown for merely having opened the
+    /// window would lock out exactly that.</para>
     /// </summary>
     private void InitializeRefreshButton()
     {
-        if (_manager.RefreshedSinceAttach)
-            ApplicationData.Current.LocalSettings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
-
         UpdateRefreshButtonState();
         _cooldownTimer = new DispatcherTimer();
         _cooldownTimer.Interval = TimeSpan.FromSeconds(1);
@@ -442,8 +442,8 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         // A refresh soft-wipes the cache, which would delete the preset folder a running
-        // install is copying its .bin files out of. The 30s cooldown already stops this being
-        // spammed; this stops it colliding with an install.
+        // install is copying its .bin files out of. The button's cooldown already stops this
+        // being spammed; this stops it colliding with an install.
         if (_applyInProgress)
         {
             Trace.WriteLine("[BetterRTX] A preset is being applied - ignoring refresh");
@@ -466,20 +466,41 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         {
             Trace.WriteLine("[BetterRTX] === REFRESH BUTTON CLICKED ===");
 
-            var settings = ApplicationData.Current.LocalSettings;
-            settings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
-            UpdateRefreshButtonState();
-
             // The loading panel is shared, and the manual-pick offer inside it belongs to the
             // locate phase alone - left visible it would read as an instruction for this refresh.
             ManualSelectionPanel.Visibility = Visibility.Collapsed;
+            SetLoadingStatus("Checking bedrock.graphics for the latest presets...");
             LoadingPanel.Visibility = Visibility.Visible;
             PresetSelectionPanel.Visibility = Visibility.Collapsed;
+            RefreshButton.IsEnabled = false;
             await Task.Delay(100);
 
-            await _manager.WipeNonDefaultPresetsCacheAsync();
+            // Fetch first: nothing is cleared unless there is something to rebuild from, so a
+            // refresh with no connection costs the user nothing and can be tried again at once.
+            var rebuilt = await _manager.RebuildFromApiAsync();
+
+            if (!rebuilt)
+            {
+                SetLoadingStatus("Couldn't reach bedrock.graphics. Nothing was cleared - check your connection and try again.");
+                await Task.Delay(2200);
+
+                _manager.ForgetLoadedPresets();
+                await _manager.LoadApiDataAsync();
+                await _manager.LoadLocalPresetsAsync();
+                await DisplayPresetsAsync();
+
+                LoadingPanel.Visibility = Visibility.Collapsed;
+                PresetSelectionPanel.Visibility = Visibility.Visible;
+                return;
+            }
+
+            // Armed only now: a failed refresh must not spend the user's next attempt.
+            ApplicationData.Current.LocalSettings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
+
+            SetLoadingStatus("Reading the presets you already have...");
             _manager.ForgetLoadedPresets();
 
+            // Reads the index RebuildFromApiAsync just stored, so this makes no second request.
             await _manager.LoadApiDataAsync();
             await _manager.LoadLocalPresetsAsync();
             await DisplayPresetsAsync();
@@ -497,9 +518,16 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         }
         finally
         {
-            // The cache comes back rebuilt, whether or not the refetch behind it worked out.
+            UpdateRefreshButtonState();
             _ = Host.BlinkingLamp(true, true, 1.0);
         }
+    }
+
+    /// <summary>The line under the loading ring. Safe to call from any thread.</summary>
+    private void SetLoadingStatus(string text)
+    {
+        if (DispatcherQueue.HasThreadAccess) LoadingStatusText.Text = text;
+        else _ = DispatcherQueue.TryEnqueue(() => LoadingStatusText.Text = text);
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)
@@ -546,13 +574,12 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         EvaluateDefaultBackup();
         ApplyNotices();
 
-        // Load or fetch API data
+        SetLoadingStatus("Checking bedrock.graphics for the latest presets...");
         await _manager.LoadApiDataAsync();
 
-        // Load local presets
+        SetLoadingStatus("Reading the presets you already have...");
         await _manager.LoadLocalPresetsAsync();
 
-        // Display
         await DisplayPresetsAsync();
 
         LoadingPanel.Visibility = Visibility.Collapsed;

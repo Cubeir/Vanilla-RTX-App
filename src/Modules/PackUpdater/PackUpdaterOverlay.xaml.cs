@@ -120,7 +120,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         _refreshInProgress = true;
         try
         {
-            ArmRefreshCooldown();
+            RefreshButton.IsEnabled = false;
 
             VanillaRTX_AvailableLoading.Visibility = Visibility.Visible;
             VanillaRTX_AvailableVersion.Visibility = Visibility.Collapsed;
@@ -132,7 +132,10 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
             await RefreshInstalledVersions();
             if (_isClosing) return;
 
-            await FetchAndDisplayRemoteVersions(force: true);
+            // Armed only when the repository actually answered: a check that failed must not
+            // spend the user's next attempt, which is the one thing they can still do about it.
+            if (await FetchAndDisplayRemoteVersions(force: true))
+                ArmRefreshCooldown();
 
             _ = Host?.BlinkingLamp(true, true, 0.5, 1.0);
         }
@@ -143,6 +146,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         finally
         {
             _refreshInProgress = false;
+            UpdateRefreshButtonState();
         }
     }
 
@@ -323,7 +327,8 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
     /// <paramref name="force"/> ignores the stored copy entirely, which is what the refresh
     /// button asks for.</para>
     /// </summary>
-    private async Task FetchAndDisplayRemoteVersions(bool force = false)
+    /// <returns>True when at least one version came from the repository just now, rather than from the stored copy or the cached zipball.</returns>
+    private async Task<bool> FetchAndDisplayRemoteVersions(bool force = false)
     {
         (string? version, VersionSource source) rtx = (null, VersionSource.Remote);
         (string? version, VersionSource source) normals = (null, VersionSource.Remote);
@@ -348,7 +353,11 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         static bool CameFromRemote((string? version, VersionSource source) pack) =>
             !string.IsNullOrEmpty(pack.version) && pack.source == VersionSource.Remote;
 
-        if (!force && (CameFromRemote(rtx) || CameFromRemote(normals) || CameFromRemote(opus)))
+        var answered = CameFromRemote(rtx) || CameFromRemote(normals) || CameFromRemote(opus);
+
+        // Opening the window arms the cooldown itself; a forced refresh lets its caller decide,
+        // because it has a button to re-enable when nothing came back.
+        if (!force && answered)
             ArmRefreshCooldown();
 
         var vanillaRTXVersion = VanillaRTXVersion;
@@ -369,6 +378,8 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
 
         await UpdateAllButtonStates(rtx.version, normals.version, opus.version,
             vanillaRTXVersion, vanillaRTXNormalsVersion, vanillaRTXOpusVersion);
+
+        return answered;
     }
 
     private string GetAvailabilityText(string? availableVersion, string? installedVersion, VersionSource source)
