@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Core.Overlays;
+using Windows.Storage;
 using static Vanilla_RTX_App.Core.EnvironmentVariables; // For Public Pack version variables, if null or empty = not installed
 
 namespace Vanilla_RTX_App.Modules.PackUpdater;
@@ -23,24 +24,27 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
     private static readonly TimeSpan _fadeInDuration = TimeSpan.FromMilliseconds(150);
     private static readonly TimeSpan _fadeOutDuration = TimeSpan.FromMilliseconds(125);
 
-    // This module's second line of defence against deploying a stale cache now lives in
-    // PackUpdater.InvalidateCacheIfStaleAsync, called from UpdateAllButtonStates.
-    //
-    // It used to live here, and it was wrong in both directions. It triggered on INSTALLED being
-    // behind the remote and then invalidated unconditionally, so it would throw away a perfectly
-    // current zipball just because the user was running an older pack - an ~11MB re-download and
-    // a GitHub hit to replace a file that was already correct. And because the only thing holding
-    // that back was a 1-minute cooldown, the genuinely stale case could still slip through it and
-    // through PackUpdater's own 55-minute cooldown at the same time, and deploy stale anyway.
-    //
-    // Asking the right question - is the CACHE behind the remote? - fixes both, and costs nothing:
-    // the remote numbers are already in hand from GetRemoteVersionsAsync, and the cache's own
-    // numbers are read off the zipball on disk. No request, so no cooldown to reason about.
+    // The guard against deploying a stale cached zipball is PackUpdater.InvalidateCacheIfStaleAsync,
+    // called from UpdateAllButtonStates on every refresh of this window. It asks whether the CACHE
+    // is behind the remote - not whether what the user has INSTALLED is - and only that question
+    // may drop the zipball: a user merely running an older pack is no reason to throw away a
+    // current 11MB download. It carries no cooldown because it makes no requests: the remote
+    // numbers are the ones just fetched, and the cache's own are read off the zipball on disk.
 
     private string? _currentInstallActionType;
 
     private DispatcherTimer? _installingAnimationTimer;
     private int _animationDots = 0;
+
+    /// <summary>The refresh button, shown in MainWindow's titlebar while this module is open.</summary>
+    protected internal override FrameworkElement? TitleBarStrip => TitleBarActions;
+
+    // Next allowed refresh, stored rather than kept in memory so closing and reopening the module
+    // doesn't hand the user a fresh button and another three requests.
+    private const string REFRESH_COOLDOWN_KEY = "PackUpdater_RefreshCooldown_NextAllowed";
+    private const int REFRESH_COOLDOWN_SECONDS = 60;
+    private DispatcherTimer? _refreshCooldownTimer;
+    private bool _refreshInProgress;
 
     public PackUpdaterOverlay(MainWindow mainWindow)
     {
@@ -71,6 +75,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
 
             SetupButtonHandlers();
             CheckAndHandleOngoingInstallation();
+            StartRefreshCooldownTimer();
         }
         catch (Exception ex)
         {
@@ -87,6 +92,126 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         this.Loaded -= PackUpdaterOverlay_Loaded;
 
         StopInstallingAnimation();
+
+        _refreshCooldownTimer?.Stop();
+        _refreshCooldownTimer = null;
+    }
+
+    // REFRESH =================================
+
+    /// <summary>
+    /// Asks everything again: where the packs are and what versions they are, then what the
+    /// repository currently offers, ignoring the stored copy. The same work opening this module
+    /// does, which is why it goes through the same two methods.
+    ///
+    /// <para>Refused while an install is running. A refresh re-evaluates the cached zipball and
+    /// can drop it, and that zipball is the file an install is reading out of.</para>
+    /// </summary>
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_refreshInProgress || IsRefreshOnCooldown()) return;
+
+        if (_updater.IsInstallationInProgress())
+        {
+            Trace.WriteLine("[PackUpdaterOverlay] An installation is in progress - ignoring refresh");
+            return;
+        }
+
+        _refreshInProgress = true;
+        try
+        {
+            ArmRefreshCooldown();
+
+            VanillaRTX_AvailableLoading.Visibility = Visibility.Visible;
+            VanillaRTX_AvailableVersion.Visibility = Visibility.Collapsed;
+            VanillaRTXNormals_AvailableLoading.Visibility = Visibility.Visible;
+            VanillaRTXNormals_AvailableVersion.Visibility = Visibility.Collapsed;
+            VanillaRTXOpus_AvailableLoading.Visibility = Visibility.Visible;
+            VanillaRTXOpus_AvailableVersion.Visibility = Visibility.Collapsed;
+
+            await RefreshInstalledVersions();
+            if (_isClosing) return;
+
+            await FetchAndDisplayRemoteVersions(force: true);
+
+            _ = Host?.BlinkingLamp(true, true, 0.5, 1.0);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[PackUpdaterOverlay] Refresh failed: {ex.Message}");
+        }
+        finally
+        {
+            _refreshInProgress = false;
+        }
+    }
+
+    private static bool IsRefreshOnCooldown() => RefreshCooldownRemaining() > 0;
+
+    private static int RefreshCooldownRemaining()
+    {
+        try
+        {
+            if (ApplicationData.Current.LocalSettings.Values[REFRESH_COOLDOWN_KEY] is not string stamp) return 0;
+            if (!DateTimeOffset.TryParse(stamp, out var until)) return 0;
+
+            var remaining = until - DateTimeOffset.UtcNow;
+
+            // Further out than the cooldown itself is a clock that moved, or a corrupt value -
+            // either would otherwise disable the button for good.
+            if (remaining > TimeSpan.FromSeconds(REFRESH_COOLDOWN_SECONDS)) return 0;
+
+            return remaining > TimeSpan.Zero ? (int)Math.Ceiling(remaining.TotalSeconds) : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static void ArmRefreshCooldown()
+    {
+        try
+        {
+            ApplicationData.Current.LocalSettings.Values[REFRESH_COOLDOWN_KEY] =
+                DateTimeOffset.UtcNow.AddSeconds(REFRESH_COOLDOWN_SECONDS).ToString("o");
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Paints the button for the current cooldown and keeps a one-second timer running to count
+    /// it down. The countdown is also the freshness readout: it is armed whenever the versions on
+    /// screen came from a request rather than from the stored copy, so a live button means what
+    /// is displayed was read back from disk.
+    /// </summary>
+    private void StartRefreshCooldownTimer()
+    {
+        UpdateRefreshButtonState();
+
+        _refreshCooldownTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _refreshCooldownTimer.Tick += (_, _) => UpdateRefreshButtonState();
+        _refreshCooldownTimer.Start();
+    }
+
+    private void UpdateRefreshButtonState()
+    {
+        if (_isClosing) return;
+
+        var remaining = RefreshCooldownRemaining();
+
+        if (remaining > 0)
+        {
+            RefreshButton.IsEnabled = false;
+            RefreshIcon.Visibility = Visibility.Collapsed;
+            RefreshCountdownText.Visibility = Visibility.Visible;
+            RefreshCountdownText.Text = remaining.ToString();
+            return;
+        }
+
+        RefreshButton.IsEnabled = !_updater.IsInstallationInProgress();
+        RefreshIcon.Visibility = Visibility.Visible;
+        RefreshCountdownText.Visibility = Visibility.Collapsed;
     }
 
     // INITIALIZATION =================================
@@ -189,7 +314,16 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
             string.IsNullOrEmpty(vanillaRTXOpusVersion) ? "Not installed" : vanillaRTXOpusVersion;
     }
 
-    private async Task FetchAndDisplayRemoteVersions()
+    /// <summary>
+    /// Fills the three Available rows and the buttons under them.
+    ///
+    /// <para>Opening the module asks for versions no older than
+    /// <see cref="PackUpdater.OverlayVersionMaxAge"/> - someone looking at these numbers is owed
+    /// something fresher than the background glyph is, without every open being a request.
+    /// <paramref name="force"/> ignores the stored copy entirely, which is what the refresh
+    /// button asks for.</para>
+    /// </summary>
+    private async Task FetchAndDisplayRemoteVersions(bool force = false)
     {
         (string? version, VersionSource source) rtx = (null, VersionSource.Remote);
         (string? version, VersionSource source) normals = (null, VersionSource.Remote);
@@ -197,7 +331,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
 
         try
         {
-            var result = await _updater.GetRemoteVersionsAsync();
+            var result = await _updater.GetRemoteVersionsAsync(PackUpdater.OverlayVersionMaxAge, force);
             rtx = result.rtx;
             normals = result.normals;
             opus = result.opus;
@@ -206,6 +340,16 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         {
             // Fetch failed completely
         }
+
+        // Anything read straight from the remote arms the refresh cooldown, so the button says
+        // which of the two produced what is on screen. A forced refresh armed it at the click.
+        // A version is only "from the remote" if there is one - the initial values above carry
+        // that source with no version behind them, which is what a fetch that threw leaves.
+        static bool CameFromRemote((string? version, VersionSource source) pack) =>
+            !string.IsNullOrEmpty(pack.version) && pack.source == VersionSource.Remote;
+
+        if (!force && (CameFromRemote(rtx) || CameFromRemote(normals) || CameFromRemote(opus)))
+            ArmRefreshCooldown();
 
         var vanillaRTXVersion = VanillaRTXVersion;
         var vanillaRTXNormalsVersion = VanillaRTXNormalsVersion;

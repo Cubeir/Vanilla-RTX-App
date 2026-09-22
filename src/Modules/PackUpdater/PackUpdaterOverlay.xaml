@@ -843,6 +843,42 @@
 
         </Grid>
 
+        <!-- Handed to MainWindow's titlebar while this module is open - see ModuleOverlay. No
+             size or alignment here: placement belongs to the control that hosts it. -->
+        <Border x:Name="TitleBarActions">
+            <Grid Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="1">
+                <Button x:Name="RefreshButton"
+                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                        Style="{ThemeResource SubtleButtonStyle}"
+                        Width="40"
+                        Height="35"
+                        CornerRadius="0"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        Click="RefreshButton_Click"
+                        IsTextScaleFactorEnabled="False"
+                        ToolTipService.ToolTip="Checks again: rescans the packs you have installed and asks the Vanilla RTX repository what the latest versions are.
+                        &#x0a;&#x0a;The app already does this on its own, so use it when a release has just dropped and you would rather not wait. While it shows a countdown, the versions on screen were just fetched.">
+                    <Grid>
+                        <FontIcon x:Name="RefreshIcon"
+                                  Glyph="&#xE72C;"
+                                  FontSize="14"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  IsTextScaleFactorEnabled="False" />
+                        <TextBlock x:Name="RefreshCountdownText"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"
+                                   IsTextScaleFactorEnabled="False" />
+                    </Grid>
+                </Button>
+            </Grid>
+        </Border>
 
     </Grid>
 </overlays:ModuleOverlay>

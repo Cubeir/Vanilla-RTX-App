@@ -116,9 +116,12 @@ For each pack you'll see the version **Installed** and the version **Available**
 
 The **Enhancements** toggle (on by default) adds the pack's enhancements - fixes for many rendering errors and incompatibilities with ray tracing, and improvements to things like particles. They're classified as mildly non-vanilla changes, which is why you can turn them off - for instance if they clash with another pack you use.
 
+The **refresh** button in the title bar checks everything again: it rescans the packs you have installed and asks the Vanilla RTX repository for the latest versions, ignoring what the app already had. Use it when a release has just dropped and you'd rather not wait for the app to notice on its own. It can be used once a minute, and shows a countdown for that minute after the versions have just been fetched - so a live button means the numbers on screen came from the app's own records.
+
 Things worth knowing:
 
 - An update replaces your existing copy of that pack.
+- The available versions are remembered for a while rather than asked for every time. Opening this page uses anything fetched in the last 10 minutes, and the main menu's own check is hourly. Installing always asks the repository directly first, whatever those say, so an install never deploys a version that has just been superseded.
 - Downloads stay cached, so a reinstall is instant until a newer version comes out. The **Get latest RTX packs** button's icon in the main menu tells you which to expect: a sync icon when a click can install straight from the cache, and a cloud when it will download.
 - The log tells you once per session when an update is waiting.
 - Below the packs are optional **add-ons and extensions** (Chemistry RTX, Creative RTX, Vanilla RTX Add-Ons, Everwinter). They're downloaded manually from their pages, need to be activated above one of the three main packs in-game, and aren't updated by the app, since they rarely change or receive updates due to their forward-compatible nature.

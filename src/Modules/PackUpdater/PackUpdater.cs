@@ -66,7 +66,27 @@ public class PackUpdater
     // for identical data.
     private const string RemoteVersionsCacheKey = "RemoteVersionsCache";
     private const string RemoteVersionsCacheTimeKey = "RemoteVersionsCacheTime";
-    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromMinutes(5);
+    private const string RemoteVersionsFailedUntilKey = "RemoteVersionsFailedUntil";
+
+    /// <summary>
+    /// How old the remote versions may be for a caller that doesn't say otherwise - which is
+    /// MainWindow's status pass, running off every pack re-locate. Vanilla RTX releases are weeks
+    /// apart, so asking GitHub more often than this buys nothing a user would notice.
+    /// </summary>
+    private static readonly TimeSpan RemoteVersionCacheDuration = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// What the updater window asks for when it opens. Someone looking at the version numbers is
+    /// owed something newer than a background glyph is, without making every open a request.
+    /// </summary>
+    public static readonly TimeSpan OverlayVersionMaxAge = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// How long to leave the remote alone after a failed version check. Without it, an offline
+    /// session re-attempts three requests on every pack re-locate, each waiting out its own
+    /// timeout, and nine call sites can trigger that.
+    /// </summary>
+    private static readonly TimeSpan RemoteVersionsFailureBackoff = TimeSpan.FromMinutes(10);
 
     // Cache validation check cooldown (Zip re-check versus remote before trying to install from it)
     private const string LastCacheCheckKey = "LastCacheValidationCheck";
@@ -203,6 +223,11 @@ public class PackUpdater
     /// to report a network, and the last check has to be older than <c>CacheCheckCooldown</c>.
     /// The cooldown stamp is only written after a <i>successful</i> fetch, so a failed attempt
     /// doesn't burn the window.</para>
+    /// <para><b>It asks the remote itself rather than reading the stored versions</b>, and that
+    /// is the point of it: this is the last moment before ~11MB is deployed, and a release that
+    /// appeared after the window's own numbers were read is exactly what it exists to catch. What
+    /// it learns is stored for everyone else (<see cref="StoreRemoteVersions"/>), so the cost is
+    /// paid once.</para>
     /// <para>Every failure path keeps the existing cache rather than discarding it. A cache
     /// that might be one version old is worth far more to an offline user than no cache at
     /// all, and being unable to reach GitHub says nothing about whether the cache is
@@ -253,10 +278,21 @@ public class PackUpdater
         if (remote != null)
         {
             localSettings.Values[checkKey] = now.ToString("o");
+
+            // This is a real answer from the remote, and the only place that pays for one at
+            // install time - so everything else that shows a version reads it rather than asking
+            // again. It is also the freshest reading the app has: this path deliberately skips
+            // the stored copy, which is what lets an install pick up a release that appeared
+            // after the window's own numbers were fetched.
+            StoreRemoteVersions(
+                (ExtractVersionFromManifest(remote.Value.rtx), VersionSource.Remote),
+                (ExtractVersionFromManifest(remote.Value.normals), VersionSource.Remote),
+                (ExtractVersionFromManifest(remote.Value.opus), VersionSource.Remote));
         }
         else
         {
             Trace.WriteLine("⚠️ Could not validate cache - will use existing cache");
+            RecordRemoteVersionFailure();
             return false;
         }
 
@@ -448,20 +484,35 @@ public class PackUpdater
 
     // ======================= Remote Version Fetching (For UI Display) =======================
 
+    /// <summary>
+    /// The three remote pack versions, from the stored copy while it is young enough and from
+    /// GitHub when it isn't.
+    ///
+    /// <para><paramref name="maxAge"/> is how old the stored copy may be for this particular
+    /// caller: the background status pass takes the default, the updater window asks for
+    /// something fresher when it opens, and <paramref name="force"/> ignores the stored copy
+    /// outright, which is what the refresh button asks for.</para>
+    ///
+    /// <para>A failed check is remembered too, so an offline session does not sit through three
+    /// timeouts on every pack re-locate. <paramref name="force"/> ignores that as well - someone
+    /// pressing a button is entitled to the attempt.</para>
+    /// </summary>
     public async Task<(
         (string? version, VersionSource source) rtx,
         (string? version, VersionSource source) normals,
         (string? version, VersionSource source) opus
-    )> GetRemoteVersionsAsync()
+    )> GetRemoteVersionsAsync(TimeSpan? maxAge = null, bool force = false)
     {
         var localSettings = ApplicationData.Current.LocalSettings;
         var now = DateTimeOffset.UtcNow;
         var cacheKey = RemoteVersionsCacheKey;
         var timeKey = RemoteVersionsCacheTimeKey;
+        var age = maxAge ?? RemoteVersionCacheDuration;
 
-        if (localSettings.Values[timeKey] is string cacheTimeStr &&
+        if (!force &&
+            localSettings.Values[timeKey] is string cacheTimeStr &&
             DateTimeOffset.TryParse(cacheTimeStr, out var cacheTime) &&
-            now < cacheTime + RemoteVersionCacheDuration)
+            now < cacheTime + age)
         {
             if (localSettings.Values[cacheKey] is string cachedJson)
             {
@@ -492,9 +543,15 @@ public class PackUpdater
         VersionSource normalsSource = VersionSource.Remote;
         VersionSource opusSource = VersionSource.Remote;
         bool anyRemoteSuccess = false;
+        bool attemptedNetwork = false;
 
-        if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        if (!force && IsRemoteVersionCheckBackedOff())
         {
+            Trace.WriteLine("⏳ Remote version check backed off after a recent failure - using what is on disk");
+        }
+        else if (System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            attemptedNetwork = true;
             try
             {
                 var remoteManifests = await FetchRemoteManifests();
@@ -568,37 +625,14 @@ public class PackUpdater
 
         if (anyRemoteSuccess)
         {
-            var cacheObj = new JsonObject();
-
-            if (rtxVersion != null)
-            {
-                cacheObj["rtx"] = new JsonObject
-                {
-                    ["version"] = rtxVersion,
-                    ["source"] = rtxSource.ToString()
-                };
-            }
-
-            if (normalsVersion != null)
-            {
-                cacheObj["normals"] = new JsonObject
-                {
-                    ["version"] = normalsVersion,
-                    ["source"] = normalsSource.ToString()
-                };
-            }
-
-            if (opusVersion != null)
-            {
-                cacheObj["opus"] = new JsonObject
-                {
-                    ["version"] = opusVersion,
-                    ["source"] = opusSource.ToString()
-                };
-            }
-
-            localSettings.Values[cacheKey] = cacheObj.ToJsonString();
-            localSettings.Values[timeKey] = now.ToString("o");
+            StoreRemoteVersions(
+                (rtxVersion, rtxSource),
+                (normalsVersion, normalsSource),
+                (opusVersion, opusSource));
+        }
+        else if (attemptedNetwork)
+        {
+            RecordRemoteVersionFailure();
         }
 
         return (
@@ -606,6 +640,95 @@ public class PackUpdater
             (normalsVersion, normalsSource),
             (opusVersion, opusSource)
         );
+    }
+
+    /// <summary>
+    /// Stores the three versions and where each came from, and stamps the store as of now.
+    ///
+    /// <para><b>Every path that talks to the remote writes through here</b>, including the
+    /// install-time validation, which asks the same three URLs for its own reasons. Whoever pays
+    /// for a request, everyone else gets to read the answer - and the glyph on MainWindow, the
+    /// updater window's numbers and the install-time check can't end up describing different
+    /// moments in time.</para>
+    /// </summary>
+    private void StoreRemoteVersions(
+        (string? version, VersionSource source) rtx,
+        (string? version, VersionSource source) normals,
+        (string? version, VersionSource source) opus)
+    {
+        try
+        {
+            var cacheObj = new JsonObject();
+
+            // A pack whose manifest didn't come back keeps whatever was stored for it. One of the
+            // three failing while the others answer is a normal enough outcome, and letting it
+            // blank an entry would show "Failed to check" for that pack until the next check -
+            // for a version the app knew perfectly well a moment ago.
+            var existing = ApplicationData.Current.LocalSettings.Values[RemoteVersionsCacheKey] is string previousJson
+                ? ParseJsonObject(previousJson)
+                : null;
+
+            void Add(string key, (string? version, VersionSource source) pack)
+            {
+                if (pack.version == null)
+                {
+                    if (existing?[key] is JsonNode kept) cacheObj[key] = kept.DeepClone();
+                    return;
+                }
+
+                cacheObj[key] = new JsonObject
+                {
+                    ["version"] = pack.version,
+                    ["source"] = pack.source.ToString()
+                };
+            }
+
+            Add("rtx", rtx);
+            Add("normals", normals);
+            Add("opus", opus);
+
+            var localSettings = ApplicationData.Current.LocalSettings;
+            localSettings.Values[RemoteVersionsCacheKey] = cacheObj.ToJsonString();
+            localSettings.Values[RemoteVersionsCacheTimeKey] = DateTimeOffset.UtcNow.ToString("o");
+            localSettings.Values[RemoteVersionsFailedUntilKey] = null;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[PackUpdater] Couldn't store remote versions: {ex.Message}");
+        }
+    }
+
+    /// <summary>Whether a recent failed check says not to bother the remote yet.</summary>
+    private bool IsRemoteVersionCheckBackedOff()
+    {
+        try
+        {
+            if (ApplicationData.Current.LocalSettings.Values[RemoteVersionsFailedUntilKey] is not string stamp)
+                return false;
+
+            if (!DateTimeOffset.TryParse(stamp, out var until))
+                return false;
+
+            var wait = until - DateTimeOffset.UtcNow;
+
+            // Further out than the backoff itself means a clock that moved, or a corrupt value;
+            // either way it would otherwise lock checks out indefinitely.
+            return wait > TimeSpan.Zero && wait <= RemoteVersionsFailureBackoff;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void RecordRemoteVersionFailure()
+    {
+        try
+        {
+            ApplicationData.Current.LocalSettings.Values[RemoteVersionsFailedUntilKey] =
+                DateTimeOffset.UtcNow.Add(RemoteVersionsFailureBackoff).ToString("o");
+        }
+        catch { }
     }
 
     /// <summary>
@@ -643,7 +766,7 @@ public class PackUpdater
     /// in. Returns whether it dropped anything.
     ///
     /// This closes a gap that <see cref="ValidateCacheAgainstRemote"/> alone cannot: that one is
-    /// behind a 55-minute cooldown, so a cache that goes stale inside that window would deploy
+    /// behind its own cooldown, so a cache that goes stale inside that window would deploy
     /// stale. This runs whenever the updater window refreshes, with no cooldown of its own,
     /// because it costs nothing to run - the remote numbers are the caller's already-fetched
     /// ones (so no request), and the cache's own numbers are read off the zipball already on
@@ -779,32 +902,6 @@ public class PackUpdater
         {
             return null;
         }
-    }
-
-    // ======================= Cooldown Management =======================
-
-    /// <summary>
-    /// Forgets when the cache was last validated, so the next
-    /// <see cref="ValidateCacheAgainstRemote"/> goes to the network instead of returning
-    /// early. For the window's manual refresh - the cooldown exists to stop routine checks
-    /// hitting GitHub, not to override the user asking directly.
-    /// </summary>
-    public void ResetCacheCheckCooldown()
-    {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        localSettings.Values[LastCacheCheckKey] = null;
-    }
-
-    /// <summary>
-    /// Drops the in-memory copy of the remote manifests, so the next version display refetches
-    /// them. Independent of the zipball cache - this is what the UI shows, not what it
-    /// installs from.
-    /// </summary>
-    public void ResetRemoteVersionCache()
-    {
-        var localSettings = ApplicationData.Current.LocalSettings;
-        localSettings.Values[RemoteVersionsCacheKey] = null;
-        localSettings.Values[RemoteVersionsCacheTimeKey] = null;
     }
 
     // ======================= Helper Methods =======================
