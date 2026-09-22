@@ -58,7 +58,9 @@ For anyone who just wants to quickly get ray tracing working:
 4. In Minecraft, go to **Settings -> Global Resources** and activate the Vanilla RTX pack you installed.
 5. Enter a world. That's it.
 
-You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible. The rest of this page is the full handbook, for when you want to go further.
+You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible.
+
+*The rest of this page is the full handbook, for when you take things further, or get an in-depth understanding of every feature.*
 
 # Overview & main menu features
 
@@ -67,7 +69,7 @@ Features split into two main groups by what they touch:
 - **Your packs and user data** - installing Vanilla RTX, choosing packs, tuning, RTX Reactor, and launching the game. These work on the resource packs in Minecraft's user data folder.
 - **Your game install** - BetterRTX, the RTX LUT manager and the DLSS swapper. These replace files inside Minecraft itself, and each keeps a backup of your original files so you can always go back.
 
-The app finds both Minecraft and its user data on its own. If it ever can't, see [Troubleshooting](#troubleshooting).
+The app finds both Minecraft installations and their user data locations on its own. If it ever fails to, see [Troubleshooting](#troubleshooting).
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/fe39284b-4275-4fb6-9339-26dec8057e5b" />
 
@@ -116,16 +118,15 @@ For each pack you'll see the version **Installed** and the version **Available**
 
 The **Enhancements** toggle (on by default) adds the pack's enhancements - fixes for many rendering errors and incompatibilities with ray tracing, and improvements to things like particles. They're classified as mildly non-vanilla changes, which is why you can turn them off - for instance if they clash with another pack you use.
 
-The **refresh** button in the title bar checks everything again: it rescans the packs you have installed and asks the Vanilla RTX repository for the latest versions, ignoring what the app already had. Use it when a release has just dropped and you'd rather not wait for the app to notice on its own. It can be used once a minute, and shows a countdown for that minute after the versions have just been fetched - so a live button means the numbers on screen came from the app's own records.
+The **refresh** button in the title bar checks everything again: it rescans the packs you have installed against the latest available versions. Use it when a release has just dropped and you'd rather not wait for the app to notice on its own. It can be used once a minute, and shows a countdown for that minute after the versions have just been fetched - so a live button is a subtle nod that the numbers on screen came from the app's cache.
 
-Things worth knowing:
-
-- An update replaces your existing copy of that pack.
-- The available versions are remembered for a while rather than asked for every time. Opening this page uses anything fetched in the last 10 minutes, and the main menu's own check is hourly. Installing always asks the repository directly first, whatever those say, so an install never deploys a version that has just been superseded.
-- Downloads stay cached, so a reinstall is instant until a newer version comes out. The **Get latest RTX packs** button's icon in the main menu tells you which to expect: a sync icon when a click can install straight from the cache, and a cloud when it will download.
-- The log tells you once per session when an update is waiting.
-- Below the packs are optional **add-ons and extensions** (Chemistry RTX, Creative RTX, Vanilla RTX Add-Ons, Everwinter). They're downloaded manually from their pages, need to be activated above one of the three main packs in-game, and aren't updated by the app, since they rarely change or receive updates due to their forward-compatible nature.
-- An install keeps running if you close this page, and the page shows its progress again when you come back. This was worth mentioning because other features in the app tend to terminate if you close their page.
+> Other things worth mentioning:
+> - An update replaces your existing copy of that pack, and all older versions that may be installed are cleared, leaving only the latest installation.
+> - The `available` versions are remembered for a while rather than asked for every time. Opening this page uses anything fetched in the last few minutes, and the main menu's own notices can check hourly. Installing always asks the repository directly first, whatever those say, so an install never deploys a version that has just been superseded moments ago and didn't show up in the UI.
+> - Downloads stay cached, so a reinstall is instant until a newer version comes out. The **Get latest RTX packs** button's icon in the main menu tells you which to expect: a sync icon when a click can install straight from the cache, and a cloud when it will download.
+> - The log tells you once per session when an update is waiting.
+> - Packs at the bottom are optional **add-ons and extensions** (Chemistry RTX, Creative RTX, Vanilla RTX Add-Ons, Everwinter). They're downloaded manually from their pages, need to be activated above one of the three main packs in-game, and aren't updated by the app, since they rarely change or receive updates due to their forward-compatible nature.
+> - An install keeps running if you close this page, and the page shows its progress again when you come back. This was worth mentioning because other features in the app tend to terminate if you close their page.
 
 # Select other packs
 
