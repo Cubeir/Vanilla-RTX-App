@@ -81,7 +81,7 @@ public sealed partial class MarkdownOverlay : UserControl
 
     /// <summary>Next allowed Reload time per page URL - see the class doc. Process-lifetime, independent of any single overlay instance's open/closed state.</summary>
     private static readonly Dictionary<string, DateTime> _reloadCooldownUntil = new(StringComparer.Ordinal);
-    private const int ReloadCooldownSeconds = 30;
+    private const int ReloadCooldownSeconds = 60;
 
     private bool _isOpen;
     private string _pageUrl = string.Empty;
@@ -129,8 +129,9 @@ public sealed partial class MarkdownOverlay : UserControl
             if (_reloadCooldownUntil.TryGetValue(_pageUrl, out var until) && until > DateTime.UtcNow)
                 return;
 
-            _reloadCooldownUntil[_pageUrl] = DateTime.UtcNow.AddSeconds(ReloadCooldownSeconds);
-            RefreshReloadCooldownUI();
+            // The cooldown is armed by the fetch itself, inside LoadAsync, which runs
+            // synchronously as far as its first await - so it is set before this handler
+            // returns and a second click cannot slip past the guard above.
             _ = LoadAsync(bypassCache: true);
         };
 
@@ -288,6 +289,12 @@ public sealed partial class MarkdownOverlay : UserControl
             }
             else
             {
+                // Going to the network arms Reload's cooldown, so the button says which of the
+                // two branches produced what is on screen: counting down means this page was
+                // just fetched, live means it came off the disk cache.
+                _reloadCooldownUntil[_pageUrl] = DateTime.UtcNow.AddSeconds(ReloadCooldownSeconds);
+                RefreshReloadCooldownUI();
+
                 // With a copy to fall back on, a slow network isn't worth waiting out.
                 var timeout = TimeSpan.FromSeconds(cached is null ? 15 : 5);
                 markdown = await FetchRawMarkdownAsync(_rawUrl, timeout, cts.Token);

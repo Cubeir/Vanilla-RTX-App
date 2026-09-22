@@ -80,7 +80,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     private readonly object _downloadStatusLock = new object();
 
     private const string REFRESH_COOLDOWN_KEY = "BetterRTXManager_RefreshCooldown_LastClickTimestamp";
-    private const int REFRESH_COOLDOWN_SECONDS = 30;
+    private const int REFRESH_COOLDOWN_SECONDS = 60;
     private DispatcherTimer? _cooldownTimer;
 
     /// <summary>
@@ -377,8 +377,16 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         }
     }
 
+    /// <summary>
+    /// Starts the countdown timer, and arms the cooldown first when opening this window went to
+    /// the API rather than reading its cache. The button is then the one visible answer to "how
+    /// old is this list": counting down means it was just fetched, live means it came from cache.
+    /// </summary>
     private void InitializeRefreshButton()
     {
+        if (_manager.FetchedApiSinceAttach)
+            ApplicationData.Current.LocalSettings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
+
         UpdateRefreshButtonState();
         _cooldownTimer = new DispatcherTimer();
         _cooldownTimer.Interval = TimeSpan.FromSeconds(1);

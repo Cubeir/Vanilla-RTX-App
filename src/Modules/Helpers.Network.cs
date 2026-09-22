@@ -45,10 +45,31 @@ public static partial class Helpers
             ? $"vanilla_rtx_app/{EnvironmentVariables.appVersion}"
             : $"vanilla_rtx_app_{component}/{EnvironmentVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)";
     /// <summary>
+    /// How long a transfer may make no progress at all before it is abandoned and retried.
+    /// Separate from <c>timeout</c>, which bounds the whole attempt: a total deadline large
+    /// enough for an 11MB pack on a slow line is far too large to notice a connection that was
+    /// accepted and then went silent, and one small enough to notice that would cancel the pack.
+    /// </summary>
+    private static readonly TimeSpan NoProgressTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Whether a failed request is one the server answered deliberately (4xx), as opposed to a
+    /// transport failure or a server-side fault. <c>EnsureSuccessStatusCode</c> is what puts the
+    /// code on the exception; a request that never reached a server carries none, and counts as
+    /// transient.
+    /// </summary>
+    public static bool IsClientError(HttpRequestException ex) =>
+        ex.StatusCode is { } code && (int)code >= 400 && (int)code < 500;
+
+    /// <summary>
     /// Downloads a file with progress tracking and retry logic.
     /// Uses the shared HttpClient which is pre-configured.
     /// For custom timeout/headers, pass a custom HttpClient.
     /// Pass quiet: true to keep progress out of the UI log and send it to Trace instead.
+    ///
+    /// <para>Retries cover transient failures only. A 4xx is the server's considered answer -
+    /// the file is gone, or we are being rate limited - and asking again immediately makes the
+    /// second case worse, so those fail on the spot.</para>
     /// </summary>
     public static async Task<(bool, string?)> Download(
             string url,
@@ -78,7 +99,12 @@ public static partial class Helpers
                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                 : null;
             timeoutCts?.CancelAfter(timeout!.Value);
-            var token = timeoutCts?.Token ?? cancellationToken;
+
+            // Layered on top of the total deadline rather than replacing it: this one is pushed
+            // back by every chunk that arrives, so it only fires when nothing is coming through.
+            using var stallCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts?.Token ?? cancellationToken);
+            stallCts.CancelAfter(NoProgressTimeout);
+            var token = stallCts.Token;
 
             try
             {
@@ -167,6 +193,7 @@ public static partial class Helpers
                 {
                     await fileStream.WriteAsync(buffer.AsMemory(0, read), token);
                     totalRead += read;
+                    stallCts.CancelAfter(NoProgressTimeout);
 
                     if (totalBytes.HasValue)
                     {
@@ -196,6 +223,11 @@ public static partial class Helpers
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 Report("Download cancelled by the caller.", LogLevel.Informational);
+                return (false, null);
+            }
+            catch (HttpRequestException ex) when (IsClientError(ex))
+            {
+                Report($"Download refused by the server ({(int)ex.StatusCode!.Value} {ex.StatusCode}).", LogLevel.Error);
                 return (false, null);
             }
             catch (HttpRequestException ex) when (retries > 0)

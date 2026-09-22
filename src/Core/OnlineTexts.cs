@@ -324,11 +324,12 @@ public static class OnlineTexts
                 }
 
                 Trace.WriteLine($"[OnlineTexts] Fetch attempt {attempt + 1}/{MAX_RETRIES + 1}");
-                var raw = await FetchAsync();
+                var (raw, retryable) = await FetchAsync();
 
                 if (raw is null)
                 {
                     Trace.WriteLine($"[OnlineTexts] Attempt {attempt + 1} returned null");
+                    if (!retryable) break;
                     continue;
                 }
 
@@ -729,11 +730,15 @@ public static class OnlineTexts
     // =========================================================================
 
     /// <summary>
-    /// Fetches the announcements markdown, or null on any failure. The short default timeout
-    /// is deliberate - this runs at startup and nothing waits on it, so a slow or unreachable
-    /// host must not hold the app up when a cached copy will do.
+    /// Fetches the announcements markdown. The short default timeout is deliberate - this runs
+    /// at startup and nothing waits on it, so a slow or unreachable host must not hold the app
+    /// up when a cached copy will do.
+    ///
+    /// <para><c>Retryable</c> is false for a 4xx: the file is gone or we are being rate limited,
+    /// and either way the answer five seconds later is the same one. Everything else - a
+    /// timeout, a dropped connection, a 5xx - is worth another attempt.</para>
     /// </summary>
-    private static async Task<string?> FetchAsync(int timeoutSeconds = 8)
+    private static async Task<(string? Raw, bool Retryable)> FetchAsync(int timeoutSeconds = 8)
     {
         try
         {
@@ -742,14 +747,17 @@ public static class OnlineTexts
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
             var response = await Helpers.UpdaterHttpClient.GetAsync(URL, cts.Token);
             Trace.WriteLine($"[OnlineTexts] HTTP {(int)response.StatusCode} {response.StatusCode}");
-            return response.IsSuccessStatusCode
-                ? await response.Content.ReadAsStringAsync()
-                : null;
+
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadAsStringAsync(), true);
+
+            var status = (int)response.StatusCode;
+            return (null, status < 400 || status >= 500);
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[OnlineTexts] FetchAsync: {ex.GetType().Name}: {ex.Message}");
-            return null;
+            return (null, true);
         }
     }
 

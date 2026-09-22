@@ -127,6 +127,14 @@ internal sealed class BetterRTXManager
 
     private const string API_LAST_FETCH_KEY = "BetterRTXManager_ApiLastFetchTimestamp";
     private const int API_REFETCH_INTERVAL_HOURS = 1;
+    private static readonly TimeSpan ApiRequestTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Whether this attach actually went to the API, rather than reading the cache. The window
+    /// puts its refresh button on cooldown when it did, so a list built from a fetch seconds old
+    /// says so, and a list built from cache leaves the button live.
+    /// </summary>
+    public bool FetchedApiSinceAttach { get; private set; }
 
     /// <summary>
     /// Which edition this instance is attached to, as decided by <see cref="TryAttachAsync"/>.
@@ -246,6 +254,7 @@ internal sealed class BetterRTXManager
     /// </summary>
     public async Task<AttachFailure> TryAttachAsync(string minecraftPath, bool isPreview)
     {
+        FetchedApiSinceAttach = false;
         IsPreview = isPreview;
         GameMaterialsPath = Path.Combine(minecraftPath, "data", "renderer", "materials");
 
@@ -416,6 +425,12 @@ internal sealed class BetterRTXManager
     ///  Different hash? soft wipe so stale downloaded presets are cleared
     ///  Fetch failed? defer silently to next launch (do not wipe)
     ///  Undetermined? soft wipe (safe default)
+    ///
+    /// <para><b>The JSON it fetched is what gets cached</b>, written back after the wipe that
+    /// deleted the previous copy. The wipe is what makes this necessary - it clears the API
+    /// cache along with the presets - and without the write-back <see cref="LoadApiDataAsync"/>
+    /// finds no cache a moment later and fetches the identical file a second time, on every
+    /// change and on every first run.</para>
     /// </summary>
     private async Task CheckApiStalenessOnStartupAsync()
     {
@@ -487,6 +502,7 @@ internal sealed class BetterRTXManager
                 // No prior cache to compare against — undetermined, wipe to be safe
                 Trace.WriteLine("[BetterRTX] [StalenessCheck] No prior cache hash — undetermined, soft wipe (safe default)");
                 await WipeNonDefaultPresetsCacheAsync();
+                await SaveApiCacheAsync(freshJson, freshHash);
                 return;
             }
 
@@ -499,6 +515,7 @@ internal sealed class BetterRTXManager
             // Content changed — wipe downloaded presets so stale files don't linger
             Trace.WriteLine("[BetterRTX] [StalenessCheck] ⚠ API changed — soft wiping downloaded presets");
             await WipeNonDefaultPresetsCacheAsync();
+            await SaveApiCacheAsync(freshJson, freshHash);
         }
         catch (Exception ex)
         {
@@ -506,6 +523,26 @@ internal sealed class BetterRTXManager
             try { await WipeNonDefaultPresetsCacheAsync(); } catch { }
         }
     }
+
+    /// <summary>
+    /// Writes API JSON already in hand to the cache and remembers its hash, so the next read
+    /// comes off disk. Failing to write is not worth failing the open over - the next read
+    /// fetches, which is what would have happened anyway.
+    /// </summary>
+    private async Task SaveApiCacheAsync(string json, string hash)
+    {
+        try
+        {
+            await File.WriteAllTextAsync(ApiCachePath, json);
+            _cachedApiHash = hash;
+            Trace.WriteLine("[BetterRTX] [StalenessCheck] Cached the JSON this check fetched");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[BetterRTX] [StalenessCheck] Couldn't cache fetched JSON: {ex.Message}");
+        }
+    }
+
     public async Task LoadApiDataAsync()
     {
         try
@@ -603,7 +640,12 @@ internal sealed class BetterRTXManager
         try
         {
             var client = Helpers.SharedHttpClient;
-            var response = await client.GetAsync("https://bedrock.graphics/api");
+
+            // Both shared clients have their own timeout disabled, so a deadline has to come from
+            // the caller - without one a server that accepts the connection and then says nothing
+            // leaves the manager on its loading screen for as long as the window is open.
+            using var cts = new CancellationTokenSource(ApiRequestTimeout);
+            var response = await client.GetAsync("https://bedrock.graphics/api", cts.Token);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -619,6 +661,7 @@ internal sealed class BetterRTXManager
                 return null;
             }
 
+            FetchedApiSinceAttach = true;
             return content;
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)

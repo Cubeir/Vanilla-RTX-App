@@ -66,7 +66,7 @@ public static class AssetUpdater
     public static readonly ManagedAsset PbrBlacklistJson = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "pbr_blacklist.json"),
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/pbr_blacklist.json",
-        TimeSpan.FromDays(2));
+        TimeSpan.FromDays(4));
 
     public static readonly ManagedAsset FogZip = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "vanilla-rtx-fog.zip"),
@@ -76,7 +76,7 @@ public static class AssetUpdater
     public static readonly ManagedAsset WaterFallbackZip = new(
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", "water-fallback.zip"),
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/water-fallback.zip",
-        TimeSpan.FromDays(6));
+        TimeSpan.FromDays(14));
 
     private static readonly ManagedAsset[] Managed =
     {

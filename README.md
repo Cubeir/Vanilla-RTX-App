@@ -81,7 +81,7 @@ Three buttons sit next to the app's name. Each opens a page:
 
 > Help and Bugs can be opened on top of any feature, and closing them puts you back exactly where you were.
 
-> Next to their title are buttons to reload the page and jump back to the top, and on the right, a search button (**Ctrl+F**). Both pages are saved for offline reading and refreshed at most once an hour; if a refresh fails, the saved copy is shown.
+> Next to their title are buttons to reload the page and jump back to the top, and on the right, a search button (**Ctrl+F**). Both pages are saved for offline reading and refreshed at most once an hour; if a refresh fails, the saved copy is shown. The reload button shows a countdown for a minute after the page has been fetched, so a live button means you're reading the saved copy.
 
 > While a feature is open, a **return button** appears at the right of the title bar, beside the window controls. It closes the feature, and so does **Esc**. Some features also put their own buttons in the title bar, next to Help and Bugs - for example the pack list's refresh button.
 
@@ -96,7 +96,7 @@ The **Preview** toggle points the whole app at Minecraft Preview instead of the 
 - The **log** on the left tells you what the app is doing for transparency, warns you when something needs attention, and shows occasional announcements. It may also point you toward features worth knowing about.
 - The **lamp** logo next to the app's name is the app's status light. It blinks while something long is running, and flashes when things finish, succeed or fail. It sometimes has a mind of its own - that's intended. It serves no actual purpose beyond being a fun visual cue as you interact with the app.
 - Hover over almost anything and a small piece of pixel art appears in the bottom-left of the main menu, showing what that control does. Sliders show how they'll change the game's look, and toggles show a before and after.
-- **Announcement cards** appear throughout features, holding news, warnings and tips. They update on their own every few hours. Some can be dismissed for good, some for a while, and some that are important stay pinned.
+- **Announcement cards** appear throughout features, holding news, warnings and tips. The app looks for new ones when it starts, at most once an hour. Some can be dismissed for good, some for a while, and some that are important stay pinned.
 
 # Get latest RTX packs
 
@@ -242,7 +242,7 @@ Installs presets of [BetterRTX](https://bedrock.graphics), an unofficial mod to 
 - **Default RTX** is pinned at the top: a backup of your game's own shader files, taken the first time you open this manager. Click it to roll back to the unmodded look at any time.
 - **Add customized preset** - import `.rtpack` files, by browsing, dragging them onto the page, or opening them with the app from File Explorer. Imported presets can be deleted with the button (bin icon) beside them.
 - **Create your own preset** - opens the BetterRTX preset creator inside the app. Customize a preset, export it as `.rtpack`, then click **Done** and it will be imported automatically!
-- **Refresh** (title bar) - clears downloaded and imported presets and fetches the list again from the BetterRTX website. It never clears the Default RTX preset.
+- **Refresh** (title bar) - clears downloaded and imported presets and fetches the list again from the BetterRTX website. It never clears the Default RTX preset. It can be used once a minute, and shows a countdown for that minute after the list has just been fetched - so a live button means the list you're looking at came from the app's own cache.
 
 The app goes to great lengths to make sure you never install stale files, and that your Default backup always matches your game - mostly without you having to do anything:
 
