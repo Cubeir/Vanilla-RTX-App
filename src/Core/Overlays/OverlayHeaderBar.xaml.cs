@@ -58,7 +58,7 @@ public sealed partial class OverlayHeaderBar : UserControl
         // The Close button's accent bevel is an imperative color choice (ThemeService.
         // GetBevelColor), not a ThemeResource that re-resolves itself, so it has to be
         // recomputed by hand on every theme change - exactly like MainWindow's Preview toggle.
-        ApplyCloseButtonBevel(ThemeService.ResolveInitialTheme());
+        ApplyCloseButtonBevel(ThemeService.Current);
         ThemeService.ThemeChanged += ApplyCloseButtonBevel;
         Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyCloseButtonBevel;
     }

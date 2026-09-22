@@ -393,6 +393,14 @@ public sealed partial class MainWindow : Window
                     ApplyLocateUserDataColors(((FrameworkElement)Content).ActualTheme);
                 };
 
+                // The saved theme was applied above, before this subscription existed, so the
+                // ActualThemeChanged it caused has already fired to nobody. Everything painted
+                // from code that follows ThemeChanged - the settings panel's seams, the document
+                // headers' Return bevel - was built before the setting was even read, and hears
+                // what it is drawing in from this call and nowhere else. Without it, launching
+                // straight into a theme other than Windows' left them in the wrong one until the
+                // user switched away and back.
+                ThemeService.Broadcast(root.ActualTheme);
                 root.ActualThemeChanged += (_, __) =>
                 {
                     if (_isClosing) return;

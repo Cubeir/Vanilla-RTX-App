@@ -115,7 +115,7 @@ public sealed partial class SettingsOverlay : UserControl
         // The path selectors' 3px seams are a ThemeService color choice, not a ThemeResource
         // binding that re-resolves itself, so they have to be repainted by hand on every theme
         // change - the same deal as OverlayHeaderBar's Close button.
-        ApplyBevelColors(ThemeService.ResolveInitialTheme());
+        ApplyBevelColors(ThemeService.Current);
         ThemeService.ThemeChanged += ApplyBevelColors;
         Unloaded += (_, _) => ThemeService.ThemeChanged -= ApplyBevelColors;
 

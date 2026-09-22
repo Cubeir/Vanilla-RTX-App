@@ -2,6 +2,7 @@ using System;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using Windows.UI;
 
 namespace Vanilla_RTX_App.Core;
@@ -25,8 +26,48 @@ public static class ThemeService
     /// </summary>
     public static event Action<ElementTheme>? ThemeChanged;
 
-    /// <summary>Tells every open window a theme change has happened. MainWindow's to call.</summary>
-    public static void Broadcast(ElementTheme theme) => ThemeChanged?.Invoke(theme);
+    /// <summary>
+    /// The theme the app is actually drawing in - always Light or Dark, never Default. Kept by
+    /// <see cref="Broadcast"/>, so anything built after startup can paint with it directly:
+    /// a module constructs long after the theme settled, and the saved setting cannot answer
+    /// for "follow Windows".
+    /// </summary>
+    public static ElementTheme Current { get; private set; } = ElementTheme.Dark;
+
+    /// <summary>
+    /// Tells everything following the theme what the app is drawing in. MainWindow's to call:
+    /// once when its theme has settled at startup - see the call there for why that one is
+    /// load-bearing - and again on every change.
+    /// </summary>
+    public static void Broadcast(ElementTheme theme)
+    {
+        Current = theme;
+        if (_accentTextBrush is not null) _accentTextBrush.Color = AccentTextColor(theme);
+        ThemeChanged?.Invoke(theme);
+    }
+
+    private static SolidColorBrush? _accentTextBrush;
+
+    /// <summary>
+    /// <c>AccentTextFillColorPrimaryBrush</c>, for a text run built in code. A <c>Run</c> has
+    /// no <c>Style</c>, so it cannot take the ThemeResource-backed styles in App.xaml the way a
+    /// code-built <c>Border</c> does, and a brush read from <c>Application.Current.Resources</c>
+    /// would resolve against Windows' theme rather than the app's.
+    ///
+    /// <para><b>One instance, shared by every run that uses it</b>, and recoloured in place on
+    /// each theme change - that is what makes text already on screen (a PSA card on the main
+    /// window, say) follow the theme without anything re-rendering it. Build it on the UI
+    /// thread, which is the only place a run is ever built anyway.</para>
+    /// </summary>
+    public static SolidColorBrush AccentTextBrush => _accentTextBrush ??= new SolidColorBrush(AccentTextColor(Current));
+
+    /// <summary>
+    /// What <c>AccentTextFillColorPrimaryBrush</c> is in each theme. The accent palette's shades
+    /// are not themed resources - they are the same colours whichever theme is showing - so
+    /// reading them from code is safe where reading the themed brush is not.
+    /// </summary>
+    private static Color AccentTextColor(ElementTheme theme) =>
+        (Color)Application.Current.Resources[theme == ElementTheme.Light ? "SystemAccentColorDark2" : "SystemAccentColorLight3"];
 
     /// <summary>
     /// Recolours the system-drawn caption buttons to match <paramref name="theme"/>.
@@ -62,19 +103,6 @@ public static class ThemeService
             : Color.FromArgb(60, 255, 255, 255);
     }
 
-    /// <summary>
-    /// The persisted theme choice as an <see cref="ElementTheme"/>, for a window setting
-    /// <c>RequestedTheme</c> at construction. Anything unrecognised - including no stored
-    /// value at all - resolves to <see cref="ElementTheme.Default"/>, which is "follow
-    /// Windows".
-    /// </summary>
-    public static ElementTheme ResolveInitialTheme() =>
-    (EnvironmentVariables.Persistent.AppThemeMode ?? "System") switch
-    {
-        "Light" => ElementTheme.Light,
-        "Dark" => ElementTheme.Dark,
-        _ => ElementTheme.Default
-    };
 
     /// <summary>Which side of a fake-split-button seam a bevel colour is for.</summary>
     public enum BevelEdge { Left, Right }

@@ -31,6 +31,49 @@
                         Value="{ThemeResource SymbolThemeFontFamily}" />
             </Style>
 
+            <!-- ══ Colours for elements built in code ════════════════════════════
+                 A brush read from code with Application.Current.Resources[...] resolves against
+                 Windows' theme, not the app's (which is set on MainWindow's root element), and is
+                 never re-resolved afterwards - so on Light-over-a-dark-Windows it paints dark. A
+                 code-built element that needs a theme colour takes one of these styles instead:
+                 their setters are ThemeResources, resolved for the element's own theme and
+                 re-resolved whenever it changes. Text runs cannot take a style; see
+                 ThemeService.AccentTextBrush for those. -->
+            <Style x:Key="ThemedDividerRuleStyle"
+                   TargetType="Border">
+                <Setter Property="Background"
+                        Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="ThemedAccentEdgeStyle"
+                   TargetType="Border">
+                <Setter Property="BorderBrush"
+                        Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            </Style>
+            <Style x:Key="ThemedCardStyle"
+                   TargetType="Border">
+                <Setter Property="Background"
+                        Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush"
+                        Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="ThemedCardOutlineStyle"
+                   TargetType="Border">
+                <Setter Property="BorderBrush"
+                        Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="ThemedSecondaryTextStyle"
+                   TargetType="TextBlock">
+                <Setter Property="Foreground"
+                        Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Style>
+            <!-- The button-coloured fill under a code-built fake-split seam; the XAML ones set
+                 the same ThemeResource on their Rectangle directly. -->
+            <Style x:Key="ThemedSeamFillStyle"
+                   TargetType="Rectangle">
+                <Setter Property="Fill"
+                        Value="{ThemeResource ButtonBackgroundThemeBrush}" />
+            </Style>
+
             <ResourceDictionary.ThemeDictionaries>
 
                 <!-- Dark theme -->

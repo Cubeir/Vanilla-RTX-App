@@ -278,11 +278,17 @@ public sealed partial class Alchitex : ModuleOverlay
             LicenseTextBlock.Blocks.Add(headerPara);
 
             // ── Separator ────────────────────────────────────────────────────
+            // A TextBlock in an InlineUIContainer rather than a Run, because only an element
+            // can take a style, and the style is what keeps its colour on the app's theme.
             var sepPara = new Paragraph { Margin = new Microsoft.UI.Xaml.Thickness(0, 4, 0, 8) };
-            sepPara.Inlines.Add(new Run
+            sepPara.Inlines.Add(new InlineUIContainer
             {
-                Text = "───────────────────────────────────────",
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                Child = new TextBlock
+                {
+                    Text = "───────────────────────────────────────",
+                    FontSize = LicenseTextBlock.FontSize,
+                    Style = (Style)Application.Current.Resources["ThemedSecondaryTextStyle"]
+                }
             });
             LicenseTextBlock.Blocks.Add(sepPara);
 

@@ -73,11 +73,14 @@ public sealed class MarkdownSearchEntry
 /// a bare <see cref="Border"/> only because of it.</b> <see cref="RichTextBlock"/> has no
 /// <c>Background</c> property, so there is nothing <see cref="SetSearchHighlight"/> could paint
 /// to mark "this is the current match" without that wrapper. The wrapper carries no border,
-/// padding or background of its own - it is invisible until highlighted, and its <c>Tag</c> is
-/// what <see cref="SetSearchHighlight"/> restores to afterward (<see langword="null"/> there, the
-/// real card brush on a code block's own <see cref="Border"/>). Only headings, paragraphs and
+/// padding or background of its own - it is invisible until highlighted. Only headings, paragraphs and
 /// code blocks are indexed; a match inside a list item or table cell is still found because those
 /// containers render their content through the same two methods recursively.</para>
+///
+/// <para><b>Every theme colour on an element comes from a style in App.xaml</b>
+/// (<c>Themed*Style</c>), and on a text run from <see cref="ThemeService.AccentTextBrush"/> - never
+/// from <c>Application.Current.Resources</c>, which answers for Windows' theme rather than the
+/// app's and would paint a light-themed app's documents in dark-theme colours.</para>
 ///
 /// <para><b>Never throws.</b> <see cref="Render"/> wraps the whole structured pass in one
 /// try/catch; a parse or layout surprise anywhere degrades to a monospace dump of the raw
@@ -254,23 +257,23 @@ public sealed class MarkdownRenderer
 
     /// <summary>
     /// Toggles the "this is the current search match" highlight on an element from a
-    /// <see cref="MarkdownSearchEntry"/>. Only <see cref="RichTextBlock"/> (headings/paragraphs)
-    /// and <see cref="Border"/> (code blocks) are ever handed out as search entries, so those are
-    /// the only two cases - restoring a code block's background means putting back the same card
-    /// brush <see cref="RenderCodeBlock"/> gave it, not clearing to nothing.
+    /// <see cref="MarkdownSearchEntry"/>. Every search entry is a <see cref="Border"/>: the bare
+    /// wrapper around a heading or paragraph, or a code block's own card.
+    ///
+    /// <para><b>Un-highlighting clears the local value rather than assigning one</b>, and that
+    /// covers both kinds: a wrapper has no background at all, and a code block's comes from its
+    /// style, which a local value only hides. Putting a brush back instead would pin whichever
+    /// theme's card colour was current at the time.</para>
     /// </summary>
     public static void SetSearchHighlight(FrameworkElement element, bool highlighted)
     {
         if (element is not Border border) return;
 
-        // A heading/paragraph's Border has no background of its own (see RenderHeading /
-        // RenderParagraph - it exists purely so this method has something to paint), so
-        // "restore" there means null; a code block's Border is a real card and restoring means
-        // putting the same brush RenderCodeBlock gave it back, not clearing it to nothing.
-        border.Background = highlighted
-            ? HighlightBrush()
-            : border.Tag as Brush;
+        if (highlighted) border.Background = HighlightBrush();
+        else border.ClearValue(Border.BackgroundProperty);
     }
+
+    private static Style AppStyle(string key) => (Style)Application.Current.Resources[key];
 
     private static Brush HighlightBrush() => new SolidColorBrush
     {
@@ -371,7 +374,7 @@ public sealed class MarkdownRenderer
             stack.Children.Add(new Border
             {
                 Height = 1,
-                Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"]
+                Style = AppStyle("ThemedDividerRuleStyle")
             });
             result = stack;
         }
@@ -478,7 +481,7 @@ public sealed class MarkdownRenderer
 
         return new Border
         {
-            BorderBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"],
+            Style = AppStyle("ThemedAccentEdgeStyle"),
             BorderThickness = new Thickness(3, 0, 0, 0),
             Padding = new Thickness(14, 4, 10, 4),
             Opacity = 0.85,
@@ -498,13 +501,10 @@ public sealed class MarkdownRenderer
             IsTextSelectionEnabled = true
         };
 
-        var codeBackground = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
         var border = new Border
         {
-            Background = codeBackground,
-            // SetSearchHighlight restores to this on Tag - see the class doc on that method.
-            Tag = codeBackground,
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            // Background comes from the style so SetSearchHighlight can clear back to it.
+            Style = AppStyle("ThemedCardStyle"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(6),
             Padding = new Thickness(14, 10, 14, 10),
@@ -525,7 +525,7 @@ public sealed class MarkdownRenderer
     private static FrameworkElement RenderThematicBreak() => new Border
     {
         Height = 1,
-        Background = (Brush)Application.Current.Resources["DividerStrokeColorDefaultBrush"],
+        Style = AppStyle("ThemedDividerRuleStyle"),
         Margin = new Thickness(0, 4, 0, 4)
     };
 
@@ -578,10 +578,9 @@ public sealed class MarkdownRenderer
 
                 var border = new Border
                 {
-                    BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                    Style = AppStyle(row.IsHeader ? "ThemedCardStyle" : "ThemedCardOutlineStyle"),
                     BorderThickness = new Thickness(0, 0, 1, 1),
                     Padding = new Thickness(10, 6, 10, 6),
-                    Background = row.IsHeader ? (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"] : null,
                     Child = cellContent
                 };
                 Grid.SetRow(border, rowIndex);
@@ -597,7 +596,7 @@ public sealed class MarkdownRenderer
 
         return new Border
         {
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            Style = AppStyle("ThemedCardOutlineStyle"),
             BorderThickness = new Thickness(1, 1, 0, 0),
             CornerRadius = new CornerRadius(4),
             // A table with nothing to wrap hugs its content. Stretched, the outer border's top
@@ -681,7 +680,7 @@ public sealed class MarkdownRenderer
                 {
                     Text = code.Content,
                     FontFamily = new FontFamily("Consolas"),
-                    Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"]
+                    Foreground = ThemeService.AccentTextBrush
                 });
                 break;
 

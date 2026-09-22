@@ -452,7 +452,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
             Margin = dark ? new Thickness(0, 0, -3, 0) : new Thickness(-3, 0, 0, 0),
             IsHitTestVisible = false
         };
-        strip.Children.Add(new Microsoft.UI.Xaml.Shapes.Rectangle { Fill = (Brush)Application.Current.Resources["ButtonBackgroundThemeBrush"] });
+        strip.Children.Add(new Microsoft.UI.Xaml.Shapes.Rectangle { Style = (Style)Application.Current.Resources["ThemedSeamFillStyle"] });
 
         var border = new Border { BorderThickness = new Thickness(3, 0, 0, 0) };
         strip.Children.Add(border);
@@ -461,7 +461,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
             border.BorderBrush = new SolidColorBrush(ThemeService.GetBevelColor(
                 theme, dark ? ThemeService.BevelEdge.Right : ThemeService.BevelEdge.Left, accented: false));
 
-        Apply(ThemeService.ResolveInitialTheme());
+        Apply(ThemeService.Current);
         ThemeService.ThemeChanged += Apply;
         strip.Unloaded += (_, _) => ThemeService.ThemeChanged -= Apply;
 
