@@ -24,6 +24,17 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
+        <!-- A content-source hint saying why an address was rejected. A style rather than a
+             colour set from code, because a brush looked up in code resolves against Windows'
+             theme rather than the app's and never follows a change to either - so it was the
+             one hint in the panel still drawn in dark-theme colours on the light theme. -->
+        <Style x:Key="SettingsHintRejectedTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SettingsHintTextStyle}">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+        </Style>
+
         <!-- The label that opens a section. -->
         <Style x:Key="SettingsSectionHeaderStyle"
                TargetType="TextBlock">

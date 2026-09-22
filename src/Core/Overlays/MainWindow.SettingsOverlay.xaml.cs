@@ -852,13 +852,15 @@ public sealed partial class SettingsOverlay : UserControl
         ShowUrlFieldHint(field, accepted);
     }
 
+    /// <summary>
+    /// Swaps the hint between its two styles rather than setting a colour: both are declared
+    /// in markup, so both follow the app's theme - including a theme changed from this same
+    /// panel while the hint is on screen.
+    /// </summary>
     private void ShowUrlFieldHint(UrlField field, bool accepted)
     {
         field.Hint.Text = accepted ? field.Description : LinkRejectionReason(field.Kind);
-        field.Hint.Opacity = accepted ? 0.55 : 1.0;
-        field.Hint.Foreground = accepted
-            ? (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
-            : (Brush)Application.Current.Resources["SystemFillColorCautionBrush"];
+        field.Hint.Style = (Style)Resources[accepted ? "SettingsHintTextStyle" : "SettingsHintRejectedTextStyle"];
     }
 
     // =========================================================================
