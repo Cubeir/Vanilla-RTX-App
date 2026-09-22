@@ -130,11 +130,17 @@ internal sealed class BetterRTXManager
     private static readonly TimeSpan ApiRequestTimeout = TimeSpan.FromSeconds(15);
 
     /// <summary>
-    /// Whether this attach actually went to the API, rather than reading the cache. The window
-    /// puts its refresh button on cooldown when it did, so a list built from a fetch seconds old
-    /// says so, and a list built from cache leaves the button live.
+    /// Whether opening this manager already did what the refresh button does: cleared the
+    /// downloaded presets and rebuilt the index from a fresh fetch.
+    ///
+    /// <para><b>Fetching the index is not enough to set it</b>, and that is the point. The hourly
+    /// check asks the API and then wipes <i>only</i> if the hash moved, while the button wipes
+    /// regardless - which is what it is for, since the API can ship new files without its
+    /// payload changing. Putting the button on cooldown for a check that wiped nothing would
+    /// claim work that didn't happen, and would lock out the one action the button offers for
+    /// exactly that case.</para>
     /// </summary>
-    public bool FetchedApiSinceAttach { get; private set; }
+    public bool RefreshedSinceAttach { get; private set; }
 
     /// <summary>
     /// Which edition this instance is attached to, as decided by <see cref="TryAttachAsync"/>.
@@ -254,7 +260,7 @@ internal sealed class BetterRTXManager
     /// </summary>
     public async Task<AttachFailure> TryAttachAsync(string minecraftPath, bool isPreview)
     {
-        FetchedApiSinceAttach = false;
+        RefreshedSinceAttach = false;
         IsPreview = isPreview;
         GameMaterialsPath = Path.Combine(minecraftPath, "data", "renderer", "materials");
 
@@ -405,6 +411,10 @@ internal sealed class BetterRTXManager
             File.Delete(ApiCachePath);
             Trace.WriteLine("[BetterRTX] [SoftWipe] API cache deleted");
         }
+
+        // Every path that does the refresh button's job comes through here, so this is where
+        // "the window opened already refreshed" is decided - see RefreshedSinceAttach.
+        RefreshedSinceAttach = true;
 
         // Clear in-memory tracking. The download queue itself lives on the window, so it
         // gets told to drop anything still pointing at a folder this just deleted.
@@ -661,7 +671,6 @@ internal sealed class BetterRTXManager
                 return null;
             }
 
-            FetchedApiSinceAttach = true;
             return content;
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)

@@ -378,13 +378,15 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     }
 
     /// <summary>
-    /// Starts the countdown timer, and arms the cooldown first when opening this window went to
-    /// the API rather than reading its cache. The button is then the one visible answer to "how
-    /// old is this list": counting down means it was just fetched, live means it came from cache.
+    /// Starts the countdown timer, and arms the cooldown first when opening this window already
+    /// did what pressing the button would do - see
+    /// <see cref="BetterRTXManager.RefreshedSinceAttach"/>. A countdown therefore means the list
+    /// on screen was rebuilt seconds ago, and a live button means pressing it still has work to
+    /// do.
     /// </summary>
     private void InitializeRefreshButton()
     {
-        if (_manager.FetchedApiSinceAttach)
+        if (_manager.RefreshedSinceAttach)
             ApplicationData.Current.LocalSettings.Values[REFRESH_COOLDOWN_KEY] = DateTime.UtcNow.Ticks;
 
         UpdateRefreshButtonState();
