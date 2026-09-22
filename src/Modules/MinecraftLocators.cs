@@ -739,6 +739,8 @@ public static class MinecraftUserDataLocator
     private static readonly string SharedComMojangSubPath = Path.Combine("Shared", "games", "com.mojang");
     private const string ResourcePacksFolderName = "resource_packs";
     private const string DevResourcePacksFolderName = "development_resource_packs";
+    private const string BehaviorPacksFolderName = "behavior_packs";
+    private const string DevBehaviorPacksFolderName = "development_behavior_packs";
     private const string OptionsFileName = "options.txt";
 
     // ── Last-known validation state (set by ValidateAndUpdateCachedLocations) ─
@@ -835,12 +837,22 @@ public static class MinecraftUserDataLocator
     /// resource_packs or development_resource_packs under Shared\games\com.mojang.
     /// Pass createIfMissing=true for write-path callers (e.g. DeployPackage).
     /// </summary>
-    public static string GetResourcePacksPath(bool isPreview, bool development = false, bool createIfMissing = false)
+    public static string GetResourcePacksPath(bool isPreview, bool development = false, bool createIfMissing = false) =>
+        GetPacksFolderPath(isPreview, development ? DevResourcePacksFolderName : ResourcePacksFolderName, createIfMissing);
+
+    /// <summary>
+    /// behavior_packs or development_behavior_packs under Shared\games\com.mojang. Only the
+    /// importer writes here, for a pack the user chose to import as a behaviour pack - nothing
+    /// else in the app reads behaviour packs.
+    /// </summary>
+    public static string GetBehaviorPacksPath(bool isPreview, bool development = false, bool createIfMissing = false) =>
+        GetPacksFolderPath(isPreview, development ? DevBehaviorPacksFolderName : BehaviorPacksFolderName, createIfMissing);
+
+    private static string GetPacksFolderPath(bool isPreview, string folder, bool createIfMissing)
     {
         var comMojang = GetSharedComMojangPath(isPreview);
         if (string.IsNullOrEmpty(comMojang)) return string.Empty;
 
-        var folder = development ? DevResourcePacksFolderName : ResourcePacksFolderName;
         var fullPath = Path.Combine(comMojang, folder);
 
         if (!Directory.Exists(fullPath) && createIfMissing)
@@ -862,6 +874,16 @@ public static class MinecraftUserDataLocator
         var dev = GetResourcePacksPath(isPreview, development: true);
 
         if (!string.IsNullOrEmpty(rp) && Directory.Exists(rp)) yield return rp;
+        if (!string.IsNullOrEmpty(dev) && Directory.Exists(dev)) yield return dev;
+    }
+
+    /// <summary>The behaviour-pack counterpart of <see cref="GetExistingResourcePackScanPaths"/>.</summary>
+    public static IEnumerable<string> GetExistingBehaviorPackScanPaths(bool isPreview)
+    {
+        var bp = GetBehaviorPacksPath(isPreview, development: false);
+        var dev = GetBehaviorPacksPath(isPreview, development: true);
+
+        if (!string.IsNullOrEmpty(bp) && Directory.Exists(bp)) yield return bp;
         if (!string.IsNullOrEmpty(dev) && Directory.Exists(dev)) yield return dev;
     }
 

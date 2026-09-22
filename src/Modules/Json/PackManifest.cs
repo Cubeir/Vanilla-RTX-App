@@ -22,6 +22,16 @@ public sealed class ManifestModule
     public string? Description { get; init; }
 
     public bool IsResources => string.Equals(Type, "resources", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True for the four module types that make a behaviour pack. A closed list on purpose:
+    /// <c>skin_pack</c> and <c>world_template</c> are neither resource nor behaviour packs, and
+    /// "not resources" would send them to the behaviour folder too.
+    /// </summary>
+    public bool IsBehavior => Type is { } t && BehaviorModuleTypes.Contains(t);
+
+    private static readonly HashSet<string> BehaviorModuleTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "data", "script", "javascript", "client_data" };
 }
 
 /// <summary>
@@ -182,6 +192,13 @@ public sealed class PackManifest
     /// lives in the header, and neither bleeds into the other.
     /// </summary>
     public bool HasResourceModule => _modules.Any(m => m.IsResources);
+
+    /// <summary>
+    /// True if any module declares a behaviour-pack type (<see cref="ManifestModule.IsBehavior"/>).
+    /// Only meaningful when <see cref="HasResourceModule"/> is false - a manifest declaring both
+    /// is treated as a resource pack, as it always was.
+    /// </summary>
+    public bool HasBehaviorModule => _modules.Any(m => m.IsBehavior);
 
     // ───────────────────────── Capabilities ─────────────────────────
 

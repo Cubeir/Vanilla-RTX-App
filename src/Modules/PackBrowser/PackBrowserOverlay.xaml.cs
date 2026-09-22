@@ -88,6 +88,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
         ExpImpDel.ImportStatusChanged += OnImportStatusChanged;
         ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(this, packName, existingPath);
         ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(this, packName);
+        ExpImpDel.ConfirmBehaviorImport = packName => ImportDialogs.ShowBehaviorDialogAsync(this, packName);
 
         this.Loaded += PackBrowserOverlay_Loaded;
     }

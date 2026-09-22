@@ -108,13 +108,15 @@ public sealed partial class MainWindow
             ExpImpDel.ImportStatusChanged += OnStatus;
 
             // Same confirmation dialogs PackBrowserOverlay shows for a non-resource/duplicate
-            // pack - ConfirmOverwrite/ConfirmNonResourceImport are static and global, so save
-            // and restore whatever PackBrowserOverlay (if open) left there rather than
-            // clobbering it for the duration of this import.
+            // pack - the Confirm* hooks are static and global, so save and restore whatever
+            // PackBrowserOverlay (if open) left there rather than clobbering it for the
+            // duration of this import.
             var previousConfirmOverwrite = ExpImpDel.ConfirmOverwrite;
             var previousConfirmNonResourceImport = ExpImpDel.ConfirmNonResourceImport;
+            var previousConfirmBehaviorImport = ExpImpDel.ConfirmBehaviorImport;
             ExpImpDel.ConfirmOverwrite = (packName, existingPath) => ImportDialogs.ShowOverwriteDialogAsync(RootElement, packName, existingPath);
             ExpImpDel.ConfirmNonResourceImport = packName => ImportDialogs.ShowNonResourceDialogAsync(RootElement, packName);
+            ExpImpDel.ConfirmBehaviorImport = packName => ImportDialogs.ShowBehaviorDialogAsync(RootElement, packName);
 
             var succeeded = 0;
             try
@@ -130,6 +132,7 @@ public sealed partial class MainWindow
                 ExpImpDel.ImportStatusChanged -= OnStatus;
                 ExpImpDel.ConfirmOverwrite = previousConfirmOverwrite;
                 ExpImpDel.ConfirmNonResourceImport = previousConfirmNonResourceImport;
+                ExpImpDel.ConfirmBehaviorImport = previousConfirmBehaviorImport;
             }
 
             Log(succeeded == paths.Count

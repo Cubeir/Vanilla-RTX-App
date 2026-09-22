@@ -90,12 +90,21 @@ public static class ExpImpDel
     public static Func<string, string, Task<bool>>? ConfirmOverwrite { get; set; }
 
     /// <summary>
-    /// Invoked when a pack's manifest has no module of type "resources", or when the
-    /// type cannot be determined. Return true to import anyway, false to skip.
-    /// If null, non-resource packs are silently skipped.
+    /// Invoked when a pack's manifest has no module of type "resources" and no behaviour-pack
+    /// module either, or when the type cannot be determined. Return true to import it into the
+    /// resource folder anyway, false to skip. If null, such packs are silently skipped.
     /// Parameter: pack display name from the manifest, or filename if unreadable.
     /// </summary>
     public static Func<string, Task<bool>>? ConfirmNonResourceImport { get; set; }
+
+    /// <summary>
+    /// Invoked instead of <see cref="ConfirmNonResourceImport"/> when the manifest declares a
+    /// behaviour-pack module (<see cref="PackManifest.HasBehaviorModule"/>). Return true to
+    /// import it into behavior_packs (development_behavior_packs under
+    /// <see cref="InstallToDevelopmentPacks"/>), false to skip. There is no "into the resource
+    /// folder anyway" answer: the game ignores a behaviour pack there. If null, skipped.
+    /// </summary>
+    public static Func<string, Task<bool>>? ConfirmBehaviorImport { get; set; }
 
     /// <summary>
     /// Opens a file picker and imports the chosen packs. Accepts .mcpack, .zip,
@@ -222,6 +231,12 @@ public static class ExpImpDel
 
     private static string GetImportDestination() =>
         MinecraftUserDataLocator.GetResourcePacksPath(
+            EnvironmentVariables.Persistent.IsTargetingPreview,
+            development: InstallToDevelopmentPacks,
+            createIfMissing: true);
+
+    private static string GetBehaviorImportDestination() =>
+        MinecraftUserDataLocator.GetBehaviorPacksPath(
             EnvironmentVariables.Persistent.IsTargetingPreview,
             development: InstallToDevelopmentPacks,
             createIfMissing: true);
@@ -363,6 +378,11 @@ public static class ExpImpDel
     /// inside it, checks the pack is a resource pack, checks for an installed duplicate, and
     /// extracts the manifest's folder - and only that folder - as the pack.
     ///
+    /// <para><paramref name="destination"/> is the resource folder. A pack whose manifest
+    /// declares a behaviour module, and which the user agrees to import as one, is redirected
+    /// to the behaviour folder instead, and its duplicate is looked for there - never among
+    /// the resource packs, which is the only thing that differs for it.</para>
+    ///
     /// <para>Callers decide which manifest that is, and that is the only thing that differs
     /// between them: an .mcpack/.zip uses its shallowest manifest (<see cref="ImportFromArchiveAsync"/>),
     /// an .mcaddon one per pack folder inside it (<see cref="ImportFromMcAddonAsync"/>).
@@ -393,8 +413,10 @@ public static class ExpImpDel
         }
 
         // ── Resource-type check (modules section) ─────────────────────────────
-        // Runs BEFORE dupe detection. Behaviour packs are caught here.
+        // Runs BEFORE dupe detection, because a behaviour pack changes both where it is
+        // installed and which folders its duplicate could be in.
         bool isResourcePack = parsed?.HasResourceModule ?? false;
+        bool asBehaviorPack = false;
 
         if (!isResourcePack)
         {
@@ -402,16 +424,40 @@ public static class ExpImpDel
                 ? n
                 : sourceBaseName;
 
-            bool importAnyway = ConfirmNonResourceImport != null
-                && await ConfirmNonResourceImport(packDisplayName);
-
-            if (!importAnyway)
+            if (parsed?.HasBehaviorModule == true)
             {
-                ReportStatus($"Skipped '{packDisplayName}': not identified as a resource pack.");
-                return false;
-            }
+                bool importAsBehavior = ConfirmBehaviorImport != null
+                    && await ConfirmBehaviorImport(packDisplayName);
 
-            ReportStatus($"Importing '{packDisplayName}' as requested (not confirmed resource pack).");
+                if (!importAsBehavior)
+                {
+                    ReportStatus($"Skipped '{packDisplayName}': it is a behavior pack.");
+                    return false;
+                }
+
+                destination = GetBehaviorImportDestination();
+                if (string.IsNullOrEmpty(destination))
+                {
+                    ReportStatus($"Could not import '{packDisplayName}': behavior packs folder not found.");
+                    return false;
+                }
+
+                asBehaviorPack = true;
+                ReportStatus($"Importing '{packDisplayName}' as a behavior pack.");
+            }
+            else
+            {
+                bool importAnyway = ConfirmNonResourceImport != null
+                    && await ConfirmNonResourceImport(packDisplayName);
+
+                if (!importAnyway)
+                {
+                    ReportStatus($"Skipped '{packDisplayName}': not identified as a resource pack.");
+                    return false;
+                }
+
+                ReportStatus($"Importing '{packDisplayName}' as requested (not confirmed resource pack).");
+            }
         }
 
         // ── Dupe detection (header UUID only) ────────────────────────────────
@@ -419,7 +465,7 @@ public static class ExpImpDel
         // and optional; checking it would over-restrict matching.
         if (parsed?.HeaderUuid is { Length: > 0 } headerUuid)
         {
-            var existingMatch = FindExistingPackMatch(headerUuid);
+            var existingMatch = FindExistingPackMatch(headerUuid, asBehaviorPack);
             if (existingMatch != null)
             {
                 string displayName = parsed.HeaderName ?? sourceBaseName;
@@ -476,7 +522,9 @@ public static class ExpImpDel
             });
         }
 
-        ReportStatus($"Imported '{Path.GetFileName(finalDestination)}' successfully.");
+        ReportStatus(asBehaviorPack
+            ? $"Imported '{Path.GetFileName(finalDestination)}' into behavior packs successfully."
+            : $"Imported '{Path.GetFileName(finalDestination)}' successfully.");
         return true;
     }
 
@@ -509,14 +557,17 @@ public static class ExpImpDel
     // ── Dupe detection — header UUID only ────────────────────────────────────
 
     /// <summary>
-    /// Scans resource_packs and development_resource_packs up to 2 folder levels
+    /// Scans resource_packs and development_resource_packs - or their behaviour-pack
+    /// counterparts when <paramref name="behaviorPacks"/> - up to 2 folder levels
     /// deep (the game's own read limit) and returns the folder path of the first
     /// existing pack whose header UUID matches <paramref name="headerUuid"/>, or null.
     /// </summary>
-    private static string? FindExistingPackMatch(string headerUuid)
+    private static string? FindExistingPackMatch(string headerUuid, bool behaviorPacks)
     {
-        var scanRoots = MinecraftUserDataLocator
-            .GetExistingResourcePackScanPaths(EnvironmentVariables.Persistent.IsTargetingPreview)
+        var isPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
+        var scanRoots = (behaviorPacks
+                ? MinecraftUserDataLocator.GetExistingBehaviorPackScanPaths(isPreview)
+                : MinecraftUserDataLocator.GetExistingResourcePackScanPaths(isPreview))
             .ToList();
 
         foreach (var root in scanRoots)
@@ -614,9 +665,12 @@ public static class ExpImpDel
 
     /// <summary>
     /// Walks upward from <paramref name="packLocation"/> until the parent is a known
-    /// scan root (resource_packs or development_resource_packs for either game variant),
-    /// then deletes that immediate child folder. Aborts safely if no scan root is found
-    /// in the path, so arbitrary folders can never be accidentally removed.
+    /// scan root (resource_packs, development_resource_packs, or their behaviour-pack
+    /// counterparts, for either game variant), then deletes that immediate child folder.
+    /// Aborts safely if no scan root is found in the path, so arbitrary folders can never
+    /// be accidentally removed. The behaviour folders are roots only so that replacing an
+    /// installed behaviour pack on import can remove the old copy; nothing else in the app
+    /// hands this a behaviour pack.
     /// </summary>
     public static async Task<string?> DeletePackAsync(string packLocation)
     {
@@ -630,15 +684,18 @@ public static class ExpImpDel
 
         foreach (bool preview in new[] { false, true })
         {
-            var rp = MinecraftUserDataLocator.GetResourcePacksPath(preview, development: false);
-            var drp = MinecraftUserDataLocator.GetResourcePacksPath(preview, development: true);
-
-            if (!string.IsNullOrEmpty(rp))
-                scanRoots.Add(Path.GetFullPath(rp).TrimEnd(Path.DirectorySeparatorChar));
-            if (!string.IsNullOrEmpty(drp))
-                scanRoots.Add(Path.GetFullPath(drp).TrimEnd(Path.DirectorySeparatorChar));
+            foreach (var root in new[]
+            {
+                MinecraftUserDataLocator.GetResourcePacksPath(preview, development: false),
+                MinecraftUserDataLocator.GetResourcePacksPath(preview, development: true),
+                MinecraftUserDataLocator.GetBehaviorPacksPath(preview, development: false),
+                MinecraftUserDataLocator.GetBehaviorPacksPath(preview, development: true),
+            })
+            {
+                if (!string.IsNullOrEmpty(root))
+                    scanRoots.Add(Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar));
+            }
         }
-
 
         var current = Path.GetFullPath(packLocation).TrimEnd(Path.DirectorySeparatorChar);
 
@@ -676,8 +733,8 @@ public static class ExpImpDel
 
 
 /// <summary>
-/// Ready-made ContentDialog implementations for ExpImpDel.ConfirmOverwrite and
-/// ConfirmNonResourceImport, parameterized on whichever window is doing the importing.
+/// Ready-made ContentDialog implementations for ExpImpDel.ConfirmOverwrite,
+/// ConfirmNonResourceImport and ConfirmBehaviorImport, parameterized on whichever window is doing the importing.
 /// PackBrowserOverlay's Add-pack button/drag-and-drop and MainWindow's .mcpack
 /// file-activation path both wire these in as-is.
 ///
@@ -752,6 +809,43 @@ public static class ImportDialogs
             catch (Exception ex)
             {
                 Trace.WriteLine($"[ImportDialogs] Non-resource dialog error: {ex.Message}");
+                tcs.SetResult(false);
+            }
+        });
+
+        return tcs.Task;
+    }
+
+    /// <summary>
+    /// Shown when a pack's manifest declares a behaviour module. The two answers are skip and
+    /// import into the behaviour folder - importing it as a resource pack would install
+    /// something the game never loads. Defaults to Skip, like every import dialog.
+    /// </summary>
+    public static Task<bool> ShowBehaviorDialogAsync(FrameworkElement host, string packName)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+
+        host.DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "This is a behavior pack",
+                    Content = $"\"{packName}\" is a behavior pack, not a resource pack.\n\nIt can still be imported into the game's behavior packs folder, where it will be available in-game. It will not appear among the packs listed in this app.",
+                    PrimaryButtonText = "Import as behavior pack",
+                    CloseButtonText = "Skip",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = host.XamlRoot,
+                    RequestedTheme = host.ActualTheme
+                };
+
+                var result = await dialog.ShowAsync();
+                tcs.SetResult(result == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[ImportDialogs] Behavior dialog error: {ex.Message}");
                 tcs.SetResult(false);
             }
         });
