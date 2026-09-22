@@ -142,11 +142,12 @@ Each pack shows its icon, name, description, version, and tags:
 - Click packs to select them, then **Confirm selection** to return with them selected.
 - The **select** menu can select all packs with a given tag, select everything, or clear the selection.
 - **Import texture packs**: click to browse, or drag files onto the page. It accepts `.mcpack`, `.zip`, `.mcaddon` (every pack bundled inside, whether as `.mcpack` files or as folders), and whole folders of packs. If a pack is already installed, you're asked whether to replace it.
-  - **Behavior packs** are recognised, and you're asked whether to **Import as behavior pack** or skip it. Imported, it goes into the game's behavior packs folder, where the game will find it - so an add-on's resource and behavior packs both install in one go. Behavior packs don't appear in this list, since the app works with resource packs.
-  - **Anything else** that doesn't look like a resource pack asks whether to import it anyway.
-- The **refresh** button in the title bar rescans the folder, keeps your selection, and measures how much disk space each pack takes. That measuring is the only thing that shows the size badges, because it can take a few seconds on a big collection.
+  - **Behavior packs** are recognised, and you're asked whether to **Import as behavior pack** or skip it. If you select to Import it, it goes into the game's behavior packs folder, where the game will find it - so an add-on's resource and behavior packs both install in one go. Behavior packs don't appear in this menu's list, since the app works with resource packs.
+  - **Anything else** that doesn't look like a resource pack asks whether to import it anyway to the resource packs folder.
+  > The app essentially has a very versatile/capable importer that allows you to properly import Add-Ons in bulk too (as .mcaddon), even though that is outside the scope of what Vanilla RTX App is supposed to deal with: resourc epacks.
+- The **refresh** button in the title bar rescans the folder and measures how much disk space each pack takes. That measuring is the only thing that shows the size badges, because it can take a while.
 
-If the app can't find your user data, this button becomes a highlighted **Locate user data** button and temporarily serves a different purpose while you select the user data location the app must use. See [Troubleshooting](#troubleshooting).
+> Note: If the app can't find your user data, this button becomes a highlighted **Locate user data** button and temporarily serves a different purpose while you select the user data location the app must use. See [Troubleshooting](#troubleshooting).
 
 # Tuning packs
 
@@ -299,7 +300,7 @@ Which settings it writes is up to you; to change them, see **Launch options** in
 
 The app can open two kinds of file straight from File Explorer (right-click -> **Import into Vanilla RTX App** or **Open with**, or set it as the default):
 
-- **`.mcpack`** - imported as a resource pack and will appear in [Select other packs](#select-other-packs) menu. A behavior pack asks first, the same way the [pack browser](#select-other-packs) does.
+- **`.mcpack`** - imported as a resource pack, install into Minecraft, hence appearing in [Select other packs](#select-other-packs) menu too.
 - **`.rtpack`** - imported as a BetterRTX preset into [BetterRTX manager](#betterrtx-manager). Ready to install!
 
 If the app isn't running, it starts. Imports aren't silent, because some may need your confirmation.
