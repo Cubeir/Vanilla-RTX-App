@@ -633,12 +633,9 @@
                                                 ToolTipService.ToolTip="Opens ko-fi.com/cubeir in your default browser.">
                                             <StackPanel Orientation="Horizontal"
                                                         Spacing="8">
-                                                <FontIcon Glyph="&#xEB52;"
-                                                          FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                                          FontSize="14"
-                                                          IsTextScaleFactorEnabled="False" />
-                                                <TextBlock Text="Support on Ko-Fi"
-                                                           IsTextScaleFactorEnabled="False" />
+                                                <TextBlock Text="Become an Insider on Ko-Fi"
+                                                           IsTextScaleFactorEnabled="False"
+                                                           FontWeight="Medium"/>
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>

@@ -1100,7 +1100,7 @@ public sealed partial class MainWindow : Window
     // The first check of a session waits, so it lands after the startup burst of web calls
     // (OnlineTexts, the Alchitex asset refresh) rather than joining it. Only the remote lookup
     // waits - locating packs, which is all local, is never held up by this.
-    private static readonly TimeSpan UpdateNoticeStartupDelay = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan UpdateNoticeStartupDelay = TimeSpan.FromMilliseconds(2060);
     private bool _updateNoticeStartupDelayPending = true;
     private int _updateNoticeCheckInFlight;
     private int _updateNoticeCheckPending;

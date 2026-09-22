@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
 using Vanilla_RTX_App.Core;
 using Vanilla_RTX_App.Core.Overlays;
+using System.Diagnostics;
 
 namespace Vanilla_RTX_App;
 
@@ -67,6 +68,14 @@ public sealed partial class MainWindow
     {
         LockControls(false, toDisable);
 
+        try
+        {
+            _ = BlinkingLamp(false, true, 0.66, 0.33);
+        }
+        catch
+        {
+            Trace.WriteLine("[OpenModule] Something went wrong calling the lamp animation.");
+        }
         overlay.Closed += (_, _) =>
         {
             _openModules.Remove(overlay);
