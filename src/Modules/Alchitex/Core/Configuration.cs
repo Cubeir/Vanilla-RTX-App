@@ -475,12 +475,15 @@ public sealed class MaterialsConfig
     /// missing materials.json degrades to "plain MERS for everything" rather than
     /// crashing the whole run.
     /// </summary>
-    public static MaterialsConfig Load(string materialsJsonPath)
+    public static MaterialsConfig Load(string? materialsJsonPath)
     {
         var entries = new Dictionary<string, MaterialEntry>(StringComparer.OrdinalIgnoreCase);
 
         try
         {
+            // Null is what a missing asset resolves to, and it belongs in the same basket as a
+            // file that can't be read: defaults for everything, logged, run continues.
+            ArgumentNullException.ThrowIfNull(materialsJsonPath);
             var raw = File.ReadAllText(materialsJsonPath);
 
             // Comments and trailing commas are allowed because this file is hand-edited
@@ -785,7 +788,7 @@ public sealed class PbrBlacklist
     /// returns an empty blacklist, so a malformed or missing file just means nothing gets
     /// blacklisted rather than crashing the whole run.
     /// </summary>
-    public static PbrBlacklist Load(string blacklistJsonPath)
+    public static PbrBlacklist Load(string? blacklistJsonPath)
     {
         try
         {
@@ -794,6 +797,7 @@ public sealed class PbrBlacklist
             // blacklisted - silently, since the catch below degrades rather than fails. It is
             // an online-updatable asset (AssetUpdater), so a typo shipped remotely would have
             // cost every user their blacklist until the next fix.
+            ArgumentNullException.ThrowIfNull(blacklistJsonPath);
             var raw = File.ReadAllText(blacklistJsonPath);
             var parsed = MinecraftJson.GetStringArray(MinecraftJson.ParseNode(raw));
             return new PbrBlacklist(parsed.Select(p => p.ToLowerInvariant()).ToList());

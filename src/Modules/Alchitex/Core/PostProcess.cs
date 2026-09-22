@@ -307,7 +307,7 @@ public static class PostProcess
     /// </summary>
     public static bool DeployFallbackWaterZip(string blocksFolder)
     {
-        var zipPath = AssetUpdater.Resolve(AssetUpdater.WaterFallbackZip);
+        var zipPath = AssetUpdater.Resolve(AlchitexAssets.WaterFallbackZip);
         if (!File.Exists(zipPath))
         {
             Trace.WriteLine($"[ALCHITEX] Water fallback asset missing - expected '{zipPath}'. Skipping fallback deployment for '{blocksFolder}'.");
@@ -348,7 +348,7 @@ public static class PostProcess
     /// </summary>
     public static void DeployFog(string packRoot)
     {
-        var zipPath = AssetUpdater.Resolve(AssetUpdater.FogZip);
+        var zipPath = AssetUpdater.Resolve(AlchitexAssets.FogZip);
         if (!File.Exists(zipPath))
         {
             Trace.WriteLine($"[ALCHITEX] Fog asset missing - expected '{zipPath}'. Copy the fog distribution zip (top-level 'biomes/' and 'fogs/' folders) there. Skipping fog deployment for '{packRoot}'.");

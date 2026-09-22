@@ -102,8 +102,8 @@ public static class AlchitexPipeline
             // developer was seeing mid-run.
             var (materials, blacklist) = await Task.Run(() =>
             (
-                MaterialsConfig.Load(AssetUpdater.Resolve(AssetUpdater.MaterialsJson)),
-                PbrBlacklist.Load(AssetUpdater.Resolve(AssetUpdater.PbrBlacklistJson))
+                MaterialsConfig.Load(AssetUpdater.Resolve(AlchitexAssets.MaterialsJson)),
+                PbrBlacklist.Load(AssetUpdater.Resolve(AlchitexAssets.PbrBlacklistJson))
             ), cancellationToken);
 
             await Task.Run(

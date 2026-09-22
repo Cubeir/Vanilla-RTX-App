@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -223,16 +223,27 @@ public static class OnlineTexts
     private const string URL =
         "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/IN-APP-ANNOUNCEMENTS.md";
 
-    private const string KEY_TIMESTAMP = "OnlineTexts_Timestamp";
+    /// <summary>
+    /// The announcements file as <see cref="AssetUpdater"/> sees it: the cooldown, the cached
+    /// copy, the conditional request and the retries all belong to it, and this file only reads
+    /// what it hands back. No packaged copy - a build's own announcements would be stale the day
+    /// it shipped - so a first run has nothing to fall back on and fetches whatever the schedule
+    /// says.
+    ///
+    /// <para>The 8s deadline is short on purpose: this runs at startup, nothing waits on it, and
+    /// a slow host must not hold the app up when a cached copy will do.</para>
+    /// </summary>
+    private static readonly ManagedAsset Announcements = new(
+        URL,
+        TimeSpan.FromHours(1),
+        FileName: "OnlineTexts_Cache.md",
+        Timeout: TimeSpan.FromSeconds(8));
+
     private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
     private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
 
-    private static readonly TimeSpan COOLDOWN = TimeSpan.FromHours(1); // Cooldown of re-fetching the new .md file.
     private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning PSAs
     public static TimeSpan TimedDuration => TIMED_DURATION;
-
-    private static readonly TimeSpan RETRY_DELAY = TimeSpan.FromSeconds(5);
-    private const int MAX_RETRIES = 2;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
 
@@ -285,7 +296,7 @@ public static class OnlineTexts
     /// Awaitable version of <see cref="TriggerUpdate"/>.
     /// Returns true if a fresh network fetch succeeded, false otherwise.
     /// </summary>
-    public static Task<bool> TriggerUpdateAsync() => LatestUpdate = RunUpdateAsync();
+    public static Task<bool> TriggerUpdateAsync() => LatestUpdate = RunUpdateAsync(force: false);
 
     /// <summary>
     /// The most recent <see cref="TriggerUpdateAsync"/>, so something that didn't start the
@@ -295,17 +306,14 @@ public static class OnlineTexts
     /// </summary>
     public static Task<bool> LatestUpdate { get; private set; } = Task.FromResult(false);
 
-    private static async Task<bool> RunUpdateAsync()
+    private static async Task<bool> RunUpdateAsync(bool force)
     {
         Trace.WriteLine("[OnlineTexts] TriggerUpdateAsync");
         TryApplyCache();
 
-        if (!IsCooldownExpired())
-        {
-            Trace.WriteLine("[OnlineTexts] Cooldown active — using cache");
-            return false;
-        }
-
+        // The cache, the cooldown, the retries and the conditional request all belong to
+        // AssetUpdater; what stays here is what only this file knows - how to read the markdown,
+        // and that a genuinely new copy is the one occasion to prune dead dismissals.
         if (_fetching || !await _lock.WaitAsync(0))
         {
             Trace.WriteLine("[OnlineTexts] Fetch already in progress — skipping");
@@ -315,44 +323,25 @@ public static class OnlineTexts
         _fetching = true;
         try
         {
-            for (int attempt = 0; attempt <= MAX_RETRIES; attempt++)
+            var read = await AssetUpdater.ResolveFreshOrCachedAsync(Announcements, force);
+
+            if (read.Source != AssetSource.Fetched || read.Path is null)
             {
-                if (attempt > 0)
-                {
-                    Trace.WriteLine($"[OnlineTexts] Retry {attempt}, waiting {RETRY_DELAY.TotalSeconds}s…");
-                    await Task.Delay(RETRY_DELAY);
-                }
-
-                Trace.WriteLine($"[OnlineTexts] Fetch attempt {attempt + 1}/{MAX_RETRIES + 1}");
-                var result = await Helpers.GetStringConditionalAsync(URL, FetchTimeout, Helpers.UpdaterHttpClient);
-
-                // Unchanged: the cache TryApplyCache already applied is the current file, so
-                // there is nothing to parse and nothing to prune - only the stamp to move on,
-                // which is what starts the cooldown again.
-                if (result.Status == FetchStatus.NotModified)
-                {
-                    Trace.WriteLine("[OnlineTexts] Unchanged (304) - cache is current");
-                    StampFetched();
-                    return true;
-                }
-
-                if (result.Status != FetchStatus.Modified || result.Body is null)
-                {
-                    Trace.WriteLine($"[OnlineTexts] Attempt {attempt + 1} failed");
-                    if (!result.Retryable) break;
-                    continue;
-                }
-
-                ParseAndApply(result.Body);
-                CacheContent(result.Body);
-                Helpers.SetValidator(URL, result.ETag);
-                CleanupOrphanedDismissals();
-                Trace.WriteLine("[OnlineTexts] Fetch and parse succeeded");
-                return true;
+                Trace.WriteLine($"[OnlineTexts] Nothing new ({read.Source}) - staying on cache (if available).");
+                return false;
             }
 
-            Trace.WriteLine("[OnlineTexts] All attempts failed - staying on cache (if available).");
-            return false;
+            var raw = File.ReadAllText(read.Path);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                Trace.WriteLine("[OnlineTexts] Fetched copy was empty");
+                return false;
+            }
+
+            ParseAndApply(raw);
+            CleanupOrphanedDismissals();
+            Trace.WriteLine("[OnlineTexts] Fetch and parse succeeded");
+            return true;
         }
         catch (Exception ex)
         {
@@ -366,18 +355,8 @@ public static class OnlineTexts
         }
     }
 
-    /// <summary>Expires the cache timestamp and immediately triggers a fresh fetch.</summary>
-    public static void ForceRefresh()
-    {
-        try
-        {
-            ApplicationData.Current.LocalSettings.Values[KEY_TIMESTAMP] =
-                DateTime.UtcNow.AddDays(-1).ToString("O");
-        }
-        catch { }
-
-        TriggerUpdate();
-    }
+    /// <summary>Fetches now, whatever the cooldown says.</summary>
+    public static void ForceRefresh() => LatestUpdate = RunUpdateAsync(force: true);
 
     /// <summary>
     /// Filters <paramref name="source"/> down to items that should currently be shown,
@@ -616,7 +595,7 @@ public static class OnlineTexts
                     var result = new Dictionary<string, DateTime>(StringComparer.Ordinal);
                     foreach (var (k, v) in dict)
                         // RoundtripKind: these were written as UTC with "O", and without it
-                        // they parse back as local time - see IsCooldownExpired.
+                        // they parse back as local time, off by the machine's offset.
                         if (DateTime.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt) && dt > now)
                             result[k] = dt;
                     return result;
@@ -648,20 +627,17 @@ public static class OnlineTexts
     // Cache
     // =========================================================================
 
-    private static string GetCacheFilePath() =>
-        Path.Combine(ApplicationData.Current.LocalFolder.Path, "OnlineTexts_Cache.md");
-
     /// <summary>
-    /// Populates <see cref="OnlineTextsContent"/> from the on-disk cache, so the app has
-    /// something to show before - or instead of - a successful fetch. Silent on failure: no
-    /// cache is a normal first-run state, not an error.
+    /// Populates <see cref="OnlineTextsContent"/> from the cached copy AssetUpdater holds, so
+    /// the app has something to show before - or instead of - a successful fetch. Silent on
+    /// failure: no cache is a normal first-run state, not an error.
     /// </summary>
     private static void TryApplyCache()
     {
         try
         {
-            var path = GetCacheFilePath();
-            if (File.Exists(path))
+            var path = AssetUpdater.Resolve(Announcements);
+            if (path is not null && File.Exists(path))
             {
                 var cached = File.ReadAllText(path);
                 if (!string.IsNullOrWhiteSpace(cached))
@@ -678,90 +654,6 @@ public static class OnlineTexts
             Trace.WriteLine($"[OnlineTexts] TryApplyCache failed: {ex.Message}");
         }
     }
-
-    private static void CacheContent(string raw)
-    {
-        try
-        {
-            File.WriteAllText(GetCacheFilePath(), raw);
-            StampFetched();
-            Trace.WriteLine($"[OnlineTexts] Cached {raw.Length} chars");
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[OnlineTexts] CacheContent failed: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Whether enough time has passed since the last successful fetch to go back to the
-    /// network. True when there is no stamp at all, when the stamp is unreadable, or when it
-    /// sits in the future - all of which mean "the recorded time can't be trusted, refetch".
-    /// </summary>
-    /// <summary>
-    /// Records that the remote was successfully consulted, which is what the cooldown measures.
-    /// Written both by a fetch that brought content back and by one answered 304 - in both cases
-    /// the cached copy is known to be current, and only the second would otherwise re-ask every
-    /// launch.
-    /// </summary>
-    private static void StampFetched()
-    {
-        try
-        {
-            ApplicationData.Current.LocalSettings.Values[KEY_TIMESTAMP] = DateTime.UtcNow.ToString("O");
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[OnlineTexts] StampFetched failed: {ex.Message}");
-        }
-    }
-
-    private static bool IsCooldownExpired()
-    {
-        try
-        {
-            var val = ApplicationData.Current.LocalSettings.Values[KEY_TIMESTAMP] as string;
-            if (val is null)
-            {
-                Trace.WriteLine("[OnlineTexts] No timestamp — treating as expired");
-                return true;
-            }
-
-            // RoundtripKind is required, not stylistic. The stamp is written as UTC with "O",
-            // and the default parse styles reinterpret it as local time, so the result is off
-            // by the machine's offset when compared against DateTime.UtcNow: west of UTC every
-            // check reads as older than the cooldown, east of it every check reads as being in
-            // the future and takes the reset branch below. Both refetch on every launch.
-            if (DateTime.TryParse(val, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last))
-            {
-                var age = DateTime.UtcNow - last;
-                if (age < TimeSpan.Zero)
-                {
-                    Trace.WriteLine("[OnlineTexts] Timestamp is in the future — resetting");
-                    try { ApplicationData.Current.LocalSettings.Values.Remove(KEY_TIMESTAMP); } catch { }
-                    return true;
-                }
-                var expired = age >= COOLDOWN;
-                Trace.WriteLine($"[OnlineTexts] Cache age {age.TotalMinutes:F1} min, expired: {expired}");
-                return expired;
-            }
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[OnlineTexts] IsCooldownExpired failed: {ex.Message}");
-        }
-        return true;
-    }
-
-    // =========================================================================
-    // Network
-    // =========================================================================
-
-    /// <summary>
-    /// The deadline on one attempt. Short on purpose - this runs at startup and nothing waits
-    /// on it, so a slow or unreachable host must not hold the app up when a cached copy will do.
-    /// </summary>
-    private static readonly TimeSpan FetchTimeout = TimeSpan.FromSeconds(8);
 
     // =========================================================================
     // Modifier parser
@@ -1061,12 +953,4 @@ public static class OnlineTexts
         }
     }
 
-    /// <summary>
-    /// Debug method: clears the cache timestamp to force a fresh fetch on next TriggerUpdate call.
-    /// </summary>
-    public static void ForceExpireCache()
-    {
-        try { ApplicationData.Current.LocalSettings.Values.Remove(KEY_TIMESTAMP); } catch { }
-        Trace.WriteLine("[OnlineTexts] Cache timestamp cleared");
-    }
 }

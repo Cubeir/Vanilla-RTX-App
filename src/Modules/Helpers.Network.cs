@@ -331,7 +331,7 @@ public static partial class Helpers
 
                 try
                 {
-                    var localFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                    var localFolder = LocalStateFolder ?? throw new IOException("No writable local state folder.");
                     var downloadDir = Path.Combine(localFolder, "Downloads");
                     Directory.CreateDirectory(downloadDir);
 

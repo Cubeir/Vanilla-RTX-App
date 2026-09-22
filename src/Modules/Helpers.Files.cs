@@ -13,6 +13,49 @@ namespace Vanilla_RTX_App.Modules;
 
 public static partial class Helpers
 {
+    private static string? _localStateFolder;
+    private static bool _localStateResolved;
+
+    /// <summary>
+    /// The app's writable folder, and the root of every cache it keeps.
+    ///
+    /// <para>In the packaged app this is always <c>ApplicationData.Current.LocalFolder</c>.
+    /// Reading it needs package identity, which a plain console host (a test harness driving
+    /// this assembly) does not have - there it falls back to a folder under the user's temp
+    /// directory, so the storage layers stay exercisable outside the app rather than silently
+    /// turning themselves off. Resolved once; null only if even the fallback fails.</para>
+    /// </summary>
+    public static string? LocalStateFolder
+    {
+        get
+        {
+            if (_localStateResolved) return _localStateFolder;
+            _localStateResolved = true;
+
+            try
+            {
+                _localStateFolder = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+            }
+            catch
+            {
+                try
+                {
+                    var fallback = Path.Combine(Path.GetTempPath(), "VanillaRTXApp_LocalState");
+                    Directory.CreateDirectory(fallback);
+                    _localStateFolder = fallback;
+                    Trace.WriteLine($"[Helpers] No packaged app data - using '{fallback}' for local state.");
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"[Helpers] No writable local state at all: {ex.Message}");
+                    _localStateFolder = null;
+                }
+            }
+
+            return _localStateFolder;
+        }
+    }
+
     /// <summary>
     /// 0 or 1 - whether an elevated replace is currently in flight, process-wide.
     /// See <see cref="ReplaceFilesWithElevation"/> for why this exists.
