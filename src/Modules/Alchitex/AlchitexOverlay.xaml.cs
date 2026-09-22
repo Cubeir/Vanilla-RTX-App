@@ -2011,7 +2011,6 @@ making it more usable in wider scenarios at the cost of looking worse where conf
 
 - The normal map generator is a magnificent piece of work, but, it depends on the heightmap generation downstream,
 which could be improved.
-Also the decisionmaker of making things flatter the more noisy is a bit too aggressive and it is falsely suppressing normals it shouldn't.
 
 - Could have added something to objectively derive baseline normal and heightmap intensities from Vanilla RTX/Normals, get the median of the whole thing, calculate deviation from that median.
 Then uniformly adjust all, until a baseline is reached, though with manual alterations and tweaks this may no longer be necessary and make actually become counterproductive.
