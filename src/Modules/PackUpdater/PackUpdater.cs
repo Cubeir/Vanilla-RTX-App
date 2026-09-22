@@ -90,7 +90,7 @@ public class PackUpdater
 
     // Cache validation check cooldown (Zip re-check versus remote before trying to install from it)
     private const string LastCacheCheckKey = "LastCacheValidationCheck";
-    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan CacheCheckCooldown = TimeSpan.FromMinutes(55);
 
     private bool _installationInProgress = false;
     private PackType? _currentInstallingPack = null;
