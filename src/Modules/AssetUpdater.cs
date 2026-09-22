@@ -29,7 +29,14 @@ public enum AssetSource
 }
 
 /// <param name="Path">The file to read, or null when <paramref name="Source"/> is Unavailable.</param>
-public readonly record struct AssetRead(string? Path, AssetSource Source);
+/// <param name="CheckedRemote">
+/// The remote answered just now - either with content or with a 304 saying the local copy is
+/// current. <see cref="AssetSource"/> alone cannot say this: a 304 and a cooldown both report
+/// <see cref="AssetSource.Cache"/>, and once conditional requests are in play the 304 is the
+/// ordinary case. A failed attempt is false, so a caller showing "just checked" leaves the way
+/// open to try again.
+/// </param>
+public readonly record struct AssetRead(string? Path, AssetSource Source, bool CheckedRemote = false);
 
 /// <summary>Whether a fetch may be made to wait behind others going to the same host.</summary>
 public enum FetchPriority
@@ -219,7 +226,7 @@ public static class AssetUpdater
                 Trace.WriteLine($"[AssetUpdater] '{asset.CacheFileName}' unchanged (304).");
                 Schedule(asset, succeeded: true);
                 TouchCache(cachePath);
-                return new AssetRead(cachePath, AssetSource.Cache);
+                return new AssetRead(cachePath, AssetSource.Cache, CheckedRemote: true);
             }
 
             downloaded = result.Path;
@@ -244,7 +251,7 @@ public static class AssetUpdater
             Schedule(asset, succeeded: true);
 
             Trace.WriteLine($"[AssetUpdater] '{asset.CacheFileName}' updated.");
-            return new AssetRead(destination, AssetSource.Fetched);
+            return new AssetRead(destination, AssetSource.Fetched, CheckedRemote: true);
         }
         catch (OperationCanceledException)
         {

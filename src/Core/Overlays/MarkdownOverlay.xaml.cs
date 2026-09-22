@@ -313,10 +313,12 @@ public sealed partial class MarkdownOverlay : UserControl
             var asset = DocumentAsset(_rawUrl);
             var read = await AssetUpdater.ResolveFreshOrCachedAsync(asset, force: bypassCache, cancellationToken: cts.Token);
 
-            // Opening a page that actually went to the network arms Reload's cooldown, so the
-            // button says which branch produced what is on screen: counting down means this was
-            // just fetched, live means it came off the cache. A Reload armed it at the click.
-            if (!bypassCache && read.Source == AssetSource.Fetched)
+            // Opening a page that reached the remote arms Reload's cooldown, so the button reads
+            // as "this page has just been checked" - which includes a 304, where the server
+            // confirmed the cached copy is current and pressing Reload would learn nothing. A
+            // page served without asking anyone leaves the button live. A Reload armed it at the
+            // click.
+            if (!bypassCache && read.CheckedRemote)
             {
                 _reloadCooldownUntil[_pageUrl] = DateTime.UtcNow.AddSeconds(ReloadCooldownSeconds);
                 RefreshReloadCooldownUI();
