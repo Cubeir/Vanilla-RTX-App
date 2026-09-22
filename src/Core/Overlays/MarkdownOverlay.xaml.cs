@@ -307,6 +307,7 @@ public sealed partial class MarkdownOverlay : UserControl
         ShowLoading("Loading...");
 
         _loadInFlight = true;
+        Header.SetReloadBusy(true);
         _fetchCts?.Cancel();
         _fetchCts?.Dispose();
         var cts = new CancellationTokenSource();
@@ -346,6 +347,8 @@ public sealed partial class MarkdownOverlay : UserControl
         finally
         {
             _loadInFlight = false;
+            Header.SetReloadBusy(false);
+            RefreshReloadCooldownUI();
         }
     }
 

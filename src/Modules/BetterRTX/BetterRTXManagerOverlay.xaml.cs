@@ -91,6 +91,22 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     /// </summary>
     private bool _applyInProgress;
 
+    /// <summary>
+    /// True from the click until the refresh has finished one way or the other. The cooldown is
+    /// armed by a successful rebuild rather than by the click, so without this the one-second
+    /// repaint below would hand the button straight back mid-fetch and a second press would
+    /// start a rebuild on top of the first.
+    /// </summary>
+    private bool _refreshInProgress;
+
+    /// <summary>
+    /// True once the manager is attached and the list is on screen. Until then there is no cache
+    /// folder and no index to rebuild, so refreshing would be a request into nothing - and the
+    /// window can sit here for minutes while a system-wide search runs or the user is asked to
+    /// point at the game.
+    /// </summary>
+    private bool _ready;
+
 
     public BetterRTXManagerOverlay()
     {
@@ -102,6 +118,12 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         _manager.DownloadTrackingReset = ClearDownloadTracking;
 
         PrepareContent();
+
+        // Dead until this window has finished opening. The strip goes into the titlebar as the
+        // module opens, so without this the button is pressable through the whole locate-and-load
+        // pass and would race the fetch it is meant to replace. InitializeRefreshButton, at the
+        // end of Loaded, is what brings it back.
+        RefreshButton.IsEnabled = false;
 
         ShowBrowseTarget();
 
@@ -421,8 +443,9 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
                 }
             }
 
-            // Cooldown expired or never set - enable button
-            RefreshButton.IsEnabled = true;
+            // No cooldown - live again, unless this window is still opening or a refresh is
+            // still running.
+            RefreshButton.IsEnabled = _ready && !_refreshInProgress;
 
             // Show icon, hide countdown text
             RefreshIcon.Visibility = Visibility.Visible;
@@ -461,6 +484,11 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             Trace.WriteLine("[BetterRTX] A preset download is in progress - ignoring refresh");
             return;
         }
+
+        // Set before the first await, so a second click in the same instant is refused rather
+        // than racing the first through.
+        if (!_ready || _refreshInProgress) return;
+        _refreshInProgress = true;
 
         try
         {
@@ -518,6 +546,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         }
         finally
         {
+            _refreshInProgress = false;
             UpdateRefreshButtonState();
             _ = Host.BlinkingLamp(true, true, 1.0);
         }
@@ -581,6 +610,9 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         await _manager.LoadLocalPresetsAsync();
 
         await DisplayPresetsAsync();
+
+        _ready = true;
+        UpdateRefreshButtonState();
 
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;

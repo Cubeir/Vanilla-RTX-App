@@ -51,6 +51,11 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
         this.InitializeComponent();
         PrepareContent();
 
+        // Dead until this window has finished opening - the strip is in the titlebar from the
+        // moment the module appears, and a press during the initial load would run a second
+        // version check alongside the first. StartRefreshCooldownTimer brings it back.
+        RefreshButton.IsEnabled = false;
+
         InitializeHoverEffects();
 
         SpecialOccasionPanel.Visibility = Helpers.GetSpecialOccasionName() == "christmas"
@@ -75,12 +80,16 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
 
             SetupButtonHandlers();
             CheckAndHandleOngoingInstallation();
-            StartRefreshCooldownTimer();
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[PackUpdaterOverlay] The _Loaded Event Crashed: {ex.Message}");
-            return;
+        }
+        finally
+        {
+            // In the finally because the button starts dead: a load that threw would otherwise
+            // leave the one control that could put things right disabled for the module's life.
+            if (!_isClosing) StartRefreshCooldownTimer();
         }
     }
 
@@ -213,7 +222,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
             return;
         }
 
-        RefreshButton.IsEnabled = !_updater.IsInstallationInProgress();
+        RefreshButton.IsEnabled = !_refreshInProgress && !_updater.IsInstallationInProgress();
         RefreshIcon.Visibility = Visibility.Visible;
         RefreshCountdownText.Visibility = Visibility.Collapsed;
     }

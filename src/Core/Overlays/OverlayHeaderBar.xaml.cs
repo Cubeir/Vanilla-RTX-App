@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
@@ -112,7 +112,27 @@ public sealed partial class OverlayHeaderBar : UserControl
     }
 
     /// <summary>
-    /// Null (or &lt;= 0) shows the plain reload icon, enabled. A positive value disables the
+    /// Greys Reload while a fetch is actually running, without showing a number - there is no
+    /// countdown to show yet, because the cooldown is armed by the answer rather than by the
+    /// click. Cleared by the caller when the fetch ends, after which
+    /// <see cref="SetReloadCooldown"/> decides what the button looks like.
+    /// </summary>
+    public void SetReloadBusy(bool busy)
+    {
+        _reloadBusy = busy;
+
+        if (!busy) return;
+
+        ReloadIcon.Visibility = Visibility.Visible;
+        ReloadCountdownText.Visibility = Visibility.Collapsed;
+        ReloadButton.IsEnabled = false;
+        ToolTipService.SetToolTip(ReloadButton, "Reloading...");
+    }
+
+    private bool _reloadBusy;
+
+    /// <summary>
+    /// Null (or &lt;= 0) shows the plain reload icon, enabled unless a fetch is still running. A positive value disables the
     /// button and shows that many seconds as a number in its place instead - see
     /// <see cref="MarkdownOverlay"/>'s reload cooldown for the caller that uses this.
     /// </summary>
@@ -130,8 +150,8 @@ public sealed partial class OverlayHeaderBar : UserControl
         {
             ReloadIcon.Visibility = Visibility.Visible;
             ReloadCountdownText.Visibility = Visibility.Collapsed;
-            ReloadButton.IsEnabled = true;
-            ToolTipService.SetToolTip(ReloadButton, "Reload");
+            ReloadButton.IsEnabled = !_reloadBusy;
+            ToolTipService.SetToolTip(ReloadButton, _reloadBusy ? "Reloading..." : "Reload");
         }
     }
 
