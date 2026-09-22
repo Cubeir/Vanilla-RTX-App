@@ -81,7 +81,7 @@ Three buttons sit next to the app's name. Each opens a page:
 - **Help** - a convenient way to browse the contents of this page while using the app.
 - **Bugs** - an up-to-date [list of known Minecraft RTX bugs](https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking) and their status on Mojang's tracker.
 
-> Help and Bugs can be opened on top of any feature, and closing them puts you back exactly where you were. Reopening a page returns you to where you had scrolled to, for as long as the app stays open.
+> Help and Bugs can be opened on top of any feature, and closing them puts you back exactly where you were.
 
 > Next to their title are buttons to reload the page and jump back to the top, and on the right, a search button (**Ctrl+F**). Both pages are saved for offline reading and refreshed at most once an hour; if a refresh fails, the saved copy is shown. The reload button shows a countdown for a minute after the page has been fetched, so a live button means you're reading the saved copy.
 
