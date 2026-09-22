@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -297,23 +296,43 @@ public sealed partial class MarkdownOverlay : UserControl
 
                 // With a copy to fall back on, a slow network isn't worth waiting out.
                 var timeout = TimeSpan.FromSeconds(cached is null ? 15 : 5);
-                markdown = await FetchRawMarkdownAsync(_rawUrl, timeout, cts.Token);
+                var result = await Helpers.GetStringConditionalAsync(_rawUrl, timeout, Helpers.SharedHttpClient, cts.Token);
 
-                if (markdown is not null)
+                switch (result.Status)
                 {
-                    _failedUntil.Remove(_rawUrl);
-                    DiskCache.Write(_rawUrl, markdown);
-                }
-                else if (!cts.Token.IsCancellationRequested)
-                {
-                    _failedUntil[_rawUrl] = DateTime.UtcNow + FailureBackoff;
-                    markdown = cached?.Markdown;
-                    if (markdown is null)
-                    {
-                        ShowError("Couldn't load this page. Check your internet connection and try again.");
-                        return;
-                    }
-                    Trace.WriteLine($"[MarkdownOverlay] Fetch failed - showing the cached copy of {_rawUrl}");
+                    case FetchStatus.Modified when result.Body is not null:
+                        _failedUntil.Remove(_rawUrl);
+                        DiskCache.Write(_rawUrl, result.Body);
+                        Helpers.SetValidator(_rawUrl, result.ETag);
+                        markdown = result.Body;
+                        break;
+
+                    // Confirmed current, nothing transferred. The cached file's own timestamp is
+                    // the freshness stamp, so it has to be touched here or every open re-asks -
+                    // which a 304 makes cheap, not unnecessary.
+                    case FetchStatus.NotModified when cached is not null:
+                        _failedUntil.Remove(_rawUrl);
+                        DiskCache.Touch(_rawUrl);
+                        markdown = cached.Value.Markdown;
+                        break;
+
+                    default:
+                        if (cts.Token.IsCancellationRequested) return;
+
+                        // A 304 with nothing to apply it to means the validator outlived its
+                        // file. Dropping it makes the next attempt ask for the whole document.
+                        if (result.Status == FetchStatus.NotModified)
+                            Helpers.SetValidator(_rawUrl, null);
+
+                        _failedUntil[_rawUrl] = DateTime.UtcNow + FailureBackoff;
+                        markdown = cached?.Markdown;
+                        if (markdown is null)
+                        {
+                            ShowError("Couldn't load this page. Check your internet connection and try again.");
+                            return;
+                        }
+                        Trace.WriteLine($"[MarkdownOverlay] Fetch failed - showing the cached copy of {_rawUrl}");
+                        break;
                 }
             }
 
@@ -328,34 +347,6 @@ public sealed partial class MarkdownOverlay : UserControl
 
     private static bool RecentlyFailed(string rawUrl) =>
         _failedUntil.TryGetValue(rawUrl, out var until) && until > DateTime.UtcNow;
-
-    private async Task<string?> FetchRawMarkdownAsync(string rawUrl, TimeSpan timeout, CancellationToken token)
-    {
-        try
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-            timeoutCts.CancelAfter(timeout);
-
-            using var response = await Helpers.SharedHttpClient.GetAsync(rawUrl, timeoutCts.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                Trace.WriteLine($"[MarkdownOverlay] HTTP {(int)response.StatusCode} fetching {rawUrl}");
-                return null;
-            }
-
-            return await response.Content.ReadAsStringAsync(token);
-        }
-        catch (OperationCanceledException) when (!token.IsCancellationRequested)
-        {
-            Trace.WriteLine($"[MarkdownOverlay] Timed out fetching {rawUrl}");
-            return null;
-        }
-        catch (HttpRequestException ex)
-        {
-            Trace.WriteLine($"[MarkdownOverlay] Network error fetching {rawUrl}: {ex.Message}");
-            return null;
-        }
-    }
 
     private void RenderMarkdown(string markdown)
     {
@@ -488,6 +479,24 @@ public sealed partial class MarkdownOverlay : UserControl
             {
                 Trace.WriteLine($"[MarkdownOverlay] Couldn't read the cached copy of {rawUrl}: {ex.Message}");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Marks a cached page as confirmed current, without rewriting it. The file's own
+        /// last-write time is the freshness stamp, so this is what a 304 has to do - see
+        /// <see cref="LoadAsync"/>.
+        /// </summary>
+        public static void Touch(string rawUrl)
+        {
+            try
+            {
+                var path = PathFor(rawUrl);
+                if (File.Exists(path)) File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[MarkdownOverlay] Couldn't re-stamp the cached copy of {rawUrl}: {ex.Message}");
             }
         }
 

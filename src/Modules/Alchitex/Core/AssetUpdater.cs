@@ -205,20 +205,40 @@ public static class AssetUpdater
 
         try
         {
-            (var succeeded, downloaded) = await Helpers.Download(
+            // Conditional only when there is a cached copy for the stored validator to describe.
+            // A validator without its file would answer 304 and leave the cache a version behind
+            // until the asset changed again.
+            var cachedPath = Path.Combine(cacheFolder, asset.FileName);
+            var haveCached = File.Exists(cachedPath) && new FileInfo(cachedPath).Length > 0;
+
+            var result = await Helpers.Download(
                 asset.RemoteUrl,
                 cancellationToken,
                 Helpers.UpdaterHttpClient,
                 RequestTimeout,
-                quiet: true);
+                quiet: true,
+                conditional: haveCached);
 
-            if (!succeeded || downloaded is null) return false;
+            // Unchanged is a successful check: the cached copy is current, and the full cooldown
+            // starts again without a byte of it having been transferred.
+            if (result.NotModified)
+            {
+                Trace.WriteLine($"[AssetUpdater] '{asset.FileName}' unchanged (304).");
+                return true;
+            }
+
+            downloaded = result.Path;
+            if (!result.Success || downloaded is null) return false;
 
             // The destination name comes from the manifest, never from what came back:
             // Helpers.Download uniquifies around anything already sitting in its folder, so
             // this can arrive as materials-1.json and still has to land as materials.json.
-            File.Move(downloaded, Path.Combine(cacheFolder, asset.FileName), overwrite: true);
+            File.Move(downloaded, cachedPath, overwrite: true);
             downloaded = null;
+
+            // After the move, never before it: the validator has to describe a file that is
+            // actually in the cache, or the next check answers 304 for content nobody has.
+            Helpers.SetValidator(asset.RemoteUrl, result.ETag);
 
             Trace.WriteLine($"[AssetUpdater] '{asset.FileName}' updated.");
             return true;

@@ -324,17 +324,28 @@ public static class OnlineTexts
                 }
 
                 Trace.WriteLine($"[OnlineTexts] Fetch attempt {attempt + 1}/{MAX_RETRIES + 1}");
-                var (raw, retryable) = await FetchAsync();
+                var result = await Helpers.GetStringConditionalAsync(URL, FetchTimeout, Helpers.UpdaterHttpClient);
 
-                if (raw is null)
+                // Unchanged: the cache TryApplyCache already applied is the current file, so
+                // there is nothing to parse and nothing to prune - only the stamp to move on,
+                // which is what starts the cooldown again.
+                if (result.Status == FetchStatus.NotModified)
                 {
-                    Trace.WriteLine($"[OnlineTexts] Attempt {attempt + 1} returned null");
-                    if (!retryable) break;
+                    Trace.WriteLine("[OnlineTexts] Unchanged (304) - cache is current");
+                    StampFetched();
+                    return true;
+                }
+
+                if (result.Status != FetchStatus.Modified || result.Body is null)
+                {
+                    Trace.WriteLine($"[OnlineTexts] Attempt {attempt + 1} failed");
+                    if (!result.Retryable) break;
                     continue;
                 }
 
-                ParseAndApply(raw);
-                CacheContent(raw);
+                ParseAndApply(result.Body);
+                CacheContent(result.Body);
+                Helpers.SetValidator(URL, result.ETag);
                 CleanupOrphanedDismissals();
                 Trace.WriteLine("[OnlineTexts] Fetch and parse succeeded");
                 return true;
@@ -673,8 +684,7 @@ public static class OnlineTexts
         try
         {
             File.WriteAllText(GetCacheFilePath(), raw);
-            ApplicationData.Current.LocalSettings.Values[KEY_TIMESTAMP] =
-                DateTime.UtcNow.ToString("O");
+            StampFetched();
             Trace.WriteLine($"[OnlineTexts] Cached {raw.Length} chars");
         }
         catch (Exception ex)
@@ -688,6 +698,24 @@ public static class OnlineTexts
     /// network. True when there is no stamp at all, when the stamp is unreadable, or when it
     /// sits in the future - all of which mean "the recorded time can't be trusted, refetch".
     /// </summary>
+    /// <summary>
+    /// Records that the remote was successfully consulted, which is what the cooldown measures.
+    /// Written both by a fetch that brought content back and by one answered 304 - in both cases
+    /// the cached copy is known to be current, and only the second would otherwise re-ask every
+    /// launch.
+    /// </summary>
+    private static void StampFetched()
+    {
+        try
+        {
+            ApplicationData.Current.LocalSettings.Values[KEY_TIMESTAMP] = DateTime.UtcNow.ToString("O");
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[OnlineTexts] StampFetched failed: {ex.Message}");
+        }
+    }
+
     private static bool IsCooldownExpired()
     {
         try
@@ -730,36 +758,10 @@ public static class OnlineTexts
     // =========================================================================
 
     /// <summary>
-    /// Fetches the announcements markdown. The short default timeout is deliberate - this runs
-    /// at startup and nothing waits on it, so a slow or unreachable host must not hold the app
-    /// up when a cached copy will do.
-    ///
-    /// <para><c>Retryable</c> is false for a 4xx: the file is gone or we are being rate limited,
-    /// and either way the answer five seconds later is the same one. Everything else - a
-    /// timeout, a dropped connection, a 5xx - is worth another attempt.</para>
+    /// The deadline on one attempt. Short on purpose - this runs at startup and nothing waits
+    /// on it, so a slow or unreachable host must not hold the app up when a cached copy will do.
     /// </summary>
-    private static async Task<(string? Raw, bool Retryable)> FetchAsync(int timeoutSeconds = 8)
-    {
-        try
-        {
-            Trace.WriteLine($"[OnlineTexts] Fetching {URL}");
-
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-            var response = await Helpers.UpdaterHttpClient.GetAsync(URL, cts.Token);
-            Trace.WriteLine($"[OnlineTexts] HTTP {(int)response.StatusCode} {response.StatusCode}");
-
-            if (response.IsSuccessStatusCode)
-                return (await response.Content.ReadAsStringAsync(), true);
-
-            var status = (int)response.StatusCode;
-            return (null, status < 400 || status >= 500);
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"[OnlineTexts] FetchAsync: {ex.GetType().Name}: {ex.Message}");
-            return (null, true);
-        }
-    }
+    private static readonly TimeSpan FetchTimeout = TimeSpan.FromSeconds(8);
 
     // =========================================================================
     // Modifier parser

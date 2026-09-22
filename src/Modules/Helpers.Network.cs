@@ -1,13 +1,59 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Vanilla_RTX_App.Core;
+using Windows.Storage;
 using static Vanilla_RTX_App.MainWindow;
 
 namespace Vanilla_RTX_App.Modules;
+
+/// <summary>What a conditional fetch came back with - see <see cref="Helpers.GetStringConditionalAsync"/>.</summary>
+public enum FetchStatus
+{
+    /// <summary>The server sent a body. <c>Body</c> is it, and <c>ETag</c> identifies it.</summary>
+    Modified,
+
+    /// <summary>304: what the caller already has is current. Nothing was transferred.</summary>
+    NotModified,
+
+    /// <summary>Nothing usable came back. <c>Retryable</c> says whether asking again could help.</summary>
+    Failed
+}
+
+/// <param name="ETag">
+/// The identity of the bytes now in hand, to be stored with them through
+/// <see cref="Helpers.SetValidator"/> - <b>only once they are actually committed</b>, or the
+/// next conditional request claims to hold content that was never written.
+/// </param>
+/// <param name="Retryable">
+/// False for a 4xx, where asking again immediately gets the same answer and, on a 429, makes it
+/// worse.
+/// </param>
+public readonly record struct FetchResult(FetchStatus Status, string? Body, string? ETag, bool Retryable);
+
+/// <param name="NotModified">
+/// True when the server answered 304, which is only possible when the caller passed
+/// <c>conditional: true</c> and a validator was stored. <c>Success</c> is false and
+/// <c>Path</c> null in that case: nothing was downloaded because nothing needed to be.
+/// </param>
+public readonly record struct DownloadResult(bool Success, string? Path, bool NotModified, string? ETag)
+{
+    /// <summary>Lets the existing <c>var (success, path) = await Download(...)</c> call sites stand.</summary>
+    public void Deconstruct(out bool success, out string? path)
+    {
+        success = Success;
+        path = Path;
+    }
+
+    public static implicit operator (bool, string?)(DownloadResult result) => (result.Success, result.Path);
+}
 
 public static partial class Helpers
 {
@@ -61,6 +107,124 @@ public static partial class Helpers
     public static bool IsClientError(HttpRequestException ex) =>
         ex.StatusCode is { } code && (int)code >= 400 && (int)code < 500;
 
+    // ── Conditional requests ──────────────────────────────────────────────────
+    //
+    // Every address the app fetches from GitHub carries an ETag, and answers a request that
+    // quotes it back with an empty 304. Measured against raw.githubusercontent.com: markdown,
+    // JSON and a zip all return 304 for a matching validator and a full 200 for a stale one.
+    // bedrock.graphics sends no validator at all, so the BetterRTX index cannot use this.
+    //
+    // It does not reduce the request count - it removes the body, which is what makes a short
+    // cooldown affordable rather than making it unnecessary.
+
+    private const string ValidatorKeyPrefix = "HttpValidator_";
+
+    /// <summary>
+    /// Used when there is no packaged app data to store validators in, which is every
+    /// non-packaged host (a test harness). Keeping the feature alive there rather than
+    /// silently disabling it is what makes it testable outside the app.
+    /// </summary>
+    private static readonly Dictionary<string, string> _validatorFallback = new(StringComparer.Ordinal);
+
+    private static string ValidatorKey(string url) =>
+        ValidatorKeyPrefix + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(url)), 0, 8);
+
+    /// <summary>The stored validator for an address, or null when nothing is held for it.</summary>
+    public static string? GetValidator(string url)
+    {
+        var key = ValidatorKey(url);
+        try { return ApplicationData.Current.LocalSettings.Values[key] as string; }
+        catch { lock (_validatorFallback) return _validatorFallback.TryGetValue(key, out var v) ? v : null; }
+    }
+
+    /// <summary>
+    /// Remembers what the bytes a caller just committed are identified as. Null clears it.
+    ///
+    /// <para><b>Store it only after the content it describes is safely in place.</b> A validator
+    /// that outlives its content makes the next request answer 304 for a copy nobody has, and
+    /// the cache stays one version behind until the file changes again.</para>
+    /// </summary>
+    public static void SetValidator(string url, string? etag)
+    {
+        var key = ValidatorKey(url);
+        try
+        {
+            if (etag is null) ApplicationData.Current.LocalSettings.Values.Remove(key);
+            else ApplicationData.Current.LocalSettings.Values[key] = etag;
+        }
+        catch
+        {
+            lock (_validatorFallback)
+            {
+                if (etag is null) _validatorFallback.Remove(key);
+                else _validatorFallback[key] = etag;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fetches text, quoting the stored validator for the address when there is one, so an
+    /// unchanged document comes back as an empty 304. Never throws; a failure is a status rather
+    /// than an exception, and the caller keeps whatever it already had.
+    ///
+    /// <para>The caller owns the cache, and therefore owns the validator: store
+    /// <see cref="FetchResult.ETag"/> through <see cref="SetValidator"/> once the body has been
+    /// written, and leave it alone on a 304 - it still describes what is on disk.</para>
+    /// </summary>
+    public static async Task<FetchResult> GetStringConditionalAsync(
+        string url,
+        TimeSpan timeout,
+        HttpClient? httpClient = null,
+        CancellationToken cancellationToken = default)
+    {
+        var client = httpClient ?? SharedHttpClient;
+        var validator = GetValidator(url);
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeout);
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            // TryAddWithoutValidation: a stored validator is echoed back exactly as the server
+            // wrote it, weak prefix and all, rather than being re-parsed into a shape it might
+            // not round-trip through.
+            if (validator is not null)
+                request.Headers.TryAddWithoutValidation("If-None-Match", validator);
+
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token);
+
+            if (response.StatusCode == HttpStatusCode.NotModified)
+                return new FetchResult(FetchStatus.NotModified, null, validator, true);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Trace.WriteLine($"[Fetch] HTTP {(int)response.StatusCode} {response.StatusCode} from {url}");
+                var status = (int)response.StatusCode;
+                return new FetchResult(FetchStatus.Failed, null, null, status < 400 || status >= 500);
+            }
+
+            var body = await response.Content.ReadAsStringAsync(timeoutCts.Token);
+            return new FetchResult(FetchStatus.Modified, body, response.Headers.ETag?.Tag, true);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Trace.WriteLine($"[Fetch] Timed out fetching {url}");
+            return new FetchResult(FetchStatus.Failed, null, null, true);
+        }
+        catch (HttpRequestException ex)
+        {
+            Trace.WriteLine($"[Fetch] {ex.GetType().Name} fetching {url}: {ex.Message}");
+            return new FetchResult(FetchStatus.Failed, null, null, !IsClientError(ex));
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Fetch] {ex.GetType().Name} fetching {url}: {ex.Message}");
+            return new FetchResult(FetchStatus.Failed, null, null, true);
+        }
+    }
+
     /// <summary>
     /// Downloads a file with progress tracking and retry logic.
     /// Uses the shared HttpClient which is pre-configured.
@@ -70,13 +234,21 @@ public static partial class Helpers
     /// <para>Retries cover transient failures only. A 4xx is the server's considered answer -
     /// the file is gone, or we are being rate limited - and asking again immediately makes the
     /// second case worse, so those fail on the spot.</para>
+    ///
+    /// <para><paramref name="conditional"/> quotes the stored validator for the address, so a
+    /// file that has not changed answers 304 and nothing is transferred - the result then
+    /// carries <c>NotModified</c> and no path. The ETag of a file that <i>was</i> transferred
+    /// comes back on the result for the caller to store once it has committed the file
+    /// (<see cref="SetValidator"/>); this method never stores it itself, because the download
+    /// landing in the Downloads folder is not the same event as the caller adopting it.</para>
     /// </summary>
-    public static async Task<(bool, string?)> Download(
+    public static async Task<DownloadResult> Download(
             string url,
             CancellationToken cancellationToken = default,
             HttpClient? httpClient = null,
             TimeSpan? timeout = null,
-            bool quiet = false)
+            bool quiet = false,
+            bool conditional = false)
     {
         // Background callers (AssetUpdater) download things the user never asked for and
         // shouldn't have to read about; everything else keeps reporting to the UI log.
@@ -109,7 +281,20 @@ public static partial class Helpers
             try
             {
                 // === DOWNLOAD ===
-                using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+                var validator = conditional ? GetValidator(url) : null;
+                if (validator is not null)
+                    request.Headers.TryAddWithoutValidation("If-None-Match", validator);
+
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+
+                if (response.StatusCode == HttpStatusCode.NotModified)
+                {
+                    Report("Already up to date, nothing to download.", LogLevel.Cache);
+                    return new DownloadResult(false, null, NotModified: true, validator);
+                }
+
                 response.EnsureSuccessStatusCode();
                 Report("Starting Download.", LogLevel.Lengthy);
 
@@ -174,7 +359,7 @@ public static partial class Helpers
                 if (savingLocation == null)
                 {
                     Report("No writable location found for download.", LogLevel.Error);
-                    return (false, null);
+                    return new DownloadResult(false, null, NotModified: false, null);
                 }
 
                 // === DOWNLOAD WITH PROGRESS TRACKING ===
@@ -218,17 +403,17 @@ public static partial class Helpers
                 partialPath = null;
 
                 Report("Download finished successfully.", LogLevel.Success);
-                return (true, savingLocation);
+                return new DownloadResult(true, savingLocation, NotModified: false, response.Headers.ETag?.Tag);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 Report("Download cancelled by the caller.", LogLevel.Informational);
-                return (false, null);
+                return new DownloadResult(false, null, NotModified: false, null);
             }
             catch (HttpRequestException ex) when (IsClientError(ex))
             {
                 Report($"Download refused by the server ({(int)ex.StatusCode!.Value} {ex.StatusCode}).", LogLevel.Error);
-                return (false, null);
+                return new DownloadResult(false, null, NotModified: false, null);
             }
             catch (HttpRequestException ex) when (retries > 0)
             {
@@ -243,12 +428,12 @@ public static partial class Helpers
             catch (OperationCanceledException)
             {
                 Report("Request timed out after all retries.", LogLevel.Error);
-                return (false, null);
+                return new DownloadResult(false, null, NotModified: false, null);
             }
             catch (Exception ex)
             {
                 Report($"Error during download: {ex.Message}", LogLevel.Error);
-                return (false, null);
+                return new DownloadResult(false, null, NotModified: false, null);
             }
             finally
             {
@@ -264,6 +449,6 @@ public static partial class Helpers
         }
 
         Report("Download failed after multiple attempts.", LogLevel.Error);
-        return (false, null);
+        return new DownloadResult(false, null, NotModified: false, null);
     }
 }
