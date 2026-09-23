@@ -51,16 +51,15 @@ internal sealed class ReactorBackdrop
     // The six blues from the art, darkest to brightest, then one accent that is not part of
     // that ramp. Five of the six are ReactorAnimator's palette exactly; #00305B is the extra
     // step between its two darkest.
-    private static readonly Color[] Palette =
+    public static readonly Color[] Palette =
     {
-        ColorHelper.FromArgb(255, 0, 35, 66),
-        ColorHelper.FromArgb(255, 0, 41, 78),
-        ColorHelper.FromArgb(255, 0, 48, 91),
-        ColorHelper.FromArgb(255, 0, 53, 102),
-        ColorHelper.FromArgb(255, 0, 59, 114),
-        ColorHelper.FromArgb(255, 0, 72, 138),
-
-        ColorHelper.FromArgb(255, 44, 154, 255), // accent
+    ColorHelper.FromArgb(255, 0, 72, 138), // brightest
+    ColorHelper.FromArgb(255, 0, 59, 114),
+    ColorHelper.FromArgb(255, 0, 53, 102),
+    ColorHelper.FromArgb(255, 0, 48, 91),
+    ColorHelper.FromArgb(255, 0, 41, 78),
+    ColorHelper.FromArgb(255, 0, 35, 66), // darkest
+    ColorHelper.FromArgb(255, 45, 155, 255), // special accent
     };
 
     // How likely each colour is to be a tile's own, relative to the others. Raise the last

@@ -126,11 +126,11 @@ public sealed class ReactorAnimator
     // these - the reactor never shows a color that isn't part of the mark.
     public static readonly Color[] Palette =
     {
-        ColorHelper.FromArgb(255, 0x00, 0x48, 0x8A), // brightest
-        ColorHelper.FromArgb(255, 0x00, 0x3B, 0x72),
-        ColorHelper.FromArgb(255, 0x00, 0x35, 0x66),
-        ColorHelper.FromArgb(255, 0x00, 0x29, 0x4E),
-        ColorHelper.FromArgb(255, 0x00, 0x23, 0x42), // darkest
+        ColorHelper.FromArgb(255, 0, 72, 138), // brightest
+        ColorHelper.FromArgb(255, 0, 59, 114),
+        ColorHelper.FromArgb(255, 0, 53, 102),
+        ColorHelper.FromArgb(255, 0, 41, 78),
+        ColorHelper.FromArgb(255, 0, 35, 66), // darkest
     };
 
     /// <summary>

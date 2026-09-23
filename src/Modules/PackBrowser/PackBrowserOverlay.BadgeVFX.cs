@@ -400,20 +400,6 @@ internal static class PackBrowserBadgeVFX
     //  and the per-cell rung state all existed to serve it and went with it.
     // ════════════════════════════════════════════════════════════════════
 
-    /// <summary>
-    /// ReactorBackdrop's palette: usual RTX Reactor-brand blues
-    /// </summary>
-    private static readonly Color[] ReactorPalette =
-    {
-        ColorHelper.FromArgb(255, 0, 35, 66),
-        ColorHelper.FromArgb(255, 0, 41, 78),
-        ColorHelper.FromArgb(255, 0, 48, 91),
-        ColorHelper.FromArgb(255, 0, 53, 102),
-        ColorHelper.FromArgb(255, 0, 59, 114),
-        ColorHelper.FromArgb(255, 0, 72, 138),
-        ColorHelper.FromArgb(255, 44, 154, 255),
-    };
-
     /// <summary>Palette entries below this form the ordered ramp a cell steps along; anything
     /// from here up is an accent with no neighbours on it (see StepReactorShade).</summary>
     private const int ReactorRampLength = 6;
@@ -437,7 +423,7 @@ internal static class PackBrowserBadgeVFX
     private static SolidColorBrush[]? _reactorBrushes;
 
     private static SolidColorBrush[] ReactorBrushes =>
-        _reactorBrushes ??= ReactorPalette.Select(c => new SolidColorBrush(c)).ToArray();
+        _reactorBrushes ??= Alchitex.ReactorBackdrop.Palette.Select(c => new SolidColorBrush(c)).ToArray();
 
     private sealed class ReactorCell
     {
@@ -514,7 +500,7 @@ internal static class PackBrowserBadgeVFX
     /// <summary>Uniform across the palette, accent included. The backdrop weights its own
     /// pick so the accent stays rare over a field the size of a window; a badge is 96 cells
     /// behind a flat blue, and wants the accent often enough to be seen at all.</summary>
-    private static int PickReactorShade() => Desync.Next(ReactorPalette.Length);
+    private static int PickReactorShade() => Desync.Next(Alchitex.ReactorBackdrop.Palette.Length);
 
     /// <summary>
     /// Registers a field with the shared ticker for as long as its overlay is in the tree.
