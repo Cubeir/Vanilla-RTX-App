@@ -206,6 +206,14 @@ public static class MaterialsOptimizer
     /// key, or a property belonging to a version of the schema this build doesn't have, from
     /// being deleted merely because removing it changes nothing today.
     ///
+    /// <b>A container holding one is not a candidate either</b>, at any depth, and that is the
+    /// half that is easy to miss: not offering `mer.artist_note` for removal buys nothing if
+    /// `mer` itself can be removed, because it goes with the section. An entry whose whole
+    /// `mer` is redundant apart from a hand-written note is exactly the case - every modelled
+    /// value in it resolves to the default, so the section collapses and takes the note with
+    /// it. The walk therefore reports upward whether it saw anything unmodelled, and a
+    /// container that did keeps its place while its own modelled children stay removable.
+    ///
     /// Array elements are not candidates, only the array itself and the keys inside its
     /// elements. A recursive pass is art direction; the question worth asking about one is
     /// whether its channel or a MER bound is redundant, never whether the pass is.
@@ -220,31 +228,55 @@ public static class MaterialsOptimizer
         if (known != null) Walk(entry, known, new List<string>(), paths);
         return paths;
 
-        static void Walk(JsonNode? actual, JsonNode? recognised, List<string> prefix, List<List<string>> into)
+        // Returns true when this subtree holds anything the schema didn't model, so the
+        // caller knows not to offer the node containing it.
+        static bool Walk(JsonNode? actual, JsonNode? recognised, List<string> prefix, List<List<string>> into)
         {
             if (actual is JsonObject actualObject && recognised is JsonObject recognisedObject)
             {
+                var holdsUnmodelled = false;
+
                 foreach (var child in actualObject)
                 {
-                    if (!recognisedObject.ContainsKey(child.Key)) continue;
+                    if (!recognisedObject.ContainsKey(child.Key))
+                    {
+                        // A key the schema understood but whose value was written as JSON null
+                        // also fails to come back (nulls are suppressed on write), and removing
+                        // its container would be removing something the schema does model. It
+                        // counts as unmodelled here for the same conservative reason.
+                        holdsUnmodelled = true;
+                        continue;
+                    }
 
                     var path = new List<string>(prefix) { child.Key };
-                    into.Add(path);
-                    Walk(child.Value, recognisedObject[child.Key], path, into);
+
+                    if (Walk(child.Value, recognisedObject[child.Key], path, into))
+                        holdsUnmodelled = true;
+                    else
+                        into.Add(path);
                 }
-                return;
+
+                return holdsUnmodelled;
             }
 
             if (actual is JsonArray actualArray && recognised is JsonArray recognisedArray)
             {
+                var holdsUnmodelled = false;
+
                 // Index-aligned: the round-trip preserves element order and count, so element
                 // i of one is element i of the other.
                 for (var i = 0; i < actualArray.Count && i < recognisedArray.Count; i++)
                 {
                     var path = new List<string>(prefix) { i.ToString() };
-                    Walk(actualArray[i], recognisedArray[i], path, into);
+
+                    if (Walk(actualArray[i], recognisedArray[i], path, into))
+                        holdsUnmodelled = true;
                 }
+
+                return holdsUnmodelled;
             }
+
+            return false;
         }
     }
 

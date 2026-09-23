@@ -1652,7 +1652,7 @@ public sealed partial class Alchitex : ModuleOverlay
         var bootstrap = new MenuFlyoutItem { Text = "Bootstrap from a PBR pack..." };
         bootstrap.Click += async (_, _) => await RunMaterialsBootstrapAsync();
 
-        var optimize = new MenuFlyoutItem { Text = "Optimize an existing materials.json..." };
+        var optimize = new MenuFlyoutItem { Text = "Check and optimize an existing materials.json..." };
         optimize.Click += async (_, _) => await RunMaterialsOptimizeAsync();
 
         flyout.Items.Add(bootstrap);
@@ -1661,8 +1661,19 @@ public sealed partial class Alchitex : ModuleOverlay
     }
 
     /// <summary>
-    /// Collapses a materials.json to the properties that actually change generated output -
-    /// see Tools/MaterialsOptimizer for how "actually" is decided.
+    /// The end-of-session pass over a hand-tuned materials.json: report everything the
+    /// pipeline would silently work around (Tools/MaterialsIntegrity), then collapse the file
+    /// to the properties that actually change generated output (Tools/MaterialsOptimizer).
+    ///
+    /// <b>The integrity check has to run first</b>, and not for tidiness. A value the loader
+    /// falls back on resolves to the fallback, so the optimizer - correctly - removes it as
+    /// redundant, and a misspelt padding_type or a mistyped intensity disappears along with
+    /// the evidence that it was ever wrong. Only the file as the artist wrote it can be asked.
+    ///
+    /// A finding never blocks the optimize. The optimizer preserves anything it cannot read
+    /// and provably leaves every texture resolving as it did (§5.4), so there is nothing a
+    /// report could warn about that makes the rewrite less safe - and refusing to do the thing
+    /// that was asked for because of a note in a file on the desktop would be its own surprise.
     ///
     /// Picks the FOLDER materials.json lives in, not the file, for the same reason the
     /// bootstrapper does: WinRT's save picker empties the file it hands back. There is no
@@ -1671,7 +1682,7 @@ public sealed partial class Alchitex : ModuleOverlay
     /// </summary>
     private async Task RunMaterialsOptimizeAsync()
     {
-        var folder = await PickFolderAsync("Optimize materials.json here");
+        var folder = await PickFolderAsync("Check and optimize materials.json here");
         if (folder == null) return;
 
         var path = System.IO.Path.Combine(folder, "materials.json");
@@ -1679,10 +1690,20 @@ public sealed partial class Alchitex : ModuleOverlay
         SetGenerationControlsEnabled(false);
         GenerateProgressBar.Visibility = Visibility.Visible;
         GenerateProgressBar.IsIndeterminate = true;
-        SetStatus("Collapsing redundant materials.json properties...");
+        SetStatus("Checking materials.json against the pipeline's own parser...");
 
         try
         {
+            var reportDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+
+            var (integrity, reportPath) = await WhileWaitingAsync(() => Task.Run(() =>
+            {
+                var report = MaterialsIntegrity.Check(path);
+                return (report, MaterialsIntegrity.WriteReport(report, reportDirectory));
+            }));
+
+            SetStatus("Collapsing redundant materials.json properties...");
+
             var result = await WhileWaitingAsync(
                 () => Task.Run(() => MaterialsOptimizer.Optimize(path)));
 
@@ -1690,16 +1711,22 @@ public sealed partial class Alchitex : ModuleOverlay
                 ? (result.BytesBefore - result.BytesAfter) * 100.0 / result.BytesBefore
                 : 0;
 
+            var verdict = integrity.IsClean
+                ? "integrity clean"
+                : $"integrity: {integrity.ProblemCount} not used as written, " +
+                  $"{integrity.IgnoredCount} never read, {integrity.NoteCount} worth a look";
+
             SetStatusThenRevert(
                 $"materials.json: {result.PropertiesRemoved} redundant properties removed from " +
                 $"{result.EntriesCollapsed}/{result.EntriesRead} entries" +
                 (result.EntriesSkipped > 0 ? $" ({result.EntriesSkipped} left untouched)" : "") +
-                $" - {result.BytesBefore / 1024} KB -> {result.BytesAfter / 1024} KB, {saved:0.#}% smaller");
+                $" - {result.BytesBefore / 1024} KB -> {result.BytesAfter / 1024} KB, {saved:0.#}% smaller. " +
+                $"{verdict} - report written to {reportPath}");
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[ALCHITEX] RunMaterialsOptimizeAsync failed: {ex}");
-            SetStatusThenRevert($"Failed to optimize materials.json: {ex.Message}");
+            SetStatusThenRevert($"Failed to check/optimize materials.json: {ex.Message}");
         }
         finally
         {
