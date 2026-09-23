@@ -1924,19 +1924,14 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
             {
-                Log($"RTX Reactor adds proper RTX support to texture packs, it works best on packs tagged as {PackBrowserOverlay.AlchitexCandidateTag}.", LogLevel.Alchitex);
+                Log($"RTX Reactor adds RTX support to regular texture packs, it works best on packs tagged as {PackBrowserOverlay.AlchitexCandidateTag}.", LogLevel.Alchitex);
             }
 #if DEBUG
             Log("No packs selected - opening RTX Reactor anyway (Debug build).", LogLevel.Alchitex);
 #else
-            Log("You must select at least one texture pack to use this feature on.", LogLevel.Warning);
+            Log($"You must select at least one texture pack to use RTX Reactor on.", LogLevel.Warning);
             return;
 #endif
-        }
-
-        if (!SelectedPacks.Any(p => p.IsAlchitexCandidate))
-        {
-            Log($"None of your selected packs is tagged '{PackBrowserOverlay.AlchitexCandidateTag}' - RTX Reactor will ask you to confirm each one before generating.", LogLevel.Alchitex);
         }
 
         string[] ToDisable =
