@@ -48,7 +48,7 @@ public static class PostProcess
     #region Water
 
     // Minecraft RTX gives water its own scrolling normals that a pack cannot override, and
-    // takes the rest of its material from the colour texture's ALPHA: higher alpha means
+    // takes the rest of its material from the colour texture's ALPHA: lower alpha means
     // lower roughness, i.e. more mirror-like water. So a water texture carries no PBR at all
     // (water is blacklisted in pbr_blacklist.json) - the whole job here is turning an
     // ordinary painted water texture into "brightness encoded as alpha over a flat bright
@@ -72,7 +72,7 @@ public static class PostProcess
     /// composition - which pixel is brighter than which - completely intact. At 1.5 a
     /// mid-brightness pixel lands at 174 instead of 192.
     /// </summary>
-    private const double WaterOpacityCurve = 1.5;
+    private const double WaterOpacityCurve = 1.75;
 
     /// <summary>How far the flat fill is pushed toward white after averaging. 0.5 is a
     /// halfway blend, which is what makes the fill land in the 192-225 band for almost any
@@ -429,7 +429,7 @@ public static class PostProcess
     // most guaranteed to darken it. It also whited out every pixel below alpha 64 regardless
     // of colour, so a deliberately tinted low-alpha pane lost its tint entirely.
 
-    // TODO(tuning): every constant below wants an artist's eye against real generated glass.
+    // TODO(tuning): every constant below wants an eye against real generated glass.
 
     /// <summary>At or above this alpha a pixel is left completely alone. It was set opaque on
     /// purpose, and a block that reads solid in Fancy should read solid under RTX.</summary>
@@ -443,10 +443,9 @@ public static class PostProcess
     private const byte BlendHoleChannel = 8;
 
     /// <summary>The share of white light a fully-saturated pixel should transmit, as a
-    /// fraction of full. 0.30 is not arbitrary: it takes a pure (255,0,0) to (255,77,77),
-    /// which is within a couple of levels of the hand-picked (255,64,64) that motivated this
-    /// work.</summary>
-    private const double BlendMinTransmission = 0.30;
+    /// fraction of full. 0.30 is not arbitrary: it takes a pure (255,0,0) to (255,77,77)
+    /// as an example. </summary>
+    private const double BlendMinTransmission = 0.4;
 
     /// <summary>
     /// Exponent on the saturation gate. Below 1 makes the gate rise quickly, so anything
@@ -460,7 +459,7 @@ public static class PostProcess
     /// (50,48,45) is still left alone because its target lands below what it already
     /// transmits. Genuinely coloured glass is the case this pass exists for.
     /// </summary>
-    private const double BlendChromaBias = 0.5;
+    private const double BlendChromaBias = 0.3;
 
     /// <summary>
     /// Rewrites one colour texture to render correctly under the blend material instance.

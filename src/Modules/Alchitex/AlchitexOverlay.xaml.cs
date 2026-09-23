@@ -2021,6 +2021,17 @@ public sealed partial class Alchitex : ModuleOverlay
 
 /* ### BACKLOG/TODO OF ALCHITEX (HIGHLY CONFIDENTIAL)
 
+- The alchitex pipeline, critically, needs two more pieces:
+One generalized fallback, i.e. instead of one "default" for anything not recognized, we put a new layer of fallback in front of it
+which would be akin to the old pipeline with some generalized names
+
+But more importantly, instead of relying textures names, we should also rely on BLOCK names as defined in blocks.json/terrain_texture.json
+they reference more textures, sometimes in recognizable paths, and sometimes with completely unique names
+We could still pick on them and use the correct materials.
+
+Do it only once you have the means of implementing it cleanly alongside the existing pipeline.
+
+
 - Be smart with the values chosen for recursion
 An idea was, wheer confidence is high, higher mins are permissable, where confidence is lower, lower mins reduce error rate.
 Or also think into the "sway" idea you had earlier
