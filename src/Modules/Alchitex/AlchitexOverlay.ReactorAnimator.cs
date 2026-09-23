@@ -124,7 +124,7 @@ public sealed class ReactorAnimator
 {
     // The RTX Reactor logo's five blues, brightest first. Every tile is always one of
     // these - the reactor never shows a color that isn't part of the mark.
-    private static readonly Color[] Palette =
+    public static readonly Color[] Palette =
     {
         ColorHelper.FromArgb(255, 0x00, 0x48, 0x8A), // brightest
         ColorHelper.FromArgb(255, 0x00, 0x3B, 0x72),
@@ -141,7 +141,7 @@ public sealed class ReactorAnimator
     /// rolling at the moment - can be told to read against red instead of blue without a
     /// second copy of the logic that paints it. See _activePalette.
     /// </summary>
-    private static readonly Color[] AlertPalette =
+    public static readonly Color[] AlertPalette =
     {
         ColorHelper.FromArgb(255, 255, 0, 0), // brightest
         ColorHelper.FromArgb(255, 192, 0, 0),

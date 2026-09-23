@@ -1142,33 +1142,94 @@ public static class PostProcess
     // TODO(tuning): visual knobs for regenerated pack icons.
     private const int IconCanvasSize = 512;
     private const int IconContentSize = 428; // original icon's size once centered on the canvas
-    private const string IconGradientBottomColor = "#00488A"; // brand blue - gradient target opposite the icon's own average color
     private const int IconBadgeSize = 42; // must match badge_42x.png's actual pixel dimensions - also drives the accent frame's band width
 
+    private const string PackIconName = "pack_icon";
+    private const string BugPackIconName = "bug_pack_icon";
+
     /// <summary>
-    /// Regenerates pack_icon.png: the original icon centered on a square canvas with a
-    /// gradient background (average-icon-color -> brand blue) showing through any
-    /// transparent area, a randomized-per-side accent frame, and Alchitex's badge in the
-    /// bottom-left corner. Ported from legacy IconDesigner off GDI+ onto Magick.NET's
-    /// Composite/Draw API and the `gradient:` pseudo-format.
+    /// The extensions an icon may arrive as, in the order one is chosen when a pack ships
+    /// more than one. Same shape as §4.4's texture rule and a different list for a different
+    /// reason: this is not what the game would load, because the game loads
+    /// <c>pack_icon.png</c> and nothing else. It is a preference between candidates a pack
+    /// author left lying around, and PNG leads it because a lossless source is the one worth
+    /// reading when there is a choice.
+    /// </summary>
+    private static readonly string[] IconExtensions = { ".png", ".jpg", ".jpeg" };
+
+    /// <summary>
+    /// Regenerates a pack's icons: its pack icon always, and its bug icon for the packs that
+    /// ship one.
+    ///
+    /// The two differ only in which colours they are drawn from, and that difference is the
+    /// point of having both here: the bug icon is the one a player is looking at when
+    /// something is wrong, so it reads against <see cref="ReactorAnimator.AlertPalette"/> -
+    /// the same red ramp the reactor itself turns when a run fails - and takes no seasonal
+    /// colours, because a festive bug report is a worse bug report.
+    ///
+    /// A missing pack icon is worth a log line; a missing bug icon is the normal case for
+    /// almost every pack and is passed over silently.
     /// </summary>
     public static void RegeneratePackIcon(string packRoot, string alchitexAssetsPath)
     {
-        var iconPath = Path.Combine(packRoot, "pack_icon.png");
-        if (!File.Exists(iconPath))
+        RegenerateIcon(
+            packRoot, PackIconName, alchitexAssetsPath,
+            BuildFramePalette(ReactorAnimator.Palette, withSpecialOccasion: true),
+            announceIfMissing: true);
+
+        RegenerateIcon(
+            packRoot, BugPackIconName, alchitexAssetsPath,
+            BuildFramePalette(ReactorAnimator.AlertPalette, withSpecialOccasion: false),
+            announceIfMissing: false);
+    }
+
+    /// <summary>
+    /// One icon: the original centered on a square canvas with a gradient background
+    /// (average-icon-color -> a colour of its own palette) showing through any transparent
+    /// area, a per-side accent frame picked at random from <paramref name="palette"/>, and
+    /// Alchitex's badge in the bottom-left corner. Ported from legacy IconDesigner off GDI+
+    /// onto Magick.NET's Composite/Draw API and the `gradient:` pseudo-format.
+    ///
+    /// <b>The output is always <c>&lt;name&gt;.png</c>, whatever was read</b>, because
+    /// <c>pack_icon.png</c> is the only thing Bedrock looks for - a pack shipping its icon as
+    /// a .jpg has no icon in game, and comes out of here with one. Every other variant is
+    /// deleted afterwards, so a pack that arrived with a .png beside a leftover .jpg leaves
+    /// with exactly one icon file rather than our output beside somebody's stale draft.
+    ///
+    /// <b>Deletion happens only after the write succeeds.</b> A failure anywhere above it
+    /// leaves every file the pack arrived with exactly where it was, which is the same
+    /// promise §4.2 makes one level up.
+    /// </summary>
+    private static void RegenerateIcon(
+        string packRoot, string iconName, string alchitexAssetsPath, IReadOnlyList<string> palette, bool announceIfMissing)
+    {
+        var variants = IconExtensions
+            .Select(extension => Path.Combine(packRoot, iconName + extension))
+            .Where(File.Exists)
+            .ToList();
+
+        if (variants.Count == 0)
         {
-            Trace.WriteLine($"[ALCHITEX] No pack_icon.png at '{packRoot}' - skipping icon regeneration.");
+            if (announceIfMissing)
+                Trace.WriteLine($"[ALCHITEX] No {iconName}.png/.jpg/.jpeg at '{packRoot}' - skipping icon regeneration.");
+
             return;
         }
+
+        // First by IconExtensions order, which is the order they were collected in.
+        var sourcePath = variants[0];
+        var outputPath = Path.Combine(packRoot, iconName + ".png");
 
         var offset = (IconCanvasSize - IconContentSize) / 2;
 
         try
         {
-            using var original = new MagickImage(iconPath);
+            // Read wholly into memory before anything is written, which is what makes
+            // overwriting the source in place safe when the source already is the .png.
+            using var original = new MagickImage(sourcePath);
 
             var averageColor = ComputeAverageColor(original);
-            var bottomColor = new MagickColor(IconGradientBottomColor);
+            var bottomColor = new MagickColor(Pick(palette));
 
             using var canvas = new MagickImage(MagickColors.Transparent, IconCanvasSize, IconCanvasSize);
 
@@ -1185,7 +1246,7 @@ public static class PostProcess
                 canvas.Composite(content, offset, offset, CompositeOperator.Over);
             }
 
-            DrawAccentFrame(canvas, IconCanvasSize);
+            DrawAccentFrame(canvas, IconCanvasSize, palette);
 
             var badgePath = Path.Combine(alchitexAssetsPath, IconBadgeFileName);
             if (File.Exists(badgePath))
@@ -1198,11 +1259,28 @@ public static class PostProcess
                 Trace.WriteLine($"[ALCHITEX] Icon badge asset missing - expected '{badgePath}'. Copy legacy RTX Reactor's src/icons/badge_42x.png (or a new 42x42 asset) there. Regenerated icon will be missing the corner badge until then.");
             }
 
-            canvas.Write(iconPath);
+            // The format comes from the extension, so naming it .png is all it takes to get a
+            // PNG out of a JPEG source.
+            canvas.Write(outputPath);
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[ALCHITEX] Failed to regenerate pack icon '{iconPath}': {ex.Message}");
+            Trace.WriteLine($"[ALCHITEX] Failed to regenerate '{sourcePath}': {ex.Message}");
+            return;
+        }
+
+        foreach (var stale in variants.Where(v => !string.Equals(v, outputPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            try
+            {
+                File.Delete(stale);
+            }
+            catch (Exception ex)
+            {
+                // Cleanup, not correctness - the icon the game reads is already written and
+                // correct. A locked leftover is worth a line and nothing more.
+                Trace.WriteLine($"[ALCHITEX] Couldn't remove the superseded icon '{stale}': {ex.Message}");
+            }
         }
     }
 
@@ -1231,34 +1309,101 @@ public static class PostProcess
         return $"#{r:X2}{g:X2}{b:X2}";
     }
 
-    private static void DrawAccentFrame(MagickImage canvas, int canvasSize)
+    /// <summary>A UI colour as a hex string Magick.NET can take. Alpha is dropped: everything
+    /// drawn on an icon is opaque, and the reactor's palettes are opaque throughout.</summary>
+    private static string ToHex(Windows.UI.Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+
+    // ── Seasonal ramps ────────────────────────────────────────────────────────────────
+    //
+    // Each of these REPLACES the reactor's ramp outright rather than being mixed into it, and
+    // each is the same shape as the two it can stand in for: five colours, brightest first,
+    // darkest last, all of one family. That shape is what makes the frame read as one thing -
+    // eight bands drawn at random out of a single ramp look deliberate, and eight drawn out of
+    // a ramp with a handful of unrelated accents stirred through it look like a fault. Mixing
+    // was tried and is what this replaced; see §4.19.
+    //
+    // The dates are not here and must not come back: Helpers.GetSpecialOccasionName owns when
+    // each one runs, for the whole app (§2k's lamp, the pack updater's panel, the titlebar),
+    // and these are only what this surface does about it. The names are its return values.
+    //
+    // They follow the lamp art in src/Assets/special, which is the app's existing vocabulary
+    // for each occasion - christmas.on.png is icy cyan over white, pumpkin.on.png is candle
+    // gold down to charred brown. Birthday departs from it deliberately: that asset is cream
+    // and red, which on a frame reads as a warning rather than a celebration, so this is the
+    // regal end of purple instead.
+
+    /// <summary>Pale amethyst down to near-black aubergine.</summary>
+    private static readonly string[] BirthdayPalette = { "#C9A6FF", "#9B5CF6", "#7A33D9", "#54199E", "#320C63" };
+
+    /// <summary>Candle gold down to charred brown, after <c>pumpkin.on.png</c>.</summary>
+    private static readonly string[] PumpkinPalette = { "#FFD98A", "#FFA726", "#E8751A", "#B4500F", "#6E2F0A" };
+
+    /// <summary>Icy white down to deep glacier blue, after <c>christmas.on.png</c>. Bright on
+    /// purpose - it is the one occasion whose family overlaps the default's, and only the
+    /// brightness tells the two apart.</summary>
+    private static readonly string[] ChristmasPalette = { "#F2FBFF", "#B8ECFF", "#6FD8FF", "#2BAEE8", "#0E6E9E" };
+
+    /// <summary>
+    /// The colours one icon is drawn from: today's seasonal ramp if it takes one, else the
+    /// reactor's own.
+    ///
+    /// Taking the ordinary case from <see cref="ReactorAnimator"/> rather than restating it
+    /// means the icon is made of the mark, by construction - the same relationship the window
+    /// backdrop already has with it (§11.3) - and a change to the mark's blues reaches the icon
+    /// with nothing else to update. A seasonal ramp is the one thing this file colours in
+    /// itself, because a costume is by definition not derived from the thing wearing it.
+    /// </summary>
+    private static List<string> BuildFramePalette(IReadOnlyList<Windows.UI.Color> basePalette, bool withSpecialOccasion)
     {
-        var palette = new List<string>
-        {
-            "#00305B", "#002342", "#1569B2", "#2B9AFF", "#4CABFF",
-            "#3BA2FF", "#2081D8", "#00488A", "#00294E", "#003C72",
-        };
+        var seasonal = withSpecialOccasion
+            ? Helpers.GetSpecialOccasionName() switch
+            {
+                "birthday" => BirthdayPalette,
+                "pumpkin" => PumpkinPalette,
+                "christmas" => ChristmasPalette,
+                _ => null,
+            }
+            : null;
 
-        var now = DateTime.Now;
-        if (now.ToString("dd/MM") == "23/04") palette.AddRange(new[] { "#6900B5", "#000000", "#808080", "#800080", "#FF00FF" });
-        if (now.ToString("dd/MM") == "31/10") palette.AddRange(new[] { "#FFA500", "#FF8C00", "#FF4500", "#D2691E" });
-        if (now.ToString("MM/dd") is "12/25" or "12/24") palette.AddRange(new[] { "#FF0000", "#008000", "#FFFFFF" });
+        return seasonal?.ToList() ?? basePalette.Select(ToHex).ToList();
+    }
 
-        var rand = new Random();
-        string Pick() => palette[rand.Next(palette.Count)];
+    /// <summary>
+    /// One colour out of an icon's palette. <see cref="Random.Shared"/> rather than an
+    /// instance: the icons are the only thing here that wants entropy, nothing about them
+    /// needs reproducing, and two icons are drawn back to back - a per-call `new Random()`
+    /// is the shape that historically produces two identical "random" results.
+    /// </summary>
+    private static string Pick(IReadOnlyList<string> palette) => palette[Random.Shared.Next(palette.Count)];
 
+    /// <summary>
+    /// A colour from the darker half of a ramp. Every palette here is ordered brightest first,
+    /// so this is just its back half.
+    ///
+    /// Exists for one square: the badge is a white watermark with no outline, so a band bright
+    /// enough behind it makes it disappear. That was invisible while the only ramps were the
+    /// mark's navies and the alert reds, and arrived with the christmas ramp - which is
+    /// near-white at the top by design, and put white-on-white under the badge two draws in
+    /// five. Constraining the one square the badge occupies costs nothing anywhere else: on a
+    /// ramp that is dark throughout it changes nothing at all.
+    /// </summary>
+    private static string PickDark(IReadOnlyList<string> palette) =>
+        palette[Random.Shared.Next(palette.Count / 2, palette.Count)];
+
+    private static void DrawAccentFrame(MagickImage canvas, int canvasSize, IReadOnlyList<string> palette)
+    {
         const int band = IconBadgeSize; // frame band width matches the badge's own size, so the badge sits flush in the bottom-left corner
         var edge = canvasSize - band;
 
         var drawables = new Drawables()
-            .FillColor(new MagickColor(Pick())).Rectangle(0, band, band, edge)                 // left
-            .FillColor(new MagickColor(Pick())).Rectangle(edge, band, canvasSize, edge)         // right
-            .FillColor(new MagickColor(Pick())).Rectangle(band, 0, edge, band)                  // top
-            .FillColor(new MagickColor(Pick())).Rectangle(band, edge, edge, canvasSize)          // bottom
-            .FillColor(new MagickColor(Pick())).Rectangle(0, edge, band, canvasSize)             // bottom-left
-            .FillColor(new MagickColor(Pick())).Rectangle(0, 0, band, band)                      // top-left
-            .FillColor(new MagickColor(Pick())).Rectangle(edge, 0, canvasSize, band)             // top-right
-            .FillColor(new MagickColor(Pick())).Rectangle(edge, edge, canvasSize, canvasSize);   // bottom-right
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(0, band, band, edge)                 // left
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(edge, band, canvasSize, edge)         // right
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(band, 0, edge, band)                  // top
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(band, edge, edge, canvasSize)          // bottom
+            .FillColor(new MagickColor(PickDark(palette))).Rectangle(0, edge, band, canvasSize)         // bottom-left - the badge sits here
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(0, 0, band, band)                      // top-left
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(edge, 0, canvasSize, band)             // top-right
+            .FillColor(new MagickColor(Pick(palette))).Rectangle(edge, edge, canvasSize, canvasSize);   // bottom-right
 
         canvas.Draw(drawables);
     }
