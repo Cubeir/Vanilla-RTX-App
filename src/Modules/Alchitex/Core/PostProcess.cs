@@ -25,26 +25,22 @@ public static class PostProcess
 {
     #region Required Assets
 
-    // Every binary asset this file depends on. None can be generated or faked by code; they
-    // have to be placed in the module's Assets folder by hand, and every method that needs
-    // one checks for it and logs the exact expected path rather than silently no-op'ing.
-    //
     // The two zips are online-updatable, so they come from AssetUpdater.Resolve rather than
-    // from a path - see AssetUpdater. badge_42x.png isn't, so it still resolves against the
+    // from a path - see AssetUpdater. icon_badge.png isn't, so it still resolves against the
     // assets folder the pipeline passes in.
     //
     //   Assets/water-fallback.zip
     //     -> four flat files, no folders inside: water_flow_grey.tga + .texture_set.json,
     //        water_still_grey.tga + .texture_set.json.
     //
-    //   Assets/badge_42x.png
+    //   Assets/icon_badge.png
     //     -> 42x42 watermark composited onto the bottom-left corner of every regenerated pack icon.
     //
     //   Assets/vanilla-rtx-fog.zip
     //     -> top-level "biomes/" and "fogs/" folders, deployed into the pack root and
     //        every subpack root when the (opt-in, off-by-default) fog toggle is enabled.
 
-    private const string IconBadgeFileName = "badge_42x.png";
+    private const string IconBadgeFileName = "icon_badge.png";
 
 
     #endregion
@@ -1139,10 +1135,9 @@ public static class PostProcess
 
     #region Pack Icon
 
-    // TODO(tuning): visual knobs for regenerated pack icons.
     private const int IconCanvasSize = 512;
-    private const int IconContentSize = 428; // original icon's size once centered on the canvas
-    private const int IconBadgeSize = 42; // must match badge_42x.png's actual pixel dimensions - also drives the accent frame's band width
+    private const int IconContentSize = 416; // original icon's size once centered on the canvas
+    private const int IconBadgeSize = 48; // must match icon_badge.png's actual pixel dimensions - also drives the accent frame's band width
 
     private const string PackIconName = "pack_icon";
     private const string BugPackIconName = "bug_pack_icon";
@@ -1256,7 +1251,7 @@ public static class PostProcess
             }
             else
             {
-                Trace.WriteLine($"[ALCHITEX] Icon badge asset missing - expected '{badgePath}'. Copy legacy RTX Reactor's src/icons/badge_42x.png (or a new 42x42 asset) there. Regenerated icon will be missing the corner badge until then.");
+                Trace.WriteLine($"[ALCHITEX] Icon badge asset missing - expected '{badgePath}'.");
             }
 
             // The format comes from the extension, so naming it .png is all it takes to get a
