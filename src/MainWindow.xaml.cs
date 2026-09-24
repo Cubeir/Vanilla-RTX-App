@@ -1362,10 +1362,11 @@ public sealed partial class MainWindow : Window
 
         if (acceptedPath == null)
         {
-            Log($"That doesn't look like a valid {versionName} data folder. " +
+            rejection ??= "That folder isn't a Minecraft user data folder.";
+            Log($"That isn't a valid {versionName} data folder: {rejection} " +
                 $"Please select the folder named \"{expectedName}\", it should be the one that contains a \"Users\" subfolder.",
                 LogLevel.Error);
-            return LocationPick.Rejected(rejection ?? "That folder isn't a Minecraft user data folder.");
+            return LocationPick.Rejected(rejection);
         }
 
         Log($"{versionName} data folder set: {acceptedPath}\n\n" +

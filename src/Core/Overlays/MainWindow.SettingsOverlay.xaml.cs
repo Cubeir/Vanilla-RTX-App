@@ -571,9 +571,7 @@ public sealed partial class SettingsOverlay : UserControl
         if (pick.Path is not null)
             MainWindow.Log($"{edition} installation set: {pick.Path}", MainWindow.LogLevel.Success);
         else if (pick.Rejection is not null)
-            MainWindow.Log($"No {edition} installation was set: {pick.Rejection} Pick the folder that holds " +
-                           $"{MinecraftGDKLocator.MinecraftExecutableName}, or the one directly above it.",
-                           MainWindow.LogLevel.Warning);
+            MainWindow.Log(MinecraftGDKLocator.DescribeUnsetPick(pick, isPreview), MainWindow.LogLevel.Warning);
 
         return pick;
     }

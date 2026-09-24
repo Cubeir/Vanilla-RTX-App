@@ -322,6 +322,20 @@ public static class MinecraftGDKLocator
     }
 
     /// <summary>
+    /// What a feature module reports when it closes because <see cref="LocateMinecraftManuallyAsync"/>
+    /// set nothing - the rejection's own reason when there is one, so the log says what was wrong
+    /// with the folder rather than only that it was wrong. One sentence for the three modules
+    /// that close on it, so they cannot drift into three wordings.
+    /// </summary>
+    public static string DescribeUnsetPick(LocationPick pick, bool isPreview)
+    {
+        var edition = isPreview ? "Minecraft Preview" : "Minecraft";
+        return pick.Rejection is { } reason
+            ? $"No {edition} installation was set: {reason} Pick the folder that holds {MinecraftExecutableName}, or the one directly above it."
+            : $"No {edition} installation was selected.";
+    }
+
+    /// <summary>
     /// Looks for Minecraft.Windows.exe directly inside the selected folder, or one
     /// level deeper - tolerating the user having selected the install root instead
     /// of the exe's own folder. No name assumption on that child folder: it could be

@@ -195,9 +195,9 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
 
         var hWnd = WindowHandle;
         var isPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
-        var path = (await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd)).Path;
+        var pick = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
 
-        if (path != null)
+        if (pick.Path is { } path)
         {
             Trace.WriteLine($"[DLSS] ✓ User selected valid path: {path}");
             await ContinueInitializationWithPath(path);
@@ -205,7 +205,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
         else
         {
             Trace.WriteLine("[DLSS] ✗ User cancelled or selected invalid path");
-            StatusMessage = "No valid Minecraft installation selected";
+            StatusMessage = MinecraftGDKLocator.DescribeUnsetPick(pick, isPreview);
             this.Close();
         }
     }

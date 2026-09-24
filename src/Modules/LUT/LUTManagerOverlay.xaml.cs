@@ -243,13 +243,13 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
     {
         _scanCancellationTokenSource?.Cancel();
         var hWnd = WindowHandle;
-        var path = (await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd)).Path;
+        var pick = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd);
 
-        if (path != null)
+        if (pick.Path is { } path)
             await ContinueInitializationWithPath(path);
         else
         {
-            StatusMessage = "No valid Minecraft installation selected";
+            StatusMessage = MinecraftGDKLocator.DescribeUnsetPick(pick, _isPreview);
             this.Close();
         }
     }
