@@ -83,11 +83,9 @@
                     <Visibility x:Key="LightThemeBackgroundVisibility">Collapsed</Visibility>
                     <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
                                      Color="#15000000" />
-
                     <Color x:Key="OverlayBackgroundColor">#C0202020</Color>
                     <SolidColorBrush x:Key="OverlayTextBrush"
                                      Color="#FFFFFFFF" />
-                    <x:Double x:Key="AlchitexBackdropStaticColorOpacity">0.05</x:Double>
 
                 </ResourceDictionary>
 
@@ -98,13 +96,10 @@
                     <Visibility x:Key="LightThemeBackgroundVisibility">Visible</Visibility>
                     <SolidColorBrush x:Key="IntersectionNeutralizerBrush"
                                      Color="#FFFFFFFF" />
-
                     <Color x:Key="OverlayBackgroundColor">#C0F0F0F0</Color>
                     <SolidColorBrush x:Key="OverlayTextBrush"
                                      Color="#FF000000" />
                     <x:Double x:Key="TintLuminosityOpacity">0.5</x:Double>
-                    <x:Double x:Key="AlchitexBackdropStaticColorOpacity">0.75</x:Double>
-
                 </ResourceDictionary>
 
             </ResourceDictionary.ThemeDictionaries>
