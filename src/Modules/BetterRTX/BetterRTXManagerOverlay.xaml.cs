@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -224,12 +224,12 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
             BetterRTXManager.DefaultBackupState.GameFilesIncomplete =>
                 "Your Minecraft installation is missing some of the RTX shader files BetterRTX replaces, so the app can't take a backup of your originals - " +
                 "and without one there would be no way back if a preset didn't work out. Installing presets is disabled until that's sorted.\n\n" +
-                "Repairing or reinstalling Minecraft from the Xbox app usually fixes this. You can still import presets in the meantime; they'll be waiting once the game is whole again.",
+                "Repairing or reinstalling Minecraft from the Xbox app/Microsoft Store usually fixes this. You can still import presets in the meantime; they'll be waiting once the game is whole again.",
 
             BetterRTXManager.DefaultBackupState.BackupUnverifiable =>
                 "The app has a partial backup of your original RTX shader files, and it no longer matches what's in your game - which means the game is running shaders that aren't its own. " +
                 "Finishing the backup from those files would record somebody else's preset as your defaults permanently, so the app won't, and installing presets is disabled.\n\n" +
-                "Repair or reinstall Minecraft from the Xbox app to put its original files back, then reopen this module. Importing presets still works.",
+                "Repair or reinstall Minecraft from the Xbox app/Microsoft Store to put its original files back, then reopen this module. Importing presets still works.",
 
             _ =>
                 "The app couldn't write a backup of your original RTX shader files, so installing presets is disabled - without a backup there would be no way back from one. " +
