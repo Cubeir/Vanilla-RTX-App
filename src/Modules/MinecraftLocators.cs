@@ -1037,7 +1037,7 @@ public static class MinecraftUserDataLocator
             return "That folder doesn't exist.";
 
         if (!Directory.Exists(Path.Combine(path, UsersFolderName, SharedComMojangSubPath)))
-            return $"That folder has no {Path.Combine(UsersFolderName, SharedComMojangSubPath)} inside it, so it isn't Minecraft's user data - or the game hasn't been played yet.";
+            return $"That folder has no {Path.Combine(UsersFolderName, SharedComMojangSubPath)} inside it, so it isn't Minecraft's user data - or the game hasn't been opened yet.";
 
         // Reject if the folder name is explicitly the wrong edition.
         // Unknown/custom names (third-party launchers) pass through unchecked.
