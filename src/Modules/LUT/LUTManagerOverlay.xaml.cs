@@ -220,12 +220,12 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
             LUTManager.DefaultsState.GameRunningAPreset =>
                 "Your game is already running one of this app's LUT presets, and there's no backup of your original ray tracing files to go with it - " +
                 "so the app can't tell what your originals were, and backing up what's there now would make that preset permanent. Installing is disabled rather than risk that.\n\n" +
-                "Repairing or reinstalling Minecraft from the Xbox app puts its own files back; reopen this module afterwards and the backup will be taken properly.",
+                "Repairing or reinstalling Minecraft from the Xbox app/Microsoft Store puts its own files back; reopen this module afterwards and the backup will be taken properly.",
 
             LUTManager.DefaultsState.GameFilesMissing =>
                 "Your Minecraft installation is missing the ray tracing files this feature works with, and the app couldn't mend them - so there's nothing to back up, " +
                 "and without a backup there would be no way back from a preset. Installing is disabled.\n\n" +
-                "Repairing or reinstalling Minecraft from the Xbox app should sort it; reopen this module afterwards.",
+                "Repairing or reinstalling Minecraft from the Xbox app/Microsoft Store should sort it; reopen this module afterwards.",
 
             _ =>
                 "The app couldn't write a backup of your game's original ray tracing files, so installing presets is disabled - " +
