@@ -309,6 +309,7 @@ public sealed partial class SettingsOverlay : UserControl
             SuspendAnimationsSwitch.IsOn = Persistent.SuspendUIAnimations;
 
             RefreshPaths();
+            foreach (var row in _pathRows) ShowPathHint(row, rejection: null);
             RefreshUrlFields();
             RefreshCredits();
         }
@@ -363,8 +364,8 @@ public sealed partial class SettingsOverlay : UserControl
 
     /// <summary>
     /// One (edition x kind) location: the clickable path, the Select/Change button, the seam
-    /// between them, and the two operations that differ per kind - how to read the current
-    /// path, and how to ask the user for a new one.
+    /// between them, the line under them, and the two operations that differ per kind - how to
+    /// read the current path, and how to ask the user for a new one.
     /// </summary>
     private sealed class PathRow
     {
@@ -372,8 +373,16 @@ public sealed partial class SettingsOverlay : UserControl
         public required Button PathButton { get; init; }
         public required Button ChangeButton { get; init; }
         public required Border Bevel { get; init; }
+        public required TextBlock Hint { get; init; }
         public required Func<string?> Current { get; init; }
-        public required Func<Task> Pick { get; init; }
+        public required Func<Task<LocationPick>> Pick { get; init; }
+
+        /// <summary>
+        /// The hint's own text as written in XAML, read once at build time so the markup stays
+        /// the place to edit it - see <see cref="ShowPathHint"/>, which swaps it out for a
+        /// rejection and back.
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
     }
 
     private void BuildPathRows()
@@ -383,7 +392,7 @@ public sealed partial class SettingsOverlay : UserControl
             new PathRow
             {
                 Text = ReleaseInstallPathText, PathButton = ReleaseInstallPathButton,
-                ChangeButton = ReleaseInstallButton, Bevel = ReleaseInstallBevel,
+                ChangeButton = ReleaseInstallButton, Bevel = ReleaseInstallBevel, Hint = ReleaseInstallHint,
                 // Install paths are read straight out of the cache: MinecraftGDKLocator only
                 // ever writes a path it has verified, and re-verifying here would mean a
                 // filesystem walk every time the panel opens.
@@ -393,14 +402,14 @@ public sealed partial class SettingsOverlay : UserControl
             new PathRow
             {
                 Text = PreviewInstallPathText, PathButton = PreviewInstallPathButton,
-                ChangeButton = PreviewInstallButton, Bevel = PreviewInstallBevel,
+                ChangeButton = PreviewInstallButton, Bevel = PreviewInstallBevel, Hint = PreviewInstallHint,
                 Current = () => Persistent.MinecraftPreviewInstallPath,
                 Pick = () => PickInstallPathAsync(isPreview: true)
             },
             new PathRow
             {
                 Text = ReleaseDataPathText, PathButton = ReleaseDataPathButton,
-                ChangeButton = ReleaseDataButton, Bevel = ReleaseDataBevel,
+                ChangeButton = ReleaseDataButton, Bevel = ReleaseDataBevel, Hint = ReleaseDataHint,
                 // Data roots go through GetDataRoot rather than the raw field, so a folder that
                 // has gone missing since startup reads as "not set" instead of as a path that
                 // still works.
@@ -410,7 +419,7 @@ public sealed partial class SettingsOverlay : UserControl
             new PathRow
             {
                 Text = PreviewDataPathText, PathButton = PreviewDataPathButton,
-                ChangeButton = PreviewDataButton, Bevel = PreviewDataBevel,
+                ChangeButton = PreviewDataButton, Bevel = PreviewDataBevel, Hint = PreviewDataHint,
                 Current = () => MinecraftUserDataLocator.GetDataRoot(isPreview: true),
                 Pick = () => PickDataPathAsync(isPreview: true)
             },
@@ -418,6 +427,8 @@ public sealed partial class SettingsOverlay : UserControl
 
         foreach (var row in _pathRows)
         {
+            row.Description = row.Hint.Text;
+
             // The seam is drawn from the button's accent, so it has to follow that button's
             // enabled state the way MainWindow's Preview toggle bevels follow theirs - an
             // accent stripe glued to a greyed-out button reads as a rendering bug. Subscribing
@@ -505,6 +516,11 @@ public sealed partial class SettingsOverlay : UserControl
     /// Runs one row's picker with its button disabled for the duration. The disable is not
     /// cosmetic: a second picker opened on top of the first resolves against the same cached
     /// field, and whichever finishes last silently wins.
+    ///
+    /// <para>The hint under the row then describes this pick: a rejection replaces it with
+    /// why, anything else puts the description back. A cancel counts as "anything else" - the
+    /// user backed out, and a warning about the attempt before that is no longer about what
+    /// they are doing.</para>
     /// </summary>
     private async Task RunPickerAsync(PathRow row)
     {
@@ -513,7 +529,8 @@ public sealed partial class SettingsOverlay : UserControl
         row.ChangeButton.IsEnabled = false;
         try
         {
-            await row.Pick();
+            var pick = await row.Pick();
+            ShowPathHint(row, pick.Rejection);
         }
         catch (Exception ex)
         {
@@ -526,7 +543,20 @@ public sealed partial class SettingsOverlay : UserControl
         }
     }
 
-    private async Task PickInstallPathAsync(bool isPreview)
+    /// <summary>
+    /// The same two styles the content-source hints swap between (<see cref="ShowUrlFieldHint"/>),
+    /// so a rejected folder reads exactly like a rejected address. Says the stored path was left
+    /// alone, because the path shown above the hint is still the old one and would otherwise read
+    /// as the app having ignored the pick.
+    /// </summary>
+    private void ShowPathHint(PathRow row, string? rejection)
+    {
+        var rejected = rejection is not null;
+        row.Hint.Text = rejected ? $"Invalid path. {rejection}" : row.Description;
+        row.Hint.Style = (Style)Resources[rejected ? "SettingsHintRejectedTextStyle" : "SettingsHintTextStyle"];
+    }
+
+    private async Task<LocationPick> PickInstallPathAsync(bool isPreview)
     {
         _ = _host!.BlinkingLamp(false, true, 0.5, 1.0);
 
@@ -536,20 +566,19 @@ public sealed partial class SettingsOverlay : UserControl
         // LocateMinecraftManuallyAsync does the picking (starting at the current path), the
         // one-level-deep tolerance, the MicrosoftGame.Config edition check and the caching.
         // Nothing is written here.
-        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
+        var pick = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
 
-        if (path is null)
-        {
-            MainWindow.Log($"No {edition} installation was set. Pick the folder that holds " +
+        if (pick.Path is not null)
+            MainWindow.Log($"{edition} installation set: {pick.Path}", MainWindow.LogLevel.Success);
+        else if (pick.Rejection is not null)
+            MainWindow.Log($"No {edition} installation was set: {pick.Rejection} Pick the folder that holds " +
                            $"{MinecraftGDKLocator.MinecraftExecutableName}, or the one directly above it.",
                            MainWindow.LogLevel.Warning);
-            return;
-        }
 
-        MainWindow.Log($"{edition} installation set: {path}", MainWindow.LogLevel.Success);
+        return pick;
     }
 
-    private Task PickDataPathAsync(bool isPreview) => _host!.HandleManualDataLocationAsync(isPreview);
+    private Task<LocationPick> PickDataPathAsync(bool isPreview) => _host!.HandleManualDataLocationAsync(isPreview);
 
     // =========================================================================
     //  Launch options

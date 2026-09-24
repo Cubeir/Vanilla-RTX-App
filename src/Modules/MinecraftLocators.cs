@@ -12,6 +12,21 @@ using static Vanilla_RTX_App.MainWindow;
 namespace Vanilla_RTX_App.Modules;
 
 /// <summary>
+/// What a manual folder pick came to, for both locators. Three outcomes, and the reason the
+/// type exists is that two of them used to look identical: <see cref="Path"/> set means
+/// accepted and cached; <see cref="Rejection"/> set means the user picked a folder and it
+/// failed validation, with a sentence saying why that can be shown to them as-is; neither set
+/// (<see cref="Cancelled"/>) means the picker was dismissed, which is not something to warn
+/// about.
+/// </summary>
+public readonly record struct LocationPick(string? Path, string? Rejection)
+{
+    public static LocationPick Cancelled => default;
+    public static LocationPick Accepted(string path) => new(path, null);
+    public static LocationPick Rejected(string reason) => new(null, reason);
+}
+
+/// <summary>
 /// Provides tools for locating Minecraft (Bedrock) and Minecraft Preview installations.
 /// Handles caching, validation, system-wide searching, and manual selection.
 ///
@@ -228,10 +243,18 @@ public static class MinecraftGDKLocator
     /// anything, including a GUID - holds the exe). This mirrors the leniency
     /// MinecraftUserDataLocator gives when accepting Shared/Users subfolders.
     /// Edition is verified via MicrosoftGame.Config, not folder name.
+    ///
+    /// <para>A rejection carries its reason (<see cref="LocationPick.Rejection"/>) so the
+    /// settings panel can put it under the row the user just changed; the feature modules only
+    /// read <see cref="LocationPick.Path"/>.</para>
     /// </summary>
-    public static async Task<string?> LocateMinecraftManuallyAsync(bool isPreview, IntPtr windowHandle)
+    public static async Task<LocationPick> LocateMinecraftManuallyAsync(bool isPreview, IntPtr windowHandle)
     {
         Trace.WriteLine($"=== PHASE 3: Manual Selection Starting (Preview={isPreview}) ===");
+
+        var expectedEdition = isPreview ? "Minecraft Preview" : "Minecraft (Release)";
+        var otherEdition = isPreview ? "Minecraft (Release)" : "Minecraft Preview";
+        var wrongEdition = $"That's the {otherEdition} installation, not {expectedEdition}.";
 
         try
         {
@@ -246,7 +269,7 @@ public static class MinecraftGDKLocator
             if (selectedPath == null)
             {
                 Trace.WriteLine("[GDKLocator] User cancelled folder selection");
-                return null;
+                return LocationPick.Cancelled;
             }
 
             Trace.WriteLine($"[GDKLocator] User selected: {selectedPath}");
@@ -259,7 +282,7 @@ public static class MinecraftGDKLocator
             if (exeDirectory == null)
             {
                 Trace.WriteLine($"[GDKLocator] Could not find {MinecraftExecutableName} in or one level under the selected folder");
-                return null;
+                return LocationPick.Rejected($"There's no {MinecraftExecutableName} in that folder, or in any folder directly inside it.");
             }
 
             // Authoritative edition check via MicrosoftGame.Config.
@@ -271,7 +294,7 @@ public static class MinecraftGDKLocator
                     var foundName = detectedEdition.Value ? "Preview" : "Stable";
                     var expectedName = isPreview ? "Preview" : "Stable";
                     Trace.WriteLine($"[GDKLocator] Selected wrong version - MicrosoftGame.Config identifies this as {foundName}, expected {expectedName}");
-                    return null;
+                    return LocationPick.Rejected(wrongEdition);
                 }
             }
             else
@@ -282,19 +305,19 @@ public static class MinecraftGDKLocator
                 if (installRoot.Equals(unexpectedFolderName, StringComparison.OrdinalIgnoreCase))
                 {
                     Trace.WriteLine($"[GDKLocator] Selected wrong version - install root is: {installRoot}");
-                    return null;
+                    return LocationPick.Rejected(wrongEdition);
                 }
                 Trace.WriteLine("[GDKLocator] MicrosoftGame.Config unavailable - proceeding on unverified edition (folder name didn't indicate a mismatch)");
             }
 
             Trace.WriteLine($"[GDKLocator] Valid installation selected: {exeDirectory}");
             CacheInstallation(isPreview, exeDirectory);
-            return exeDirectory;
+            return LocationPick.Accepted(exeDirectory);
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[GDKLocator] Error during manual selection: {ex.Message}");
-            return null;
+            return LocationPick.Rejected($"That folder couldn't be read: {ex.Message}");
         }
     }
 
@@ -794,15 +817,17 @@ public static class MinecraftUserDataLocator
     /// <summary>
     /// Attempts to accept a user-supplied path as the data root for the given edition.
     /// Validates structure, caches on success, updates the validity flag.
-    /// Returns true if the path was accepted.
+    /// Returns true if the path was accepted; otherwise <paramref name="rejection"/> says why,
+    /// in a sentence fit to show the user.
     /// </summary>
-    public static bool TrySetCustomDataRoot(bool isPreview, string path)
+    public static bool TrySetCustomDataRoot(bool isPreview, string path, out string? rejection)
     {
         path = Helpers.ResolveToPhysicalPath(path);
 
-        if (!IsValidDataRoot(path, isPreview))
+        rejection = DataRootRejection(path, isPreview);
+        if (rejection is not null)
         {
-            Trace.WriteLine($"[UserDataLocator] Rejected custom path (no Users subfolder): {path}");
+            Trace.WriteLine($"[UserDataLocator] Rejected custom path ({rejection}): {path}");
             return false;
         }
 
@@ -985,11 +1010,20 @@ public static class MinecraftUserDataLocator
     /// "Users" folder is created by the game on first launch and is required for
     /// all per-user data to exist under it.
     /// </summary>
-    private static bool IsValidDataRoot(string? path, bool isPreview)
+    private static bool IsValidDataRoot(string? path, bool isPreview) => DataRootRejection(path, isPreview) is null;
+
+    /// <summary>
+    /// Why <paramref name="path"/> is not a valid data root for this edition, as a sentence the
+    /// user can be shown - or null when it is valid. The one definition of validity:
+    /// <see cref="IsValidDataRoot"/> is this, tested for null.
+    /// </summary>
+    private static string? DataRootRejection(string? path, bool isPreview)
     {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-        if (!Directory.Exists(path)) return false;
-        if (!Directory.Exists(Path.Combine(path, UsersFolderName, SharedComMojangSubPath))) return false;
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            return "That folder doesn't exist.";
+
+        if (!Directory.Exists(Path.Combine(path, UsersFolderName, SharedComMojangSubPath)))
+            return $"That folder has no {Path.Combine(UsersFolderName, SharedComMojangSubPath)} inside it, so it isn't Minecraft's user data - or the game hasn't been played yet.";
 
         // Reject if the folder name is explicitly the wrong edition.
         // Unknown/custom names (third-party launchers) pass through unchecked.
@@ -998,10 +1032,10 @@ public static class MinecraftUserDataLocator
         if (folderName.Equals(wrongEditionName, StringComparison.OrdinalIgnoreCase))
         {
             Trace.WriteLine($"[UserDataLocator] Rejected path - folder name indicates wrong edition: {folderName}");
-            return false;
+            return $"That's the \"{wrongEditionName}\" folder, which belongs to {(isPreview ? "Minecraft (Release)" : "Minecraft Preview")}.";
         }
 
-        return true;
+        return null;
     }
 
     private static void SetCachedPath(bool isPreview, string? path)

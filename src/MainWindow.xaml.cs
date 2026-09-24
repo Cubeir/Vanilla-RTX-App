@@ -1314,7 +1314,8 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Folder-picks a Minecraft user data root for one edition, validates it through
     /// <see cref="MinecraftUserDataLocator.TrySetCustomDataRoot"/> and caches it on success.
-    /// Returns true if a path was accepted.
+    /// Returns which of accepted, rejected (with the reason) or cancelled it came to - the
+    /// settings panel shows a rejection under the row, the Browse-packs flow only needs the log.
     ///
     /// <para><b>The edition is a parameter rather than <c>IsTargetingPreview</c>.</b> The
     /// Browse-packs button only ever locates the edition the app is pointed at, but the
@@ -1326,7 +1327,7 @@ public sealed partial class MainWindow : Window
     /// every startup: accepting a path here that startup would reject is how a setting appears
     /// to silently revert itself.</para>
     /// </summary>
-    public async Task<bool> HandleManualDataLocationAsync(bool isPreview)
+    public async Task<LocationPick> HandleManualDataLocationAsync(bool isPreview)
     {
         _ = BlinkingLamp(false, true, 0.5, 1.0);
 
@@ -1341,18 +1342,21 @@ public sealed partial class MainWindow : Window
             WindowNative.GetWindowHandle(this),
             MinecraftUserDataLocator.GetDataRoot(isPreview));
 
-        if (selectedPath == null) return false;
+        if (selectedPath == null) return LocationPick.Cancelled;
 
         string? acceptedPath = null;
 
-        if (MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, selectedPath))
+        // The rejection reported is the selected folder's own, never the parent's: the parent
+        // is a leniency the user didn't ask for, and "its parent isn't valid either" explains
+        // nothing about what they picked.
+        if (MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, selectedPath, out var rejection))
         {
             acceptedPath = selectedPath;
         }
         else
         {
             var parent = Directory.GetParent(selectedPath)?.FullName;
-            if (parent != null && MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, parent))
+            if (parent != null && MinecraftUserDataLocator.TrySetCustomDataRoot(isPreview, parent, out _))
                 acceptedPath = parent;
         }
 
@@ -1361,7 +1365,7 @@ public sealed partial class MainWindow : Window
             Log($"That doesn't look like a valid {versionName} data folder. " +
                 $"Please select the folder named \"{expectedName}\", it should be the one that contains a \"Users\" subfolder.",
                 LogLevel.Error);
-            return false;
+            return LocationPick.Rejected(rejection ?? "That folder isn't a Minecraft user data folder.");
         }
 
         Log($"{versionName} data folder set: {acceptedPath}\n\n" +
@@ -1376,7 +1380,7 @@ public sealed partial class MainWindow : Window
             _ = LocatePacksTask();
         }
 
-        return true;
+        return LocationPick.Accepted(acceptedPath);
     }
 
     private void UpdateUserDataDependentUI(bool isTargetingPreview)

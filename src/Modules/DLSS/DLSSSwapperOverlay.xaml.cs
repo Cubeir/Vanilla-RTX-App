@@ -195,7 +195,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
 
         var hWnd = WindowHandle;
         var isPreview = EnvironmentVariables.Persistent.IsTargetingPreview;
-        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd);
+        var path = (await MinecraftGDKLocator.LocateMinecraftManuallyAsync(isPreview, hWnd)).Path;
 
         if (path != null)
         {

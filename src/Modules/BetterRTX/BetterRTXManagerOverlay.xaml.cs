@@ -566,7 +566,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         _scanCancellationTokenSource?.Cancel();
 
         var hWnd = WindowHandle;
-        var path = await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd);
+        var path = (await MinecraftGDKLocator.LocateMinecraftManuallyAsync(_isPreview, hWnd)).Path;
 
         if (path != null)
         {

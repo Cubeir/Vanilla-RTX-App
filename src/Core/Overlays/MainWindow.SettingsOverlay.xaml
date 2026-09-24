@@ -24,7 +24,7 @@
             <Setter Property="IsTextScaleFactorEnabled" Value="False" />
         </Style>
 
-        <!-- A content-source hint saying why an address was rejected. A style rather than a
+        <!-- A hint saying why an address, or a picked folder, was rejected. A style rather than a
              colour set from code, because a brush looked up in code resolves against Windows'
              theme rather than the app's and never follows a change to either - so it was the
              one hint in the panel still drawn in dark-theme colours on the light theme. -->
@@ -382,7 +382,8 @@
                                         Click="ReleaseInstallButton_Click"
                                         Content="Select" />
                             </Grid>
-                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                            <TextBlock x:Name="ReleaseInstallHint"
+                                       Style="{StaticResource SettingsHintTextStyle}"
                                        Text="Pick the folder holding Minecraft.Windows.exe, or the &quot;Minecraft for Windows&quot; folder one level above it." />
                         </StackPanel>
 
@@ -422,7 +423,8 @@
                                         Click="PreviewInstallButton_Click"
                                         Content="Select" />
                             </Grid>
-                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                            <TextBlock x:Name="PreviewInstallHint"
+                                       Style="{StaticResource SettingsHintTextStyle}"
                                        Text="Same, under &quot;Minecraft Preview for Windows&quot;. The app reads the game's own config file and makes sure it isn't the regular Release version by mistake." />
                         </StackPanel>
 
@@ -471,7 +473,8 @@
                                         Click="ReleaseDataButton_Click"
                                         Content="Select" />
                             </Grid>
-                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                            <TextBlock x:Name="ReleaseDataHint"
+                                       Style="{StaticResource SettingsHintTextStyle}"
                                        Text="Pick the folder named &quot;Minecraft Bedrock&quot; - the one with a &quot;Users&quot; subfolder inside it. Usually under %appdata%." />
                         </StackPanel>
 
@@ -511,7 +514,8 @@
                                         Click="PreviewDataButton_Click"
                                         Content="Select" />
                             </Grid>
-                            <TextBlock Style="{StaticResource SettingsHintTextStyle}"
+                            <TextBlock x:Name="PreviewDataHint"
+                                       Style="{StaticResource SettingsHintTextStyle}"
                                        Text="Same, but named &quot;Minecraft Bedrock Preview&quot; instead." />
                         </StackPanel>
 
