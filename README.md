@@ -327,7 +327,16 @@ Type **`vanillartx`** into Win+R or a terminal to start the app.
 | `vanillartx://help` | This page - add a section to jump to it, e.g. `vanillartx://help/rtx-reactor` |
 | `vanillartx://bugs` | The Minecraft RTX bug list |
 
-Names aren't case-sensitive, and an `open` in front works too (`vanillartx://OpenPackBrowser`). A link only ever opens a screen - it can't install, tune, launch or change anything - and it behaves exactly like clicking that button yourself: if the button is unavailable right now, so is the link, and if another feature is already open, you're asked to close it first.
+Names aren't case-sensitive, and an `open` in front works too (`vanillartx://OpenPackBrowser`). A link only ever opens a screen - it can't install, tune or delete anything - and it behaves exactly like clicking that button yourself: if the button is unavailable right now, so is the link, and if another feature is already open, you're asked to close it first.
+
+Two links launch the game instead without opening the app, handy as a desktop shortcut:
+
+| Link | Does |
+|---|---|
+| `vanillartx://launchminecraftrtx` | Launches Minecraft with your launch options, (i.e. triggers [Launch Minecraft RTX](#launch-minecraft-rtx)). |
+| `vanillartx://launchminecraftrtxpreview` | The same, but for Minecraft Preview |
+
+They use the launch options from Settings and nothing else. If the app is already open, the game launches and the app stays where it is. If something goes wrong - the game's user data folder can't be found, say - the app opens to tell you why.
 
 # Settings
 

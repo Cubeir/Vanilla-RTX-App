@@ -1948,9 +1948,18 @@ public sealed partial class MainWindow : Window
     }
 
 
-    private async void LaunchMinecraftButton_Click(object sender, RoutedEventArgs e)
+    private async void LaunchMinecraftButton_Click(object sender, RoutedEventArgs e) =>
+        await LaunchMinecraftAsync(IsTargetingPreview);
+
+    /// <summary>
+    /// Everything the Launch button does, for either edition. The button passes the one the app
+    /// is pointed at; a <c>vanillartx://launchminecraftrtxpreview</c> link passes Preview whatever
+    /// the toggle says, which is why the edition is a parameter here rather than read inside.
+    /// Returns whether the game was actually launched.
+    /// </summary>
+    internal async Task<bool> LaunchMinecraftAsync(bool isPreview)
     {
-        if (!MinecraftUserDataLocator.RequireValidUserData(IsTargetingPreview)) return;
+        if (!MinecraftUserDataLocator.RequireValidUserData(isPreview)) return false;
 
         if (Helpers.IsMinecraftRunning())
         {
@@ -1961,9 +1970,10 @@ public sealed partial class MainWindow : Window
         {
             // Which options.txt parameters this writes is the settings panel's answer, not
             // this button's - see MinecraftLauncher.LaunchConfiguredMinecraftRTXAsync.
-            var logs = await MinecraftLauncher.LaunchConfiguredMinecraftRTXAsync(IsTargetingPreview);
+            var outcome = await MinecraftLauncher.LaunchConfiguredMinecraftRTXAsync(isPreview);
 
-            Log(logs, (IsTargetingPreview ? LogLevel.MCPreview : LogLevel.MCRelease));
+            Log(outcome.Log, (isPreview ? LogLevel.MCPreview : LogLevel.MCRelease));
+            return outcome.Launched;
         }
         finally
         {

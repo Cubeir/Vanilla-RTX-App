@@ -31,10 +31,12 @@ namespace Vanilla_RTX_App.Core.FileActivation;
 /// Package.appxmanifest - the manifest is what makes Explorer offer us, this is what happens
 /// afterwards, and the two have to agree.</para>
 ///
-/// <para><b>The three ways in</b>, all from App.OnLaunched:
+/// <para><b>The ways in</b>, all from App.OnLaunched:
 /// <see cref="HandOffToRunningInstance"/> when this process lost the single-instance mutex,
-/// <see cref="HandleWakeAsync"/> when it won and is being woken by one that lost, and
-/// <see cref="RouteLaunchAsync"/> when it won and was itself launched with files or a link.</para>
+/// <see cref="HandleWakeAsync"/> when it won and is being woken by one that lost,
+/// <see cref="TryRunLaunchLinkWithoutWindowAsync"/> when it won with a link that can run
+/// without a window (<see cref="SilentLinks"/>), and <see cref="RouteLaunchAsync"/> when it won
+/// and was itself launched with files or a link.</para>
 /// </summary>
 internal static class FileActivationRouter
 {
@@ -126,6 +128,29 @@ internal static class FileActivationRouter
     }
 
     /// <summary>
+    /// For a cold launch that won the mutex, before MainWindow exists: runs the link this
+    /// process was started with, if it is one of <see cref="SilentLinks"/>, with no window at
+    /// all. True means it is done and App can exit without ever showing one. False - no link, a
+    /// link that navigates, or a silent command that failed - means start up as usual, and
+    /// <see cref="RouteLaunchAsync"/> then routes the link like any other.
+    /// </summary>
+    public static async Task<bool> TryRunLaunchLinkWithoutWindowAsync()
+    {
+        if (GetActivationLink() is not { } link || SilentLinks.Find(link) is not { } command)
+            return false;
+
+        _launchLinkHandled = await SilentLinks.TryRunWithoutWindowAsync(command);
+        return _launchLinkHandled;
+    }
+
+    /// <summary>
+    /// Set when <see cref="TryRunLaunchLinkWithoutWindowAsync"/> already did what this
+    /// process's link asked, and App started a window anyway (a second launch arrived while it
+    /// ran). <see cref="RouteLaunchAsync"/> must not run it a second time.
+    /// </summary>
+    private static bool _launchLinkHandled;
+
+    /// <summary>
     /// For a cold launch that won the mutex: imports the files, or follows the link, this
     /// process was itself started with. No hand-off file involved - the activation args carry
     /// them directly. No-ops for an ordinary launch from the Start menu, the taskbar or the
@@ -137,22 +162,54 @@ internal static class FileActivationRouter
         if (launched.Count > 0)
             await RouteAsync(launched);
 
-        if (GetActivationLink() is { } link)
+        if (!_launchLinkHandled && GetActivationLink() is { } link)
             await RouteLinkAsync(link);
     }
 
     /// <summary>
-    /// Raises the window and hands a <c>vanillartx://</c> link to MainWindow, which knows what
-    /// each one opens - see MainWindow.LinkCommands.cs. Links skip
-    /// <see cref="FilterRecentlyHandledFiles"/>: every command means "be here" rather than
-    /// "do this", so a duplicate delivery lands somewhere the user already is.
+    /// Hands a <c>vanillartx://</c> link to MainWindow. A link that navigates raises the window
+    /// first - see MainWindow.LinkCommands.cs. A <see cref="SilentLinks"/> command runs where
+    /// the window already is, and raises it only if it failed, so its log is in front of the
+    /// user. Links skip <see cref="FilterRecentlyHandledFiles"/>: a navigation lands somewhere
+    /// the user already is, and a silent command is idempotent by that class's own rule.
     /// </summary>
     private static async Task RouteLinkAsync(Uri link)
     {
         if (MainWindow.Instance == null) return;
 
+        if (SilentLinks.Find(link) is { } command)
+        {
+            if (!await MainWindow.Instance.RunSilentLinkAsync(command))
+                BringToFront(MainWindow.Instance);
+            return;
+        }
+
         BringToFront(MainWindow.Instance);
         await MainWindow.Instance.OpenLinkAsync(link);
+    }
+
+    /// <summary>
+    /// The command and optional section a link names. <c>vanillartx://help/rtx-reactor</c> is
+    /// command "help", section "rtx-reactor"; so is <c>vanillartx://help#rtx-reactor</c>. The
+    /// form without slashes (<c>vanillartx:help</c>) has no host, so the path stands in for it.
+    /// A leading "open" is dropped, so <c>OpenPackBrowser</c> and <c>packbrowser</c> agree.
+    /// </summary>
+    internal static (string Command, string? Section) ParseLink(Uri uri)
+    {
+        var segments = (uri.Host + "/" + uri.AbsolutePath)
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .ToList();
+
+        var command = segments.Count > 0 ? segments[0].ToLowerInvariant() : string.Empty;
+        if (command.Length > 4 && command.StartsWith("open", StringComparison.Ordinal))
+            command = command[4..];
+
+        var section = segments.Count > 1 ? segments[1]
+            : uri.Fragment.Length > 1 ? Uri.UnescapeDataString(uri.Fragment[1..])
+            : null;
+
+        return (command, section);
     }
 
     /// <summary>

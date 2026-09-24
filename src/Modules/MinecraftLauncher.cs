@@ -17,6 +17,14 @@ namespace Vanilla_RTX_App.Modules;
 /// </summary>
 public readonly record struct LaunchOption(string Name, int Value);
 
+/// <summary>
+/// What a launch attempt did. <see cref="Launched"/> is only whether the game was handed its
+/// protocol - a launch can still carry warnings in <see cref="Log"/> (one options.txt that
+/// couldn't be written, say). A caller with nowhere to show the log uses it to decide whether
+/// the attempt needs somewhere that can; see SilentLinks.
+/// </summary>
+public readonly record struct LaunchOutcome(bool Launched, string Log);
+
 public class MinecraftLauncher
 {
     /// <summary>
@@ -52,7 +60,7 @@ public class MinecraftLauncher
     /// launch below is what that means, and it must not silently fall back to the defaults -
     /// doing so would rewrite options the user explicitly asked us to leave alone.</para>
     /// </summary>
-    public static Task<string> LaunchConfiguredMinecraftRTXAsync(bool isTargetingPreview)
+    public static Task<LaunchOutcome> LaunchConfiguredMinecraftRTXAsync(bool isTargetingPreview)
     {
         var options = ParseOptions(EnvironmentVariables.Persistent.LaunchOptions);
 
@@ -124,7 +132,7 @@ public class MinecraftLauncher
     /// Launches the game without reading or writing a single options.txt. The "no options
     /// configured" path - see <see cref="LaunchConfiguredMinecraftRTXAsync"/>.
     /// </summary>
-    private static async Task<string> LaunchOnlyAsync(bool isTargetingPreview)
+    private static async Task<LaunchOutcome> LaunchOnlyAsync(bool isTargetingPreview)
     {
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
         var messages = new List<string> { $"No launch options are configured - launching {versionName} without changing any game settings." };
@@ -132,9 +140,9 @@ public class MinecraftLauncher
         await Task.Delay(250);
 
         var protocol = isTargetingPreview ? "minecraft-preview://" : "minecraft://";
-        TryLaunchGame(protocol, versionName, anyModificationsMade: false, messages);
+        var launched = TryLaunchGame(protocol, versionName, anyModificationsMade: false, messages);
 
-        return string.Join("\n", messages);
+        return new(launched, string.Join("\n", messages));
     }
 
     /// <summary>
@@ -144,27 +152,27 @@ public class MinecraftLauncher
     /// parameters those are; nothing in this file hardcodes a preset beyond
     /// <see cref="DefaultOptions"/>.
     /// </summary>
-    public static async Task<string> LaunchWithOptionsAsync(
+    public static async Task<LaunchOutcome> LaunchWithOptionsAsync(
         bool isTargetingPreview,
         bool launchAfterUpdate,
         params LaunchOption[] updates)
     {
         if (updates == null || updates.Length == 0)
-            return "❗ No options were specified to update.";
+            return new(false, "❗ No options were specified to update.");
 
         var versionName = MinecraftUserDataLocator.GetVersionDisplayName(isTargetingPreview);
 
         if (!MinecraftUserDataLocator.IsDataValid(isTargetingPreview))
         {
-            return $"❗ {versionName} data folder not found.\n" +
-                   "Make sure the correct version of the game is installed and has been launched at least once.";
+            return new(false, $"❗ {versionName} data folder not found.\n" +
+                   "Make sure the correct version of the game is installed and has been launched at least once.");
         }
 
         var optionsFiles = MinecraftUserDataLocator.FindAllOptionsFiles(isTargetingPreview);
         if (optionsFiles.Length == 0)
         {
-            return $"❗ No options.txt files found for {versionName}.\n" +
-                   "Make sure the game has been launched at least once.";
+            return new(false, $"❗ No options.txt files found for {versionName}.\n" +
+                   "Make sure the game has been launched at least once.");
         }
 
         var allStatusMessages = new List<string>();
@@ -187,19 +195,19 @@ public class MinecraftLauncher
         }
 
         if (filesProcessed == 0)
-            return string.Join("\n", allStatusMessages.Append("❗ No options files could be processed due to access issues."));
+            return new(false, string.Join("\n", allStatusMessages.Append("❗ No options files could be processed due to access issues.")));
 
         allStatusMessages.Add($"Processed {filesProcessed} options file(s).");
 
         if (!launchAfterUpdate)
-            return string.Join("\n", allStatusMessages);
+            return new(false, string.Join("\n", allStatusMessages));
 
         await Task.Delay(250);
 
         var protocol = isTargetingPreview ? "minecraft-preview://" : "minecraft://";
-        TryLaunchGame(protocol, versionName, anyModificationsMade, allStatusMessages);
+        var launched = TryLaunchGame(protocol, versionName, anyModificationsMade, allStatusMessages);
 
-        return string.Join("\n", allStatusMessages);
+        return new(launched, string.Join("\n", allStatusMessages));
     }
 
     // -------------------------------------------------------------------------
@@ -352,11 +360,12 @@ public class MinecraftLauncher
     }
 
     /// <summary>
-    /// Launches the game via protocol activation. Failures are reported but never
-    /// thrown — if options were already updated successfully, the user is told to
-    /// launch manually rather than losing that progress to an unrelated launch failure.
+    /// Launches the game via protocol activation and returns whether it was handed off.
+    /// Failures are reported but never thrown — if options were already updated successfully,
+    /// the user is told to launch manually rather than losing that progress to an unrelated
+    /// launch failure.
     /// </summary>
-    private static void TryLaunchGame(string protocol, string versionName, bool anyModificationsMade, List<string> allStatusMessages)
+    private static bool TryLaunchGame(string protocol, string versionName, bool anyModificationsMade, List<string> allStatusMessages)
     {
         try
         {
@@ -369,18 +378,21 @@ public class MinecraftLauncher
 
             Process.Start(processInfo);
             allStatusMessages.Add($"✅ Settings updated and launched {versionName} successfully.");
+            return true;
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
             allStatusMessages.Add($"Failed to launch {versionName}: {ex.Message}");
             if (anyModificationsMade)
                 allStatusMessages.Add("⚠️ Settings were updated successfully — you should now launch the game manually.");
+            return false;
         }
         catch (Exception ex)
         {
             allStatusMessages.Add($"Unexpected error launching {versionName}: {ex.Message}");
             if (anyModificationsMade)
                 allStatusMessages.Add("⚠️ Settings were updated successfully — you should now launch the game manually.");
+            return false;
         }
     }
 }

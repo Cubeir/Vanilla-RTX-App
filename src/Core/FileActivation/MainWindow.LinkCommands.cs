@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Vanilla_RTX_App.Core;
+using Vanilla_RTX_App.Core.FileActivation;
 using static Vanilla_RTX_App.Core.EnvironmentVariables;
 
 // Same arrangement as MainWindow.ImportRouters.cs: filed with the router that calls it, and a
@@ -18,11 +19,14 @@ namespace Vanilla_RTX_App;
 /// <see cref="Core.FileActivation.FileActivationRouter"/> has received it: opens one screen
 /// of the app, e.g. <c>vanillartx://packbrowser</c>.
 ///
-/// <para><b>A link only ever navigates - it never acts.</b> Any web page can put one in front
-/// of a user, so nothing a link can reach may change a file, a setting or the game: it opens
-/// a module, the settings panel or a document, and anything from there on is the user's own
-/// click. That is why Launch Minecraft RTX, Tune and Delete have no command, and none should be
-/// added.</para>
+/// <para><b>A link here only ever navigates - it never acts.</b> Any web page can put one in
+/// front of a user, so nothing this file can reach may change a file, a setting or the game: it
+/// opens a module, the settings panel or a document, and anything from there on is the user's
+/// own click. That is why Tune, Delete and every install have no command, and none should be
+/// added. The one exception is <see cref="Core.FileActivation.SilentLinks"/> - launching the
+/// game with the user's own launch options - and it lives in its own table with its own,
+/// narrower rules for what may join it; <see cref="RunSilentLinkAsync"/> is its only foothold
+/// here.</para>
 ///
 /// <para><b>Modules open by pressing their real button</b>, through its automation peer - the
 /// same path a screen reader takes. So a link gets exactly what a click gets: the "locate your
@@ -68,7 +72,7 @@ public sealed partial class MainWindow
 
         try
         {
-            var (command, section) = ParseLink(uri);
+            var (command, section) = FileActivationRouter.ParseLink(uri);
             Trace.WriteLine($"[Links] Opening '{uri.OriginalString}' as command '{command}'{(section is null ? "" : $", section '{section}'")}");
 
             switch (command)
@@ -101,27 +105,34 @@ public sealed partial class MainWindow
     }
 
     /// <summary>
-    /// The command and optional section a link names. <c>vanillartx://help/rtx-reactor</c> is
-    /// command "help", section "rtx-reactor"; so is <c>vanillartx://help#rtx-reactor</c>. The
-    /// form without slashes (<c>vanillartx:help</c>) has no host, so the path stands in for it.
-    /// A leading "open" is dropped, so <c>OpenPackBrowser</c> and <c>packbrowser</c> agree.
+    /// Runs a <see cref="SilentLinks"/> command in this window, without raising it. Gated on
+    /// the command's control exactly as <see cref="Press"/> gates a button - disabled because
+    /// the app is busy, hidden, or remotely suspended all refuse it - but the command's own
+    /// method is called rather than the button pressed, because a command may ask for something
+    /// the button wouldn't (launching Preview while the app targets Release). Returns false when
+    /// it was refused or failed; the router raises the window then, so the log line is seen.
     /// </summary>
-    private static (string Command, string? Section) ParseLink(Uri uri)
+    internal async Task<bool> RunSilentLinkAsync(SilentLinks.SilentLink command)
     {
-        var segments = (uri.Host + "/" + uri.AbsolutePath)
-            .Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Select(Uri.UnescapeDataString)
-            .ToList();
+        await WaitUntilInitializedAsync();
 
-        var command = segments.Count > 0 ? segments[0].ToLowerInvariant() : string.Empty;
-        if (command.Length > 4 && command.StartsWith("open", StringComparison.Ordinal))
-            command = command[4..];
+        try
+        {
+            if ((Content as FrameworkElement)?.FindName(command.ControlName) is not Control control
+                || !control.IsEnabled || control.Visibility != Visibility.Visible)
+            {
+                Log($"A link asked for {command.Label}, but it can't be done right now.", LogLevel.Warning);
+                return false;
+            }
 
-        var section = segments.Count > 1 ? segments[1]
-            : uri.Fragment.Length > 1 ? Uri.UnescapeDataString(uri.Fragment[1..])
-            : null;
-
-        return (command, section);
+            Trace.WriteLine($"[Links] Running '{command.Label}' without raising the window");
+            return await command.InWindow(this);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[Links] Couldn't run '{command.Label}': {ex}");
+            return false;
+        }
     }
 
     private void OpenModuleFromLink(ModuleLink module)

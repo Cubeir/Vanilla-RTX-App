@@ -88,6 +88,31 @@ public partial class App : Application
 
         // Create the wake event for this instance to listen on
         _wakeEvent = new EventWaitHandle(false, EventResetMode.AutoReset, $"{GetUniqueName()}_wake");
+
+        // A link that can run without a window (e.g. launching the game from a desktop
+        // shortcut) runs here, before MainWindow exists, and the app never appears. The wake
+        // event already exists so a second launch arriving meanwhile still finds us: its
+        // signal stays set until the listener below consumes it, and the only thing that
+        // changes is that we then start up rather than exit.
+        if (await FileActivationRouter.TryRunLaunchLinkWithoutWindowAsync())
+        {
+            if (!_wakeEvent.WaitOne(0))
+            {
+                Exit();
+                return;
+            }
+            _wakeEvent.Set(); // put back what WaitOne just consumed, for the listener
+        }
+
+        // Brief delay before Activate() to allow InitializeComponent() and lamp animators
+        // to finish rendering before the window becomes visible, preventing a black background briefly appearing or splash images not loading in time.
+        _window = new MainWindow(); // -> This kicks off the stuff in MainWindow actually running, which also calls for XAML to be initialized
+        await Task.Delay(175); // A delay ensures the xaml is constructed before window tries to appear.
+        _window.Activate();
+
+        // Only once MainWindow.Instance exists: the handler enqueues on its dispatcher, and a
+        // wake consumed before then would be dropped along with whatever it handed off. The
+        // event is AutoReset, so a wake that arrived earlier is still waiting here.
         _ = Task.Run(() =>
         {
             while (_wakeEvent.WaitOne())
@@ -101,12 +126,6 @@ public partial class App : Application
                 });
             }
         });
-
-        // Brief delay before Activate() to allow InitializeComponent() and lamp animators
-        // to finish rendering before the window becomes visible, preventing a black background briefly appearing or splash images not loading in time.
-        _window = new MainWindow(); // -> This kicks off the stuff in MainWindow actually running, which also calls for XAML to be initialized
-        await Task.Delay(175); // A delay ensures the xaml is constructed before window tries to appear.
-        _window.Activate();
 
         _ = FileActivationRouter.RouteLaunchAsync();
     }
