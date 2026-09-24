@@ -309,11 +309,12 @@ internal sealed class BetterRTXManager
         //   which the update just replaced. The other edition's copy stays: that game did not
         //   change, and deleting its backup strands it on whatever preset it is running.
         //
-        //   The shared cache (downloads, imports, API JSON) - Release only. Its contents come
-        //   from bedrock.graphics, which builds against stable Minecraft, so a Release update
-        //   is grounds to suspect they are now for the wrong game. A Preview update is not,
-        //   and Preview ships weekly, so wiping on it would re-download every preset the user
-        //   owns most weeks for nothing.
+        //   The shared cache (downloads, imports, API JSON) and the disclaimer acknowledgement -
+        //   Release only. The cache comes from bedrock.graphics, which builds against stable
+        //   Minecraft, so a Release update is grounds to suspect it is now for the wrong game,
+        //   and a cold start is the occasion to show the third-party notice again. A Preview
+        //   update is neither: Preview support is best-effort, it ships weekly, and all it may
+        //   cost is keeping its own backup current - never a re-download or a re-prompt.
         bool sharedCacheWiped = false;
 
         if (versionChanged)
@@ -325,6 +326,10 @@ internal sealed class BetterRTXManager
             {
                 await WipeNonDefaultPresetsCacheAsync();
                 sharedCacheWiped = true;
+
+                try { ApplicationData.Current.LocalSettings.Values.Remove(BETTERRTX_DISCLAIMER_KEY); }
+                catch { }
+                Trace.WriteLine("[BetterRTX] Cleared disclaimer acknowledgement - will re-prompt this open");
             }
         }
 
@@ -1879,8 +1884,8 @@ public static class SmartPresetSorter
 /// <see cref="BetterRTXManager.WipeDefaultPresetCache"/>), so it is rebuilt from the post-update game files;
 /// for Release it additionally soft-wipes the shared cache
 /// (<see cref="BetterRTXManager.WipeNonDefaultPresetsCacheAsync"/>) so possibly update-incompatible downloads
-/// are re-fetched rather than reused - see TryAttachAsync for why Preview does not. It also clears the stored
-/// BetterRTX disclaimer acknowledgement, so the user is re-prompted after an update.
+/// are re-fetched rather than reused - see TryAttachAsync for why Preview does not. This class only reports;
+/// every consequence of a change, the disclaimer re-prompt included, is decided there.
 ///
 /// <para><b>Release and Preview are tracked separately</b>, under their own stored hash keys. They are two
 /// installs on two update cadences - Preview ships roughly weekly - so a shared key would report a change
@@ -1984,13 +1989,6 @@ public static class GameVersionDetector
                 Trace.WriteLine($"[BetterRTX]    Old: {storedConfigHash.Substring(0, 16)}...");
                 Trace.WriteLine($"[BetterRTX]    New: {currentConfigHash.Substring(0, 16)}...");
                 versionChanged = true;
-
-                // Clear disclaimer so user is re-notified after game update. Deliberately the
-                // one shared key rather than one per edition: what it warns about is the
-                // third-party API and the risk of a game update breaking its files, and either
-                // edition updating is a fresh occasion to say so.
-                settings.Values.Remove(BetterRTXManager.BETTERRTX_DISCLAIMER_KEY);
-                Trace.WriteLine("[BetterRTX] 💾 Cleared BetterRTX disclaimer key — will re-prompt on next open");
             }
             else
             {
