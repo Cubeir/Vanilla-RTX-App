@@ -585,9 +585,9 @@
                     <!-- Tune & Export & Delete Grid -->
                     <RowDefinition Height="Auto" />
                     <!-- Spacing -->
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="16" />
                     <!-- 3x2 Button Grid -->
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
 
@@ -1146,42 +1146,11 @@
                     </Grid>
                 </Grid>
 
-                <!-- =============== Centre rule =============== -->
-                <!-- The two blocks above and below are pinned to opposite ends - the sliders
-                     and their Tune/Export/Delete row to the top, the module buttons to the
-                     bottom - so every pixel a taller window adds lands between them as one
-                     growing void. This is the only thing in it: a hairline at its midpoint,
-                     so the gap reads as a deliberate break between two groups of controls
-                     rather than as the layout having run out of things to put there.
-
-                     It fades out at both ends because it has nothing to line its ends up
-                     with. The block above is inset 16/24 and the one below 8/16, so a
-                     hard-edged rule would visibly agree with one and disagree with the
-                     other; a fade agrees with neither on purpose. -->
-                <Border Grid.Row="3"
-                        Height="1"
-                        Margin="12,0,20,0"
-                        VerticalAlignment="Center"
-                        Canvas.ZIndex="-1"
-                        Opacity="0.75"
-                        IsHitTestVisible="False">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0"
-                                             EndPoint="1,0">
-                            <GradientStop Offset="0.0" Color="Transparent" />
-                            <GradientStop Offset="0.2" Color="{ThemeResource FakeSplitButtonBrightBorderColor}" />
-                            <GradientStop Offset="0.7"
-                                          Color="{ThemeResource FakeSplitButtonBrightBorderColor}" />
-                            <GradientStop Offset="1.0" Color="Transparent" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                </Border>
-
                 <Grid Grid.Row="4"
                       Margin="8,0,16,16"
                       HorizontalAlignment="Stretch"
-                      VerticalAlignment="Bottom"
-                      Height="136"
+                      VerticalAlignment="Stretch"
+                   
                       BorderThickness="0"
                       Translation="0,0,33">
                     <Grid.Shadow>
