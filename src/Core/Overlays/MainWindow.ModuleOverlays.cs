@@ -16,9 +16,12 @@ namespace Vanilla_RTX_App;
 /// Opening and closing the feature modules, which are overlays over this window rather than
 /// windows of their own.
 ///
-/// <para><b>One module at a time, and the host is empty in between.</b> Opening a second while
-/// one is up is not reachable - a module covers the body, which is where every button that
-/// opens one lives - so this asserts that rather than arbitrating it.</para>
+/// <para><b>One module at a time, and the host is empty in between.</b> Every button that opens
+/// one lives in the body a module covers, and covering it is enforced for the pointer by the
+/// host's hit-testing and for the keyboard by MainWindow.OverlayFocus.cs. <see cref="OpenModule"/>
+/// still refuses a second one outright: a stacked module is one the return button can't reach,
+/// whose control locks are never released, so the invariant is held here too rather than
+/// trusted to every path that might ever call this.</para>
 ///
 /// <para><b>The lifecycle is deliberately a window's lifecycle</b> (see
 /// <see cref="ModuleOverlay"/> for the full reasoning): constructed on open, torn down on
@@ -51,7 +54,8 @@ public sealed partial class MainWindow
     internal FrameworkElement RootElement => (FrameworkElement)Content;
 
     /// <summary>
-    /// Puts <paramref name="overlay"/> on screen, locks <paramref name="toDisable"/> for as
+    /// Builds a module with <paramref name="create"/> and puts it on screen - unless one is
+    /// already open, in which case nothing happens at all. Locks <paramref name="toDisable"/> for as
     /// long as it is up, and runs <paramref name="onClosed"/> once it goes away.
     ///
     /// <para><b>The lock is taken here rather than at the call site</b> so its release cannot
@@ -64,8 +68,20 @@ public sealed partial class MainWindow
     /// a module's closing log line and its re-enabled buttons in the same moment the user let
     /// go of it.</para>
     /// </summary>
-    internal void OpenModule(ModuleOverlay overlay, string[] toDisable, Action<ModuleOverlay>? onClosed = null)
+    internal void OpenModule(Func<ModuleOverlay> create, string[] toDisable, Action<ModuleOverlay>? onClosed = null)
     {
+        // Refused before the second module is even constructed - hence a factory rather than an
+        // instance. A constructed module cannot simply be closed again: several teardowns act
+        // on shared state (WebImportOverlay.CloseIfOpen is static and would close the open
+        // module's browser; RTX Reactor saves its options from its controls, which on an
+        // instance nobody saw are XAML defaults), so the only safe second module is none.
+        if (_openModules.Count > 0)
+        {
+            Trace.WriteLine($"[OpenModule] Refused: {_openModules[^1].GetType().Name} is already open.");
+            return;
+        }
+
+        var overlay = create();
         LockControls(false, toDisable);
 
         try
@@ -102,7 +118,16 @@ public sealed partial class MainWindow
         // Not before Loaded: until then the module's controls aren't in the visual tree to be
         // found. Walks the whole window so a module's titlebar strip, which lives outside the
         // overlay once adopted, is covered too.
-        overlay.Loaded += (_, _) => WindowControlsManager.ApplySuspensions(Content);
+        overlay.Loaded += (_, _) =>
+        {
+            WindowControlsManager.ApplySuspensions(Content);
+
+            // Focus follows the user into the module. Opened from the keyboard, focus is still
+            // on the body button that did it; opened by a link, it can be anywhere in the body.
+            // Either way it is on something now covered.
+            if (FocusManager.FindFirstFocusableElement(overlay) is UIElement first)
+                _ = FocusManager.TryFocusAsync(first, FocusState.Programmatic);
+        };
 
         _openModules.Add(overlay);
         AdoptModuleTitleBarStrip(overlay);

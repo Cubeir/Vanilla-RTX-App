@@ -332,6 +332,7 @@ public sealed partial class MainWindow : Window
 
         ModuleTitleBar.ReturnRequested += ModuleTitleBar_ReturnRequested;
         RootElement.AddHandler(UIElement.KeyDownEvent, new Microsoft.UI.Xaml.Input.KeyEventHandler(ModuleEscape_KeyDown), handledEventsToo: false);
+        AttachOverlayFocusTrap();
 
         // Things to do after mainwindow is initialized...
         if (Content is FrameworkElement root)
@@ -1290,7 +1291,7 @@ public sealed partial class MainWindow : Window
 
         // The Usual Pack browser flow ============ Above is repurposed functionality of the button in case user data is missing
 
-        OpenModule(new Modules.PackBrowser.PackBrowserOverlay(), ToDisable, _unused =>
+        OpenModule(() => new Modules.PackBrowser.PackBrowserOverlay(), ToDisable, _unused =>
         {
             if (EnvironmentVariables.SelectedPacks.Count > 0)
             {
@@ -1882,7 +1883,7 @@ public sealed partial class MainWindow : Window
             Log($"Please close Minecraft while using the app. Once finished, launch the game using {LaunchButtonText.Text} button.", LogLevel.Warning);
         }
 
-        OpenModule(new Modules.PackUpdater.PackUpdaterOverlay(this), ToDisable, _unused =>
+        OpenModule(() => new Modules.PackUpdater.PackUpdaterOverlay(this), ToDisable, _unused =>
         {
             // The cache glyph used to be re-derived by hand here, and at startup, and would have
             // owed a third copy at every future cache-touching site. It now follows
@@ -1895,7 +1896,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchBetterRTXManagerButton", "ResetButton"];
 
-        OpenModule(new Modules.BetterRTX.BetterRTXManagerOverlay(), ToDisable, overlay =>
+        OpenModule(() => new Modules.BetterRTX.BetterRTXManagerOverlay(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.BetterRTX);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
@@ -1905,7 +1906,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchDLSSSwapperButton", "ResetButton"];
 
-        OpenModule(new Modules.DLSS.DLSSSwapperOverlay(), ToDisable, overlay =>
+        OpenModule(() => new Modules.DLSS.DLSSSwapperOverlay(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.DLSS);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
@@ -1915,7 +1916,7 @@ public sealed partial class MainWindow : Window
     {
         string[] ToDisable = ["LaunchMinecraftButton", "TargetPreviewToggle", "LaunchLUTManagerButton", "ResetButton"];
 
-        OpenModule(new Modules.LUT.LUTManagerOverlay(), ToDisable, overlay =>
+        OpenModule(() => new Modules.LUT.LUTManagerOverlay(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.LUT);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
@@ -1945,7 +1946,7 @@ public sealed partial class MainWindow : Window
         "BrowsePacksButton", "TuneSelectionButton", "ExportButton", "DeleteButton", "LaunchAlchitexButton"
         ];
 
-        OpenModule(new Modules.Alchitex.Alchitex(), ToDisable, overlay =>
+        OpenModule(() => new Modules.Alchitex.Alchitex(), ToDisable, overlay =>
         {
             LogModuleResult(overlay, LogLevel.Alchitex);
             _ = BlinkingLamp(true, true, overlay.OperationSuccessful ? 1.0 : 0.0);
