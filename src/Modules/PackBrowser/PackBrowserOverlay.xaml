@@ -15,10 +15,28 @@
         ════════════════════════════════════════════════════ -->
         <Grid x:Name="LoadingPanel"
               Visibility="Visible"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              RowSpacing="20"
               Background="Transparent">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <ProgressRing IsActive="True"
                           Width="100"
+                          Grid.Row="0"
                           Height="100" />
+            <TextBlock Text="Loading your installed packs..."
+                       Grid.Row="1"
+                       FontSize="14"
+                       Opacity="0.75"
+                       FontWeight="Normal"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       IsTextScaleFactorEnabled="False" />
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════
