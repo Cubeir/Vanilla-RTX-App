@@ -934,7 +934,7 @@ public sealed partial class Alchitex : ModuleOverlay
         if (string.IsNullOrEmpty(raw)) return true;
 
         // RoundtripKind matters here exactly as it does for OnlineTexts' own cooldown without it
-        // a UTC "O" stamp parses back as local time and the  24h window is off by the machine's offset.
+        // a UTC "O" stamp parses back as local time and the 24h window is off by the machine's offset.
         if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last))
             return true;
 

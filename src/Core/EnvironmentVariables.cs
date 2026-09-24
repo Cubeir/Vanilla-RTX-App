@@ -208,8 +208,8 @@ public static class EnvironmentVariables
     }
 
     // Window size defaults for all windows
-    public const int WindowSizeX = 1150;
-    public const int WindowSizeY = 620;
+    public const int WindowSizeX = 1155;
+    public const int WindowSizeY = 625;
     public const int WindowMinSizeX = 950;
     public const int WindowMinSizeY = 615;
 

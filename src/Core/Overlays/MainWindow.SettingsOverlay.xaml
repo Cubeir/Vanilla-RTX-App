@@ -310,10 +310,10 @@
                             <StackPanel Grid.Column="0"
                                         Margin="0,0,10,0"
                                         VerticalAlignment="Center">
-                                <TextBlock Text="Suspend UI animations"
+                                <TextBlock Text="Disable UI Visual Effects"
                                            TextWrapping="Wrap"
                                            IsTextScaleFactorEnabled="False" />
-                                <TextBlock Text="Toggle on if they bother you, saves some energy."
+                                <TextBlock Text="Disables animations and all unique effects throughout the app, saves some energy."
                                            Style="{StaticResource SettingsHintTextStyle}" />
                             </StackPanel>
 

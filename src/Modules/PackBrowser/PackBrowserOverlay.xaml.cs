@@ -101,7 +101,7 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
             if (_isClosing) return;
 
             AddPackDescriptionText.Text =
-                $"Select or drag & drop resource pack files here to import to {gameTitleText} (.mcpack, .zip, .mcaddon)";
+                $"Select or drag & drop resource pack files to import to {gameTitleText} (.mcpack, .zip, .mcaddon)";
 
             PsaCard.Populate(PackBrowserAnnouncementsPanel, OnlineTextsContent.ResourcePackSelectionAnnouncements);
 

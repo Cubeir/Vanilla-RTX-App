@@ -124,7 +124,7 @@ As of MCBE 26.45, it is safe to install BetterRTX presets, the files were tested
 BetterRTX might not yet support Minecraft 26.50. Check back here every day until this text says otherwise. If your game crashes after installing a preset, revert back to the Default RTX backup preset.
 
 # LutManagerAnnouncements 
-Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by selecting the default preset.
+Look up tables provide a simple way to improve or further customize Minecraft RTX, which works across all game versions reliably and without a performance hit as oppposed to heavier modifications such as BetterRTX. Select from the list of available presets and hit install. You can always revert back to defaults by installing the default preset.
 
 ## [glyph:"E7BA"] [cd:"40000"] 
 This feature will not work if you're using a BetterRTX Preset. Use Default/Unmodified RTX if you want to use LUT presets.
