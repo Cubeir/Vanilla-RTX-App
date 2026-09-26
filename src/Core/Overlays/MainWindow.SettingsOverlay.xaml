@@ -713,6 +713,7 @@
                             <Button x:Name="HardResetButton"
                                     Translation="0,0,32"
                                     Style="{StaticResource SettingsActionButtonStyle}"
+                                    Background="{ThemeResource SystemFillColorCriticalBrush}"
                                     Click="HardResetButton_Click">
                                 <Button.Shadow>
                                     <ThemeShadow />

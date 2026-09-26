@@ -766,14 +766,14 @@ public sealed partial class SettingsOverlay : UserControl
             new UrlField
             {
                 Box = DlssProviderBox, ResetButton = DlssProviderResetButton, Hint = DlssProviderHint,
-                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to. Can change to any other website you can get the .dll files from.",
+                Description = "The page the DLSS swapper's \"Download DLLs\" button browses to. Feel free to change to any other website that you can get DLSS .dll files from.",
                 Fallback = Defaults.DlssProviderUrl, Kind = LinkKind.WebPage,
                 Read = () => Persistent.DlssProviderUrl, Write = v => Persistent.DlssProviderUrl = v
             },
             new UrlField
             {
                 Box = BetterRtxCreatorBox, ResetButton = BetterRtxCreatorResetButton, Hint = BetterRtxCreatorHint,
-                Description = "The page the BetterRTX manager's \"Create preset\" button browses to. Can change to any other website you can download .rtpack files from.",
+                Description = "The page the BetterRTX manager's \"Create preset\" button browses to. Feel free to change to any other website that you can download `.rtpack` files from.",
                 Fallback = Defaults.BetterRtxCreatorUrl, Kind = LinkKind.WebPage,
                 Read = () => Persistent.BetterRtxCreatorUrl, Write = v => Persistent.BetterRtxCreatorUrl = v
             },
