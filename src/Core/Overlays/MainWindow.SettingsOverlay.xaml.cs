@@ -321,7 +321,7 @@ public sealed partial class SettingsOverlay : UserControl
 
     private void RefreshCredits()
     {
-        var credits = OnlineTextsContent.Credits?.FirstOrDefault()?.Text;
+        var credits = TeletextContent.Credits?.FirstOrDefault()?.Text;
         CreditsText.Text = credits ?? string.Empty;
         CreditsText.Visibility = string.IsNullOrWhiteSpace(credits) ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -1367,7 +1367,7 @@ public sealed partial class SettingsOverlay : UserControl
 
                 // A control switched off from the announcements .md looks exactly like a bug from
                 // the outside - the controls section below shows it disabled, never why.
-                var suspended = OnlineTextsContent.SuspendControls;
+                var suspended = TeletextContent.SuspendControls;
                 sb.AppendLine($"Remotely Suspended Controls: {(suspended is { Length: > 0 } ? string.Join(", ", suspended) : "none")}");
 
                 sb.AppendLine();

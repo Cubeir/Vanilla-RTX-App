@@ -80,7 +80,7 @@ internal static class SilentLinks
     {
         // App's constructor already applied the cached announcements synchronously, so this is
         // the same list MainWindow would suspend controls from.
-        if (OnlineTextsContent.SuspendControls?.Contains(command.ControlName, StringComparer.OrdinalIgnoreCase) == true)
+        if (TeletextContent.SuspendControls?.Contains(command.ControlName, StringComparer.OrdinalIgnoreCase) == true)
         {
             Trace.WriteLine($"[SilentLinks] '{command.ControlName}' is remotely suspended; handing {command.Label} to the window.");
             return false;

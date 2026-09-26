@@ -349,10 +349,10 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private async Task ApplyRemoteSuspensionsAsync()
     {
-        WindowControlsManager.SuspendControls(Content, OnlineTextsContent.SuspendControls);
+        WindowControlsManager.SuspendControls(Content, TeletextContent.SuspendControls);
 
-        if (await OnlineTexts.LatestUpdate && !_isClosing)
-            WindowControlsManager.SuspendControls(Content, OnlineTextsContent.SuspendControls);
+        if (await Teletext.LatestUpdate && !_isClosing)
+            WindowControlsManager.SuspendControls(Content, TeletextContent.SuspendControls);
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -476,23 +476,23 @@ public sealed partial class MainWindow : Window
 
             _ = LocatePacksTask(); // Trigger finding packs
 
-            // Same split as OnlineTexts: this only refreshes the cache, and whoever reads an
+            // Same split as Teletext: this only refreshes the cache, and whoever reads an
             // asset takes whatever is there at the time. Nothing waits on it, and the packaged
             // copies mean nothing breaks if it never finishes.
             Modules.AssetUpdater.TriggerUpdate(Modules.Alchitex.Core.AlchitexAssets.All);
 
-            // By the time we get here, on good internet the OnlineTexts fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
+            // By the time we get here, on good internet the Teletext fetch is already done (called from App.xaml.cs). On bad internet it may be stale cache, it's ok, we show it anyway
             // The whole idea is, there is separation of concerns, on this side, we only show what's in the cache, the app tries to update the cache sometimes
             // we deal with cache, for showing things, another task deals with updating sometimes it at App start
             _ = Task.Run(async () =>
             {
                 await Task.Delay((int)(750 * speedMultiplier));
-                var psa = OnlineTexts.GetFiltered(OnlineTextsContent.PSA);
-                if (psa is { Length: > 0 })
+                var Teletext = Teletext.GetFiltered(TeletextContent.Teletext);
+                if (Teletext is { Length: > 0 })
                 {
-                    for (int i = psa.Length - 1; i >= 0; i--)
+                    for (int i = Teletext.Length - 1; i >= 0; i--)
                     {
-                        Log(Core.Overlays.MarkdownRenderer.ToPlainText(psa[i].Text));
+                        Log(Core.Overlays.MarkdownRenderer.ToPlainText(Teletext[i].Text));
                         await Task.Delay((int)(700 * speedMultiplier));
                     }
                 }
@@ -882,7 +882,7 @@ public sealed partial class MainWindow : Window
                     var rng = Random.Shared;
                     string[] baseMsgs = { "If people knew the amount of love, effort, time I had to put in and the difficulties I had to push through to keep this up, maybe they'd appreciate it.. just a tiny bit more",
                                              "Despite everything, I continued; Out of necessity. Never wavered. That is how good things are made after all!" };
-                    LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.PSA, LogLevel.Lengthy };
+                    LogLevel[] levels = { LogLevel.Warning, LogLevel.Error, LogLevel.Teletext, LogLevel.Lengthy };
                     string[] spookyEmojis = { "👁️" };
 
                     // Deteriorate the message over time, then make it seem like It's lagging to creep out the user
@@ -1099,7 +1099,7 @@ public sealed partial class MainWindow : Window
     }
 
     // The first check of a session waits, so it lands after the startup burst of web calls
-    // (OnlineTexts, the Alchitex asset refresh) rather than joining it. Only the remote lookup
+    // (Teletext, the Alchitex asset refresh) rather than joining it. Only the remote lookup
     // waits - locating packs, which is all local, is never held up by this.
     private static readonly TimeSpan UpdateNoticeStartupDelay = TimeSpan.FromMilliseconds(2060);
     private bool _updateNoticeStartupDelayPending = true;
@@ -2118,7 +2118,7 @@ public sealed partial class MainWindow : Window
     // add more types, specifically, let feature windows use their own unique emojis!
     public enum LogLevel
     {
-        Success, Informational, Warning, Error, Network, Lengthy, Misc, PSA, Alchitex, Cache, Package,
+        Success, Informational, Warning, Error, Network, Lengthy, Misc, Teletext, Alchitex, Cache, Package,
         DLSS, BetterRTX, LUT, VanillaRTX, Selected, MCPreview, MCRelease, Cleaning, Reset, Import
     }
 
@@ -2184,7 +2184,7 @@ public sealed partial class MainWindow : Window
             LogLevel.Cleaning => "🧹 ",
             LogLevel.Reset => "🔄️ ",
             LogLevel.Lengthy => "⏳ ",
-            LogLevel.PSA => "📢 ",
+            LogLevel.Teletext => "📢 ",
             LogLevel.Network => "🛜 ",
             LogLevel.Misc => "🛸 ",
             LogLevel.Alchitex => "🟦 ",

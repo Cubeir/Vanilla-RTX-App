@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -32,7 +32,7 @@ namespace Vanilla_RTX_App.Core.Overlays;
 /// cache, not a browser profile.</para>
 ///
 /// <para><b>Pages are cached on disk and fetched at most once an hour</b>, the same model as
-/// <see cref="OnlineTexts"/> and through the same machinery - see <see cref="DocumentAsset"/>
+/// <see cref="Teletext"/> and through the same machinery - see <see cref="DocumentAsset"/>
 /// and <see cref="AssetUpdater"/>. raw.githubusercontent.com is effectively this app's CDN, and
 /// a fetch on every launch, times every user, is requests spent on documents that change a few
 /// times a year. Inside the cooldown the cached copy is shown without touching the network;

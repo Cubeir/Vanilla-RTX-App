@@ -93,7 +93,7 @@ public sealed class MarkdownRenderer
 
     /// <summary>
     /// Inline formatting only, for short texts that were written as plain text first: the
-    /// announcement PSAs. Every block parser but the paragraph is removed, so a line starting
+    /// announcement Teletexts. Every block parser but the paragraph is removed, so a line starting
     /// "- " or "1. " stays the literal text it has always been rather than turning into a list,
     /// and "---" under a line doesn't become a heading. Raw HTML is off, so a word in angle
     /// brackets is text rather than a tag that vanishes. What is left is emphasis, strikethrough,
@@ -134,7 +134,7 @@ public sealed class MarkdownRenderer
     /// unresolved - there is no source repository to resolve a relative one against.
     ///
     /// <para><b>Every newline is kept.</b> Markdown folds a single newline into a space, and
-    /// every PSA published so far was written expecting it to be a line break, because it always
+    /// every Teletext published so far was written expecting it to be a line break, because it always
     /// was one. A blank line is a paragraph break and comes out as the same empty line it always
     /// did; only a run of several blank lines collapses to one.</para>
     ///
@@ -182,7 +182,7 @@ public sealed class MarkdownRenderer
             {
                 if (block is not MS.ParagraphBlock { Inline: { } inline }) continue;
                 if (sb.Length > 0) sb.Append("\n\n");
-                AppendPsaPlainText(sb, inline);
+                AppendTeletextPlainText(sb, inline);
             }
             return sb.ToString();
         }
@@ -193,7 +193,7 @@ public sealed class MarkdownRenderer
         }
     }
 
-    private static void AppendPsaPlainText(StringBuilder sb, MI.ContainerInline container)
+    private static void AppendTeletextPlainText(StringBuilder sb, MI.ContainerInline container)
     {
         foreach (var inline in container)
         {
@@ -210,7 +210,7 @@ public sealed class MarkdownRenderer
                 case MI.CodeInline code: sb.Append(code.Content); break;
                 case MI.HtmlEntityInline entity: sb.Append(entity.Transcoded.ToString()); break;
                 case MI.AutolinkInline autolink: sb.Append(autolink.Url); break;
-                case MI.ContainerInline nested: AppendPsaPlainText(sb, nested); break;
+                case MI.ContainerInline nested: AppendTeletextPlainText(sb, nested); break;
             }
         }
     }

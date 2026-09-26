@@ -230,7 +230,7 @@ public class WindowControlsManager
     /// Disables every control under <paramref name="root"/> whose name is in
     /// <paramref name="names"/>, and keeps it disabled for the rest of the session. This is the
     /// remote kill switch driven by the announcements .md's <c># SuspendControls</c> section
-    /// (<see cref="OnlineTextsContent.SuspendControls"/>).
+    /// (<see cref="TeletextContent.SuspendControls"/>).
     ///
     /// <para><b>Additive and idempotent.</b> Names accumulate across calls, and a control
     /// already suspended is left alone, so calling this once from cache and again after a fresh

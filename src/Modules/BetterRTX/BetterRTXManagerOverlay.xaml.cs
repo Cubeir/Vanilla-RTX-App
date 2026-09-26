@@ -180,7 +180,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     }
 
     /// <summary>
-    /// Settles the two notice cards. Both are hand-written Pinned <see cref="PsaCard"/>
+    /// Settles the two notice cards. Both are hand-written Pinned <see cref="TeletextCard"/>
     /// lookalikes rather than fetched ones: neither can fail to apply, and neither may depend
     /// on the announcements fetch having succeeded. Only one of them is pinned to the window:
     ///
@@ -617,10 +617,10 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
-        // Initialize PSAs
-        if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure psas dont clip into fallback background
+        // Initialize Teletexts
+        if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure Teletexts dont clip into fallback background
         {
-            PsaCard.Populate(BetterRTXInfoPanel, OnlineTextsContent.BetterRTXInfo);
+            TeletextCard.Populate(BetterRTXInfoPanel, TeletextContent.BetterRTXInfo);
 
             // Populate can legitimately add nothing (every announcement dismissed), and an
             // empty-but-visible panel still contributes its margin, which reads as an

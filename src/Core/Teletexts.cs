@@ -20,17 +20,17 @@ namespace Vanilla_RTX_App.Core;
 // with such conflicts
 
 // =====================================================================================================================
-// PsaItem — A single announcement entry.
+// TeletextItem — A single announcement entry.
 //
 // MinVersion / MaxVersion are the [minver:""] / [maxver:""] gate, inclusive at both ends, null meaning unbounded.
-// The gate is applied by OnlineTexts.GetFiltered, not by the parser, so a gated item stays in OnlineTextsContent:
+// The gate is applied by Teletext.GetFiltered, not by the parser, so a gated item stays in TeletextContent:
 // CleanupOrphanedDismissals reads that content, and an item missing from it would have its dismissal pruned -
 // widening the range later would then resurface something the user had already dismissed.
 // =====================================================================================================================
 
-public record PsaItem(
+public record TeletextItem(
     string Text,
-    PsaKind Kind,
+    TeletextKind Kind,
     string? Glyph = null,
     int? CooldownMinutes = null,
     Version? MinVersion = null,
@@ -39,27 +39,27 @@ public record PsaItem(
 
 
 // =====================================================================================================================
-// OnlineTextsContent — Static store populated by OnlineTexts.
+// TeletextContent — Static store populated by Teletext.
 //
 // HOW TO ADD A NEW VARIABLE:
-//   1. Add a public static PsaItem[]? property here.
+//   1. Add a public static TeletextItem[]? property here.
 //   2. Add a matching # Section to IN-APP-ANNOUNCEMENTS.md.
 //      The section name must match the property name exactly (trimmed, case-insensitive).
 //
 // null always means "nothing to show" — absent section, empty content, or fetch failed.
 //
 // READING VALUES:
-//   For a PsaCard panel, call PsaCard.Populate(panel, OnlineTextsContent.YourProperty) - it
+//   For a TeletextCard panel, call TeletextCard.Populate(panel, TeletextContent.YourProperty) - it
 //   filters, and shows a "couldn't retrieve" notice rather than leaving the panel empty when
 //   the fetch failed or the .md has no section for that module.
-//   Anywhere else, call OnlineTexts.GetFiltered(OnlineTextsContent.YourProperty), which
-//   strips dismissed entries according to each item's PsaKind.
+//   Anywhere else, call Teletext.GetFiltered(TeletextContent.YourProperty), which
+//   strips dismissed entries according to each item's TeletextKind.
 //
-// SuspendControls is the one property that is not a PsaItem[] and is not filled by that
-// reflection map - see the # SuspendControls section in the .md format notes on OnlineTexts.
+// SuspendControls is the one property that is not a TeletextItem[] and is not filled by that
+// reflection map - see the # SuspendControls section in the .md format notes on Teletext.
 // =====================================================================================================================
 
-public static class OnlineTextsContent
+public static class TeletextContent
 {
     /// <summary>
     /// Control names the .md asks to have disabled, already version-gated for this build.
@@ -69,20 +69,20 @@ public static class OnlineTextsContent
     public static string[]? SuspendControls { get; set; }
 
 
-    public static PsaItem[]? Credits { get; set; }
-    public static PsaItem[]? PSA { get; set; }
-    public static PsaItem[]? PackUpdateInfo { get; set; }
-    public static PsaItem[]? PackUpdateExtraInfo { get; set; }
-    public static PsaItem[]? BetterRTXInfo { get; set; }
-    public static PsaItem[]? LutManagerInfo { get; set; }
-    public static PsaItem[]? DLSSInfo { get; set; }
-    public static PsaItem[]? PackBrowserInfo { get; set; }
-    public static PsaItem[]? AlchitexInfo { get; set; }
+    public static TeletextItem[]? Credits { get; set; }
+    public static TeletextItem[]? Teletext { get; set; }
+    public static TeletextItem[]? PackUpdateInfo { get; set; }
+    public static TeletextItem[]? PackUpdateExtraInfo { get; set; }
+    public static TeletextItem[]? BetterRTXInfo { get; set; }
+    public static TeletextItem[]? LutManagerInfo { get; set; }
+    public static TeletextItem[]? DLSSInfo { get; set; }
+    public static TeletextItem[]? PackBrowserInfo { get; set; }
+    public static TeletextItem[]? AlchitexInfo { get; set; }
 }
 
 
 // =====================================================================================================================
-// PsaKind — Controls dismiss behaviour and button visibility for a PsaItem.
+// TeletextKind — Controls dismiss behaviour and button visibility for a TeletextItem.
 //
 //   Pinned    (#  body)  — No dismiss button. Always shown. Cannot be hidden by the user.
 //   Timed     (## body)  — Dismiss button with "Dismiss for a day" tooltip.
@@ -91,7 +91,7 @@ public static class OnlineTextsContent
 //                          Dismissed once → gone forever (until text changes in the .md).
 // =====================================================================================================================
 
-public enum PsaKind
+public enum TeletextKind
 {
     Pinned,
     Timed,
@@ -99,22 +99,22 @@ public enum PsaKind
 }
 
 // =====================================================================================================================
-// OnlineTextsJsonContext — Source-generated JSON metadata for trim-safe (de)serialization.
-// Only the two shapes OnlineTexts actually persists: a string[] and a Dictionary<string,string>.
+// TeletextJsonContext — Source-generated JSON metadata for trim-safe (de)serialization.
+// Only the two shapes Teletext actually persists: a string[] and a Dictionary<string,string>.
 // =====================================================================================================================
 
 [JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
-internal partial class OnlineTextsJsonContext : JsonSerializerContext
+internal partial class TeletextJsonContext : JsonSerializerContext
 {
 }
 
 // =====================================================================================================================
-// OnlineTexts — Online text retrieval, caching, and per-user dismiss tracking.
+// Teletext — Online text retrieval, caching, and per-user dismiss tracking.
 //
 // ── .md FILE FORMAT ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   # PropertyName          ← Section header. Must match a property in OnlineTextsContent (case-insensitive).
+//   # PropertyName          ← Section header. Must match a property in TeletextContent (case-insensitive).
 //                             Spaces before/after the name are trimmed automatically.
 //
 //   Pinned text here.       ← PINNED: no dismiss button, always shown.
@@ -196,23 +196,23 @@ internal partial class OnlineTextsJsonContext : JsonSerializerContext
 //     ## DLSSButton [maxver:"1.26.21.0"]      ← only on builds up to the one that fixes it
 //     LaunchButton
 //
-//   [minver]/[maxver] gate a line here exactly as they gate a PSA, and they are the reason to keep
+//   [minver]/[maxver] gate a line here exactly as they gate a Teletext, and they are the reason to keep
 //   a line after the fix ships: dropping it outright re-enables the broken control on every build
 //   that still has the bug. Names are matched case-insensitively. A name nothing carries does
 //   nothing. Builds older than this section ignore it as an unknown section.
 //
 // ── DISMISS SYSTEM ──────────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   OnlineTexts.Dismiss(text)                     — Permanently blacklists text.
-//   OnlineTexts.DismissTimed(text, cooldownMins?) — Records expiry. Pass item.CooldownMinutes.
-//   OnlineTexts.GetFiltered(…)                    — Returns only items that should currently show.
+//   Teletext.Dismiss(text)                     — Permanently blacklists text.
+//   Teletext.DismissTimed(text, cooldownMins?) — Records expiry. Pass item.CooldownMinutes.
+//   Teletext.GetFiltered(…)                    — Returns only items that should currently show.
 //
-//   PsaCard calls the correct method automatically — you never call these directly.
+//   TeletextCard calls the correct method automatically — you never call these directly.
 //
 // ── DISMISS CLEANUP ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
 //   After every successful fresh fetch, orphaned dismiss hashes are pruned automatically.
-//   A hash is "orphaned" when the PSA it was dismissing no longer exists in the current .md.
+//   A hash is "orphaned" when the Teletext it was dismissing no longer exists in the current .md.
 //   Only permanent dismissals that have no matching item in the current content are removed.
 //   Timed dismissals are already self-expiring and are pruned on load — no extra cleanup needed.
 //
@@ -220,7 +220,7 @@ internal partial class OnlineTextsJsonContext : JsonSerializerContext
 //   so a temporary fetch failure can never accidentally wipe valid dismissals.
 // =====================================================================================================================
 
-public static class OnlineTexts
+public static class Teletext
 {
     // ── Config ────────────────────────────────────────────────────────────────
 
@@ -240,21 +240,21 @@ public static class OnlineTexts
     private static readonly ManagedAsset Announcements = new(
         URL,
         TimeSpan.FromHours(1),
-        FileName: "OnlineTexts_Cache.md",
+        FileName: "Teletext_Cache.md",
         Timeout: TimeSpan.FromSeconds(8));
 
-    private const string KEY_DISMISSED = "OnlineTexts_Dismissed";
-    private const string KEY_TIMED_DISMISSED = "OnlineTexts_TimedDismissed";
+    private const string KEY_DISMISSED = "Teletext_Dismissed";
+    private const string KEY_TIMED_DISMISSED = "Teletext_TimedDismissed";
 
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning PSAs
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning Teletexts
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
 
     private static readonly Dictionary<string, PropertyInfo> _propMap =
-        typeof(OnlineTextsContent)
+        typeof(TeletextContent)
             .GetProperties(BindingFlags.Public | BindingFlags.Static)
-            .Where(p => p.PropertyType == typeof(PsaItem[]))
+            .Where(p => p.PropertyType == typeof(TeletextItem[]))
             .ToDictionary(p => p.Name.ToLowerInvariant(), p => p, StringComparer.Ordinal);
 
     private const string SUSPEND_SECTION = "suspendcontrols";
@@ -305,14 +305,14 @@ public static class OnlineTexts
     /// <summary>
     /// The most recent <see cref="TriggerUpdateAsync"/>, so something that didn't start the
     /// update can still act on its outcome. App starts the fetch before MainWindow exists, and
-    /// MainWindow awaits this to re-apply <see cref="OnlineTextsContent.SuspendControls"/> once
+    /// MainWindow awaits this to re-apply <see cref="TeletextContent.SuspendControls"/> once
     /// fresh content has landed. Completed-false until the first trigger.
     /// </summary>
     public static Task<bool> LatestUpdate { get; private set; } = Task.FromResult(false);
 
     private static async Task<bool> RunUpdateAsync(bool force)
     {
-        Trace.WriteLine("[OnlineTexts] TriggerUpdateAsync");
+        Trace.WriteLine("[Teletext] TriggerUpdateAsync");
         TryApplyCache();
 
         // The cache, the cooldown, the retries and the conditional request all belong to
@@ -320,7 +320,7 @@ public static class OnlineTexts
         // and that a genuinely new copy is the one occasion to prune dead dismissals.
         if (_fetching || !await _lock.WaitAsync(0))
         {
-            Trace.WriteLine("[OnlineTexts] Fetch already in progress — skipping");
+            Trace.WriteLine("[Teletext] Fetch already in progress — skipping");
             return false;
         }
 
@@ -331,25 +331,25 @@ public static class OnlineTexts
 
             if (read.Source != AssetSource.Fetched || read.Path is null)
             {
-                Trace.WriteLine($"[OnlineTexts] Nothing new ({read.Source}) - staying on cache (if available).");
+                Trace.WriteLine($"[Teletext] Nothing new ({read.Source}) - staying on cache (if available).");
                 return false;
             }
 
             var raw = File.ReadAllText(read.Path);
             if (string.IsNullOrWhiteSpace(raw))
             {
-                Trace.WriteLine("[OnlineTexts] Fetched copy was empty");
+                Trace.WriteLine("[Teletext] Fetched copy was empty");
                 return false;
             }
 
             ParseAndApply(raw);
             CleanupOrphanedDismissals();
-            Trace.WriteLine("[OnlineTexts] Fetch and parse succeeded");
+            Trace.WriteLine("[Teletext] Fetch and parse succeeded");
             return true;
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] Unexpected error: {ex}");
+            Trace.WriteLine($"[Teletext] Unexpected error: {ex}");
             return false;
         }
         finally
@@ -364,16 +364,16 @@ public static class OnlineTexts
 
     /// <summary>
     /// Filters <paramref name="source"/> down to items that should currently be shown,
-    /// according to each item's PsaKind and the user's dismiss history.
+    /// according to each item's TeletextKind and the user's dismiss history.
     /// <para>
     /// Pinned    — always passes through.
     /// Timed     — passes through once its cooldown has elapsed.
     /// Permanent — passes through only if never permanently dismissed.
     /// </para>
     /// Any kind is dropped first if its [minver]/[maxver] range excludes this app version.
-    /// Always use this instead of reading OnlineTextsContent properties directly.
+    /// Always use this instead of reading TeletextContent properties directly.
     /// </summary>
-    public static PsaItem[]? GetFiltered(PsaItem[]? source)
+    public static TeletextItem[]? GetFiltered(TeletextItem[]? source)
     {
         if (source is null || source.Length == 0) return null;
 
@@ -389,9 +389,9 @@ public static class OnlineTexts
                 var hash = DismissHash(item.Text);
                 return item.Kind switch
                 {
-                    PsaKind.Pinned => true,
-                    PsaKind.Timed => !timedDismissed.TryGetValue(hash, out var expiry) || now >= expiry,
-                    PsaKind.Permanent => !dismissed.Contains(hash),
+                    TeletextKind.Pinned => true,
+                    TeletextKind.Timed => !timedDismissed.TryGetValue(hash, out var expiry) || now >= expiry,
+                    TeletextKind.Permanent => !dismissed.Contains(hash),
                     _ => true
                 };
             })
@@ -441,7 +441,7 @@ public static class OnlineTexts
     /// <summary>
     /// Permanently blacklists <paramref name="text"/>.
     /// It will never appear in <see cref="GetFiltered"/> results again until the text changes.
-    /// Only call for Permanent items — PsaCard handles this automatically.
+    /// Only call for Permanent items — TeletextCard handles this automatically.
     /// </summary>
     public static void Dismiss(string text)
     {
@@ -454,21 +454,21 @@ public static class OnlineTexts
                 if (d.Add(DismissHash(text)))
                 {
                     SaveDismissed(d);
-                    Trace.WriteLine($"[OnlineTexts] Dismissed: \"{text.Substring(0, Math.Min(60, text.Length))}\"");
+                    Trace.WriteLine($"[Teletext] Dismissed: \"{text.Substring(0, Math.Min(60, text.Length))}\"");
                 }
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] Dismiss failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] Dismiss failed: {ex.Message}");
         }
     }
 
     /// <summary>
     /// Hides <paramref name="text"/> for the item's cooldown duration (or the global default).
     /// After the window elapses it will reappear in <see cref="GetFiltered"/> results.
-    /// Only call for Timed items — PsaCard handles this automatically.
-    /// Pass <paramref name="cooldownMinutes"/> from <see cref="PsaItem.CooldownMinutes"/> to
+    /// Only call for Timed items — TeletextCard handles this automatically.
+    /// Pass <paramref name="cooldownMinutes"/> from <see cref="TeletextItem.CooldownMinutes"/> to
     /// respect per-item [cd:""] overrides from the .md file.
     /// </summary>
     public static void DismissTimed(string text, int? cooldownMinutes = null)
@@ -485,23 +485,23 @@ public static class OnlineTexts
                     : TIMED_DURATION;
                 d[hash] = DateTime.UtcNow.Add(duration);
                 SaveTimedDismissed(d);
-                Trace.WriteLine($"[OnlineTexts] Timed dismiss until {d[hash]:HH:mm:ss} " +
+                Trace.WriteLine($"[Teletext] Timed dismiss until {d[hash]:HH:mm:ss} " +
                     $"(cd={duration.TotalMinutes:F0}min): \"{text.Substring(0, Math.Min(60, text.Length))}\"");
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] DismissTimed failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] DismissTimed failed: {ex.Message}");
         }
     }
 
     // ── Hash helper ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The identity a dismissal is stored under: the first 8 bytes of SHA-256 over the PSA's
+    /// The identity a dismissal is stored under: the first 8 bytes of SHA-256 over the Teletext's
     /// own text, as 16 hex characters.
     ///
-    /// <para><b>The text is the identity.</b> Editing a published PSA - even fixing a typo -
+    /// <para><b>The text is the identity.</b> Editing a published Teletext - even fixing a typo -
     /// produces a different hash, so everyone who dismissed the old wording sees the new one
     /// again. That is the intended behaviour for a changed announcement, and the reason not
     /// to touch the text of one that is merely still running.</para>
@@ -541,14 +541,14 @@ public static class OnlineTexts
             var raw = ApplicationData.Current.LocalSettings.Values[KEY_DISMISSED] as string;
             if (!string.IsNullOrEmpty(raw))
             {
-                var arr = JsonSerializer.Deserialize(raw, OnlineTextsJsonContext.Default.StringArray);
+                var arr = JsonSerializer.Deserialize(raw, TeletextJsonContext.Default.StringArray);
                 if (arr is not null)
                     return new HashSet<string>(arr, StringComparer.Ordinal);
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] LoadDismissed failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] LoadDismissed failed: {ex.Message}");
         }
         return new HashSet<string>(StringComparer.Ordinal);
     }
@@ -558,11 +558,11 @@ public static class OnlineTexts
         try
         {
             ApplicationData.Current.LocalSettings.Values[KEY_DISMISSED] =
-                JsonSerializer.Serialize(dismissed.ToArray(), OnlineTextsJsonContext.Default.StringArray);
+                JsonSerializer.Serialize(dismissed.ToArray(), TeletextJsonContext.Default.StringArray);
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] SaveDismissed failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] SaveDismissed failed: {ex.Message}");
         }
     }
 
@@ -571,7 +571,7 @@ public static class OnlineTexts
     // =========================================================================
 
     /// <summary>
-    /// Hash to expiry time for temporarily-dismissed PSAs, loaded once and cached like
+    /// Hash to expiry time for temporarily-dismissed Teletexts, loaded once and cached like
     /// <see cref="GetDismissed"/>. An entry whose time has passed is simply no longer
     /// dismissed; pruning is separate housekeeping, not a precondition for correctness.
     /// </summary>
@@ -592,7 +592,7 @@ public static class OnlineTexts
             var raw = ApplicationData.Current.LocalSettings.Values[KEY_TIMED_DISMISSED] as string;
             if (!string.IsNullOrEmpty(raw))
             {
-                var dict = JsonSerializer.Deserialize(raw, OnlineTextsJsonContext.Default.DictionaryStringString);
+                var dict = JsonSerializer.Deserialize(raw, TeletextJsonContext.Default.DictionaryStringString);
                 if (dict is not null)
                 {
                     var now = DateTime.UtcNow;
@@ -608,7 +608,7 @@ public static class OnlineTexts
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] LoadTimedDismissed failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] LoadTimedDismissed failed: {ex.Message}");
         }
         return new Dictionary<string, DateTime>(StringComparer.Ordinal);
     }
@@ -619,11 +619,11 @@ public static class OnlineTexts
         {
             var toStore = dismissed.ToDictionary(k => k.Key, v => v.Value.ToString("O"));
             ApplicationData.Current.LocalSettings.Values[KEY_TIMED_DISMISSED] =
-                JsonSerializer.Serialize(toStore, OnlineTextsJsonContext.Default.DictionaryStringString);
+                JsonSerializer.Serialize(toStore, TeletextJsonContext.Default.DictionaryStringString);
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] SaveTimedDismissed failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] SaveTimedDismissed failed: {ex.Message}");
         }
     }
 
@@ -632,7 +632,7 @@ public static class OnlineTexts
     // =========================================================================
 
     /// <summary>
-    /// Populates <see cref="OnlineTextsContent"/> from the cached copy AssetUpdater holds, so
+    /// Populates <see cref="TeletextContent"/> from the cached copy AssetUpdater holds, so
     /// the app has something to show before - or instead of - a successful fetch. Silent on
     /// failure: no cache is a normal first-run state, not an error.
     /// </summary>
@@ -646,16 +646,16 @@ public static class OnlineTexts
                 var cached = File.ReadAllText(path);
                 if (!string.IsNullOrWhiteSpace(cached))
                 {
-                    Trace.WriteLine($"[OnlineTexts] Applying cache ({cached.Length} chars)");
+                    Trace.WriteLine($"[Teletext] Applying cache ({cached.Length} chars)");
                     ParseAndApply(cached);
                     return;
                 }
             }
-            Trace.WriteLine("[OnlineTexts] No cache found");
+            Trace.WriteLine("[Teletext] No cache found");
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] TryApplyCache failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] TryApplyCache failed: {ex.Message}");
         }
     }
 
@@ -692,21 +692,21 @@ public static class OnlineTexts
                             uint.TryParse(val, System.Globalization.NumberStyles.HexNumber, null, out _))
                             glyph = val.ToUpperInvariant();
                         else
-                            Trace.WriteLine($"[OnlineTexts] Invalid glyph value: '{val}' — must be 4–5 hex digits, ignored");
+                            Trace.WriteLine($"[Teletext] Invalid glyph value: '{val}' — must be 4–5 hex digits, ignored");
                         break;
 
                     case "cd":
                         if (int.TryParse(val, out var cd) && cd >= 0)
                             cooldownMinutes = cd;
                         else
-                            Trace.WriteLine($"[OnlineTexts] Invalid cd value: '{val}' — must be a positive integer (minutes), ignored");
+                            Trace.WriteLine($"[Teletext] Invalid cd value: '{val}' — must be a positive integer (minutes), ignored");
                         break;
 
                     case "minver":
                     case "maxver":
                         var version = ParseGateVersion(val);
                         if (version is null)
-                            Trace.WriteLine($"[OnlineTexts] Invalid {key} value: '{val}' — must be 1–4 dot-separated numbers, ignored");
+                            Trace.WriteLine($"[Teletext] Invalid {key} value: '{val}' — must be 1–4 dot-separated numbers, ignored");
                         else if (key == "minver")
                             minVersion = version;
                         else
@@ -714,13 +714,13 @@ public static class OnlineTexts
                         break;
 
                     default:
-                        Trace.WriteLine($"[OnlineTexts] Unknown modifier key: '{key}' — ignored");
+                        Trace.WriteLine($"[Teletext] Unknown modifier key: '{key}' — ignored");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"[OnlineTexts] Modifier parse error for [{key}:\"{val}\"]: {ex.Message}");
+                Trace.WriteLine($"[Teletext] Modifier parse error for [{key}:\"{val}\"]: {ex.Message}");
             }
 
             return string.Empty; // remove the field token from the title string
@@ -734,7 +734,7 @@ public static class OnlineTexts
     // =========================================================================
 
     /// <summary>
-    /// Nullifies all OnlineTextsContent properties, parses the raw .md,
+    /// Nullifies all TeletextContent properties, parses the raw .md,
     /// and writes results via reflection. Missing sections stay null.
     /// </summary>
     private static void ParseAndApply(string raw)
@@ -743,25 +743,25 @@ public static class OnlineTexts
         {
             foreach (var prop in _propMap.Values)
                 prop.SetValue(null, null);
-            OnlineTextsContent.SuspendControls = null;
+            TeletextContent.SuspendControls = null;
 
             var (sections, suspended) = Parse(raw);
 
-            OnlineTextsContent.SuspendControls = suspended.Count > 0 ? suspended.ToArray() : null;
+            TeletextContent.SuspendControls = suspended.Count > 0 ? suspended.ToArray() : null;
             if (suspended.Count > 0)
-                Trace.WriteLine($"[OnlineTexts] Suspending {suspended.Count} control(s): {string.Join(", ", suspended)}");
+                Trace.WriteLine($"[Teletext] Suspending {suspended.Count} control(s): {string.Join(", ", suspended)}");
 
             foreach (var (key, blocks) in sections)
             {
                 if (!_propMap.TryGetValue(key, out var prop))
                 {
-                    Trace.WriteLine($"[OnlineTexts] No property for section '{key}' — ignoring");
+                    Trace.WriteLine($"[Teletext] No property for section '{key}' — ignoring");
                     continue;
                 }
 
                 var items = blocks
                     .Where(b => !string.IsNullOrWhiteSpace(b.Text))
-                    .Select(b => new PsaItem(
+                    .Select(b => new TeletextItem(
                         b.Text.Trim(),
                         b.Kind,
                         Glyph: b.Modifiers.Glyph,
@@ -771,19 +771,19 @@ public static class OnlineTexts
                     .ToArray();
 
                 prop.SetValue(null, items.Length > 0 ? items : null);
-                Trace.WriteLine($"[OnlineTexts] '{key}' → {items.Length} item(s) " +
-                    $"(pinned={items.Count(i => i.Kind == PsaKind.Pinned)}, " +
-                    $"timed={items.Count(i => i.Kind == PsaKind.Timed)}, " +
-                    $"permanent={items.Count(i => i.Kind == PsaKind.Permanent)})");
+                Trace.WriteLine($"[Teletext] '{key}' → {items.Length} item(s) " +
+                    $"(pinned={items.Count(i => i.Kind == TeletextKind.Pinned)}, " +
+                    $"timed={items.Count(i => i.Kind == TeletextKind.Timed)}, " +
+                    $"permanent={items.Count(i => i.Kind == TeletextKind.Permanent)})");
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] ParseAndApply exception: {ex}");
+            Trace.WriteLine($"[Teletext] ParseAndApply exception: {ex}");
         }
     }
 
-    private readonly record struct ParsedBlock(string Text, PsaKind Kind, Modifiers Modifiers);
+    private readonly record struct ParsedBlock(string Text, TeletextKind Kind, Modifiers Modifiers);
 
     /// <summary>
     /// Core parser. Returns lowercase-section-name → ordered blocks, plus the control names
@@ -812,7 +812,7 @@ public static class OnlineTexts
         var block = new StringBuilder();
 
         // Per-block state — reset for every ## / ### separator
-        var currentKind = PsaKind.Pinned;
+        var currentKind = TeletextKind.Pinned;
         var currentModifiers = default(Modifiers);
 
         void CommitBlock()
@@ -840,19 +840,19 @@ public static class OnlineTexts
                 if (inSuspendSection)
                 {
                     currentBlocks = null;
-                    Trace.WriteLine("[OnlineTexts] Section: SuspendControls");
+                    Trace.WriteLine("[Teletext] Section: SuspendControls");
                     continue;
                 }
 
                 currentBlocks = new List<ParsedBlock>();
                 result[name] = currentBlocks;
                 block.Clear();
-                currentKind = PsaKind.Pinned;
+                currentKind = TeletextKind.Pinned;
                 // Applies to the Pinned block only, not inherited by children. cd is dropped
                 // because Pinned blocks are never dismissed.
                 currentModifiers = modifiers with { CooldownMinutes = null };
 
-                Trace.WriteLine($"[OnlineTexts] Section: '{name}'" +
+                Trace.WriteLine($"[Teletext] Section: '{name}'" +
                     (modifiers.Glyph != null ? $" glyph={modifiers.Glyph}" : ""));
             }
             // ── Any line under # SuspendControls → a control name ─────────────
@@ -864,13 +864,13 @@ public static class OnlineTexts
                 if (IsInVersionRange(modifiers.MinVersion, modifiers.MaxVersion))
                     suspended.Add(controlName);
                 else
-                    Trace.WriteLine($"[OnlineTexts] Suspension of '{controlName}' is outside this version's range — skipped");
+                    Trace.WriteLine($"[Teletext] Suspension of '{controlName}' is outside this version's range — skipped");
             }
             // ── ### or deeper → Permanent ─────────────────────────────────────
             else if (currentBlocks is not null && line.StartsWith("###"))
             {
                 CommitBlock();
-                currentKind = PsaKind.Permanent;
+                currentKind = TeletextKind.Permanent;
 
                 // Null glyph means default — no inheritance from the # line
                 (_, currentModifiers) = ExtractModifiers(line.Substring(3));
@@ -880,7 +880,7 @@ public static class OnlineTexts
             else if (currentBlocks is not null && line.StartsWith("##"))
             {
                 CommitBlock();
-                currentKind = PsaKind.Timed;
+                currentKind = TeletextKind.Timed;
 
                 (_, currentModifiers) = ExtractModifiers(line.Substring(2));
                 LogSeparator("## → Timed", currentModifiers);
@@ -897,7 +897,7 @@ public static class OnlineTexts
     }
 
     private static void LogSeparator(string label, Modifiers m) =>
-        Trace.WriteLine($"[OnlineTexts] {label}" +
+        Trace.WriteLine($"[Teletext] {label}" +
             (m.Glyph != null ? $" glyph={m.Glyph}" : "") +
             (m.CooldownMinutes != null ? $" cd={m.CooldownMinutes}" : "") +
             (m.MinVersion != null ? $" minver={m.MinVersion}" : "") +
@@ -907,7 +907,7 @@ public static class OnlineTexts
     /// Removes permanently dismissed hashes that no longer match any item in the current .md.
     /// Called automatically after every successful fresh fetch — never on stale cache.
     ///
-    /// A dismissal is orphaned when the PSA it suppressed has been removed or reworded in the .md.
+    /// A dismissal is orphaned when the Teletext it suppressed has been removed or reworded in the .md.
     /// Since the hash is derived from the item text, any text change produces a new hash,
     /// making the old dismissal inert. This pass finds and removes those inert entries.
     ///
@@ -925,10 +925,10 @@ public static class OnlineTexts
 
             foreach (var prop in _propMap.Values)
             {
-                if (prop.GetValue(null) is not PsaItem[] items) continue;
+                if (prop.GetValue(null) is not TeletextItem[] items) continue;
                 foreach (var item in items)
                 {
-                    if (item.Kind == PsaKind.Permanent && !string.IsNullOrWhiteSpace(item.Text))
+                    if (item.Kind == TeletextKind.Permanent && !string.IsNullOrWhiteSpace(item.Text))
                         liveHashes.Add(DismissHash(item.Text));
                 }
             }
@@ -942,18 +942,18 @@ public static class OnlineTexts
                 if (removed > 0)
                 {
                     SaveDismissed(d);
-                    Trace.WriteLine($"[OnlineTexts] Cleanup: removed {removed} orphaned dismissal(s) " +
+                    Trace.WriteLine($"[Teletext] Cleanup: removed {removed} orphaned dismissal(s) " +
                         $"({before} → {d.Count})");
                 }
                 else
                 {
-                    Trace.WriteLine($"[OnlineTexts] Cleanup: no orphaned dismissals ({d.Count} current)");
+                    Trace.WriteLine($"[Teletext] Cleanup: no orphaned dismissals ({d.Count} current)");
                 }
             }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[OnlineTexts] CleanupOrphanedDismissals failed: {ex.Message}");
+            Trace.WriteLine($"[Teletext] CleanupOrphanedDismissals failed: {ex.Message}");
         }
     }
 

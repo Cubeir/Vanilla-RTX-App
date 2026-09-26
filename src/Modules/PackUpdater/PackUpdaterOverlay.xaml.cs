@@ -306,8 +306,8 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
 
     private async Task InitializePackInformation()
     {
-        PsaCard.Populate(PackUpdateInfoPanel, OnlineTextsContent.PackUpdateInfo, cardFontSize: 13);
-        PsaCard.Populate(PackUpdateExtraInfoPanel, OnlineTextsContent.PackUpdateExtraInfo, cardFontSize: 13);
+        TeletextCard.Populate(PackUpdateInfoPanel, TeletextContent.PackUpdateInfo, cardFontSize: 13);
+        TeletextCard.Populate(PackUpdateExtraInfoPanel, TeletextContent.PackUpdateExtraInfo, cardFontSize: 13);
         UpdateInstalledVersionDisplays();
         await FetchAndDisplayRemoteVersions();
     }

@@ -47,7 +47,7 @@
             <!-- ── Content area - one flat area. ─────────────────────────────── -->
             <Grid>
                 <Grid.RowDefinitions>
-                    <!-- Announcements (PSA cards, auto-height) -->
+                    <!-- Announcements (Teletext cards, auto-height) -->
                     <RowDefinition Height="Auto" />
                     <!-- Pack list (scrollable)                 -->
                     <RowDefinition Height="*" />
@@ -69,7 +69,7 @@
                     <!-- Wrap both panels in a single parent StackPanel -->
                     <StackPanel>
 
-                        <!-- PSA / announcement cards -->
+                        <!-- Teletext / announcement cards -->
                         <StackPanel x:Name="PackBrowserInfoPanel"
                                     Spacing="10"
                                     Margin="20,12,24,0" />

@@ -49,7 +49,7 @@ public static class AlchitexVariables
         // which would scroll a brand new user to a donation ask before they've even seen
         // what the feature does. Written immediately wherever it changes (not just on
         // app close, like the rest of Persistent) so the cap holds even across a crash.
-        // Parse with DateTimeStyles.RoundtripKind, same trap as OnlineTexts' own cooldown.
+        // Parse with DateTimeStyles.RoundtripKind, same trap as Teletext' own cooldown.
         public static string LastSupportScrollUtc = "";
     }
     public static class Defaults
@@ -174,7 +174,7 @@ public sealed partial class Alchitex : ModuleOverlay
             _backdrop.Start();
 
             AlchitexVariables.LoadSettings();
-            PsaCard.Populate(AlchitexInfoPanel, OnlineTextsContent.AlchitexInfo, sharpCorners: true);
+            TeletextCard.Populate(AlchitexInfoPanel, TeletextContent.AlchitexInfo, sharpCorners: true);
             BuildSupportSection();
             SeedSupportScrollCooldownIfNeeded();
 
@@ -865,7 +865,7 @@ public sealed partial class Alchitex : ModuleOverlay
 
     /// <summary>
     /// Fills SupportPersuasionText. The static copy here is written to end on a complete
-    /// sentence AND to flow straight into OnlineTextsContent.Credits - appended verbatim
+    /// sentence AND to flow straight into TeletextContent.Credits - appended verbatim
     /// right after it - so the two read as one continuous message rather than two bolted-
     /// together blocks. If Credits hasn't loaded (no internet, fetch still pending), the
     /// persuasion text alone still stands fine on its own.
@@ -876,7 +876,7 @@ public sealed partial class Alchitex : ModuleOverlay
             "If this finally made a favorite pack look appropriate under ray tracing, or saved you the trouble of doing this by hand, and you'd like to help keep it free and maintained for everyone else too, a donation on Ko-fi goes a long way, and changes nothing about your ability to keep using the app.\n\n" +
             "RTX Reactor is the culmination of years of work that has gone on here, and it is handed to you completely free, because I wanted to help as many people as possible enjoy their packs with RTX, and any price would have worked against that goal." +
             "";
-        var credits = OnlineTextsContent.Credits?[0].Text?.Trim();
+        var credits = TeletextContent.Credits?[0].Text?.Trim();
 
         SupportPersuasionText.Text = string.IsNullOrEmpty(credits)
             ? Persuasion
@@ -933,7 +933,7 @@ public sealed partial class Alchitex : ModuleOverlay
         var raw = AlchitexVariables.Persistent.LastSupportScrollUtc;
         if (string.IsNullOrEmpty(raw)) return true;
 
-        // RoundtripKind matters here exactly as it does for OnlineTexts' own cooldown without it
+        // RoundtripKind matters here exactly as it does for Teletext' own cooldown without it
         // a UTC "O" stamp parses back as local time and the 24h window is off by the machine's offset.
         if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var last))
             return true;

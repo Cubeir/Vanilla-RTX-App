@@ -10,10 +10,10 @@ using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Vanilla_RTX_App.Core;
 
-public sealed partial class PsaCard : UserControl
+public sealed partial class TeletextCard : UserControl
 {
     private readonly string _text;
-    private readonly PsaKind _kind;
+    private readonly TeletextKind _kind;
     private readonly int? _cooldownMinutes;
 
     // When animations are suspended each animated property is assigned outright rather than
@@ -38,10 +38,10 @@ public sealed partial class PsaCard : UserControl
     /// carries no dismiss button - there is nothing for the user to dismiss, it goes away on
     /// its own the next time the fetch works.
     /// </summary>
-    private static readonly PsaItem RetrievalFailedNotice = new(
-        "An error occurred when trying to retrieve text contents for this module, please try again later " +
-        "and make sure the app has internet access. Some features may be limited without internet.",
-        PsaKind.Pinned,
+    private static readonly TeletextItem RetrievalFailedNotice = new(
+        "An error occurred when trying to retrieve text contents for this module, please relaunch the app " +
+        "and make sure it has internet access. Some features will be limited without internet.",
+        TeletextKind.Pinned,
         Glyph: "EB5E");
 
     /// <summary>
@@ -60,10 +60,10 @@ public sealed partial class PsaCard : UserControl
     ///   - source has items but GetFiltered returns null - the user dismissed them all.
     ///     That's their choice and an empty panel is the correct answer.
     ///
-    /// Deliberately lives here rather than on OnlineTexts: this is a card, and the log-facing
-    /// PSA feed reads OnlineTexts directly, so it can't pick this up by accident.
+    /// Deliberately lives here rather than on Teletext: this is a card, and the log-facing
+    /// Teletext feed reads Teletext directly, so it can't pick this up by accident.
     /// </summary>
-    public static void Populate(Panel host, PsaItem[]? source, double? cardFontSize = null, bool sharpCorners = false)
+    public static void Populate(Panel host, TeletextItem[]? source, double? cardFontSize = null, bool sharpCorners = false)
     {
         if (host is null) return;
 
@@ -71,20 +71,20 @@ public sealed partial class PsaCard : UserControl
 
         var items = source is null || source.Length == 0
             ? new[] { RetrievalFailedNotice }
-            : OnlineTexts.GetFiltered(source);
+            : Teletext.GetFiltered(source);
 
         if (items is null) return;
 
         foreach (var item in items)
         {
-            var card = new PsaCard(item, sharpenCorners: sharpCorners);
+            var card = new TeletextCard(item, sharpenCorners: sharpCorners);
             if (cardFontSize is { } size) card.CardFontSize = size;
 
             host.Children.Add(card);
         }
     }
 
-    public PsaCard(PsaItem item, bool sharpenCorners = false)
+    public TeletextCard(TeletextItem item, bool sharpenCorners = false)
     {
         InitializeComponent();
         _text = item.Text;
@@ -103,24 +103,24 @@ public sealed partial class PsaCard : UserControl
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"[PsaCard] Failed to apply glyph '{item.Glyph}' — using default. {ex.Message}");
+                Trace.WriteLine($"[TeletextCard] Failed to apply glyph '{item.Glyph}' — using default. {ex.Message}");
             }
         }
 
         // ── Per-kind background, opacity, dismiss setup ───────────────────────
         switch (item.Kind)
         {
-            case PsaKind.Pinned:
+            case TeletextKind.Pinned:
                 DismissButton.Visibility = Visibility.Collapsed;
                 ContentText.Opacity = 0.95;
                 break;
 
-            case PsaKind.Timed:
+            case TeletextKind.Timed:
                 ToolTipService.SetToolTip(DismissButton, FormatCooldownTooltip(_cooldownMinutes)); // tooltip
                 ContentText.Opacity = 0.9;
                 break;
 
-            case PsaKind.Permanent:
+            case TeletextKind.Permanent:
                 CardBorder.Background = new SolidColorBrush(Colors.Transparent);
                 CardBorder.Translation = System.Numerics.Vector3.Zero;
                 CardBorder.Shadow = null;
@@ -135,7 +135,7 @@ public sealed partial class PsaCard : UserControl
     }
 
     /// <summary>
-    /// Opens a PSA link in the default browser or mail client. Anything but an absolute http,
+    /// Opens a Teletext link in the default browser or mail client. Anything but an absolute http,
     /// https or mailto address is refused and logged: this text comes off the network, and a
     /// link in it must not be able to launch whatever protocol handler happens to be installed.
     /// </summary>
@@ -144,12 +144,12 @@ public sealed partial class PsaCard : UserControl
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto")
             _ = Windows.System.Launcher.LaunchUriAsync(uri);
         else
-            Trace.WriteLine($"[PsaCard] Refused to open link '{url}' — only absolute http, https and mailto are allowed");
+            Trace.WriteLine($"[TeletextCard] Refused to open link '{url}' — only absolute http, https and mailto are allowed");
     }
 
     private static string FormatCooldownTooltip(int? cooldownMinutes)
     {
-        var minutes = cooldownMinutes ?? (int)OnlineTexts.TimedDuration.TotalMinutes;
+        var minutes = cooldownMinutes ?? (int)Teletext.TimedDuration.TotalMinutes;
 
         if (minutes == 0)
             return "Dismiss for now";
@@ -167,13 +167,13 @@ public sealed partial class PsaCard : UserControl
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (_kind != PsaKind.Pinned)
+        if (_kind != TeletextKind.Pinned)
             AnimateOpacity(DismissButton, to: 0.9, durationMs: FADE_IN_MS);
     }
 
     private void Card_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (_kind != PsaKind.Pinned)
+        if (_kind != TeletextKind.Pinned)
             AnimateOpacity(DismissButton, to: 0.0, durationMs: FADE_OUT_MS);
     }
 
@@ -181,15 +181,15 @@ public sealed partial class PsaCard : UserControl
     {
         switch (_kind)
         {
-            case PsaKind.Permanent:
-                OnlineTexts.Dismiss(_text);
+            case TeletextKind.Permanent:
+                Teletext.Dismiss(_text);
                 break;
-            case PsaKind.Timed:
+            case TeletextKind.Timed:
                 // Pass the per-item cooldown so [cd:""] overrides from the .md are respected.
                 // If null, DismissTimed falls back to the global TIMED_DURATION.
-                OnlineTexts.DismissTimed(_text, _cooldownMinutes);
+                Teletext.DismissTimed(_text, _cooldownMinutes);
                 break;
-            case PsaKind.Pinned:
+            case TeletextKind.Pinned:
                 return; // button is hidden, should never fire
         }
         AnimateCollapse();

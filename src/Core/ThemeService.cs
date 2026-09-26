@@ -55,7 +55,7 @@ public static class ThemeService
     /// would resolve against Windows' theme rather than the app's.
     ///
     /// <para><b>One instance, shared by every run that uses it</b>, and recoloured in place on
-    /// each theme change - that is what makes text already on screen (a PSA card on the main
+    /// each theme change - that is what makes text already on screen (a Teletext card on the main
     /// window, say) follow the theme without anything re-rendering it. Build it on the UI
     /// thread, which is the only place a run is ever built anyway.</para>
     /// </summary>

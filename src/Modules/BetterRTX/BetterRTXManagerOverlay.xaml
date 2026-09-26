@@ -131,7 +131,7 @@
                 <!-- Wrapped both panels in a single parent StackPanel -->
                 
                 <StackPanel>
-                    <!-- Pinned by hand rather than fetched like other PSAs, its just visually similar -->
+                    <!-- Pinned by hand rather than fetched like other Teletexts, its just visually similar -->
                     <Border x:Name="PreviewWarningCard"
                             Margin="20,12,24,0"
                             Visibility="Collapsed"

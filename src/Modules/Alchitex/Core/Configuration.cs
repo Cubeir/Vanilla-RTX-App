@@ -385,7 +385,7 @@ public static class MaterialDefaults
 
 // =====================================================================================
 // AlchitexJsonContext - source-generated JSON metadata for trim-safe (de)serialization,
-// same approach as Core/OnlineTexts.cs's OnlineTextsJsonContext.
+// same approach as Core/Teletext.cs's TeletextJsonContext.
 //
 // This is NOT optional polish. Release builds set PublishTrimmed, and every one of these
 // shapes was previously (de)serialized reflectively, so the trimmer had no way to see

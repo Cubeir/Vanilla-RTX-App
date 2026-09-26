@@ -230,7 +230,7 @@
                  The controls area is a fixed 512px tall and never scales with the
                  window; the announcements below it are whatever height their cards
                  add up to. Together they overflow the window once there are enough
-                 PSAs, and that is what the scrollbar is for - there's no second,
+                 Teletexts, and that is what the scrollbar is for - there's no second,
                  nested scroller inside the announcements panel any more.
 
                  AnnouncementBackground.MinHeight is kept in sync with the leftover
@@ -561,7 +561,7 @@
                             Canvas.ZIndex="1" />
 
 
-                    <!-- ── PSA / announcements ── -->
+                    <!-- ── Teletext / announcements ── -->
                     <Border x:Name="AnnouncementBackground"
                             Grid.Row="1"
                             Canvas.ZIndex="2"
@@ -578,10 +578,10 @@
                         </Border.Background>
 
                         <Grid>
-                            <!-- Wraps the PSA panel and the Ko-fi section so the latter
+                            <!-- Wraps the Teletext panel and the Ko-fi section so the latter
                                  stacks directly beneath the former. Has to be a separate
                                  StackPanel rather than putting SupportSection straight into
-                                 AlchitexInfoPanel - PsaCard.Populate() clears that
+                                 AlchitexInfoPanel - TeletextCard.Populate() clears that
                                  panel's children outright on every refresh. -->
                             <StackPanel>
                                 <StackPanel x:Name="AlchitexInfoPanel"

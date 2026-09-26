@@ -197,14 +197,14 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
             LoadingPanel.Visibility = Visibility.Collapsed;
             MainPanel.Visibility = Visibility.Visible;
             ApplyDefaultsNotice();
-            PsaCard.Populate(LutManagerInfoPanel, OnlineTextsContent.LutManagerInfo);
+            TeletextCard.Populate(LutManagerInfoPanel, TeletextContent.LutManagerInfo);
         });
     }
 
     /// <summary>
     /// Shows the blocked-state card when there is no usable backup, and takes the dropdown
     /// down with it - the card explains, the disabled controls enforce. A static
-    /// Pinned-PsaCard lookalike in the XAML, same as BetterRTX's two: this isn't news and
+    /// Pinned-TeletextCard lookalike in the XAML, same as BetterRTX's two: this isn't news and
     /// there is nothing to dismiss.
     /// </summary>
     private void ApplyDefaultsNotice()

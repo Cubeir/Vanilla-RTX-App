@@ -40,7 +40,7 @@ public sealed partial class Alchitex
     /// <summary>
     /// How far a failed pack falls once it is clear of the reactor, on top of the tile's own
     /// height (which is spent emerging from behind it). Fixed rather than measured against
-    /// whatever is below: the announcements panel's height depends on how many PSAs there
+    /// whatever is below: the announcements panel's height depends on how many Teletexts there
     /// are that day, and how long a failure takes to read should not.
     /// </summary>
     private const double EjectVisibleTravel = 170;

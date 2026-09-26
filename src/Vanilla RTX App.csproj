@@ -96,7 +96,7 @@
     <None Update="Modules\Alchitex\Assets\MATERIALS.md">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
-    <Page Update="Core\PsaCard.xaml">
+    <Page Update="Core\TeletextCard.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Update="Modules\Alchitex\AlchitexOverlay.xaml">
