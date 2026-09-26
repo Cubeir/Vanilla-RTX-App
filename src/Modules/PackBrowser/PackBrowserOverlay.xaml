@@ -61,24 +61,24 @@
 
                 <!-- PACK LIST (scrollable) -->
                 <ScrollViewer Grid.Row="1"
-                              Padding="16,0,16,0"
                               IsTextScaleFactorEnabled="False"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Margin="5,0,5,0">
+                              Margin="0,0,0,0">
 
                     <!-- Wrap both panels in a single parent StackPanel -->
                     <StackPanel>
 
                         <!-- PSA / announcement cards -->
                         <StackPanel x:Name="PackBrowserAnnouncementsPanel"
-                                    Spacing="12"
-                                    Margin="0,10,0,8" />
+                                    Spacing="10"
+                                    Margin="20,12,24,0" />
 
                         <!-- Pack list -->
                         <StackPanel x:Name="PackListContainer"
                                     Spacing="4"
-                                    Padding="0,-2,0,8" />
+                                    Margin="20,12,24,0"
+                                    Padding="0,0,0,8" />
 
                     </StackPanel>
                 </ScrollViewer>

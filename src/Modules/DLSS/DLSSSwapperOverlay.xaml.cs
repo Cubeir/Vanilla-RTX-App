@@ -185,6 +185,9 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
         LoadingPanel.Visibility = Visibility.Collapsed;
         DllSelectionPanel.Visibility = Visibility.Visible;
         PsaCard.Populate(DLSSAnnouncementsPanel, OnlineTextsContent.DLSSAnnouncements);
+        DLSSAnnouncementsPanel.Visibility = DLSSAnnouncementsPanel.Children.Count > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private async void ManualSelectionButton_Click(object sender, RoutedEventArgs e)

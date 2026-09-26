@@ -69,17 +69,17 @@
                   Grid.Row="0" />
 
             <ScrollViewer Grid.Row="0"
-                          Padding="20,0,20,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <StackPanel x:Name="DLSSAnnouncementsPanel"
-                                Spacing="12"
-                                Margin="0,0,0,0" />
+                                Spacing="10"
+                                Margin="20,12,24,0" />
                     <StackPanel x:Name="DllListContainer"
                                 Spacing="12"
-                                Padding="0,4,0,12"/>
+                                Margin="20,12,24,0"
+                                Padding="0,0,0,12" />
                 </StackPanel>
             </ScrollViewer>
 

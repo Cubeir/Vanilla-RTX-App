@@ -2383,6 +2383,26 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
+- Need better art to convey surface 3d effect intensity
+
+- Changelogs markdown overlay in PackUpdater overlay
+a Markdown page similar to the others that contains a table and changelogs of every single Vanilla RTX version, especially post 1.6+ modern era
+push refresh button further to the front.
+It'd be nice to keep a Concentrated place with a table of updates out for everyone... a clear place to follow updates
+May it also serve as a reminder of your 5 years of effort, it is easy for it to be lost and forgotten, those updates didn't get made overnight, to be forgotten overnight.
+
+Once that is implemented, and changelogs no longer clog up a huge vertical space,
+- Future plans for PackUpdat menu:
+Find a way to scale.
+Allow for More packs to appear after extensions/addons section, but in the same style, and derived from a
+an listing somewhere.
+The idea is, allow more creators to have their packs listed there, but only review and allow genuine content that have
+at least a good bit of effort put into them and are actively maintained. A markdown renderer is probably the way to go.
+
+A system for automatically updating ANY pack doesn't seem feasible, there is no repository to take this from
+Look into CurseForge api?! will it give you the packs? look into that ticket you sent their support long ago
+they said their API allows but, was it loose or did it need auth?
+
 - restructure main window to be less sloppy and more correct whilst looking the same by the end.
 the layout works perfectly but is wrong in many spots, with many dumb margins
 

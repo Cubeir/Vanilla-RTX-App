@@ -104,6 +104,9 @@ public sealed partial class PackBrowserOverlay : ModuleOverlay, Core.FileActivat
                 $"Select or drag & drop resource pack files to import to {gameTitleText} (.mcpack, .zip, .mcaddon)";
 
             PsaCard.Populate(PackBrowserAnnouncementsPanel, OnlineTextsContent.ResourcePackSelectionAnnouncements);
+            PackBrowserAnnouncementsPanel.Visibility = PackBrowserAnnouncementsPanel.Children.Count > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
             AllowDrop = true;
             DragOver += ContentRoot_DragOver;

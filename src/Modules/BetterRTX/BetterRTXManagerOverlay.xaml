@@ -125,7 +125,6 @@
 
             <ScrollViewer x:Name="PresetScrollViewer"
                           Grid.Row="1"
-                          Padding="20,0,24,0"
                           IsTextScaleFactorEnabled="False"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
@@ -134,7 +133,7 @@
                 <StackPanel>
                     <!-- Pinned by hand rather than fetched like other PSAs, its just visually similar -->
                     <Border x:Name="PreviewWarningCard"
-                            Margin="0,12,0,0"
+                            Margin="20,12,24,0"
                             Visibility="Collapsed"
                             CornerRadius="6"
                             Padding="6"
@@ -172,18 +171,17 @@
                         </Grid>
                     </Border>
 
-                    <!-- PSA cards. Horizontal margins are the ScrollViewer's; collapsed until
-                         something lands in it, or its own margins would show up as a gap
-                         between the notice above and the list below. -->
+                    <!-- Per-content horizontal margins leave room for card shadows. Collapse
+                         an empty panel so its vertical margin does not add a phantom gap. -->
                     <StackPanel x:Name="BetterRTXAnnouncementsPanel"
                                 Spacing="10"
-                                Margin="0,12,0,0"
+                                Margin="20,12,24,0"
                                 Visibility="Collapsed" />
                     <!-- Preset list -->
                     <StackPanel x:Name="PresetListContainer"
                                 Spacing="12"
-                                Margin="0,12,0,0"
-                                Padding="0,0,0,12"/>
+                                Margin="20,12,24,0"
+                                Padding="0,0,0,12" />
                 </StackPanel>
             </ScrollViewer>
 
