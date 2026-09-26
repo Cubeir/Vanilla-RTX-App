@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
@@ -307,6 +307,7 @@ public sealed partial class PackUpdaterOverlay : ModuleOverlay
     private async Task InitializePackInformation()
     {
         PsaCard.Populate(PackUpdateAnnouncementsPanel, OnlineTextsContent.PackUpdateAnnouncements, cardFontSize: 13);
+        PsaCard.Populate(PackUpdateExtraAnnouncementsPanel, OnlineTextsContent.PackUpdateExtraAnnouncements, cardFontSize: 13);
         UpdateInstalledVersionDisplays();
         await FetchAndDisplayRemoteVersions();
     }

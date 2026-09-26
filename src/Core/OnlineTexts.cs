@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -69,6 +69,7 @@ public static class OnlineTextsContent
     public static PsaItem[]? Credits { get; set; }
     public static PsaItem[]? PSA { get; set; }
     public static PsaItem[]? PackUpdateAnnouncements { get; set; }
+    public static PsaItem[]? PackUpdateExtraAnnouncements { get; set; }
     public static PsaItem[]? BetterRTXAnnouncements { get; set; }
     public static PsaItem[]? LutManagerAnnouncements { get; set; }
     public static PsaItem[]? DLSSAnnouncements { get; set; }

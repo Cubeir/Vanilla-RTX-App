@@ -103,13 +103,17 @@ Hint: It is always preferred to activate RTX resource packs in your Global Resou
 ### Tip [glyph:"E95B"]
 Hint: You can come back here to quickly reinstall packs to restore them to their original state in case if you want to revert your tuning attempts. (Reinstalls happen quicker from a cached version, unless a new version happens to be available)
 
-## PSA [cd:"9999999"] [glyph:"ECC5"]
+
+# PackUpdateExtraAnnouncements
+Other optional Vanilla RTX Add-Ons and Extensions can be downloaded and imported manually, they must be activated above one of the three primary Vanilla RTX resource packs in-game. Their updates are not managed by the app, due their limited scope they rarely receive updates, making them perpetually forward-compatible.
+
+## 1 [cd:"9999999"] [glyph:"ECC5"]
 All Vanilla RTX Add-Ons and Extensions have been refreshed for Vanilla RTX 1.26.20 (and higher.)
 It is time to update (if you haven't already!) Simply hover their images, and click their names to be taken to their respective CurseForge download pages.
 
 # BetterRTXAnnouncements
 
-## Warning 1 [glyph:"E730"] [cd:"10000"]
+## [glyph:"E730"] [cd:"10000"] warning text
 Reminder: If your preset list has been auto-reset since your last visit, or this is your first visit:
 It is a good idea to wait and check from the BetterRTX Discord whether it has been updated for the latest game version before installing a preset. Installing presets while it serves outdated files could result in crashes and visual glitches. In this scenario, revert to Default RTX, and once BetterRTX is updated, use the refresh button in the top left corner. 
 In other words: Minecraft updates can break BetterRTX, it depends on you to update Minecraft, and BetterRTX's maintainer to update it for that game version just in time for everything to continue to work smoothly. If installing BetterRTX causes issues for you, follow these steps:
