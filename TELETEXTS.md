@@ -1,9 +1,11 @@
+# SuspendControls
+
 # Credits
 Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Joseph, Dabadking, Spaceowl, Willström, Bastha, PotatoHour, Kittygamer123, Lanaismymommy, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, Commander Grub, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, The_Asa_Games, Koiboi, jamesyoung, Richard Anderson (Rich), Jacob, Luxalios, DomoTurbulence, Rory, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, Ryan S Beers, TyTGM, AgusRomero0501, IcyFer, Justin Klaassen, Dogtag, Kudo Cyylentaar, OmarVillegas, Horizon, Arkan, Nick Da Fox, Harambebe, 정재원, 정재원 – and to everyone who has supported this project in any way along the way.
 
 Maybe you'll find your name here next time!?
 
-# PSA
+# LogAnnouncements
 
 ### PSA 1
 🍂 Vanilla RTX will support Minecraft 26.50 (Wilderness Bound) later during October.

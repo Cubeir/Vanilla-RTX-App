@@ -70,7 +70,7 @@ public static class TeletextContent
 
 
     public static TeletextItem[]? Credits { get; set; }
-    public static TeletextItem[]? Teletext { get; set; }
+    public static TeletextItem[]? LogAnnouncements { get; set; }
     public static TeletextItem[]? PackUpdateInfo { get; set; }
     public static TeletextItem[]? PackUpdateExtraInfo { get; set; }
     public static TeletextItem[]? BetterRTXInfo { get; set; }
