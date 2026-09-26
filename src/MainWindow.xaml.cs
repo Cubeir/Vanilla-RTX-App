@@ -2409,6 +2409,20 @@ the layout works perfectly but is wrong in many spots, with many dumb margins
 - Turn the textbox of sidebarlog into a rich textbox, and add the ability to show clickable links
 useful down the line, customize its visuals, etc... to make it look like before with layering tricks
 
+- Idea: instead of showing modules as overlays
+Hide mainwindow contents and display those instead.
+This might allow things to be simplified:
+Only .MD and Imports overlays are actually overlays
+The rest is ALL painted in MainWindow
+it is basically swapping out what is shown in the main window grid...
+So much can be simplified, think about it
+And it'll allow module overlay backgrounds to be the same acrylic material as main window instead of appearing more of a solid color
+because acrylic doesn't render twice through acrylic, can't layer acrylic on acrylic
+
+It may solve some issues and introduce others
+like, having to make sure mainwindow didn't keyboard input was a fault of the current design that was "worked around" via MainWindow.Overlayfocus.cs
+
+
 - How would a greater redesign of Mainwindow even work? (for 5.0?)
 Where would tuning go. what'd happen to logs
 a redesign must be thought thoroughly

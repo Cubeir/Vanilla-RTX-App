@@ -259,19 +259,19 @@
                         Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                <!-- Info/Help Button -->
-                <Button x:Name="HelpButton"
-                        Grid.Column="2"
-                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xE946;"
-                        Width="40"
-                        Height="35"
-                        CornerRadius="0"
-                        FontSize="16"
-                        Click="HelpButton_Click"
-                        ToolTipService.ToolTip="Open app's documentation and guide."
-                        IsTextScaleFactorEnabled="False" />
+                    <!-- Bug Button -->
+                    <Button x:Name="BugButton"
+                            Grid.Column="2"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Content="&#xEBE8;"
+                            Width="40"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="15"
+                            Click="BugButton_Click"
+                            ToolTipService.ToolTip="View a list of all known and reported Minecraft RTX bugs and issues, and their status."
+                            IsTextScaleFactorEnabled="False" />
 
                 <!-- Separator -->
                 <Border Grid.Column="3"
@@ -279,20 +279,20 @@
                         Margin="2,6,2,6"
                         Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                <!-- Bug Button -->
-                <Button x:Name="BugButton"
-                        Grid.Column="4"
-                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                        Style="{ThemeResource SubtleButtonStyle}"
-                        Content="&#xEBE8;"
-                        Width="40"
-                        Height="35"
-                        CornerRadius="0"
-                        FontSize="15"
-                        Click="BugButton_Click"
-                        ToolTipService.ToolTip="View a list of all known and reported Minecraft RTX bugs and issues, and their status."
-                        IsTextScaleFactorEnabled="False" />
-            </Grid>
+                    <!-- Info/Help Button -->
+                    <Button x:Name="HelpButton"
+                            Grid.Column="4"
+                            FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Content="&#xE946;"
+                            Width="40"
+                            Height="35"
+                            CornerRadius="0"
+                            FontSize="16"
+                            Click="HelpButton_Click"
+                            ToolTipService.ToolTip="Open app's documentation and guide."
+                            IsTextScaleFactorEnabled="False" />
+                </Grid>
         </Border>
 
         <!-- ══ Module titlebar ══════════════════════════════════════════════
@@ -1008,7 +1008,6 @@
                         <ThemeShadow />
                     </Border.Shadow>
                 </Border>
-
                 <Grid Grid.Row="2"
                       Margin="16,0,24,0"
                       Height="43"
@@ -1145,6 +1144,30 @@
                                 BorderThickness="3,0,0,0" />
                     </Grid>
                 </Grid>
+
+                <!-- =============== Horizontal Divisor of Tuning and Module area =============== -->
+                <Border Grid.Row="3"
+                        Height="1"
+                        Margin="12,0,20,0"
+                        VerticalAlignment="Center"
+                        Canvas.ZIndex="-1"
+                        Opacity="0.33"
+                        IsHitTestVisible="False">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0"
+                                             EndPoint="1,0">
+                            <GradientStop Offset="0.0"
+                                          Color="Transparent" />
+                            <GradientStop Offset="0.15"
+                                          Color="{ThemeResource FakeSplitButtonBrightBorderColor}" />
+                            <GradientStop Offset="0.85"
+                                          Color="{ThemeResource FakeSplitButtonBrightBorderColor}" />
+                            <GradientStop Offset="1.0"
+                                          Color="Transparent" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+
 
                 <Grid Grid.Row="4"
                       Margin="8,0,16,16"
