@@ -1,5 +1,3 @@
-# SuspendControls
-
 # Credits
 Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Joseph, Dabadking, Spaceowl, Willström, Bastha, PotatoHour, Kittygamer123, Lanaismymommy, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, Commander Grub, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, The_Asa_Games, Koiboi, jamesyoung, Richard Anderson (Rich), Jacob, Luxalios, DomoTurbulence, Rory, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, Ryan S Beers, TyTGM, AgusRomero0501, IcyFer, Justin Klaassen, Dogtag, Kudo Cyylentaar, OmarVillegas, Horizon, Arkan, Nick Da Fox, Harambebe, 정재원, 정재원 – and to everyone who has supported this project in any way along the way.
 
@@ -105,3 +103,5 @@ If it causes issues for a certain texture pack or takes away from its art direct
 You can temporarily dismiss any resource pack from the queue by clicking it.
 
 Uninstall the original pack toggle: If on, the original pack is deleted once and only if the RTX-capable version of the pack is finalized and installed. Convenient to leave on if you repeatedly come back here to re-add RTX support to your favorite texture pack's updates.
+
+# SuspendControls
