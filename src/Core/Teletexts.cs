@@ -225,7 +225,7 @@ public static class Teletexts
     // ── Config ────────────────────────────────────────────────────────────────
 
     private const string URL =
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/IN-APP-ANNOUNCEMENTS.md";
+        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/TELETEXTS.md";
 
     /// <summary>
     /// The announcements file as <see cref="AssetUpdater"/> sees it: the cooldown, the cached
@@ -240,7 +240,7 @@ public static class Teletexts
     private static readonly ManagedAsset Announcements = new(
         URL,
         TimeSpan.FromHours(1),
-        FileName: "Teletext_Cache.md",
+        FileName: "Teletexts_Cache.md",
         Timeout: TimeSpan.FromSeconds(8));
 
     private const string KEY_DISMISSED = "Teletext_Dismissed";
