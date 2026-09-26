@@ -1930,7 +1930,7 @@ public sealed partial class MainWindow : Window
         {
             if (RuntimeFlags.Set("Has Already Said the thing about what RTX Reactor does to packs in the button click menu"))
             {
-                Log($"RTX Reactor adds RTX support to regular texture packs, it works best on packs tagged as {PackBrowserOverlay.AlchitexCandidateTag}.", LogLevel.Alchitex);
+                Log($"RTX Reactor adds RTX support to regular texture packs, it works best on packs tagged as an `{PackBrowserOverlay.AlchitexCandidateTag}`.", LogLevel.Alchitex);
             }
 #if DEBUG
             Log("No packs selected - opening RTX Reactor anyway (Debug build).", LogLevel.Alchitex);
