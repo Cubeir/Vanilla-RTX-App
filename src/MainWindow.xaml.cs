@@ -2422,6 +2422,10 @@ because acrylic doesn't render twice through acrylic, can't layer acrylic on acr
 It may solve some issues and introduce others
 like, having to make sure mainwindow didn't keyboard input was a fault of the current design that was "worked around" via MainWindow.Overlayfocus.cs
 
+BUT, this may not be such a great idea after all
+The MAIN, BIG benefit of the current design is, you fade back into main window very simply, because mainwindow is already rendered in the background
+The complications executing this idea could introduce may not be worth the benefits, after all. the current system WORKS
+Don't touch it. unless a greater redesign is planned... (next)
 
 - How would a greater redesign of Mainwindow even work? (for 5.0?)
 Where would tuning go. what'd happen to logs
