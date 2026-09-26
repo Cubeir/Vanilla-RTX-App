@@ -197,7 +197,7 @@ public sealed partial class LUTManagerOverlay : ModuleOverlay
             LoadingPanel.Visibility = Visibility.Collapsed;
             MainPanel.Visibility = Visibility.Visible;
             ApplyDefaultsNotice();
-            PsaCard.Populate(LutAnnouncementsPanel, OnlineTextsContent.LutManagerAnnouncements);
+            PsaCard.Populate(LutManagerInfoPanel, OnlineTextsContent.LutManagerInfo);
         });
     }
 

@@ -581,10 +581,10 @@
                             <!-- Wraps the PSA panel and the Ko-fi section so the latter
                                  stacks directly beneath the former. Has to be a separate
                                  StackPanel rather than putting SupportSection straight into
-                                 AlchitexAnnouncementsPanel - PsaCard.Populate() clears that
+                                 AlchitexInfoPanel - PsaCard.Populate() clears that
                                  panel's children outright on every refresh. -->
                             <StackPanel>
-                                <StackPanel x:Name="AlchitexAnnouncementsPanel"
+                                <StackPanel x:Name="AlchitexInfoPanel"
                                             Spacing="12"
                                             Margin="24,18,24,12" />
 

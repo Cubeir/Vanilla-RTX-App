@@ -620,12 +620,12 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         // Initialize PSAs
         if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure psas dont clip into fallback background
         {
-            PsaCard.Populate(BetterRTXAnnouncementsPanel, OnlineTextsContent.BetterRTXAnnouncements);
+            PsaCard.Populate(BetterRTXInfoPanel, OnlineTextsContent.BetterRTXInfo);
 
             // Populate can legitimately add nothing (every announcement dismissed), and an
             // empty-but-visible panel still contributes its margin, which reads as an
             // oversized gap between whatever is above it and the preset list.
-            BetterRTXAnnouncementsPanel.Visibility = BetterRTXAnnouncementsPanel.Children.Count > 0
+            BetterRTXInfoPanel.Visibility = BetterRTXInfoPanel.Children.Count > 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }

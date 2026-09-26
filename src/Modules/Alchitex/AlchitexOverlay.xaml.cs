@@ -174,7 +174,7 @@ public sealed partial class Alchitex : ModuleOverlay
             _backdrop.Start();
 
             AlchitexVariables.LoadSettings();
-            PsaCard.Populate(AlchitexAnnouncementsPanel, OnlineTextsContent.AlchitexAnnouncements, sharpCorners: true);
+            PsaCard.Populate(AlchitexInfoPanel, OnlineTextsContent.AlchitexInfo, sharpCorners: true);
             BuildSupportSection();
             SeedSupportScrollCooldownIfNeeded();
 

@@ -16,6 +16,9 @@ using Windows.Storage;
 
 namespace Vanilla_RTX_App.Core;
 
+// Does it handle the same entry existing twice?! which one gets picked? make sure it is deterministic and documented what happens
+// with such conflicts
+
 // =====================================================================================================================
 // PsaItem — A single announcement entry.
 //
@@ -68,13 +71,13 @@ public static class OnlineTextsContent
 
     public static PsaItem[]? Credits { get; set; }
     public static PsaItem[]? PSA { get; set; }
-    public static PsaItem[]? PackUpdateAnnouncements { get; set; }
-    public static PsaItem[]? PackUpdateExtraAnnouncements { get; set; }
-    public static PsaItem[]? BetterRTXAnnouncements { get; set; }
-    public static PsaItem[]? LutManagerAnnouncements { get; set; }
-    public static PsaItem[]? DLSSAnnouncements { get; set; }
-    public static PsaItem[]? ResourcePackSelectionAnnouncements { get; set; }
-    public static PsaItem[]? AlchitexAnnouncements { get; set; }
+    public static PsaItem[]? PackUpdateInfo { get; set; }
+    public static PsaItem[]? PackUpdateExtraInfo { get; set; }
+    public static PsaItem[]? BetterRTXInfo { get; set; }
+    public static PsaItem[]? LutManagerInfo { get; set; }
+    public static PsaItem[]? DLSSInfo { get; set; }
+    public static PsaItem[]? PackBrowserInfo { get; set; }
+    public static PsaItem[]? AlchitexInfo { get; set; }
 }
 
 
@@ -153,7 +156,7 @@ internal partial class OnlineTextsJsonContext : JsonSerializerContext
 //                           Use both for a range. A min above the max matches nothing.
 //
 //   Examples:
-//     # PackUpdateAnnouncements [glyph:"E7BA"]
+//     # PackUpdateInfo [glyph:"E7BA"]
 //     ## Chaos Cubes [cd:"60"] [glyph:"E946"]
 //     ### Update [glyph:"EF2C"] [cd:"1440"] // cd useless here
 //     ##  [cd:"720"]

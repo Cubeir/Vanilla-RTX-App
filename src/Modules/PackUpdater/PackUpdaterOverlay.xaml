@@ -587,9 +587,9 @@
                     </Border>
 
                     <!-- ═══════════════════════════════════════════════
-                         Online announcements (PackUpdateAnnouncements)
+                         Online announcements (PackUpdateInfo)
                           ═══════════════════════════════════════════════ -->
-                    <StackPanel x:Name="PackUpdateAnnouncementsPanel"
+                    <StackPanel x:Name="PackUpdateInfoPanel"
                                 Spacing="12"
                                 Margin="0,0,0,0" />
 
@@ -803,9 +803,9 @@
                     </Grid>
 
                     <!-- ═══════════════════════════════════════════════
-                         Online announcements (PackUpdateExtraAnnouncements)
+                         Online announcements (PackUpdateExtraInfo)
                           ═══════════════════════════════════════════════ -->
-                    <StackPanel x:Name="PackUpdateExtraAnnouncementsPanel"
+                    <StackPanel x:Name="PackUpdateExtraInfoPanel"
                                 Spacing="12"
                                 Margin="0,0,0,0" />
 

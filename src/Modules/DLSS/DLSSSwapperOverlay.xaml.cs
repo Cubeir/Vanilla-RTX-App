@@ -184,8 +184,8 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
 
         LoadingPanel.Visibility = Visibility.Collapsed;
         DllSelectionPanel.Visibility = Visibility.Visible;
-        PsaCard.Populate(DLSSAnnouncementsPanel, OnlineTextsContent.DLSSAnnouncements);
-        DLSSAnnouncementsPanel.Visibility = DLSSAnnouncementsPanel.Children.Count > 0
+        PsaCard.Populate(DLSSInfoPanel, OnlineTextsContent.DLSSInfo);
+        DLSSInfoPanel.Visibility = DLSSInfoPanel.Children.Count > 0
             ? Visibility.Visible
             : Visibility.Collapsed;
     }

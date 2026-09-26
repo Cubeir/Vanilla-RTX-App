@@ -73,7 +73,7 @@
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <StackPanel x:Name="DLSSAnnouncementsPanel"
+                    <StackPanel x:Name="DLSSInfoPanel"
                                 Spacing="10"
                                 Margin="20,12,24,0" />
                     <StackPanel x:Name="DllListContainer"

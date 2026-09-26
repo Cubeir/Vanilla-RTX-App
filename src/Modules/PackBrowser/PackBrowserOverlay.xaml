@@ -70,7 +70,7 @@
                     <StackPanel>
 
                         <!-- PSA / announcement cards -->
-                        <StackPanel x:Name="PackBrowserAnnouncementsPanel"
+                        <StackPanel x:Name="PackBrowserInfoPanel"
                                     Spacing="10"
                                     Margin="20,12,24,0" />
 

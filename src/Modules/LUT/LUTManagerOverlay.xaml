@@ -1,4 +1,4 @@
-﻿<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerOverlay"
+<overlays:ModuleOverlay x:Class="Vanilla_RTX_App.Modules.LUT.LUTManagerOverlay"
                         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                         xmlns:local="using:Vanilla_RTX_App.Modules.LUT"
@@ -196,7 +196,7 @@
                 <!-- ═══════════════════════════════════════════════
                  ROW 2 — Online announcements
                    ═══════════════════════════════════════════════ -->
-                <StackPanel x:Name="LutAnnouncementsPanel"
+                <StackPanel x:Name="LutManagerInfoPanel"
                             Grid.Row="2"
                             Spacing="12"
                             Margin="20,12,20,8" />

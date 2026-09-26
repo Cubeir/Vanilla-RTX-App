@@ -173,7 +173,7 @@
 
                     <!-- Per-content horizontal margins leave room for card shadows. Collapse
                          an empty panel so its vertical margin does not add a phantom gap. -->
-                    <StackPanel x:Name="BetterRTXAnnouncementsPanel"
+                    <StackPanel x:Name="BetterRTXInfoPanel"
                                 Spacing="10"
                                 Margin="20,12,24,0"
                                 Visibility="Collapsed" />
