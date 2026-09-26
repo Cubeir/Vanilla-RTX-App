@@ -351,7 +351,7 @@ public sealed partial class MainWindow : Window
     {
         WindowControlsManager.SuspendControls(Content, TeletextContent.SuspendControls);
 
-        if (await Teletext.LatestUpdate && !_isClosing)
+        if (await Teletexts.LatestUpdate && !_isClosing)
             WindowControlsManager.SuspendControls(Content, TeletextContent.SuspendControls);
     }
 

@@ -33,7 +33,7 @@ public partial class App : Application
     {
         InitializeComponent();
         TraceManager.Initialize();
-        _ = Teletext.TriggerUpdateAsync(); // Silent Teletext Update, hopefully by the time the startup sequence is finished, we have new Teletexts to show!
+        _ = Teletexts.TriggerUpdateAsync(); // Silent Teletext Update, hopefully by the time the startup sequence is finished, we have new Teletexts to show!
 
 
         // 1. Catches unhandled exceptions on the UI thread from any window

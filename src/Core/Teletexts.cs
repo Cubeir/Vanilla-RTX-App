@@ -220,7 +220,7 @@ internal partial class TeletextJsonContext : JsonSerializerContext
 //   so a temporary fetch failure can never accidentally wipe valid dismissals.
 // =====================================================================================================================
 
-public static class Teletext
+public static class Teletexts
 {
     // ── Config ────────────────────────────────────────────────────────────────
 
