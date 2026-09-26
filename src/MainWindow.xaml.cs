@@ -487,7 +487,7 @@ public sealed partial class MainWindow : Window
             _ = Task.Run(async () =>
             {
                 await Task.Delay((int)(750 * speedMultiplier));
-                var Teletext = Teletext.GetFiltered(TeletextContent.Teletext);
+                var Teletext = Teletexts.GetFiltered(TeletextContent.LogAnnouncements);
                 if (Teletext is { Length: > 0 })
                 {
                     for (int i = Teletext.Length - 1; i >= 0; i--)
