@@ -229,7 +229,7 @@
                                     VerticalAlignment="Center"
                                     Click="CloseButton_Click"
                                     Style="{ThemeResource SubtleButtonStyle}"
-                                    ToolTipService.ToolTip="Save your settings and return to main window.">
+                                    ToolTipService.ToolTip="Return to main menu.">
                                 <FontIcon Glyph="&#xE944;" FontSize="16"/>
                             </Button>
                         </Grid>
@@ -247,14 +247,7 @@
                                        Margin="0,0,10,0"
                                        IsTextScaleFactorEnabled="False" />
 
-                            <!-- DropDownButton + MenuFlyout rather than a ComboBox, the same
-                                choice AlchitexOverlay and LUTManagerOverlay made: a flyout is
-                                translucent out of the box and matches the acrylic around it,
-                                where a ComboBox's open list reads ComboBoxDropDownBackground
-                                from a popup outside the control's tree and cannot be re-keyed
-                                from here. -->
-                            <!-- The shadow sits on a Border because the XAML compiler rejects
-                                 Translation on a DropDownButton ("Property Not Found"). -->
+                            <!-- DropDownButton + MenuFlyout -->
                             <Border Grid.Column="1"
                                     CornerRadius="4"
                                     Translation="0,0,12">
