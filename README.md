@@ -60,16 +60,16 @@ For anyone who just wants to quickly get ray tracing working:
 
 You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible.
 
-*The rest of this page is the full handbook, for when you take things further, or get an in-depth understanding of every feature.*
+> *The rest of this page is the full documentation, for when you take things further or whenever you get stuck. Continue to get an in-depth understanding of every feature.*
 
 # Overview & main menu features
 
 Features split into two main groups by what they touch:
 
-- **Your packs and user data** - installing Vanilla RTX, choosing packs, tuning, RTX Reactor, and launching the game. These work on the resource packs in Minecraft's user data folder.
-- **Your game install** - BetterRTX, the RTX LUT manager and the DLSS swapper. These replace files inside Minecraft itself, and each keeps a backup of your original files so you can always go back.
+- **Your packs and user data** - installing Vanilla RTX, importing or choosing packs to tuning them, RTX Reactor, and launching the game. These work on the resource packs in Minecraft's user data folder.
+- **Your game installations** - BetterRTX, the RTX LUT manager and the DLSS swapper. These replace files inside Minecraft itself, and each keeps a backup of your original files so you can always go back.
 
-The app finds both Minecraft installations and their user data locations on its own. If it ever fails to, see [Troubleshooting](#troubleshooting).
+> The app detects both Minecraft installations and their user data locations automatically. If it ever fails to, see [Troubleshooting](#troubleshooting). You may also manually select other paths through [Settings](#settings).
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/fe39284b-4275-4fb6-9339-26dec8057e5b" />
 
@@ -98,7 +98,7 @@ The **Preview** toggle points the whole app at Minecraft Preview instead of the 
 - The **log** on the left tells you what the app is doing for transparency, warns you when something needs attention, and shows occasional announcements. It may also point you toward features worth knowing about.
 - The **lamp** logo next to the app's name is the app's status light. It blinks while something long is running, and flashes when things finish, succeed or fail. It sometimes has a mind of its own - that's intended. It serves no actual purpose beyond being a fun visual cue as you interact with the app.
 - Hover over almost anything and a small piece of pixel art appears in the bottom-left of the main menu, showing what that control does. Sliders show how they'll change the game's look, and toggles show a before and after.
-- **Announcement cards** appear throughout features, holding news, warnings and tips. The app looks for new ones when it starts, at most once an hour. Some can be dismissed for good, some for a while, and some that are important stay pinned.
+- **Info/Announcement cards** appear throughout features, holding news, warnings and tips. The app looks for new ones when it starts, at most once an hour. Some can be dismissed for good, some for a while, and some that are important stay pinned.
 
 # Get latest RTX packs
 
@@ -201,12 +201,12 @@ These tools are powerful on the right pack: Vanilla RTX, for instance, can be tu
 
 # RTX Reactor
 
-RTX Reactor gives ordinary texture packs RTX support. It takes a pack's regular textures and generates a full set of ray tracing materials for it - how metallic, emissive, rough, etc. each surface is, plus normal maps or heightmaps for depth - along with fixes for water and translucent textures, optional atmospheric fog, and everything else a pack needs to function decently with ray tracing.  
-Results may vary, but after over 3 years of development, the algorithms responsible for this take it much further than you'd expect, enjoy!
+RTX Reactor gives ordinary texture packs RTX support. It takes a pack's regular textures and generates a full set of materials for it - how metallic, emissive, rough, etc. each surface is, plus normal maps or heightmaps for addd depth - along with adjustments for water and translucent textures, optional atmospheric fog, and everything else a pack needs to function decently with ray tracing.  
+Results may vary, but after over 3 years of development, the algorithms responsible for this take it much further than you'd expect, and you'll likely enjoy it!
 
 By default **your installed pack is never touched.** RTX Reactor works on a copy and installs the result as a new pack beside it, named after the original with a new icon and **- RTX** suffix. If anything goes wrong or you abort, the unfinished copy is cleaned up and nothing is left behind.
 
-## Getting started
+### Getting started
 
 1. Select one or more packs from [Select other packs](#select-other-packs) menu. Packs tagged **RTX Reactor Candidate** likely work best.
 2. Click **RTX Reactor**.
@@ -215,14 +215,14 @@ By default **your installed pack is never touched.** RTX Reactor works on a copy
 
 When it's done, activate the new pack in-game in place of the original. Old packs, including ones from before Minecraft's current pack format, are converted as they go.
 
-## The queue
+### The queue
 
 The packs you selected wait in a queue on the top and move across to the right as they are being worked on. Hover a pack sitting in the queue and click it to take it out of the queue for now. If a pack isn't a candidate, or already declares its own RTX or Vibrant Visuals support, you're asked about it before it's processed:
 
 - **Not a candidate** - it may have too few block textures to work with. You can **Generate anyway**; there's nothing to lose, but it might not result in anything worthwhile.
 - **Already declares RTX or Vibrant Visuals** - RTX Reactor can **remove and regenerate** all of its PBR textures. That's worth it for packs that claim support for RTX or VV but ship very little or no actual files. If the pack's own PBR work is good, RTX Reactor can still strip it and regenerate the PBR entirely for your curiosity.
 
-## Options
+### Options
 
 - **Secondary PBR texture** - how surface depth is generated:
   - **Automatic** (default) - heightmaps for low-resolution packs (lower than 32x), normal maps for everything else.
@@ -232,7 +232,7 @@ The packs you selected wait in a queue on the top and move across to the right a
 - **Add per-biome RTX atmospheric configs** (on by default) - adds Vanilla RTX's per-biome fog. Recommended for most packs: without it there's likely no fog, light shafts, or per-biome variation like different water colors. It may replace a pack's own biome fog settings, however.
 - **Uninstall the original pack** (off by default) - deletes each original pack once its RTX version is finished and installed. Nothing is deleted if generation fails or is stopped.
 
-## The license
+### The license
 
 RTX Reactor used to be an independent premium project, but it is now free to use. The packs it makes are covered by its own license: **you can use them yourself and share them for free, but you can't sell them** or put them behind any paywall (Marketplace, ad-gated downloads, paid communities). For commercial use, contact Cubeir first. The full text is shown when you accept it, and is in the [repository](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt).
 
@@ -287,7 +287,7 @@ Have an idea for a new preset? Suggest it!
 
 # Launch Minecraft RTX
 
-Starts Minecraft with ray tracing already switched on. Before launching, it writes a few game settings into every account's `options.txt`:
+Starts Minecraft with ray tracing already switched on. Before launching, it writes a few game settings into every player profile's `options.txt`:
 
 - `graphics_mode: 3` - ray tracing on.
 - `graphics_mode_switch: 1` - lets you switch graphics modes in-game.
@@ -356,7 +356,8 @@ Where Minecraft and Minecraft Preview are installed, and where each keeps your w
 
 #### Launch options
 
-The `options.txt` settings [Launch Minecraft RTX](#launch-minecraft-rtx) writes before starting the game. Edit any value, **Add option** for any other setting, or remove a row - the game then simply keeps whatever value it already has for it. With no options at all, the button just launches the game without changing anything. **Defaults** puts the original three back.
+The `options.txt` settings [Launch Minecraft RTX](#launch-minecraft-rtx) or `vanillartx://` protocols write before starting the game. Edit any value, **Add option** for any other setting, or remove a row - the game then simply keeps whatever value it already has for it. With no options at all, the button just launches the game without changing anything. **Defaults** puts the original three back. 
+> A useful example field you could add is `raytracing_viewdistance`, allowing you to override the 24 chunk ray tracing view distance cap. Minecraft settings have a tendency to occasionally revert, so creating a launch shortcut that goes through the Vanilla RTX App instead is a good assurance that your desired settings are always applied before each launch.
 
 #### Content sources
 
@@ -371,7 +372,7 @@ At the very bottom are links to **[this repo](https://github.com/Cubeir/Vanilla-
 
 # Troubleshooting
 
-## Minecraft or its user data isn't found
+### Minecraft or its user data isn't found
 
 The app finds your game and your user data on its own and for almost everyone both will succeed silently, but if it does not, and you use a feature that needs them, the app tries to guide you to point it to the correct locations:
 
@@ -379,24 +380,21 @@ The app finds your game and your user data on its own and for almost everyone bo
 
 **User data:** this folder only exists once you've played the game at least once. If it can't be found, the **Select other packs** button temporarily turns into a highlighted **Locate user data** button. Click it and pick the folder named `Minecraft Bedrock` (or `Minecraft Bedrock Preview`), the one with a `Users` folder inside, usually under `%appdata%`. If it isn't there, you may be using an unofficial launcher that keeps it elsewhere. You can also set it in Settings, under **Game user data**. Pack selection, tuning, installing, importing, exporting, RTX Reactor and the Launch button all need this.
 
-## The game doesn't start after Launch Minecraft RTX
+### The game doesn't start after Launch Minecraft RTX
 
 Your computer may not have the link/protocol Minecraft uses to be launched. Just start the game yourself - the settings were most likely already written, which is the only part that actually matters.
 
-## Minecraft crashes after installing a BetterRTX preset
+### Minecraft crashes after installing a BetterRTX preset
 
 Roll back to **Default RTX** in the BetterRTX manager. BetterRTX sometimes takes a while to catch up with Minecraft updates. Meanwhile, the [RTX LUT manager](#rtx-lut-manager) changes the look of Minecraft RTX reliably without depending on updates. Keep an eye on the in-app announcements and news as I usually update those to communicate whether the current version of BetterRTX supports the latest game version, or not.
 
-## Missing icons
+### Known limitations
 
-If you see boxes instead of icons, Windows is missing the Segoe Fluent Icons font. Install it from Microsoft: [Segoe Fluent Icons](https://aka.ms/SegoeFluentIcons) (or [Segoe MDL2](http://aka.ms/SegoeMDL2) on Windows 10).
-
-## Known limitations
-
+- The app does not ship any font files, if you see boxes instead of icons, your Windows is missing the Segoe Fluent Icons font. Install it from Microsoft: [Segoe Fluent Icons](https://aka.ms/SegoeFluentIcons) (or [Segoe MDL2](http://aka.ms/SegoeMDL2) on Windows 10).
 - Only English is supported, and other system languages haven't been tested.
-- Windows accessibility settings aren't fully accounted for in the app's appearance.
+- Windows accessibility settings aren't fully accounted for in the app's appearance, including high contrast themes.
 
-## Getting help, reporting bugs, suggestions
+### Getting help, reporting bugs, suggestions
 
 Open an issue [on GitHub](https://github.com/Cubeir/Vanilla-RTX-App/issues), post in the forum channel of the [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud), or mention @cubeir on the [Minecraft RTX Community Discord](https://discord.gg/eKVKD3c). Anything works!
 

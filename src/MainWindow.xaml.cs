@@ -143,13 +143,7 @@ public sealed partial class MainWindow : Window
         };
         var PreviewArt = Enumerable.Range(1, count)
             .Select(i => $"ms-appx:///Assets/previews/{prefix}.{i}.png").ToArray();
-        Previewer.Instance.InitializeButton(LampInteractionButton, PreviewArt);
-
-
-        // Up to 44 only, and no special variants
-        var PreviewArtLampOnly = Enumerable.Range(1, 44)
-            .Select(i => $"ms-appx:///Assets/previews/vrtx.app.{i}.png").ToArray();
-        Previewer.Instance.InitializeButton(SettingsButton, PreviewArtLampOnly);
+        Previewer.Instance.InitializeButton(SettingsButton, PreviewArt);
 
 
         Previewer.Instance.InitializeSlider(FogMultiplierSlider,

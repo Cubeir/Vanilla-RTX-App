@@ -518,7 +518,7 @@
                         <TextBlock Text="Launch options"
                                    Style="{StaticResource SettingsSectionHeaderStyle}" />
 
-                        <TextBlock Text="Settings written into every account's options.txt just before the Launch Minecraft RTX button starts the game. The defaults turn ray tracing on, allow switching graphics modes in-game, and disable VSync."
+                        <TextBlock Text="Settings written into every account's options.txt just before the `Launch Minecraft RTX` button or vanillartx:// protocols start the game. The defaults turn ray tracing on, allow switching graphics modes in-game, and disable VSync."
                                    Style="{StaticResource SettingsHintTextStyle}" />
 
                         <!-- Rows are built in code - there is no fixed number of them. -->
