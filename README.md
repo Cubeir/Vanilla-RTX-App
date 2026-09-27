@@ -147,9 +147,9 @@ Each pack shows its icon, name, description, version, and tags:
 - Click packs to select them, then **Confirm selection** to return with them selected.
 - The **select** menu can select all packs with a given tag, select everything, or clear the selection.
 - **Import texture packs**: click to browse, or drag files onto the page. It accepts `.mcpack`, `.zip`, `.mcaddon` (every pack bundled inside, whether as `.mcpack` files or as folders), and whole folders of packs. If a pack is already installed, you're asked whether to replace it.
-  - **Behavior packs** are recognised, and you're asked whether to **Import as behavior pack** or skip it. If you select to Import it, it goes into the game's behavior packs folder, where the game will find it - so an add-on's resource and behavior packs both install in one go. Behavior packs don't appear in this menu's list, since the app works with resource packs.
-  - **Anything else** that doesn't look like a resource pack asks whether to import it anyway to the resource packs folder.
-  > The app essentially has a very versatile/capable importer that allows you to properly import Add-Ons in bulk too (as .mcaddon), even though that is outside the scope of what Vanilla RTX App is supposed to deal with: resourc epacks.
+  - **Behavior packs** too are recognized, and you're asked whether to **Import as behavior pack** or skip it. If you select to Import it, it goes into the game's behavior packs folder properly, where the game will find it - so an add-on's resource and behavior packs both install in one go. Behavior packs don't appear in this menu's list, since the app works with resource packs.
+  - **Anything else** that doesn't look like a resource pack/behavior pack asks whether to import it anyway to the resource packs folder.
+  > The app essentially has a very versatile/capable importer that allows you to properly import Add-Ons in bulk too (as .mcaddon), even though that is outside the scope of what Vanilla RTX App is supposed to deal with, i.e. resource packs.
 - The **refresh** button in the title bar rescans the folder and measures how much disk space each pack takes. That measuring is the only thing that shows the size badges, because it can take a while.
 
 > Note: If the app can't find your user data, this button becomes a highlighted **Locate user data** button and temporarily serves a different purpose while you select the user data location the app must use. See [Troubleshooting](#troubleshooting).
