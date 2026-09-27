@@ -2456,5 +2456,8 @@ All of alchitex, tuner, and more, all variables that don't change during runtime
 Especially focus on the useful ones
 More urls
 more magic numbers
- 
+
+- Should settings overlay save on EVERY hide or... instead of saving everything, save only changed values?!
+the latter introduces more risk if not done correctly, but is it worth it? assess.
+
  */

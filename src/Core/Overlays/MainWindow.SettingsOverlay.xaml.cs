@@ -1140,7 +1140,7 @@ public sealed partial class SettingsOverlay : UserControl
             lock (MainWindow._logGate) logSnapshot = MainWindow.LogText;
             sb.AppendLine(logSnapshot.Replace(MainWindow.EntrySentinel, Environment.NewLine));
             sb.AppendLine();
-            sb.AppendLine("===== Tuner Variables");
+            sb.AppendLine("===== Environment Variables");
             var fields = typeof(EnvironmentVariables).GetFields(BindingFlags.Public | BindingFlags.Static);
 
             foreach (var field in fields)
@@ -1189,7 +1189,7 @@ public sealed partial class SettingsOverlay : UserControl
 
             sb.AppendLine();
             // Persistent variables
-            sb.AppendLine("===== Persistent Tuner Variables");
+            sb.AppendLine("===== Persistent Environment Variables");
             var persistentFields = typeof(EnvironmentVariables.Persistent).GetFields(BindingFlags.Public | BindingFlags.Static);
             foreach (var field in persistentFields)
             {
