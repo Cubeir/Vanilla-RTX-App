@@ -13,7 +13,7 @@ The Vanilla RTX App ensures ray tracing is accessible and frictionless to new an
 
 <!-- Cover image -->
 <p align="center">
-  <img alt="vanilla-rtx-app-cover-render" src="https://github.com/user-attachments/assets/2af758a4-e047-4b74-8c6e-c9a72177decf"/>
+<img alt="vanilla-rtx-app-cover-render" src="https://github.com/user-attachments/assets/c2a08c85-8c59-438d-8e7d-7213bee9fbf2" />
 </p>
 
 <!-- Badges -->
