@@ -230,7 +230,7 @@
                  The controls area is a fixed 512px tall and never scales with the
                  window; the announcements below it are whatever height their cards
                  add up to. Together they overflow the window once there are enough
-                 Teletexts, and that is what the scrollbar is for - there's no second,
+                 Teletext, and that is what the scrollbar is for - there's no second,
                  nested scroller inside the announcements panel any more.
 
                  AnnouncementBackground.MinHeight is kept in sync with the leftover

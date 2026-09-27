@@ -617,8 +617,8 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
         LoadingPanel.Visibility = Visibility.Collapsed;
         PresetSelectionPanel.Visibility = Visibility.Visible;
 
-        // Initialize Teletexts
-        if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure Teletexts dont clip into fallback background
+        // Initialize Teletext
+        if (EmptyStatePanel.Visibility != Visibility.Visible) // semantically, it means only alongside actual api preset lists, making sure Teletext dont clip into fallback background
         {
             TeletextCard.Populate(BetterRTXInfoPanel, TeletextContent.BetterRTXInfo);
 

@@ -93,7 +93,7 @@ public sealed class MarkdownRenderer
 
     /// <summary>
     /// Inline formatting only, for short texts that were written as plain text first: the
-    /// announcement Teletexts. Every block parser but the paragraph is removed, so a line starting
+    /// announcement Teletext. Every block parser but the paragraph is removed, so a line starting
     /// "- " or "1. " stays the literal text it has always been rather than turning into a list,
     /// and "---" under a line doesn't become a heading. Raw HTML is off, so a word in angle
     /// brackets is text rather than a tag that vanishes. What is left is emphasis, strikethrough,

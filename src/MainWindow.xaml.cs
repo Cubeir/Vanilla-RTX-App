@@ -345,7 +345,7 @@ public sealed partial class MainWindow : Window
     {
         WindowControlsManager.SuspendControls(Content, TeletextContent.SuspendControls);
 
-        if (await Teletexts.LatestUpdate && !_isClosing)
+        if (await Teletext.LatestUpdate && !_isClosing)
             WindowControlsManager.SuspendControls(Content, TeletextContent.SuspendControls);
     }
 
@@ -481,7 +481,7 @@ public sealed partial class MainWindow : Window
             _ = Task.Run(async () =>
             {
                 await Task.Delay((int)(750 * speedMultiplier));
-                var Teletext = Teletexts.GetFiltered(TeletextContent.LogAnnouncements);
+                var Teletext = Core.Teletext.GetFiltered(TeletextContent.LogAnnouncements);
                 if (Teletext is { Length: > 0 })
                 {
                     for (int i = Teletext.Length - 1; i >= 0; i--)

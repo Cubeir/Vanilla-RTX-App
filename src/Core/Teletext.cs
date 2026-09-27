@@ -43,7 +43,7 @@ public record TeletextItem(
 //
 // HOW TO ADD A NEW VARIABLE:
 //   1. Add a public static TeletextItem[]? property here.
-//   2. Add a matching # Section to IN-APP-ANNOUNCEMENTS.md.
+//   2. Add a matching # Section to TELETEXT.md.
 //      The section name must match the property name exactly (trimmed, case-insensitive).
 //
 // null always means "nothing to show" — absent section, empty content, or fetch failed.
@@ -220,12 +220,12 @@ internal partial class TeletextJsonContext : JsonSerializerContext
 //   so a temporary fetch failure can never accidentally wipe valid dismissals.
 // =====================================================================================================================
 
-public static class Teletexts
+public static class Teletext
 {
     // ── Config ────────────────────────────────────────────────────────────────
 
     private const string URL =
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/TELETEXTS.md";
+        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/TELETEXT.md";
 
     /// <summary>
     /// The announcements file as <see cref="AssetUpdater"/> sees it: the cooldown, the cached
@@ -240,13 +240,13 @@ public static class Teletexts
     private static readonly ManagedAsset Announcements = new(
         URL,
         TimeSpan.FromHours(1),
-        FileName: "Teletexts_Cache.md",
+        FileName: "Teletext_Cache.md",
         Timeout: TimeSpan.FromSeconds(8));
 
     private const string KEY_DISMISSED = "Teletext_Dismissed";
     private const string KEY_TIMED_DISMISSED = "Teletext_TimedDismissed";
 
-    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning Teletexts
+    private static readonly TimeSpan TIMED_DURATION = TimeSpan.FromDays(1); // Default cooldown of dismissable-but-returning Teletext
     public static TimeSpan TimedDuration => TIMED_DURATION;
 
     // ── Reflection map: lowercase property name → PropertyInfo ────────────────
@@ -571,7 +571,7 @@ public static class Teletexts
     // =========================================================================
 
     /// <summary>
-    /// Hash to expiry time for temporarily-dismissed Teletexts, loaded once and cached like
+    /// Hash to expiry time for temporarily-dismissed Teletext, loaded once and cached like
     /// <see cref="GetDismissed"/>. An entry whose time has passed is simply no longer
     /// dismissed; pruning is separate housekeeping, not a precondition for correctness.
     /// </summary>

@@ -71,7 +71,7 @@ public sealed partial class TeletextCard : UserControl
 
         var items = source is null || source.Length == 0
             ? new[] { RetrievalFailedNotice }
-            : Teletexts.GetFiltered(source);
+            : Teletext.GetFiltered(source);
 
         if (items is null) return;
 
@@ -149,7 +149,7 @@ public sealed partial class TeletextCard : UserControl
 
     private static string FormatCooldownTooltip(int? cooldownMinutes)
     {
-        var minutes = cooldownMinutes ?? (int)Teletexts.TimedDuration.TotalMinutes;
+        var minutes = cooldownMinutes ?? (int)Teletext.TimedDuration.TotalMinutes;
 
         if (minutes == 0)
             return "Dismiss for now";
@@ -182,12 +182,12 @@ public sealed partial class TeletextCard : UserControl
         switch (_kind)
         {
             case TeletextKind.Permanent:
-                Teletexts.Dismiss(_text);
+                Teletext.Dismiss(_text);
                 break;
             case TeletextKind.Timed:
                 // Pass the per-item cooldown so [cd:""] overrides from the .md are respected.
                 // If null, DismissTimed falls back to the global TIMED_DURATION.
-                Teletexts.DismissTimed(_text, _cooldownMinutes);
+                Teletext.DismissTimed(_text, _cooldownMinutes);
                 break;
             case TeletextKind.Pinned:
                 return; // button is hidden, should never fire
