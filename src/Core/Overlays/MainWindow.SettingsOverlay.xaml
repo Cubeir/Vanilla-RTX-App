@@ -313,7 +313,7 @@
                                 <TextBlock Text="Disable UI Visual Effects"
                                            TextWrapping="Wrap"
                                            IsTextScaleFactorEnabled="False" />
-                                <TextBlock Text="Disables animations and all unique effects throughout the app, saves some energy."
+                                <TextBlock Text="Reduced animations and unique effects throughout the app."
                                            Style="{StaticResource SettingsHintTextStyle}" />
                             </StackPanel>
 

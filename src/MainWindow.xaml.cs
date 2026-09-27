@@ -2385,6 +2385,11 @@ public sealed partial class MainWindow : Window
 
 - Need better art to convey surface 3d effect intensity
 
+>> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.
+its just an edit of Gamescom iirc that looked a lot like BetterRTX 1.4.4 default
+weaker sun/skylight was a part of it that made the sun texture look a lot more similar
+diminished highlights around the sun sprite, etc...
+
 - Changelogs markdown overlay in PackUpdater overlay
 a Markdown page similar to the others that contains a table and changelogs of every single Vanilla RTX version, especially post 1.6+ modern era
 push refresh button further to the front.
@@ -2445,8 +2450,6 @@ tuner is the most... repeatedly-used module, so, having it in main window makes 
 having to continously click in and out to tune packs is annoying
 It makes sense both ways
 Moving the "Export" and "Delete" buttons to select other packs menu like that one 3.2 concept image also works well
-
->> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.
 
 - Expose ALLLLLLLL of app's internal variables and constants, let them be adjustable
 in a "see more" section of the settings, of course, hidden away from the casual user.

@@ -213,6 +213,15 @@ public static class EnvironmentVariables
     public const int WindowMinSizeX = 950;
     public const int WindowMinSizeY = 615;
 
+
+    /* For capturing the UI for the blender project
+    public const int WindowSizeX = 1140;
+    public const int WindowSizeY = 625;
+    public const int WindowMinSizeX = 1140;
+    public const int WindowMinSizeY = 625;
+    */
+
+
     // Saves persistent variables
     public static void SaveSettings()
     {
