@@ -1173,7 +1173,7 @@
                       Margin="8,0,16,16"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Stretch"
-                   
+                      CornerRadius="6"
                       BorderThickness="0"
                       Translation="0,0,33">
                     <Grid.Shadow>
