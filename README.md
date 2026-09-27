@@ -1,7 +1,8 @@
 # Vanilla RTX App
 Everything you need to play Minecraft with ray tracing at its best and unlock its full potential, in one place.
 
-Install and update the Vanilla RTX resource packs, give ordinary texture packs RTX support with RTX Reactor, tune any ray-traced pack to your taste, manage BetterRTX presets, swap DLSS versions, launch the game with ray tracing already switched on, and much more. Ensuring ray tracing is accessible to new players, and frictionless for existing users.
+Install and update the Vanilla RTX resource packs, give ordinary texture packs RTX support with RTX Reactor, tune any ray-traced pack to your taste, manage BetterRTX presets, swap DLSS versions, launch the game with ray tracing already switched on, and much more...  
+The Vanilla RTX App ensures ray tracing is accessible and frictionless to new and experienced players.
 
 <!-- Microsoft Store badge -->
 <p align="center">
