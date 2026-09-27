@@ -182,7 +182,7 @@
                 <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                               TintOpacity="0.9"
                               TintLuminosityOpacity="0.9"
-                              FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                              FallbackColor="{ThemeResource AcrylicFallbackColor}" />
             </Border.Background>
             <Border.Shadow>
                 <ThemeShadow />
@@ -197,12 +197,7 @@
 
                         <!-- ═══ Appearance ═══════════════════════════════════════════════
                              Shares its row with the close button, which is deliberately part
-                             of the scrolling content rather than pinned over it: every fixed
-                             position sat on top of something at some scroll offset, and out on
-                             the scrim it read as belonging to the window behind rather than to
-                             the panel. Scrolling past it costs nothing - the scrim and the gear
-                             both still close, and every setting is already written by the time
-                             you reach for any of them. -->
+                             of the scrolling content rather than pinned over it -->
                         <Grid Margin="0,16,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />

@@ -1496,7 +1496,7 @@
                 <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                               TintOpacity="0.9"
                               TintLuminosityOpacity="0.9"
-                              FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                              FallbackColor="{ThemeResource AcrylicFallbackColor}" />
             </Grid.Background>
             <Grid.Shadow>
                 <ThemeShadow />

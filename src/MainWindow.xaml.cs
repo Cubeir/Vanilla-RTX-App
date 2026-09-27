@@ -2377,6 +2377,11 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
+- The launch options setting text boxes don't have shadow like the others
+
+- Make the reset buttons next to several of the text boxes height match the textbox height?
+i.e. auto it, let the refresh stretch vertically
+
 - Need better art to convey surface 3d effect intensity
 
 >> Add a BetterRTX-like lut preset, can get the looks 80% there! call it a joke name like ButterRTX -- or have ButterRTX turn the world yellow for fun... so two presets out of this idea.

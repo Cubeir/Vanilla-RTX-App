@@ -65,7 +65,7 @@
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
                                                           TintLuminosityOpacity="0.64"
-                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                          FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                         </Border.Background>
 
                                         <!-- The whole overlay is the link, not just the title: it is only on screen while a
@@ -219,7 +219,7 @@
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
                                                           TintLuminosityOpacity="0.64"
-                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                          FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                         </Border.Background>
 
                                         <!-- The whole overlay is the link, not just the title: it is only on screen while a
@@ -373,7 +373,7 @@
                                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                           TintOpacity="0.0"
                                                           TintLuminosityOpacity="0.64"
-                                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                          FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                         </Border.Background>
 
                                         <!-- The whole overlay is the link -->
@@ -552,7 +552,7 @@
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.64"
-                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                      FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                     </Border.Background>
                                     <!-- The whole overlay is the link -->
                                     <HyperlinkButton NavigateUri="http://mcpedl.com/vanilla-rtx-everwinter"
@@ -633,7 +633,7 @@
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.64"
-                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                      FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                     </Border.Background>
 
                                     <!-- The whole overlay is the link -->
@@ -698,7 +698,7 @@
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.64"
-                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                      FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                     </Border.Background>
 
                                     <!-- The whole overlay is the link, not just the title: it is only on screen while a
@@ -764,7 +764,7 @@
                                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                       TintOpacity="0.0"
                                                       TintLuminosityOpacity="0.64"
-                                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                      FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                     </Border.Background>
 
                                     <!-- The whole overlay is the link, not just the title: it is only on screen while a

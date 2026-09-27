@@ -139,7 +139,7 @@
                     <Border.Background>
                         <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                       TintOpacity="0.5"
-                                      FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                      FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                     </Border.Background>
                 </Border>
                 <ScrollViewer BorderBrush="#15FFFFFF"
@@ -175,7 +175,7 @@
                         <Border.Background>
                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                           TintOpacity="0.75"
-                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                          FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                         </Border.Background>
                     </Border>
                     <Button x:Name="DisagreeButton"
@@ -296,7 +296,7 @@
                                 <Border.Background>
                                     <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                                   TintOpacity="0.75"
-                                                  FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                                  FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                                 </Border.Background>
                                 <Border.Shadow>
                                     <ThemeShadow />
@@ -574,7 +574,7 @@
                         <Border.Background>
                             <AcrylicBrush TintColor="{ThemeResource OverlayBackgroundColor}"
                                           TintOpacity="0.75"
-                                          FallbackColor="{ThemeResource OverlayBackgroundColor}" />
+                                          FallbackColor="{ThemeResource AcrylicFallbackColor}" />
                         </Border.Background>
 
                         <Grid>
