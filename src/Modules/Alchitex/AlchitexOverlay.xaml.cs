@@ -2034,6 +2034,8 @@ But it can save a lot of time if testing of these inaccessible code paths happen
 
 - Reactor button animation transitions are sometimes not smooth
 i.e. flower to scan stance is instant, switching between stances sometimes appear instant/not animated.
+Not all transitions lead to one another smoothly, some do, especially default stance -> animation, those are animated
+mid animation transitions are not 
 
 - Plan the next Major steps besides the stuff below.
 Mostly having to do with expanding what RTX Reactor can do, for Vibrant Visuals
