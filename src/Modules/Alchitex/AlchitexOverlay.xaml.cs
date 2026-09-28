@@ -2021,11 +2021,19 @@ public sealed partial class Alchitex : ModuleOverlay
 
 /* ### BACKLOG/TODO OF ALCHITEX (HIGHLY CONFIDENTIAL)
 
+- CRITICAL ISSUE:
+Manifests upgraded from legacy and V1 versions DO NOT HAVE min_engine_version field, and the app isn't adding them either
+the result:
+manifest isn't invalid, but MINECRAFT WON'T PARSE THE PACK IF IT IS V2 AND WITHOUT THAT FIELD! It must be there, and must default to 1.21.30 (or whatever was
+the latest format version for texture sets) I THINK legacy pack_manifest to modern manfiest DO have the field in fact
+Only modern but v1 manifest -> v2 manifest is lacking this.
+
 - Don't test un-obvious code paths constantly, stop wasting them, instead, keep a watchful eye for things that you suspect MIGHT have issues
 e.g. the next time you change managed assets, see if it actually applies, raise the alarm if it doesn't, there is no reason't it wouldn't apply.
 But it can save a lot of time if testing of these inaccessible code paths happened naturally instead of setting low cooldowns, rebuilding, and testing explicitly.
 
-- 
+- Reactor button animation transitions are sometimes not smooth
+i.e. flower to scan stance is instant, switching between stances sometimes appear instant/not animated.
 
 - Plan the next Major steps besides the stuff below.
 Mostly having to do with expanding what RTX Reactor can do, for Vibrant Visuals
