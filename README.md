@@ -208,7 +208,7 @@ Results may vary, but after over 3 years of development, the algorithms responsi
 By default **your installed pack is never touched.** RTX Reactor works on a copy and installs the result as a new pack beside it, named after the original with a new icon and **- RTX** suffix. If anything goes wrong or you abort, the unfinished copy is cleaned up and nothing is left behind.
 
 <p align="center">
-<img alt="RTX Reactor UI Image" src="https://github.com/user-attachments/assets/e3cd2f9f-47b3-4e40-ba28-bf558a4c990e" />
+  <img alt="RTX Reactor UI Image" src="https://github.com/user-attachments/assets/8f8c2ea2-d2a5-4ef5-9746-a6be78ea461b" />
 </p>
 
 ### Getting started
