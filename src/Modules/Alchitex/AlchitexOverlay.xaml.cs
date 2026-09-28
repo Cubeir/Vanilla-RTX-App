@@ -2021,6 +2021,20 @@ public sealed partial class Alchitex : ModuleOverlay
 
 /* ### BACKLOG/TODO OF ALCHITEX (HIGHLY CONFIDENTIAL)
 
+- Don't test un-obvious code paths constantly, stop wasting them, instead, keep a watchful eye for things that you suspect MIGHT have issues
+e.g. the next time you change managed assets, see if it actually applies, raise the alarm if it doesn't, there is no reason't it wouldn't apply.
+But it can save a lot of time if testing of these inaccessible code paths happened naturally instead of setting low cooldowns, rebuilding, and testing explicitly.
+
+- 
+
+- Plan the next Major steps besides the stuff below.
+Mostly having to do with expanding what RTX Reactor can do, for Vibrant Visuals
+And maybe exposing the dev tools as creator tools, having More in store for creators would not be bad.
+The old idea of RTX Creator could materialize, with 3D live view
+As for Vibrant Visuals, various presets of configurations could exist to dump besides any pack, but it'll be a lot more work. A lot.
+And alternative pipeline has to be reintroduced for VV, which would be doable, these are the big long term plans.
+For now the app sticks to RTX as its main obligation, do the stuff below first...
+
 - The alchitex pipeline, critically, needs two more pieces:
 One generalized fallback, i.e. instead of one "default" for anything not recognized, we put a new layer of fallback in front of it
 which would be akin to the old pipeline with some generalized names

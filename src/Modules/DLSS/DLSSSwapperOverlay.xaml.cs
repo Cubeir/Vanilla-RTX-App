@@ -563,7 +563,7 @@ public sealed partial class DLSSSwapperOverlay : ModuleOverlay
     /// </summary>
     private void ShowBrowseTarget()
     {
-        DownloadDllsTargetText.Text = $"Browse {EnvironmentVariables.LinkLabel(Links.DlssProvider)}";
+        DownloadDllsTargetText.Text = $"Visit {EnvironmentVariables.LinkLabel(Links.DlssProvider)}";
         ToolTipService.SetToolTip(DownloadDllsButton,
             $"Browse {EnvironmentVariables.LinkLabel(Links.DlssProvider, includePath: true)} right here - " +
             "anything you download will be imported automatically when you close it.");

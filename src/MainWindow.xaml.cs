@@ -2377,6 +2377,19 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
+- need revamped store images like the 4.0 trailer thumbnail concept
+
+- Need to make review prompt appear floaty in the app instead of launching the store
+Some apps are doing it how?
+
+- Make background of settings menu fade in faster as to make it clickable earlier? i.e. rapidly opening and closing by clicking the background
+it feels like it is a little irresponsive if you mash it so, look into it, make it feel better.
+
+- Adding formatting clearer before desc appending in pack desc Alchitex, log those other ideas from the piece of paper later
+
+- remove shadow from lamp on splash screen?! or weaken it so it is more like titlebar lamp.
+the thing is the shadow does make sense it is just too strong. It's the lamp casting light on the background, not a Halo as the name suggests
+
 - Add shadows to crash report page's buttons, and make the margins make more sense, it looks ugly.
 
 - Look into

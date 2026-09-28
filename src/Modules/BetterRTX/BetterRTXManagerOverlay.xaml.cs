@@ -1151,7 +1151,7 @@ public sealed partial class BetterRTXManagerOverlay : ModuleOverlay, Core.FileAc
     /// </summary>
     private void ShowBrowseTarget()
     {
-        CreatePresetTargetText.Text = $"Browse {EnvironmentVariables.LinkLabel(Links.BetterRtxCreator, includePath: true)}";
+        CreatePresetTargetText.Text = $"Visit {EnvironmentVariables.LinkLabel(Links.BetterRtxCreator, includePath: true)}";
         ToolTipService.SetToolTip(CreatePresetLink,
             $"Browse {EnvironmentVariables.LinkLabel(Links.BetterRtxCreator, includePath: true)} right here - " +
             "build a preset and it will be imported automatically when you close it.");
