@@ -1,5 +1,5 @@
 # Credits
-Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Joseph, Dabadking, Spaceowl, Willström, Bastha, PotatoHour, Kittygamer123, Lanaismymommy, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, Commander Grub, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, The_Asa_Games, Koiboi, jamesyoung, Richard Anderson (Rich), Jacob, Luxalios, DomoTurbulence, Rory, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, Ryan S Beers, TyTGM, AgusRomero0501, IcyFer, Justin Klaassen, Dogtag, Kudo Cyylentaar, OmarVillegas, Horizon, Arkan, Nick Da Fox, Harambebe, 정재원, 정재원 – and to everyone who has supported this project in any way along the way.
+Created and maintained with ❤️‍🔥 by Cubeir with special thanks to: nattyhob, EchoQuasar, Miriel, Giuseppe DiMarca, Cody Starr, Dabadking, Joseph, Spaceowl, Willström, Bastha, Kittygamer123, Lanaismymommy, Aaerox, jessehall(Maneating-Zebras), Nash Knowlden, Commander Grub, Isttret, Superluminal, Travis Bishop, Dylan, Kyo Don, The_Asa_Games, jamesyoung, Koiboi, Richard Anderson (Rich), Jacob, Luxalios, DomoTurbulence, Rory, Oxbow117, Mono234_Glitch, Austin Mullings, mIbU, Spikey ᵈᵉʳ ᶠᵘᶜʰˢ, Bryan Tepox, Ryan S Beers, TyTGM, Justin Klaassen, Dogtag, Kudo Cyylentaar, OmarVillegas, Horizon, Arkan, Nick Da Fox, Harambebe, 정재원, pizzeriaunit, Koz – and to everyone who has supported this project in any way along the way.
 
 Maybe you'll find your name here next time!?
 
@@ -91,7 +91,7 @@ Texture packs from Minecraft Marketplace are not supported.
 ### [glyph:"E946"] Guide
 Difference of Secondary PBR texture options:
 - None: leaves the textures flat. Only roughness, emissive and metalness properties will be added to textures.
-- Automatic: automatically picks between Normal Maps, Heightmaps or Both
+- Automatic: let RTX Reactor pick between Normal Maps or Heightmaps.
 - Normal Map: Suitable for any resolution, can be selected for any texture pack, defines the direction that light bounces off of each individual pixel, faking curvature and depth on surfaces. Also adds Parallax Occlusion Mapping data (for BetterRTX 1.5+)
 - Heightmap: Suitable only for low-resolution texture packs, fakes depth by providing relief around some pixels. Can only be selected for texture packs that are 32x or lower, otherwise it falls back to generating Normal map.
 
