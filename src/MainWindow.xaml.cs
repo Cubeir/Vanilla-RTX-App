@@ -2377,6 +2377,8 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
+- Add shadows to crash report page's buttons, and make the margins make more sense, it looks ugly.
+
 - Look into
 https://github.com/aufkrawall/dlssdl
 is there a way to further streamline DLSS Swapper?!
