@@ -207,6 +207,10 @@ Results may vary, but after over 3 years of development, the algorithms responsi
 
 By default **your installed pack is never touched.** RTX Reactor works on a copy and installs the result as a new pack beside it, named after the original with a new icon and **- RTX** suffix. If anything goes wrong or you abort, the unfinished copy is cleaned up and nothing is left behind.
 
+<p align="center">
+<img alt="RTX Reactor UI Image" src="https://github.com/user-attachments/assets/e3cd2f9f-47b3-4e40-ba28-bf558a4c990e" />
+</p>
+
 ### Getting started
 
 1. Select one or more packs from [Select other packs](#select-other-packs) menu. Packs tagged **RTX Reactor Candidate** likely work best.
@@ -235,7 +239,7 @@ The packs you selected wait in a queue on the top and move across to the right a
 
 ### The license
 
-RTX Reactor used to be an independent premium project, but it is now free to use. The packs it makes are covered by its own license: **you can use them yourself and share them for free, but you can't sell them** or put them behind any paywall (Marketplace, ad-gated downloads, paid communities). For commercial use, contact Cubeir first. The full text is shown when you accept it, and is in the [repository](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt).
+RTX Reactor used to be an independent premium project, but it is now free to use. The output is covered by its own license: **you can use them yourself and share them for free, but you can't sell them** or put them behind any paywall (e.g. Marketplace, ad-gated downloads, paid communities). For commercial use, you must contact Cubeir first. The full license is shown and you must accept it before using RTX Reactor, it is also in the [repository](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt) for you to read it at any time.
 
 # BetterRTX manager
 
