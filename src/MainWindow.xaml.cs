@@ -2377,6 +2377,11 @@ public sealed partial class MainWindow : Window
 
 /* ### BACKLOG/TODO OF HIGHCORTISOLSOFTWARE LLC (STRICTLY CONFIDENTIAL)
 
+- Figure a way to expose an option to auto-activate a Vanilla RTX pack.
+Maybe this:
+ticking its checkbox before launching the game also edits the thing that holds which packs are active.
+this may not be a great idea, but it is doable, and mostly stems from a curiosity to understand what file in user data saves this stuff.
+
 - need revamped store images like the 4.0 trailer thumbnail concept
 
 - Need to make review prompt appear floaty in the app instead of launching the store
