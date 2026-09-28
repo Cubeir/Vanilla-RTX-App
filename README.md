@@ -137,7 +137,7 @@ Each pack shows its icon, name, description, version, and tags:
 
 | Tag | Meaning |
 |---|---|
-| Ray Traced | An RTX pack. The Tuner can tune it. |
+| Ray Traced | An RTX pack. The resource apck Tuner can tune its files. |
 | Vibrant Visuals | Declares Vibrant Visuals support. The Tuner can tune it too, but results may vary because of the differences. |
 | Incompatible with Tuner | Neither of the above. The Tuner skips it, but you can still export, delete, or run it through RTX Reactor. |
 | RTX Reactor Candidate | Looks like a good fit for [RTX Reactor](#rtx-reactor) to add RTX support to! |
