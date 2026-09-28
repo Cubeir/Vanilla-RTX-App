@@ -2028,6 +2028,9 @@ manifest isn't invalid, but MINECRAFT WON'T PARSE THE PACK IF IT IS V2 AND WITHO
 the latest format version for texture sets) I THINK legacy pack_manifest to modern manfiest DO have the field in fact
 Only modern but v1 manifest -> v2 manifest is lacking this.
 
+- Normal maps are generally too strong by default and while users can tune it with a 50% intensity adjustment
+it is better for you to decrease the intensity by 25%-ish across the board, or 1/3
+
 - Don't test un-obvious code paths constantly, stop wasting them, instead, keep a watchful eye for things that you suspect MIGHT have issues
 e.g. the next time you change managed assets, see if it actually applies, raise the alarm if it doesn't, there is no reason't it wouldn't apply.
 But it can save a lot of time if testing of these inaccessible code paths happened naturally instead of setting low cooldowns, rebuilding, and testing explicitly.
