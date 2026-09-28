@@ -5,12 +5,13 @@ Maybe you'll find your name here next time!?
 
 # PSA
 
+### PSA 2
+⚒️ Update the app now from Microsoft Store.
+🟦 RTX Reactor has been released alongside the 4.0 update, which brings several other featuers and many improvements.
+⚠️ This version of the app will be deprecated after 14th of October. You will need to update to continue to receive news.
+
 ### PSA 1
 🍂 Vanilla RTX will support Minecraft 26.50 (Wilderness Bound) later during October.
-
-### PSA 2
-⚒️ Vanilla RTX App's 4.0 update is out, bringing RTX Reactor, and many other features.
-You will need to update to continue to receive news. Get the update now from Microsoft Store. Find changelogs on GitHub.
 
 # PackUpdateAnnouncements
 Update the app from Microsoft Store to continue to receive news and changelogs.
@@ -40,4 +41,4 @@ Select from your resource packs from the list below and begin processing them in
 Use the clear selection button in the main window to clear your selections or by hitting confirm without selecting any packs.
 
 # AlchitexDevProgressUpdates [glyph:"EC24"]
-RTX Reactor has been released! Get the Vanilla RTX App's 4.0 update from the Microsoft Store to continue.
+RTX Reactor has been released! Update the app from Microsoft Store now!
