@@ -104,4 +104,11 @@ You can temporarily dismiss any resource pack from the queue by clicking it.
 
 Uninstall the original pack toggle: If on, the original pack is deleted once and only if the RTX-capable version of the pack is finalized and installed. Convenient to leave on if you repeatedly come back here to re-add RTX support to your favorite texture pack's updates.
 
+### [glyph:"EBE8"] Guide 2
+Known issue:
+Very old packs that use the legacy `manifest.json` formats will not appear in-game after being processed by RTX Reactor. This affects packs that generally haven't been updated by their authors in many many years.
+The next update (4.1) will address this and properly upgrade the manifests.
+
+Since this is the first public release of RTX Reactor, if you run into any problems, please [create a new issue on github](https://github.com/Cubeir/Vanilla-RTX-App/issues).
+
 # SuspendControls
