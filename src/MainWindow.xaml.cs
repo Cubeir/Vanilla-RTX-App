@@ -2484,4 +2484,6 @@ more magic numbers
 - Should settings overlay save on EVERY hide or... instead of saving everything, save only changed values?!
 the latter introduces more risk if not done correctly, but is it worth it? assess.
 
+- i18n, once all english texts are definitely settled and you're not making any more changes, right?!
+
  */
