@@ -993,7 +993,7 @@
                 164,
                 64
             ],
-            "strength": 128
+            "strength": 255
         },
         "heightmap": {
             "skip": true
@@ -6392,7 +6392,7 @@
                 142,
                 53
             ],
-            "strength": 192
+            "strength": 245
         },
         "heightmap": {
             "skip": true
@@ -6416,7 +6416,7 @@
                 151,
                 54
             ],
-            "strength": 192
+            "strength": 245
         },
         "heightmap": {
             "skip": true
@@ -13179,7 +13179,7 @@
                 209,
                 212
             ],
-            "strength": 64
+            "strength": 110
         },
         "heightmap": {
             "skip": true
@@ -13220,7 +13220,7 @@
                 204,
                 209
             ],
-            "strength": 64
+            "strength": 100
         },
         "heightmap": {
             "skip": true
@@ -13244,7 +13244,7 @@
                 204,
                 209
             ],
-            "strength": 64
+            "strength": 100
         },
         "heightmap": {
             "skip": true
