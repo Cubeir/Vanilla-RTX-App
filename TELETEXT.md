@@ -15,7 +15,6 @@ Known issue: due to a game issue ([MCPE-240950](https://bugs.mojang.com/browse/M
 
 ## Latest release notes [cd:"9999999"] [glyph:"E70F"]
 **v1.26.34 Release Highlights:**
-
 - Added full support for `Wilderness Bound` game drop.
   - The Poplar wood set, straw bed, shelf mushroom, etc... all now feature hand-made PBR textures, as always consistent with the rest of the pack.  
   - The Dappled Forest biome features a unique atmosphere with RTX to complement its autumn theme, with water colors that closely match its fancy graphics water color.
