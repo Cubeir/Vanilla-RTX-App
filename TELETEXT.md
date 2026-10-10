@@ -6,7 +6,7 @@ Maybe you'll find your name here next time!?
 # LogAnnouncements
 
 ### PSA 1
-🍂 Vanilla RTX now covers Minecraft Wilderness Bound game drop! (26.50+)
+🍂 Vanilla RTX now covers Minecraft's Wilderness Bound update! (26.50+)
 
 # PackUpdateInfo
 
@@ -16,8 +16,8 @@ Known issue: due to a game issue ([MCPE-240950](https://bugs.mojang.com/browse/M
 ## Latest release notes [cd:"9999999"] [glyph:"E70F"]
 **1.26.34 Release Highlights:**
 - Added full support for `Wilderness Bound` game drop.
-  - The Poplar wood set, straw bed, shelf mushroom, etc... all now feature hand-made PBR textures, as always consistent with the rest of the pack.  
-  - The Dappled Forest biome features a unique atmosphere with RTX to complement its autumn theme, with water colors that closely match its fancy graphics water color.
+> The Poplar wood set, straw bed, shelf mushroom, etc... all now feature hand-made PBR textures, as always consistent with the rest of the pack.  
+> The Dappled Forest biome features a unique atmosphere with RTX to complement its autumn theme, with water colors that closely match its fancy graphics water color.
 - Fire and Campfire and their Soul variants are now much brighter than usual while causing less noise, the brightness of fire vs soul fire now sets them apart more clearly/matching fancy graphics light levels more closely.
 - Improved fog across all Nether biomes.
 - Better end dimension fog, overall darker and more purple, e.g. distant light sources get color-shifted towards purple.
@@ -29,7 +29,7 @@ Other optional Vanilla RTX Add-Ons and Extensions can be downloaded and imported
 ## [cd:"9999999"] [glyph:"ECC5"] Update Notice
 All Vanilla RTX Add-Ons and Extensions have been refreshed for Vanilla RTX 1.26.20 (and higher.)
 It is time to update (if you haven't already!) Simply hover their images, and click their names to be taken to their respective CurseForge download pages.
-You can also download *all* additional packs related to Vanilla RTX as a single bundle from [github.com/Cubeir/Vanilla-RTX-Extras](https://github.com/Cubeir/Vanilla-RTX-extras).
+*You can also download all additional packs related to Vanilla RTX as a single bundle from [github.com/Cubeir/Vanilla-RTX-Extras](https://github.com/Cubeir/Vanilla-RTX-extras).*
 
 # BetterRTXInfo
 
