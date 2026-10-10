@@ -14,7 +14,7 @@ Maybe you'll find your name here next time!?
 Known issue: due to a game issue ([MCPE-240950](https://bugs.mojang.com/browse/MCPE/issues/MCPE-240950)), animated textures have a minor visual glitch in Vanilla RTX, if that bothers you, stick to Vanilla RTX Normals/Opus, which aren't impacted by MCPE-240950
 
 ## Latest release notes [cd:"9999999"] [glyph:"E70F"]
-**v1.26.34 Release Highlights:**
+**1.26.34 Release Highlights:**
 - Added full support for `Wilderness Bound` game drop.
   - The Poplar wood set, straw bed, shelf mushroom, etc... all now feature hand-made PBR textures, as always consistent with the rest of the pack.  
   - The Dappled Forest biome features a unique atmosphere with RTX to complement its autumn theme, with water colors that closely match its fancy graphics water color.
