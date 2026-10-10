@@ -17,12 +17,11 @@ Known issue: due to a game issue ([MCPE-240950](https://bugs.mojang.com/browse/M
 **v1.26.34 Release Highlights:**
 
 - Added full support for `Wilderness Bound` game drop.
-    - The Poplar wood set, straw bed, shelf mushroom, etc... all now feature hand-made PBR textures, as always consistent with the rest of the pack.  
-    - The Dappled Forest biome features a unique atmosphere with RTX to complement its autumn theme, with water colors that closely match its fancy graphics water color.
-
+  - The Poplar wood set, straw bed, shelf mushroom, etc... all now feature hand-made PBR textures, as always consistent with the rest of the pack.  
+  - The Dappled Forest biome features a unique atmosphere with RTX to complement its autumn theme, with water colors that closely match its fancy graphics water color.
+- Fire and Campfire and their Soul variants are now much brighter than usual while causing less noise, the brightness of fire vs soul fire now sets them apart more clearly/matching fancy graphics light levels more closely.
 - Improved fog across all Nether biomes.
 - Better end dimension fog, overall darker and more purple, e.g. distant light sources get color-shifted towards purple.
-
 - Improvements and revisions across many existing PBR textures. You can find the detailed/in-depth list of these changes and more on [GitHub](https://github.com/Cubeir/Vanilla-RTX) or through [CurseForge](https://www.curseforge.com/members/cubeir).
 
 # PackUpdateExtraInfo
