@@ -601,7 +601,7 @@ public sealed partial class MainWindow : Window
             var githubLink = new HyperlinkButton
             {
                 Content = "Create an issue on GitHub",
-                NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/issues"),
+                NavigateUri = new Uri("https://github.com/vanilla-rtx/Vanilla-RTX-App/issues"),
                 Margin = new Thickness(0, 2, 0, 0),
                 Padding = new Thickness(4, 4, 4, 4)
             };

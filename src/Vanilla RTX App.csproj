@@ -153,8 +153,8 @@
     <PackageCertificateThumbprint>1426D6CA9C80678225E501154069D87676C19DC6</PackageCertificateThumbprint>
     <SignAssembly>False</SignAssembly>
     <Copyright>All Rights Reserved.</Copyright>
-    <PackageProjectUrl>https://github.com/Cubeir/Vanilla-RTX-App</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/cubeir/Vanilla-RTX-App</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/vanilla-rtx/Vanilla-RTX-App</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/vanilla-rtx/Vanilla-RTX-App</RepositoryUrl>
     <AppxBundlePlatforms>x64|arm64</AppxBundlePlatforms>
     <AssemblyName>Vanilla RTX App</AssemblyName>
     <AssemblyOriginatorKeyFile>CubeirSoftware.pfx</AssemblyOriginatorKeyFile>

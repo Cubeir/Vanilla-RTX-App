@@ -12,7 +12,7 @@ covered by the repository's general open-source license. This document is
 the exclusive license for Alchitex's code and for anything Alchitex
 generates. Every other part of the Vanilla RTX App remains under the
 project's main license, stated in the repository's root LICENSE.txt
-(https://github.com/Cubeir/Vanilla-RTX-App/blob/main/LICENSE.txt).
+(https://github.com/vanilla-rtx/Vanilla-RTX-App/blob/main/LICENSE.txt).
 
 All rights not expressly granted below are reserved by the author. By
 using Alchitex / RTX Reactor, you agree to the terms below. You will be

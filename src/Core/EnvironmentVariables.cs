@@ -105,10 +105,10 @@ public static class EnvironmentVariables
         // suggest an alternative that doesn't exist.
 
         /// <summary>The markdown the titlebar's Help button renders.</summary>
-        public const string DocumentationUrl = "https://github.com/Cubeir/Vanilla-RTX-App/blob/main/README.md";
+        public const string DocumentationUrl = "https://github.com/vanilla-rtx/Vanilla-RTX-App/blob/main/README.md";
 
         /// <summary>The markdown the titlebar's Bugs button renders.</summary>
-        public const string BugTrackerUrl = "https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking/blob/master/README.md";
+        public const string BugTrackerUrl = "https://github.com/vanilla-rtx/Minecraft-RTX-Bug-Tracking/blob/master/README.md";
 
         /// <summary>Where the DLSS swapper's in-app browser goes to download runtimes.</summary>
         public const string DlssProviderUrl = "https://www.techpowerup.com/download/nvidia-dlss-dll";

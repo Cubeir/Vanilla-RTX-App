@@ -24,8 +24,8 @@ The Vanilla RTX App ensures ray tracing is accessible and frictionless to new an
   <a href="https://ko-fi.com/cubeir">
     <img src="https://img.shields.io/badge/-support%20my%20work-F4E9D3?style=flat-square&logo=ko-fi&logoColor=F4E9D3&labelColor=555555"/>
   </a>
-  <img src="https://img.shields.io/github/repo-size/Cubeir/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Repo%20Size&cacheSeconds=86400"/>
-  <img src="https://img.shields.io/github/last-commit/Cubeir/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Last%20Commit&cacheSeconds=86400"/>
+  <img src="https://img.shields.io/github/repo-size/vanilla-rtx/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Repo%20Size&cacheSeconds=86400"/>
+  <img src="https://img.shields.io/github/last-commit/vanilla-rtx/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Last%20Commit&cacheSeconds=86400"/>
 </p>
 
 ## Contents
@@ -59,7 +59,7 @@ For anyone who just wants to quickly get ray tracing working:
 4. In Minecraft, go to **Settings -> Global Resources** and activate the Vanilla RTX pack you installed.
 5. Enter a world. That's it.
 
-You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/Cubeir/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible.
+You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/vanilla-rtx/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible.
 
 > *The rest of this page is the full documentation, for when you take things further or whenever you get stuck. Continue to get an in-depth understanding of every feature.*
 
@@ -80,7 +80,7 @@ Three buttons sit next to the app's name. Each opens a page:
 
 - **Settings** - everything that configures the app itself. See [Settings](#settings).
 - **Help** - a convenient way to browse the contents of this page while using the app.
-- **Bugs** - an up-to-date [list of known Minecraft RTX bugs](https://github.com/Cubeir/Minecraft-RTX-Bug-Tracking) and their status on Mojang's tracker.
+- **Bugs** - an up-to-date [list of known Minecraft RTX bugs](https://github.com/vanilla-rtx/Minecraft-RTX-Bug-Tracking) and their status on Mojang's tracker.
 
 > Help and Bugs can be opened on top of any feature, and closing them puts you back exactly where you were.
 
@@ -103,7 +103,7 @@ The **Preview** toggle points the whole app at Minecraft Preview instead of the 
 
 # Get latest RTX packs
 
-Installs, updates and reinstalls the three Vanilla RTX packs, delivered straight from the [Vanilla RTX repository](https://github.com/Cubeir/Vanilla-RTX).
+Installs, updates and reinstalls the three Vanilla RTX packs, delivered straight from the [Vanilla RTX repository](https://github.com/vanilla-rtx/Vanilla-RTX).
 
 <img alt="Vanilla RTX App UI Images" src="https://github.com/user-attachments/assets/a5aa871a-468e-4bfc-9c58-d7283e25b58e" />
 
@@ -239,7 +239,7 @@ The packs you selected wait in a queue on the top and move across to the right a
 
 ### The license
 
-RTX Reactor used to be an independent premium project, but it is now free to use. The output is covered by its own license: **you can use them yourself and share them for free, but you can't sell them** or put them behind any paywall (e.g. Marketplace, ad-gated downloads, paid communities). For commercial use, you must contact Cubeir first. The full license is shown and you must accept it before using RTX Reactor, it is also in the [repository](https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt) for you to read it at any time.
+RTX Reactor used to be an independent premium project, but it is now free to use. The output is covered by its own license: **you can use them yourself and share them for free, but you can't sell them** or put them behind any paywall (e.g. Marketplace, ad-gated downloads, paid communities). For commercial use, you must contact Cubeir first. The full license is shown and you must accept it before using RTX Reactor, it is also in the [repository](https://github.com/vanilla-rtx/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt) for you to read it at any time.
 
 # BetterRTX manager
 
@@ -373,7 +373,7 @@ The addresses the app uses for things it doesn't ship itself: the **Documentatio
 - **Copy debug logs** - copies a full diagnostic report to your clipboard: system details, the app's log, every setting, recent errors, and the state of every control. Paste it into a bug report.
 - **Wipe all app data** - deletes everything the app has stored and restarts it as if freshly installed: settings, caches, downloaded presets, remembered game locations, all of it. Before it does, it restores your game's original BetterRTX and LUT files from the app's backups, which may show several admin prompts. **Approve every one.** If you don't and the game isn't back on its original files, the app's backups of them are gone for good, and fixing that means reinstalling Minecraft.
 
-At the very bottom are links to **[this repo](https://github.com/Cubeir/Vanilla-RTX-App/)**, **[Discord](https://discord.gg/A4wv4wwYud)** and **Ko-fi**, and the list of Vanilla RTX Insiders - the supporters who make this project possible. **[Please consider joining them!](https://ko-fi.com/cubeir)**
+At the very bottom are links to **[this repo](https://github.com/vanilla-rtx/Vanilla-RTX-App/)**, **[Discord](https://discord.gg/A4wv4wwYud)** and **Ko-fi**, and the list of Vanilla RTX Insiders - the supporters who make this project possible. **[Please consider joining them!](https://ko-fi.com/cubeir)**
 
 # Troubleshooting
 
@@ -401,7 +401,7 @@ Roll back to **Default RTX** in the BetterRTX manager. BetterRTX sometimes takes
 
 ### Getting help, reporting bugs, suggestions
 
-Open an issue [on GitHub](https://github.com/Cubeir/Vanilla-RTX-App/issues), post in the forum channel of the [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud), or mention @cubeir on the [Minecraft RTX Community Discord](https://discord.gg/eKVKD3c). Anything works!
+Open an issue [on GitHub](https://github.com/vanilla-rtx/Vanilla-RTX-App/issues), post in the forum channel of the [Vanilla RTX Discord](https://discord.gg/A4wv4wwYud), or mention @cubeir on the [Minecraft RTX Community Discord](https://discord.gg/eKVKD3c). Anything works!
 
 When reporting a bug, reproduce it first, then use **Settings -> Copy debug logs** and paste the result into your report. It helps a lot.
 

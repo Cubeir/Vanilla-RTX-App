@@ -271,7 +271,7 @@ public sealed partial class Alchitex : ModuleOverlay
             headerPara.Inlines.Add(new Run { Text = "Online version:  " });
             var link = new Hyperlink
             {
-                NavigateUri = new Uri("https://github.com/Cubeir/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt")
+                NavigateUri = new Uri("https://github.com/vanilla-rtx/Vanilla-RTX-App/blob/main/src/Modules/Alchitex/ALCHITEX_LICENSE.txt")
             };
             link.Inlines.Add(new Run { Text = "View on GitHub" });
             headerPara.Inlines.Add(link);

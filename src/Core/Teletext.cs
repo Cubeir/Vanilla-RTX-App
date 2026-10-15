@@ -225,7 +225,7 @@ public static class Teletext
     // ── Config ────────────────────────────────────────────────────────────────
 
     private const string URL =
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/main/TELETEXT.md";
+        "https://raw.githubusercontent.com/vanilla-rtx/Vanilla-RTX-App/main/TELETEXT.md";
 
     /// <summary>
     /// The announcements file as <see cref="AssetUpdater"/> sees it: the cooldown, the cached

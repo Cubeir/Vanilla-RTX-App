@@ -30,7 +30,7 @@ public static class AlchitexAssets
         Path.Combine(AppContext.BaseDirectory, "Modules", "Alchitex", "Assets", fileName);
 
     private const string RemoteRoot =
-        "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/";
+        "https://raw.githubusercontent.com/vanilla-rtx/Vanilla-RTX-App/refs/heads/main/src/Modules/Alchitex/Assets/";
 
     public static readonly ManagedAsset MaterialsJson = new(
         RemoteRoot + "materials.json",

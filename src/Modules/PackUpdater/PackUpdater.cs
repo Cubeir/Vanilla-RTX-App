@@ -51,10 +51,10 @@ public enum PackUpdateNotice
 
 public class PackUpdater
 {
-    private const string VANILLA_RTX_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX/manifest.json";
-    private const string VANILLA_RTX_NORMALS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Normals/manifest.json";
-    private const string VANILLA_RTX_OPUS_MANIFEST_URL = "https://raw.githubusercontent.com/Cubeir/Vanilla-RTX/master/Vanilla-RTX-Opus/manifest.json";
-    private const string VANILLA_RTX_REPO_ZIPBALL_URL = "https://github.com/Cubeir/Vanilla-RTX/archive/refs/heads/master.zip";
+    private const string VANILLA_RTX_MANIFEST_URL = "https://raw.githubusercontent.com/vanilla-rtx/Vanilla-RTX/master/Vanilla-RTX/manifest.json";
+    private const string VANILLA_RTX_NORMALS_MANIFEST_URL = "https://raw.githubusercontent.com/vanilla-rtx/Vanilla-RTX/master/Vanilla-RTX-Normals/manifest.json";
+    private const string VANILLA_RTX_OPUS_MANIFEST_URL = "https://raw.githubusercontent.com/vanilla-rtx/Vanilla-RTX/master/Vanilla-RTX-Opus/manifest.json";
+    private const string VANILLA_RTX_REPO_ZIPBALL_URL = "https://github.com/vanilla-rtx/Vanilla-RTX/archive/refs/heads/master.zip";
 
     // Remote version cache // how frequently to check the remote again for manifest's versions
     //

@@ -89,7 +89,7 @@ public static partial class Helpers
     public static string BuildUserAgent(string? component = null) =>
         component is null
             ? $"vanilla_rtx_app/{EnvironmentVariables.appVersion}"
-            : $"vanilla_rtx_app_{component}/{EnvironmentVariables.appVersion} (https://github.com/Cubeir/Vanilla-RTX-App)";
+            : $"vanilla_rtx_app_{component}/{EnvironmentVariables.appVersion} (https://github.com/vanilla-rtx/Vanilla-RTX-App)";
     /// <summary>
     /// How long a transfer may make no progress at all before it is abandoned and retried.
     /// Separate from <c>timeout</c>, which bounds the whole attempt: a total deadline large

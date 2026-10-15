@@ -1385,7 +1385,7 @@ public sealed partial class SettingsOverlay : UserControl
     // =========================================================================
 
     private void GitHubLink_Click(object sender, RoutedEventArgs e)
-        => _ = MainWindow.OpenUrl("https://github.com/Cubeir/Vanilla-RTX-App");
+        => _ = MainWindow.OpenUrl("https://github.com/vanilla-rtx/Vanilla-RTX-App");
 
     private void KoFiLink_Click(object sender, RoutedEventArgs e)
     {
