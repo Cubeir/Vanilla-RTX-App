@@ -28,7 +28,7 @@ The Vanilla RTX App ensures ray tracing is accessible and frictionless to new an
   <img src="https://img.shields.io/github/last-commit/vanilla-rtx/Vanilla-RTX-App?style=flat-square&color=F4E9D3&label=Last%20Commit&cacheSeconds=86400"/>
 </p>
 
-## Contents
+## Table of Contents
 
 - [Quick start](#quick-start)
 - [Overview](#overview--main-menu-features)
@@ -59,7 +59,7 @@ For anyone who just wants to quickly get ray tracing working:
 4. In Minecraft, go to **Settings -> Global Resources** and activate the Vanilla RTX pack you installed.
 5. Enter a world. That's it.
 
-You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/vanilla-rtx/Vanilla-RTX) for your version of Minecraft and [fixes](https://minecraftrtx.net/enhancements) for as many of the game's RTX issues as possible.
+You now have ray tracing set up properly, with the latest [Vanilla RTX](https://github.com/vanilla-rtx/Vanilla-RTX) for your version of Minecraft and [fixes](https://vanillartx.net/enhancements) for as many of the game's RTX issues as possible.
 
 > *The rest of this page is the full documentation, for when you take things further or whenever you get stuck. Continue to get an in-depth understanding of every feature.*
 
